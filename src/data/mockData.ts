@@ -156,7 +156,7 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
         signedByName: 'Carlos Alberto Menezes',
         signedByRole: 'tecnico',
         signedAt: '2026-06-10T11:45:00Z',
-        sha256Hash: 'a8f3b210c49e7829d41029481bc92a819034f812e9b019385c490a18fbc7102e',
+        sha256Hash: 'c6ed4abbfefcf8080e6038c9ccba40c25209fe42ae10e3b84e6d3fdcc5d51951',
         status: 'locked'
       },
       {
@@ -165,7 +165,7 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
         signedByName: 'Carlos Alberto Menezes',
         signedByRole: 'tecnico',
         signedAt: '2026-06-15T16:20:00Z',
-        sha256Hash: '5e71bc9842a1048201f9481cb9284019a4891bca7281093481ec0184bfa91028',
+        sha256Hash: '2b9a54a9b3091d1b86c67beaeeb410439c2617a2cef03740f70bac6187c5d6b0',
         status: 'locked'
       },
       {
@@ -664,7 +664,7 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
         signedByName: 'Carlos Alberto Menezes',
         signedByRole: 'tecnico',
         signedAt: '2026-07-15T12:00:00Z',
-        sha256Hash: '4910284019283019284019283019284019283019284019283019284019283019',
+        sha256Hash: '1ed3e2aa28d39f8ad358fadf59a1f8ffb6e1199224659ca2d890486abe6b7d10',
         status: 'locked'
       },
       {
@@ -673,7 +673,7 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
         signedByName: 'Carlos Alberto Menezes',
         signedByRole: 'tecnico',
         signedAt: '2026-07-19T17:00:00Z',
-        sha256Hash: '5029384019283019284019283019284019283019284019283019284019283019',
+        sha256Hash: '55a88894b84ee9f5e6c1bd451b4e106f791bff470ee182daa5f33d8a1af6548f',
         status: 'locked'
       },
       {

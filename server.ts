@@ -3,6 +3,9 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
+import { getPool } from './db/pool';
+import { runMigrations } from './db/migrate';
+import { listCollections, getCollection, createCollection, saveCollection } from './db/collectionsRepo';
 
 dotenv.config();
 
@@ -16,7 +19,7 @@ const isProduction = process.env.NODE_ENV === 'production';
 // CORS para evitar qualquer bloqueio entre o iframe do AI Studio e a aplicação
 app.use((_req: Request, res: Response, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (_req.method === 'OPTIONS') {
     return res.sendStatus(204);
@@ -280,8 +283,84 @@ app.post('/api/transcribe', async (req: Request, res: Response) => {
   }
 });
 
+// --- Persistência (§ Postgres — conjuntos, formulários A.1/A.2, assinaturas, custódia) ---
+
+// Lista todos os conjuntos osteológicos (dashboard, seletor de NIC)
+app.get('/api/collections', async (_req: Request, res: Response) => {
+  try {
+    const pool = getPool();
+    const collections = await listCollections(pool);
+    return res.json({ collections });
+  } catch (error: any) {
+    console.error('Erro ao listar conjuntos:', error);
+    return res.status(500).json({ error: error?.message || 'Erro ao listar conjuntos.' });
+  }
+});
+
+// Carrega um conjunto específico pelo NIC
+app.get('/api/collections/:nic', async (req: Request, res: Response) => {
+  try {
+    const pool = getPool();
+    const collection = await getCollection(pool, req.params.nic);
+    if (!collection) {
+      return res.status(404).json({ error: `Conjunto ${req.params.nic} não encontrado.` });
+    }
+    return res.json({ collection });
+  } catch (error: any) {
+    console.error('Erro ao carregar conjunto:', error);
+    return res.status(500).json({ error: error?.message || 'Erro ao carregar conjunto.' });
+  }
+});
+
+// Cria um novo conjunto (NIC de entrada)
+app.post('/api/collections', async (req: Request, res: Response) => {
+  try {
+    const collection = req.body?.collection;
+    if (!collection?.nic) {
+      return res.status(400).json({ error: 'Corpo da requisição deve conter { collection } com um NIC válido.' });
+    }
+    const pool = getPool();
+    await createCollection(pool, collection);
+    return res.status(201).json({ collection });
+  } catch (error: any) {
+    console.error('Erro ao criar conjunto:', error);
+    return res.status(500).json({ error: error?.message || 'Erro ao criar conjunto.' });
+  }
+});
+
+// Salva um conjunto existente (qualquer atualização de fase, assinatura, custódia, etc.)
+app.put('/api/collections/:nic', async (req: Request, res: Response) => {
+  try {
+    const collection = req.body?.collection;
+    if (!collection || collection.nic !== req.params.nic) {
+      return res.status(400).json({ error: 'NIC do corpo da requisição não confere com o NIC da URL.' });
+    }
+    const pool = getPool();
+    await saveCollection(pool, collection);
+    return res.json({ collection });
+  } catch (error: any) {
+    console.error('Erro ao salvar conjunto:', error);
+    // Hash de assinatura inválido é erro do cliente (payload adulterado ou hash fraco), não do servidor
+    const isSignatureError = typeof error?.message === 'string' && error.message.includes('Assinatura inválida');
+    return res.status(isSignatureError ? 400 : 500).json({ error: error?.message || 'Erro ao salvar conjunto.' });
+  }
+});
+
 // Configuração do Vite dev middleware ou arquivos estáticos de produção
 async function setupServer() {
+  // Aplica migrações pendentes no boot, para o schema estar sempre atualizado
+  // antes do servidor aceitar requisições que dependem do banco.
+  try {
+    const pool = getPool();
+    const applied = await runMigrations(pool);
+    if (applied.length > 0) {
+      console.log(`[DB] Migrações aplicadas no boot: ${applied.join(', ')}`);
+    }
+  } catch (err) {
+    console.error('[DB] Falha ao aplicar migrações no boot:', err);
+    throw err;
+  }
+
   if (!isProduction) {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
