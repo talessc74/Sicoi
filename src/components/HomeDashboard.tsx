@@ -276,7 +276,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                       </span>
                     </td>
                     <td className="px-5 py-3.5 font-mono">
-                      {col.phase4.individuals.length || col.phase1.apparentMni.value} {col.phase4.individuals.length === 1 ? 'indivíduo' : 'indivíduos'}
+                      {col.phase4.individuals.length || col.phase1.preliminaryBoxes.length} {col.phase4.individuals.length === 1 ? 'indivíduo' : 'indivíduos'}
                     </td>
                     <td className="px-5 py-3.5 font-mono">
                       {col.phase1.preliminaryBoxes.length} {col.phase1.preliminaryBoxes.length === 1 ? 'caixa' : 'caixas'}

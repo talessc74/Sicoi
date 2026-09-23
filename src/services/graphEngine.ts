@@ -29,8 +29,8 @@ export function buildForensicKnowledgeGraph(collections: OsteologicalCollection[
       properties: {
         nic: col.nic,
         currentPhase: col.currentPhase,
-        originInstitution: col.phase1.originInstitution.value,
-        apparentMni: col.phase1.apparentMni.value,
+        originInstitution: col.legalOrigin.originInstitution,
+        presumedIndividualsCount: col.phase1.preliminaryBoxes.length,
         createdAt: col.createdAt
       }
     });

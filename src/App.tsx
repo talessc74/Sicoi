@@ -10,6 +10,7 @@ import {
   MOCK_USERS,
   MOCK_RESEARCH_AUTHORIZATIONS
 } from './data/mockData';
+import { createEmptyPhase1Data, createEmptyPhase2Data } from './data/phaseDefaults';
 import { Header } from './components/Header';
 import { HomeDashboard } from './components/HomeDashboard';
 import { DocumentSearchViewer } from './components/DocumentSearchViewer';
@@ -68,13 +69,7 @@ export default function App() {
         deathDeclarationNumber: `DO-2026-88${nextNum}`
       },
       phase1: {
-        deliveryDocumentNumber: { value: `GUIA-REMESSA-SENASP-2026/${nextNum}`, isAiSuggested: false },
-        originInstitution: { value: 'IML Regional Metropolitano', isAiSuggested: false },
-        receivedBagsCount: { value: 1, isAiSuggested: false },
-        bagSealNumbers: { value: `LACRE-${nextNum}A`, isAiSuggested: false },
-        initialConditionNotes: { value: 'Material ósseo recebido em saco forense padronizado com resíduos terrosos.', isAiSuggested: false },
-        apparentMni: { value: 1, isAiSuggested: false },
-        preliminaryBonesNoted: { value: 'Crânio parcial, fêmures e arcos costais aparentes.', isAiSuggested: false },
+        ...createEmptyPhase1Data(),
         preliminaryBoxes: [
           {
             id: `CX-${newNic}-A`,
@@ -84,13 +79,9 @@ export default function App() {
             qrCode: `SGCCCO://BOX/CX-${newNic}-A`,
             cleaningStatus: 'pendente'
           }
-        ],
-        initialPhotos: []
+        ]
       },
-      phase2: {
-        cleaningSessions: [],
-        dryingConfirmationAllBoxes: false
-      },
+      phase2: createEmptyPhase2Data(),
       phase3: {
         boxLocations: []
       },

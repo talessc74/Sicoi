@@ -127,7 +127,8 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
       isVoiceInput: isVoice
     };
 
-    // Step Extraction
+    // Step Extraction (motor determinístico local — fonte de verdade para o que foi
+    // efetivamente preenchido e para o gate de avanço; ver applyExtractionsToCollection).
     let extractedPayload: Record<string, any> = {};
     let summaryText = '';
     let isComplete = false;
@@ -143,10 +144,17 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
 
-    // Apply extractions to the actual collection
-    applyExtractionsToCollection(extractedPayload, text);
+    // Aplica as extrações ao conjunto — sempre, esteja o passo completo ou não,
+    // para não perder o que já foi dito enquanto falta um campo.
+    await applyExtractionsToCollection(extractedPayload);
 
-    // Conductor feedback turn: Se o Agente de IA estiver ativo, consultar o Gemini via server-side API
+    // Turno de narração: se o Agente de IA (Gemini) estiver ativo, ele só formula o texto
+    // de resposta — quem decide se o passo avança é sempre o `isComplete` do motor local.
+    // TODO(follow-up): trocar por saída estruturada do Gemini (responseSchema com
+    // extractedFields + stepConfirmed) para a extração/confirmação virarem julgamento da
+    // IA em vez de regex determinístico. Ver plano de implementação.
+    let narrationText = '';
+    let narrationTags: string[] | undefined;
     if (aiConfig.enabled) {
       try {
         const historyForGemini = [
@@ -160,39 +168,47 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
         const geminiRes = await sendChatMessage(
           historyForGemini,
           'general',
-          `${aiConfig.systemPromptPreset} Atualmente no passo ${currentStep?.stepNumber || 1} (${currentStep?.stepTitle || 'Triagem'}). Se houver dados extraídos (${summaryText}), confirme e pergunte o próximo passo conforme a norma.`
+          `${aiConfig.systemPromptPreset} Atualmente no passo ${currentStep?.stepNumber || 1} (${currentStep?.stepTitle || 'Triagem'}). Dados extraídos neste turno: ${summaryText || 'nenhum'}. ${
+            isComplete
+              ? 'O passo está completo — confirme os dados e informe que vai avançar.'
+              : 'O passo AINDA NÃO está completo — não diga que vai avançar; pergunte objetivamente o que falta.'
+          }`
         );
-
-        const conductorReply: ConductorChatMessage = {
-          id: `msg-ai-${Date.now()}`,
-          sender: 'conductor',
-          text: geminiRes.reply,
-          timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-          fieldTags: [geminiRes.modelUsed, 'IA Gemini Conductor Ativo'],
-          suggestedReplies: currentStep?.quickSuggestions,
-        };
-
-        setMessages((prev) => [...prev, conductorReply]);
-        speakText(geminiRes.reply);
-        return;
+        narrationText = geminiRes.reply;
+        narrationTags = [geminiRes.modelUsed, 'IA Gemini Conductor Ativo'];
       } catch (err: any) {
         console.warn('Fallback para motor procedimental devido a erro no Gemini:', err);
       }
     }
 
-    // Motor procedimental determinístico padrão
+    // Motor procedimental determinístico: decide o avanço de passo. `isComplete` é a
+    // única condição que libera o próximo passo — nunca avança só porque o usuário falou.
     setTimeout(() => {
       const nextStepIdx = currentStepIndex + 1;
       const hasMoreSteps = nextStepIdx < popDef.steps.length;
 
-      let replyText = '';
-      if (summaryText) {
-        replyText = `Entendido e anotado: ${summaryText}. `;
+      if (!isComplete) {
+        const replyText = narrationText || `Ainda não posso avançar: ${summaryText}`;
+        const conductorReply: ConductorChatMessage = {
+          id: `msg-cond-${Date.now()}`,
+          sender: 'conductor',
+          text: replyText,
+          timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+          stepNumber: currentStep?.stepNumber,
+          requiresPhoto: currentStep?.requiresPhoto,
+          suggestedReplies: currentStep?.quickSuggestions,
+          fieldTags: narrationTags
+        };
+        setMessages(prev => [...prev, conductorReply]);
+        speakText(replyText);
+        return; // não avança — currentStepIndex permanece o mesmo
       }
+
+      let replyText = `Entendido e anotado: ${summaryText}. `;
 
       if (hasMoreSteps) {
         const nextStep = popDef.steps[nextStepIdx];
-        replyText += `Prosseguindo para o Passo ${nextStep.stepNumber}: ${nextStep.conductorPrompt}`;
+        replyText += narrationText || `Prosseguindo para o Passo ${nextStep.stepNumber}: ${nextStep.conductorPrompt}`;
 
         const conductorReply: ConductorChatMessage = {
           id: `msg-cond-${Date.now()}`,
@@ -201,20 +217,21 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
           timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
           stepNumber: nextStep.stepNumber,
           requiresPhoto: nextStep.requiresPhoto,
-          suggestedReplies: nextStep.quickSuggestions
+          suggestedReplies: nextStep.quickSuggestions,
+          fieldTags: narrationTags
         };
 
         setMessages(prev => [...prev, conductorReply]);
         setCurrentStepIndex(nextStepIdx);
         speakText(replyText);
       } else {
-        replyText += popDef.completionMessage;
+        replyText += narrationText || popDef.completionMessage;
         const conductorReply: ConductorChatMessage = {
           id: `msg-cond-${Date.now()}`,
           sender: 'conductor',
           text: replyText,
           timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-          fieldTags: ['Concluído', 'Apto para Assinatura']
+          fieldTags: [...(narrationTags || []), 'Concluído', 'Apto para Assinatura']
         };
 
         setMessages(prev => [...prev, conductorReply]);
@@ -224,71 +241,72 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
     }, 600);
   };
 
-  // Apply extracted fields to collection according to phase
-  const applyExtractionsToCollection = (extractedData: Record<string, any>, rawText: string) => {
+  // Categorias do checklist fotográfico da Fase 1, cada uma vinculada ao campo booleano/tri-state
+  // do Formulário A.1 que a extração pode acionar por voz.
+  const PHASE1_PHOTO_TRIGGERS: { field: string; category: string; truthy: (v: any) => boolean }[] = [
+    { field: 'foto1SacoFechado', category: 'foto1_saco_fechado', truthy: (v) => v === true },
+    { field: 'foto2PlacaCemiterio', category: 'foto2_placa_cemiterio', truthy: (v) => v === 'sim' },
+    { field: 'foto3RemanescentesMateriais', category: 'foto3_remanescentes_materiais', truthy: (v) => v === 'sim' },
+    { field: 'foto4_1RemanescentesIsolados', category: 'foto4_1_remanescentes_isolados', truthy: (v) => v === true },
+    { field: 'foto4_2MateriaisIsolados', category: 'foto4_2_materiais_isolados', truthy: (v) => v === 'sim' }
+  ];
+
+  // Aplica os campos extraídos pelo motor de passos à coleção (Fase 1: Formulário A.1;
+  // Fase 2: maceração/limpeza/secagem/acondicionamento — POP-01 §9.5-9.7).
+  const applyExtractionsToCollection = async (extractedData: Record<string, any>) => {
+    if (Object.keys(extractedData).length === 0) return;
+
     const updated = { ...collection };
 
     if (phaseNumber === 1) {
-      const p1 = updated.phase1;
-      if (extractedData.receivedBagsCount !== undefined) {
-        p1.receivedBagsCount = {
-          value: extractedData.receivedBagsCount,
-          isAiSuggested: true,
-          transcriptSnippet: rawText
-        };
+      const p1 = { ...updated.phase1 };
+      for (const [key, value] of Object.entries(extractedData)) {
+        if (value === undefined) continue;
+        if (key in p1) {
+          (p1 as any)[key] = { value, isAiSuggested: true };
+        }
       }
-      if (extractedData.bagSealNumbers) {
-        p1.bagSealNumbers = {
-          value: extractedData.bagSealNumbers,
-          isAiSuggested: true,
-          transcriptSnippet: rawText
-        };
+
+      // Checklist fotográfico: quando a extração confirma uma foto por voz, gera o
+      // registro real (com hash) — não só o boolean do formulário.
+      const newPhotos = [...p1.photos];
+      for (const trigger of PHASE1_PHOTO_TRIGGERS) {
+        const value = extractedData[trigger.field];
+        const alreadyHasPhoto = newPhotos.some((ph) => ph.category === trigger.category);
+        if (value !== undefined && trigger.truthy(value) && !alreadyHasPhoto) {
+          const photoId = `photo-p1-${trigger.category}-${Date.now()}`;
+          const url = 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=800&auto=format&fit=crop&q=80';
+          const hash = await calculateSha256(`${url}|${trigger.category}|${collection.nic}|${currentUser.id}`);
+          newPhotos.push({
+            id: photoId,
+            category: trigger.category,
+            author: currentUser.name,
+            timestamp: new Date().toISOString(),
+            sha256Hash: hash,
+            url
+          });
+        }
       }
-      if (extractedData.initialConditionNotes) {
-        p1.initialConditionNotes = {
-          value: extractedData.initialConditionNotes,
-          isAiSuggested: true,
-          transcriptSnippet: rawText
-        };
-      }
-      if (extractedData.apparentMni !== undefined) {
-        p1.apparentMni = {
-          value: extractedData.apparentMni,
-          isAiSuggested: true,
-          transcriptSnippet: rawText
-        };
-      }
-      if (extractedData.preliminaryBonesNoted) {
-        p1.preliminaryBonesNoted = {
-          value: extractedData.preliminaryBonesNoted,
-          isAiSuggested: true,
-          transcriptSnippet: rawText
-        };
-      }
+      p1.photos = newPhotos;
+
+      updated.phase1 = p1;
     } else if (phaseNumber === 2) {
-      if (extractedData.methodUsed) {
-        const newSession = {
-          id: `cln-${Date.now()}`,
-          boxId: updated.phase1.preliminaryBoxes[0]?.id || 'CX-01',
-          startedAt: new Date(Date.now() - 3600000).toISOString(),
-          finishedAt: new Date().toISOString(),
-          methodUsed: extractedData.methodUsed,
-          waterTemperatureC: extractedData.waterTemperatureC || 24,
-          operatorName: currentUser.name,
-          observations: {
-            value: extractedData.observations || rawText,
-            isAiSuggested: true,
-            transcriptSnippet: rawText
-          },
-          photos: []
-        };
-        updated.phase2.cleaningSessions = [...updated.phase2.cleaningSessions, newSession];
+      const p2 = { ...updated.phase2 };
+      for (const [key, value] of Object.entries(extractedData)) {
+        if (value === undefined) continue;
+        if (key === 'dryingConfirmationAllBoxes') {
+          p2.dryingConfirmationAllBoxes = Boolean(value);
+          if (value) {
+            p2.dryingConfirmedAt = new Date().toISOString();
+            p2.dryingConfirmedBy = currentUser.name;
+          }
+          continue;
+        }
+        if (key in p2) {
+          (p2 as any)[key] = { value, isAiSuggested: true };
+        }
       }
-      if (extractedData.dryingConfirmed) {
-        updated.phase2.dryingConfirmationAllBoxes = true;
-        updated.phase2.dryingConfirmedAt = new Date().toISOString();
-        updated.phase2.dryingConfirmedBy = currentUser.name;
-      }
+      updated.phase2 = p2;
     }
 
     onUpdateCollection(updated);
@@ -316,24 +334,27 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
 
   // Capture step photo via conversation
   const handleCapturePhoto = async (stepNum?: number) => {
+    const step = stepNum || currentStep?.stepNumber || 1;
+    const category = `pop${phaseNumber}_passo${step}`;
     const photoId = `photo-pop-${phaseNumber}-${Date.now()}`;
-    const hash = await calculateSha256(`PHOTO-${photoId}-${Date.now()}`);
+    const url = 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=800&auto=format&fit=crop&q=80';
+    const hash = await calculateSha256(`${url}|${category}|${collection.nic}|${currentUser.id}`);
+    const caption = `Registro pericial do ${popDef.popCode} - Passo ${step}`;
     const newPhoto = {
       id: photoId,
-      stepNumber: stepNum || currentStep?.stepNumber || 1,
-      description: currentStep?.photoPrompt || 'Registro fotográfico forense do passo do POP',
+      category,
       author: currentUser.name,
       timestamp: new Date().toISOString(),
       sha256Hash: hash,
-      url: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=800&auto=format&fit=crop&q=80',
-      caption: `Registro pericial do ${popDef.popCode} - Passo ${stepNum || currentStep?.stepNumber}`
+      url,
+      caption
     };
 
     // Append to messages
     const photoMessage: ConductorChatMessage = {
       id: `msg-photo-${Date.now()}`,
       sender: 'user',
-      text: `[Fotografia Forense Registrada]: ${newPhoto.caption}`,
+      text: `[Fotografia Forense Registrada]: ${caption}`,
       timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
       photoAttached: newPhoto
     };
@@ -343,7 +364,9 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
     // Update collection
     const updated = { ...collection };
     if (phaseNumber === 1) {
-      updated.phase1.initialPhotos = [...updated.phase1.initialPhotos, newPhoto];
+      updated.phase1 = { ...updated.phase1, photos: [...updated.phase1.photos, newPhoto] };
+    } else if (phaseNumber === 2) {
+      updated.phase2 = { ...updated.phase2, photos: [...updated.phase2.photos, newPhoto] };
     }
     onUpdateCollection(updated);
 

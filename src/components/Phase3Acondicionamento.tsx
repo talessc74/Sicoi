@@ -328,7 +328,7 @@ export const Phase3Acondicionamento: React.FC<Phase3AcondicionamentoProps> = ({
                       {col.nic}
                     </span>
                     <span className="text-[10px] text-slate-400 font-mono">
-                      Caixas: {col.phase1.preliminaryBoxes.length} · NMI: {col.phase1.apparentMni.value}
+                      Caixas: {col.phase1.preliminaryBoxes.length} (indivíduos presumidos)
                     </span>
                   </div>
 

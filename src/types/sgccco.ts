@@ -72,29 +72,119 @@ export interface FieldWithAiSuggestion<T> {
   confirmedByUser?: boolean;
 }
 
+// Categorias fixas do checklist fotográfico do Formulário A.1 (campos 5-9)
+export type Phase1PhotoCategory =
+  | 'foto1_saco_fechado'
+  | 'foto2_placa_cemiterio'
+  | 'foto3_remanescentes_materiais'
+  | 'foto4_1_remanescentes_isolados'
+  | 'foto4_2_materiais_isolados';
+
 export interface Phase1Photo {
-  id?: string;
-  stepNumber?: number;
-  description?: string;
-  author?: string;
-  timestamp?: string;
-  category?: 'saco_lacrado' | 'abertura' | 'sedimento' | 'etiqueta_origem' | string;
+  id: string;
+  // Nas 5 categorias fixas do checklist do A.1 (Fase 1) ou livre (Fase 2, sem checklist fotográfico formal).
+  category: Phase1PhotoCategory | string;
+  author: string;
+  timestamp: string;
   url: string;
   caption?: string;
   sha256Hash: string;
 }
 
-// Fase 1: Recebimento e Triagem Inicial
+// Formulário A.1 (POP-01 item 9.2-9.4) — Tipo de material presente no saco (campo 10)
+export type MaterialType =
+  | 'ossos'
+  | 'dentes'
+  | 'cabelo'
+  | 'unha'
+  | 'proteses'
+  | 'vestes'
+  | 'pertences'
+  | 'tecidos_moles';
+
+// Estado de preservação dos remanescentes (campo 16)
+export type PreservationCharacteristic =
+  | 'preservado_integro'
+  | 'degradado'
+  | 'fragmentacao'
+  | 'friavel'
+  | 'erosao'
+  | 'umido'
+  | 'seco'
+  | 'fungo_visivel'
+  | 'manchas'
+  | 'perda_cortical'
+  | 'carbonizacao'
+  | 'insetos_pupas'
+  | 'outros';
+
+// Elemento de coleta para exame genético (campo 19), em ordem de prioridade do POP-01 §9.3.1
+export type GeneticSampleElement = 'falange' | 'ossos_tarsais' | 'dente_higido' | 'primeira_costela' | 'patela' | 'outros' | 'nao_coletado';
+
+// Material de coleta para análise isotópica (campo 26), POP-01 §9.3.2
+export type IsotopicSampleMaterial = 'cabelo' | 'unha' | 'dente' | 'nao_coletado';
+
+export type CleaningType = 'a_seco' | 'agua_fria' | 'agua_quente';
+
+/**
+ * Fase 1: Análise Preliminar e Limpeza dos Remanescentes Ósseos.
+ * Campos fiéis ao Formulário A.1 (POP-01 v1, itens 9.1-9.4). O NIC do conjunto
+ * (chave da collection) corresponde ao campo 1 do formulário e não é repetido aqui.
+ */
 export interface Phase1Data {
-  deliveryDocumentNumber: FieldWithAiSuggestion<any>;
-  originInstitution: FieldWithAiSuggestion<any>;
-  receivedBagsCount: FieldWithAiSuggestion<any>;
-  bagSealNumbers: FieldWithAiSuggestion<any>;
-  initialConditionNotes: FieldWithAiSuggestion<any>;
-  apparentMni: FieldWithAiSuggestion<any>;
-  preliminaryBonesNoted: FieldWithAiSuggestion<any>;
+  // Introdução (campos 2-4)
+  equipeEnvolvidaLimpeza: FieldWithAiSuggestion<string>;
+  dataAnalise: FieldWithAiSuggestion<string>; // ISO 8601 (data)
+  horaAnalise: FieldWithAiSuggestion<string>; // ex.: "11h20min"
+
+  // Checklist de fotos (campos 5-9) — obrigatoriedade de cada categoria conforme o A.1:
+  // foto1 e foto4.1 são sempre obrigatórias; foto2, foto3 e foto4.2 são "se aplicável".
+  foto1SacoFechado: FieldWithAiSuggestion<boolean>;
+  foto2PlacaCemiterio: FieldWithAiSuggestion<'sim' | 'nao_se_aplica'>;
+  foto3RemanescentesMateriais: FieldWithAiSuggestion<'sim' | 'nao_se_aplica'>;
+  foto4_1RemanescentesIsolados: FieldWithAiSuggestion<boolean>;
+  foto4_2MateriaisIsolados: FieldWithAiSuggestion<'sim' | 'nao_se_aplica'>;
+
+  // Tipo de material (campo 10) + descrições condicionais (11-15)
+  tipoMaterial: FieldWithAiSuggestion<MaterialType[]>;
+  cabeloDescricao: FieldWithAiSuggestion<string>;
+  protesesDescricao: FieldWithAiSuggestion<string>;
+  vestesDescricao: FieldWithAiSuggestion<string>;
+  pertencesDescricao: FieldWithAiSuggestion<string>;
+  tecidosMolesDescricao: FieldWithAiSuggestion<string>;
+
+  // Estado de preservação (campo 16) + outros/observações (17-18)
+  estadoPreservacao: FieldWithAiSuggestion<PreservationCharacteristic[]>;
+  estadoPreservacaoOutrosDescricao: FieldWithAiSuggestion<string>;
+  observacoesGeraisPreservacao: FieldWithAiSuggestion<string>;
+
+  // Coleta de amostra biológica — exame genético (campos 19-25)
+  exameGenetico: FieldWithAiSuggestion<GeneticSampleElement[]>;
+  geneticoFalangeDescricao: FieldWithAiSuggestion<string>;
+  geneticoDenteHigidoDescricao: FieldWithAiSuggestion<string>;
+  geneticoOssosTarsaisDescricao: FieldWithAiSuggestion<string>;
+  geneticoOutrosDescricao: FieldWithAiSuggestion<string>;
+  geneticoObservacoesGerais: FieldWithAiSuggestion<string>;
+  geneticoResponsavelColeta: FieldWithAiSuggestion<string>;
+
+  // Coleta de amostra biológica — análise isotópica (campos 26-31)
+  analiseIsotopica: FieldWithAiSuggestion<IsotopicSampleMaterial[]>;
+  isotopicaCabeloDescricao: FieldWithAiSuggestion<string>;
+  isotopicaUnhaDescricao: FieldWithAiSuggestion<string>;
+  isotopicaDenteDescricao: FieldWithAiSuggestion<string>;
+  isotopicaObservacoes: FieldWithAiSuggestion<string>;
+  isotopicaResponsavelColeta: FieldWithAiSuggestion<string>;
+
+  // Limpeza (campos 32-33)
+  corSacoLavagem: FieldWithAiSuggestion<string>;
+  tipoLimpeza: FieldWithAiSuggestion<CleaningType>;
+
+  // Danos (campos 34-35)
+  houveDanos: FieldWithAiSuggestion<boolean>;
+  descricaoDanos: FieldWithAiSuggestion<string>;
+
   preliminaryBoxes: PreliminaryBox[];
-  initialPhotos: Phase1Photo[];
+  photos: Phase1Photo[];
 }
 
 export interface PreliminaryBox {
@@ -108,30 +198,39 @@ export interface PreliminaryBox {
   dryingDurationHours?: number;
 }
 
-// Fase 2: Limpeza e Secagem
-export interface CleaningSession {
-  id: string;
-  boxId: string;
+// Ciclo de secagem de 4h em estufa (POP-01 §9.6) — repetido até não haver umidade residual visível
+export interface DryingCycle {
+  cycleNumber: number;
   startedAt: string;
-  finishedAt: string;
-  methodUsed: 'lavagem_mecanica_pinceis' | 'pincelamento_seco' | 'outro_justificado';
-  waterTemperatureC?: number;
-  operatorName: string;
-  observations: FieldWithAiSuggestion<string>;
-  photos: {
-    stage: 'antes' | 'durante' | 'depois';
-    url: string;
-    caption: string;
-  }[];
+  finishedAt?: string;
+  umidadeResidual: boolean | null; // null = ciclo em andamento, ainda não inspecionado
 }
 
+/**
+ * Fase 2: Maceração e Limpeza (POP-01 §9.5), Secagem (§9.6) e Acondicionamento
+ * em caixa ossuária (§9.7).
+ */
 export interface Phase2Data {
-  cleaningSessions: CleaningSession[];
+  // Maceração e limpeza manual (§9.5)
+  maceracaoTemperaturaC: FieldWithAiSuggestion<number>; // 60-80°C conforme o POP
+  maceracaoDuracaoHoras: FieldWithAiSuggestion<number>; // 4-6h conforme o POP
+  maceracaoCiclosMonitoramento: FieldWithAiSuggestion<number>; // inspeções a cada 2h
+  maceracaoResultado: FieldWithAiSuggestion<'satisfatoria' | 'necessitou_novo_ciclo'>;
+  limpezaManualRealizada: FieldWithAiSuggestion<boolean>;
+  limpezaManualObservacoes: FieldWithAiSuggestion<string>;
+
+  // Secagem (§9.6) — ciclos de 4h em estufa (200-250°C) até ausência de umidade visível
+  secagemTemperaturaC: FieldWithAiSuggestion<number>;
+  secagemCiclos: DryingCycle[];
   dryingConfirmationAllBoxes: boolean;
-  dryingVerificationDate?: string;
-  dryingTechnicianSignature?: string;
   dryingConfirmedAt?: string;
   dryingConfirmedBy?: string;
+
+  // Acondicionamento em caixa ossuária (§9.7)
+  acondicionamentoCaixaOssuariaCodigo: FieldWithAiSuggestion<string>;
+  acondicionamentoPlacaNicQrFixada: FieldWithAiSuggestion<boolean>;
+
+  photos: Phase1Photo[];
 }
 
 // Fase 3: Acondicionamento Provisório e Fila de Curadoria
