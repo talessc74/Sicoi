@@ -107,3 +107,30 @@ export async function transcribeAudioBlob(blob: Blob): Promise<string> {
     reader.readAsDataURL(blob);
   });
 }
+
+export interface PopStepAiResult {
+  extractedFields: Record<string, any>;
+  missingRequiredFields: string[];
+  stepConfirmed: boolean;
+  conductorReplyText: string;
+  modelUsed: string;
+}
+
+/**
+ * Extração + confirmação de um passo do POP por julgamento da IA (não regex).
+ * `stepContext` descreve o passo atual, os campos obrigatórios e o que já está
+ * preenchido — o Gemini decide `stepConfirmed` considerando os dois.
+ */
+export async function sendPopStepMessage(transcript: string, stepContext: string): Promise<PopStepAiResult> {
+  const res = await fetch('/api/pop-step', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ transcript, stepContext })
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || `Erro HTTP ${res.status} ao processar o passo do POP.`);
+  }
+  return data;
+}

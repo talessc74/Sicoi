@@ -199,6 +199,103 @@ app.post('/api/chat', async (req: Request, res: Response) => {
   }
 });
 
+// Endpoint de Extração Estruturada por Passo do POP (condução por voz)
+// Diferente de /api/chat: aqui o Gemini não devolve texto livre, devolve um JSON
+// obrigatório com o que foi extraído e se o PASSO ESTÁ CONFIRMADO — quem decide
+// isso é o julgamento da IA sobre a fala (intenção), não uma palavra-chave fixa.
+// Erros voltam com status HTTP real (não escondidos em res.json 200) para o
+// cliente cair no motor determinístico de fallback corretamente.
+const POP_STEP_RESPONSE_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    extractedFieldsJson: {
+      type: 'STRING',
+      description:
+        'JSON.stringify de um objeto {"nomeDoCampo": valor} só com os campos deste passo que a fala do usuário efetivamente preencheu ou alterou, usando exatamente os nomes de campo fornecidos no contexto. Nunca inclua um campo que a fala não mencionou.'
+    },
+    missingRequiredFields: {
+      type: 'ARRAY',
+      items: { type: 'STRING' },
+      description: 'Lista, em português, do que ainda falta para este passo ficar completo. Vazio se nada falta.'
+    },
+    stepConfirmed: {
+      type: 'BOOLEAN',
+      description:
+        'true somente se TODOS os campos obrigatórios do passo estão preenchidos (considerando o que já estava preenchido antes mais o que foi extraído agora) E a fala do usuário indica, pelo sentido, que o passo está concluído e pronto para avançar. false em qualquer outro caso — inclusive se faltar dado, mesmo que o usuário diga "confirmado".'
+    },
+    conductorReplyText: {
+      type: 'STRING',
+      description:
+        'O que o condutor deve narrar de volta ao usuário: se stepConfirmed=false, pergunte objetivamente pelo que falta; se true, confirme o que foi anotado e avise que vai avançar.'
+    }
+  },
+  required: ['extractedFieldsJson', 'missingRequiredFields', 'stepConfirmed', 'conductorReplyText']
+};
+
+app.post('/api/pop-step', async (req: Request, res: Response) => {
+  try {
+    const apiKey = getCleanApiKey();
+    if (!apiKey) {
+      return res.status(401).json({ error: 'Chave GEMINI_API_KEY não configurada no servidor.', code: 401 });
+    }
+
+    const { transcript, stepContext, model = 'gemini-3.1-flash-lite' } = req.body;
+    if (!transcript || !stepContext) {
+      return res.status(400).json({ error: 'Requisição deve conter { transcript, stepContext }.' });
+    }
+
+    const ai = getGeminiClient();
+    const systemInstruction = `Você é o Condutor do POP-01 (COI-INC), conduzindo por voz o preenchimento de um formulário oficial de antropologia forense. Sua única tarefa é interpretar a fala do usuário dentro do contexto do passo atual e devolver o JSON estruturado pedido. Nunca invente valor que não foi falado. Nunca decida stepConfirmed=true se um campo obrigatório continua faltando.
+
+Contexto do passo atual:
+${stepContext}`;
+
+    const response = await ai.models.generateContent({
+      model,
+      contents: [{ role: 'user', parts: [{ text: transcript }] }],
+      config: {
+        systemInstruction,
+        temperature: 0.2,
+        responseMimeType: 'application/json',
+        responseSchema: POP_STEP_RESPONSE_SCHEMA as any
+      }
+    });
+
+    const raw = response.text?.trim();
+    if (!raw) {
+      return res.status(502).json({ error: 'Resposta vazia do Gemini para o passo do POP.' });
+    }
+
+    let parsed: any;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return res.status(502).json({ error: 'Resposta do Gemini não é um JSON válido conforme o schema pedido.' });
+    }
+
+    let extractedFields: Record<string, any> = {};
+    try {
+      extractedFields = parsed.extractedFieldsJson ? JSON.parse(parsed.extractedFieldsJson) : {};
+    } catch {
+      extractedFields = {};
+    }
+
+    return res.json({
+      extractedFields,
+      missingRequiredFields: Array.isArray(parsed.missingRequiredFields) ? parsed.missingRequiredFields : [],
+      stepConfirmed: parsed.stepConfirmed === true,
+      conductorReplyText: parsed.conductorReplyText || '',
+      modelUsed: model
+    });
+  } catch (error: any) {
+    console.error('Erro na rota /api/pop-step:', error);
+    if (error?.status === 401 || (error?.message && error.message.includes('401'))) {
+      return res.status(401).json({ error: 'Erro 401: Chave de API não autorizada.', code: 401 });
+    }
+    return res.status(502).json({ error: error?.message || 'Erro ao consultar o Gemini para o passo do POP.' });
+  }
+});
+
 // Endpoint de Transcrição de Áudio com gemini-3.5-transcribe
 app.post('/api/transcribe', async (req: Request, res: Response) => {
   try {

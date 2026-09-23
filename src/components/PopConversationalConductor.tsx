@@ -9,7 +9,7 @@ import {
 } from '../services/popConductorService';
 import { voiceService } from '../services/voiceAgent';
 import { calculateSha256 } from '../services/auditService';
-import { sendChatMessage } from '../services/geminiService';
+import { sendPopStepMessage } from '../services/geminiService';
 import {
   Mic,
   MicOff,
@@ -127,8 +127,9 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
       isVoiceInput: isVoice
     };
 
-    // Step Extraction (motor determinístico local — fonte de verdade para o que foi
-    // efetivamente preenchido e para o gate de avanço; ver applyExtractionsToCollection).
+    // Leitura preliminar do motor determinístico local — usada (a) como fallback se
+    // a IA estiver desligada ou falhar, e (b) como pista enviada à IA sobre o que a
+    // regex simples já reconheceu neste turno.
     let extractedPayload: Record<string, any> = {};
     let summaryText = '';
     let isComplete = false;
@@ -144,42 +145,48 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
 
-    // Aplica as extrações ao conjunto — sempre, esteja o passo completo ou não,
-    // para não perder o que já foi dito enquanto falta um campo.
-    await applyExtractionsToCollection(extractedPayload);
-
-    // Turno de narração: se o Agente de IA (Gemini) estiver ativo, ele só formula o texto
-    // de resposta — quem decide se o passo avança é sempre o `isComplete` do motor local.
-    // TODO(follow-up): trocar por saída estruturada do Gemini (responseSchema com
-    // extractedFields + stepConfirmed) para a extração/confirmação virarem julgamento da
-    // IA em vez de regex determinístico. Ver plano de implementação.
+    // Se o Agente de IA estiver ativo, é a IA quem decide a extração final e,
+    // principalmente, `stepConfirmed` — julgamento sobre a intenção da fala, não uma
+    // palavra-chave fixa. O motor determinístico acima só entra como fallback.
     let narrationText = '';
     let narrationTags: string[] | undefined;
-    if (aiConfig.enabled) {
-      try {
-        const historyForGemini = [
-          ...messages.slice(-6).map((m) => ({
-            role: m.sender === 'conductor' ? 'assistant' : 'user',
-            content: m.text,
-          })),
-          { role: 'user', content: text },
-        ];
+    let aiDecided = false;
 
-        const geminiRes = await sendChatMessage(
-          historyForGemini,
-          'general',
-          `${aiConfig.systemPromptPreset} Atualmente no passo ${currentStep?.stepNumber || 1} (${currentStep?.stepTitle || 'Triagem'}). Dados extraídos neste turno: ${summaryText || 'nenhum'}. ${
-            isComplete
-              ? 'O passo está completo — confirme os dados e informe que vai avançar.'
-              : 'O passo AINDA NÃO está completo — não diga que vai avançar; pergunte objetivamente o que falta.'
-          }`
-        );
-        narrationText = geminiRes.reply;
-        narrationTags = [geminiRes.modelUsed, 'IA Gemini Conductor Ativo'];
+    if (aiConfig.enabled && currentStep) {
+      try {
+        const stepContext = [
+          `Passo ${currentStep.stepNumber} de ${popDef.steps.length} — ${currentStep.stepTitle}`,
+          `Pergunta do condutor: ${currentStep.conductorPrompt}`,
+          currentStep.regulatoryNotice ? `Norma aplicável: ${currentStep.regulatoryNotice}` : '',
+          `Leitura preliminar de um motor de regras simples sobre esta mesma fala (pode confirmar ou corrigir): ${summaryText || 'nada reconhecido'}.`,
+          `Campos que o motor de regras já extraiu nesta fala: ${JSON.stringify(extractedPayload)}.`
+        ]
+          .filter(Boolean)
+          .join('\n');
+
+        const aiResult = await sendPopStepMessage(text, stepContext);
+        extractedPayload = { ...extractedPayload, ...aiResult.extractedFields };
+        isComplete = aiResult.stepConfirmed;
+        summaryText =
+          aiResult.missingRequiredFields.length > 0
+            ? `Ainda falta: ${aiResult.missingRequiredFields.join('; ')}.`
+            : summaryText;
+        narrationText = aiResult.conductorReplyText;
+        narrationTags = [aiResult.modelUsed, 'IA Gemini · confirmação por julgamento'];
+        aiDecided = true;
+        userMessage.extractedData = extractedPayload;
       } catch (err: any) {
         console.warn('Fallback para motor procedimental devido a erro no Gemini:', err);
       }
     }
+
+    if (!aiDecided) {
+      narrationTags = ['Motor determinístico (regras locais)'];
+    }
+
+    // Aplica as extrações ao conjunto — sempre, esteja o passo completo ou não,
+    // para não perder o que já foi dito enquanto falta um campo.
+    await applyExtractionsToCollection(extractedPayload);
 
     // Motor procedimental determinístico: decide o avanço de passo. `isComplete` é a
     // única condição que libera o próximo passo — nunca avança só porque o usuário falou.
