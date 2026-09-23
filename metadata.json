@@ -1,0 +1,9 @@
+{
+  "name": "SGCCCO — Sistema de Gerenciamento e Custódia de Coleções Osteológicas",
+  "description": "Sistema operacional e científico para controle e custódia de coleções osteológicas em 7 fases de desenvolvimento (v3.2 SENASP/DITEC).",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
