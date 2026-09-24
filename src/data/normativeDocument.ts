@@ -1,6 +1,6 @@
 /**
  * SGCCCO - Documento Normativo e Manual Técnico Oficial v3.2
- * Portaria DITEC / SENASP - Diretrizes para Gestão e Custódia de Coleções Osteológicas Forenses
+ * Portaria INC/DITEC/PF - Diretrizes para Gestão e Custódia de Coleções Osteológicas Forenses
  */
 
 export interface DocumentSection {
@@ -23,7 +23,7 @@ export const NORMATIVE_DOCUMENT_SECTIONS: DocumentSection[] = [
     sectionNumber: 'Art. 1º',
     title: 'Finalidade e Âmbito de Aplicação',
     phaseApplicable: 'todas',
-    regulatoryReference: 'Portaria Conjunta SENASP/DITEC nº 14/2026, Art. 1º',
+    regulatoryReference: 'Portaria Conjunta INC/DITEC/PF nº 14/2026, Art. 1º',
     keywords: ['finalidade', 'âmbito', 'senasp', 'ditec', 'osteologia forense', 'diretrizes'],
     content: `O Sistema de Gerenciamento e Custódia de Coleções Osteológicas (SGCCCO) tem por finalidade estabelecer as diretrizes técnicas, científicas e operacionais para a recepção, higienização, acondicionamento provisório, curadoria bioantropológica, catalogação de patologias, guarda definitiva em galpão e disponibilização para pesquisa de remanescentes ósseos humanos sob custódia do Estado.
 Todos os procedimentos devem observar o princípio da dignidade da pessoa humana, o respeito aos restos mortais e o rigor metodológico forense previsto na legislação processual penal brasileira.`
@@ -151,7 +151,7 @@ Saídas temporárias de peças para análises externas destrutivas (ex: dataçã
     sectionNumber: 'Art. 10',
     title: 'Imutabilidade por Fase e Procedimento Excepcional de Reabertura',
     phaseApplicable: 'todas',
-    regulatoryReference: 'Manual de Segurança da Informação SENASP / ICP-Brasil',
+    regulatoryReference: 'Manual de Segurança da Informação INC/DITEC/PF / ICP-Brasil',
     keywords: ['criptografia', 'sha-256', 'assinatura digital', 'imutabilidade', 'bloqueio sequencial', 'reabertura justificada', 'auditoria'],
     content: `Cada fase do fluxo de trabalho é estritamente sequencial. A transição para a fase N+1 depende incondicionalmente da validação e bloqueio criptográfico da fase N.
 A assinatura da fase consolida o payload canônico dos dados em um hash criptográfico SHA-256 registrado na trilha de auditoria indelével.

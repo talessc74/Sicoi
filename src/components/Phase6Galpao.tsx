@@ -80,7 +80,7 @@ export const Phase6Galpao: React.FC<Phase6GalpaoProps> = ({
       id: `cst-transit-${Date.now()}`,
       timestamp,
       sourceLocation: 'Laboratório Central (Sala B-10)',
-      targetLocation: 'Galpão Definitivo SENASP (Em Trânsito)',
+      targetLocation: 'Galpão Definitivo INC/DITEC/PF (Em Trânsito)',
       carrierPerson: currentUser.name,
       receiverPerson: 'Aguardando Responsável do Galpão',
       carrierSignatureHash: hash,

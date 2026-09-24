@@ -1,6 +1,6 @@
 /**
  * Serviço de Condução Conversacional de POP (Procedimento Operacional Padrão)
- * Implementa a arquitetura de diálogo para condução normativa (SENASP/DITEC),
+ * Implementa a arquitetura de diálogo para condução normativa (INC/DITEC/PF),
  * com suporte a fala/áudio, extração de dados e slot para futuro Agente de IA.
  */
 
@@ -105,8 +105,8 @@ export interface PopDefinition {
   completionMessage: string;
 }
 
-// Definições dos POPs SENASP
-export const SENASP_POPS: Record<PhaseNumber, PopDefinition> = {
+// Definições dos POPs INC/DITEC/PF
+export const INC_DITEC_PF_POPS: Record<PhaseNumber, PopDefinition> = {
   1: {
     phaseNumber: 1,
     popCode: 'POP-01',
@@ -619,10 +619,10 @@ export const SENASP_POPS: Record<PhaseNumber, PopDefinition> = {
   },
   3: {
     phaseNumber: 3,
-    popCode: 'POP-SENASP-03',
+    popCode: 'POP-INC-DITEC-PF-03',
     popTitle: 'Acondicionamento Provisório e Inventário',
-    regulatoryRef: 'POP-SENASP-03 · Rastreabilidade de Caixas e Galpão',
-    introMessage: 'Iniciando o Condutor do POP-SENASP-03. Vamos associar as caixas de polionda alveolar neutro e registrar a coordenada física na sala de espera de curadoria.',
+    regulatoryRef: 'POP-INC-DITEC-PF-03 · Rastreabilidade de Caixas e Galpão',
+    introMessage: 'Iniciando o Condutor do POP-INC-DITEC-PF-03. Vamos associar as caixas de polionda alveolar neutro e registrar a coordenada física na sala de espera de curadoria.',
     steps: [
       {
         stepNumber: 1,
@@ -660,10 +660,10 @@ export const SENASP_POPS: Record<PhaseNumber, PopDefinition> = {
   },
   4: {
     phaseNumber: 4,
-    popCode: 'POP-SENASP-04',
+    popCode: 'POP-INC-DITEC-PF-04',
     popTitle: 'Curadoria e Perfil Biológico',
-    regulatoryRef: 'POP-SENASP-04 · Antropologia Forense',
-    introMessage: 'Iniciando o Condutor do POP-SENASP-04. Vamos conduzir o pareamento anatômico, consolidação do MNI final e estimativas antropológicas de sexo, idade e ancestralidade.',
+    regulatoryRef: 'POP-INC-DITEC-PF-04 · Antropologia Forense',
+    introMessage: 'Iniciando o Condutor do POP-INC-DITEC-PF-04. Vamos conduzir o pareamento anatômico, consolidação do MNI final e estimativas antropológicas de sexo, idade e ancestralidade.',
     steps: [
       {
         stepNumber: 1,
@@ -691,10 +691,10 @@ export const SENASP_POPS: Record<PhaseNumber, PopDefinition> = {
   },
   5: {
     phaseNumber: 5,
-    popCode: 'POP-SENASP-05',
+    popCode: 'POP-INC-DITEC-PF-05',
     popTitle: 'Patologias, Traumatologia e DICOM',
-    regulatoryRef: 'POP-SENASP-05 · Traumatologia Forense',
-    introMessage: 'Condutor do POP-SENASP-05 ativo. Descreva as lesões traumáticas ante-mortem, peri-mortem ou pós-mortem e o status dos exames de imagem tomográfica.',
+    regulatoryRef: 'POP-INC-DITEC-PF-05 · Traumatologia Forense',
+    introMessage: 'Condutor do POP-INC-DITEC-PF-05 ativo. Descreva as lesões traumáticas ante-mortem, peri-mortem ou pós-mortem e o status dos exames de imagem tomográfica.',
     steps: [
       {
         stepNumber: 1,
@@ -720,10 +720,10 @@ export const SENASP_POPS: Record<PhaseNumber, PopDefinition> = {
   },
   6: {
     phaseNumber: 6,
-    popCode: 'POP-SENASP-06',
+    popCode: 'POP-INC-DITEC-PF-06',
     popTitle: 'Marcação Física e Galpão Definitivo',
-    regulatoryRef: 'POP-SENASP-06 · Custódia Permanente',
-    introMessage: 'Condutor do POP-SENASP-06 ativo. Conduzindo a marcação dos elementos ósseos com Paraloid B-72, rotulagem das caixas definitivas e guarda permanente.',
+    regulatoryRef: 'POP-INC-DITEC-PF-06 · Custódia Permanente',
+    introMessage: 'Condutor do POP-INC-DITEC-PF-06 ativo. Conduzindo a marcação dos elementos ósseos com Paraloid B-72, rotulagem das caixas definitivas e guarda permanente.',
     steps: [
       {
         stepNumber: 1,
@@ -748,10 +748,10 @@ export const SENASP_POPS: Record<PhaseNumber, PopDefinition> = {
   },
   7: {
     phaseNumber: 7,
-    popCode: 'POP-SENASP-07',
+    popCode: 'POP-INC-DITEC-PF-07',
     popTitle: 'Consulta, Amostragem e Cadeia de Custódia ABAC',
-    regulatoryRef: 'POP-SENASP-07 · Controle de Amostragem Destrutiva',
-    introMessage: 'Condutor do POP-SENASP-07 ativo. Registro conversacional de autorização de pesquisa e controle de amostragem física.',
+    regulatoryRef: 'POP-INC-DITEC-PF-07 · Controle de Amostragem Destrutiva',
+    introMessage: 'Condutor do POP-INC-DITEC-PF-07 ativo. Registro conversacional de autorização de pesquisa e controle de amostragem física.',
     steps: [
       {
         stepNumber: 1,
@@ -791,11 +791,11 @@ export interface AiConductorAgentConfig {
 
 export const DEFAULT_AI_AGENT_CONFIG: AiConductorAgentConfig = {
   enabled: false,
-  agentName: 'Agente Forense Virtual SENASP (IA)',
+  agentName: 'Agente Forense Virtual INC/DITEC/PF (IA)',
   modelIdentifier: 'models/gemini-3.8-flash',
   voicePersona: 'polite_forensic',
   streamingMode: false,
   autoSpeak: true,
-  systemPromptPreset: `Você é o Condutor Forense Oficial do SGCCCO, treinado nas diretrizes SENASP/DITEC e Código de Processo Penal (Art. 158-A a 158-F). Sua missão é guiar o perito/técnico no laboratório através de perguntas rigorosas, precisas e objetivas para preencher a documentação da coleção osteológica sem distrações. Sempre confirme os números de lacre, integridade e termos periciais.`,
+  systemPromptPreset: `Você é o Condutor Forense Oficial do SGCCCO, treinado nas diretrizes INC/DITEC/PF e Código de Processo Penal (Art. 158-A a 158-F). Sua missão é guiar o perito/técnico no laboratório através de perguntas rigorosas, precisas e objetivas para preencher a documentação da coleção osteológica sem distrações. Sempre confirme os números de lacre, integridade e termos periciais.`,
   externalApiKeyConfigured: false
 };

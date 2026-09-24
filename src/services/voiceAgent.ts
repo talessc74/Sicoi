@@ -1,7 +1,7 @@
 /**
  * Serviço de Voz (TTS/STT) para condução do POP com as mãos livres / luvas cirúrgicas.
  * O roteiro do POP em si (os passos, os campos e a extração) vive em
- * popConductorService.ts (SENASP_POPS) — fonte única, para não duplicar o script
+ * popConductorService.ts (INC_DITEC_PF_POPS) — fonte única, para não duplicar o script
  * do procedimento em dois lugares divergentes.
  */
 

@@ -116,7 +116,7 @@ export const DocumentSearchViewer: React.FC<DocumentSearchViewerProps> = ({
   };
 
   const handleCopyCitation = (section: DocumentSection) => {
-    const citation = `[SGCCCO v3.2 - SENASP/DITEC] ${section.sectionNumber} - ${section.title} (${section.regulatoryReference}):\n"${section.content}"`;
+    const citation = `[SGCCCO v3.2 - INC/DITEC/PF] ${section.sectionNumber} - ${section.title} (${section.regulatoryReference}):\n"${section.content}"`;
     navigator.clipboard.writeText(citation);
     setCopiedId(section.id);
     setTimeout(() => setCopiedId(null), 2000);
@@ -185,7 +185,7 @@ export const DocumentSearchViewer: React.FC<DocumentSearchViewerProps> = ({
               <span>Diretrizes Oficiais & Manual Técnico Normativo (v3.2)</span>
             </div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-0.5">
-              Protocolo Operacional Padrão SGCCCO / SENASP / DITEC
+              Protocolo Operacional Padrão SGCCCO / INC/DITEC/PF
             </h2>
             <p className="text-xs text-slate-500 mt-1">
               Consolidação de normas técnicas, procedimentos das 7 fases, fórmulas antropométricas, regras de sigilo LGPD e segurança da informação.

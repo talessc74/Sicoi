@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { OsteologicalCollection, UserProfile, PhaseNumber } from '../types/sgccco';
 import {
-  SENASP_POPS,
+  INC_DITEC_PF_POPS,
   ConductorChatMessage,
   PopConductorStep,
   PopConductorPhotoChecklistItem,
@@ -49,7 +49,7 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
   onStepPhotoCaptured,
   isLocked = false
 }) => {
-  const popDef = SENASP_POPS[phaseNumber] || SENASP_POPS[1];
+  const popDef = INC_DITEC_PF_POPS[phaseNumber] || INC_DITEC_PF_POPS[1];
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [messages, setMessages] = useState<ConductorChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
@@ -660,7 +660,7 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
               {/* Message Header */}
               <div className="flex items-center justify-between gap-3 mb-1 text-[11px] opacity-80">
                 <span className="font-semibold font-mono">
-                  {msg.sender === 'user' ? currentUser.name : msg.sender === 'system' ? 'Sistema' : 'Condutor Forense SENASP'}
+                  {msg.sender === 'user' ? currentUser.name : msg.sender === 'system' ? 'Sistema' : 'Condutor Forense INC/DITEC/PF'}
                 </span>
                 <div className="flex items-center gap-1.5">
                   {msg.isVoiceInput && (
@@ -906,7 +906,7 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
                 <span className="font-bold text-purple-700 dark:text-purple-300 block mb-1">
                   Arquitetura de Condução Desacoplada:
                 </span>
-                Atualmente, a conversa é conduzida pelo <strong>Motor Procedimental SENASP v3.2</strong> (determinístico, rigoroso e auditável). O sistema já está 100% estruturado para você plugar seu modelo de inteligência artificial (ex.: Gemini 3.8 Live API) sem precisar refazer a interface.
+                Atualmente, a conversa é conduzida pelo <strong>Motor Procedimental INC/DITEC/PF v3.2</strong> (determinístico, rigoroso e auditável). O sistema já está 100% estruturado para você plugar seu modelo de inteligência artificial (ex.: Gemini 3.8 Live API) sem precisar refazer a interface.
               </div>
 
               <div className="space-y-2">
@@ -923,7 +923,7 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
                     }`}
                   >
                     <div className="text-xs font-semibold">Motor Procedimental (Ativo)</div>
-                    <div className="text-[10px] opacity-70">Rigor normativo SENASP determinístico</div>
+                    <div className="text-[10px] opacity-70">Rigor normativo INC/DITEC/PF determinístico</div>
                   </button>
 
                   <button

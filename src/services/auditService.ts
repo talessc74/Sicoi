@@ -48,7 +48,7 @@ export function generateExportHeader(data: {
 }): string {
   return `
 ================================================================================
-SGCCCO v3.2 - SENASP / DITEC - RELATÓRIO CIENTÍFICO COM TRILHA DE REPRODUTIBILIDADE
+SGCCCO v3.2 - INC/DITEC/PF - RELATÓRIO CIENTÍFICO COM TRILHA DE REPRODUTIBILIDADE
 --------------------------------------------------------------------------------
 NIC: ${data.nic}
 INDIVÍDUO: ${data.individualCode || 'CONJUNTO GERAL'}

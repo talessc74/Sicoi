@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { SENASP_POPS } from '../popConductorService';
+import { INC_DITEC_PF_POPS } from '../popConductorService';
 
-const phase1Steps = SENASP_POPS[1].steps;
-const phase2Steps = SENASP_POPS[2].steps;
+const phase1Steps = INC_DITEC_PF_POPS[1].steps;
+const phase2Steps = INC_DITEC_PF_POPS[2].steps;
 
 function step(steps: typeof phase1Steps, stepNumber: number) {
   const s = steps.find((st) => st.stepNumber === stepNumber);

@@ -126,7 +126,7 @@ export const Header: React.FC<HeaderProps> = ({
                 Coleções Osteológicas
               </span>
               <span className="text-[10px] text-slate-400 font-mono block -mt-0.5 whitespace-nowrap">
-                SENASP / DITEC · v3.2
+                INC/DITEC/PF · v3.2
               </span>
             </div>
           </button>
@@ -173,7 +173,7 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="whitespace-nowrap">Fases</span>
           </button>
 
-          {/* Linha do Tempo de Auditoria (§SENASP) */}
+          {/* Linha do Tempo de Auditoria (§INC/DITEC/PF) */}
           <button
             onClick={() => onSelectTab('auditoria')}
             className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 ${
@@ -181,7 +181,7 @@ export const Header: React.FC<HeaderProps> = ({
                 ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-bold'
                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/60'
             }`}
-            title="Linha do Tempo de Auditoria e Rastreabilidade Criptográfica SENASP"
+            title="Linha do Tempo de Auditoria e Rastreabilidade Criptográfica INC/DITEC/PF"
           >
             <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
             <span className="whitespace-nowrap">Auditoria</span>

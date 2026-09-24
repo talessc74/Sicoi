@@ -141,7 +141,7 @@ export const PhaseProgressRibbon: React.FC<PhaseProgressRibbonProps> = ({
                 <span>Auditoria</span>
               </div>
               <span className="text-[10px] text-emerald-600/80 dark:text-emerald-400/80 font-mono">
-                Trilha SENASP
+                Trilha INC/DITEC/PF
               </span>
             </button>
           )}

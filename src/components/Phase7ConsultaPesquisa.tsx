@@ -140,7 +140,7 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
     const timestamp = new Date().toISOString();
     const exportDataset = {
       reproducibilityHeader: {
-        system: 'SGCCCO v3.2 - SENASP / DITEC',
+        system: 'SGCCCO v3.2 - INC/DITEC/PF',
         databaseVersion: '2026.3-PROD',
         exportedAt: timestamp,
         exportedBy: currentUser.name,
@@ -186,7 +186,7 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
               <span>Fase 7 · Consulta Científica, ABAC & Empréstimos</span>
             </div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-0.5">
-              Acervo Osteológico DITEC / SENASP
+              Acervo Osteológico INC/DITEC/PF
             </h2>
             <p className="text-xs text-slate-500 mt-1">
               Filtro de escopo por ABAC, tradução de busca em linguagem natural, termos de empréstimo e exportação com hash de reprodutibilidade.

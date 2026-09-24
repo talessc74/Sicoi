@@ -194,7 +194,7 @@ export default function App() {
       createdByTechnician: currentUser.name,
       signatures: [],
       legalOrigin: {
-        deliveryDocumentNumber: `GUIA-REMESSA-SENASP-2026/${nextNum}`,
+        deliveryDocumentNumber: `GUIA-REMESSA-INC-DITEC-PF-2026/${nextNum}`,
         originInstitution: 'IML Regional Metropolitano',
         legalProcessNumber: `PROC-2026-00${nextNum}`,
         courtDistrict: '1ª Vara Criminal da Capital',
@@ -576,7 +576,7 @@ export default function App() {
           <KnowledgeGraphViewer selectedNic={selectedNic} />
         )}
 
-        {/* Linha do Tempo de Auditoria (§Diretrizes SENASP / DITEC) */}
+        {/* Linha do Tempo de Auditoria (§Diretrizes INC/DITEC/PF) */}
         {activeTab === 'auditoria' && (
           <AuditTimelineView
             collections={collections}
@@ -653,7 +653,7 @@ export default function App() {
       <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-4 px-6 text-xs text-slate-500 flex flex-wrap justify-between items-center gap-4">
         <div className="flex items-center gap-2">
           <ShieldCheck className="w-4 h-4 text-emerald-600" />
-          <span>SGCCCO · Sistema de Gerenciamento e Custódia de Coleções Osteológicas · SENASP / DITEC</span>
+          <span>SGCCCO · Sistema de Gerenciamento e Custódia de Coleções Osteológicas · INC/DITEC/PF</span>
         </div>
         <div className="flex items-center gap-4 font-mono text-[11px] text-slate-400">
           <button onClick={() => setActiveTab('auditoria')} className="hover:text-slate-600 dark:hover:text-slate-200">

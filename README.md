@@ -1,7 +1,7 @@
 # SGCCCO — Sistema de Gestão Curatorial e Científica de Coleções Osteológicas
 
 Sistema de custódia e gestão de coleções osteológicas forenses, desenvolvido
-para a SENASP/DITEC. Ele conduz o fluxo operacional real de recebimento,
+para a INC/DITEC/PF. Ele conduz o fluxo operacional real de recebimento,
 limpeza e curadoria de remanescentes ósseos — passo a passo, por voz ou por
 texto — a partir dos formulários oficiais em uso (Formulário A.1, Formulário
 A.2, POP-01), com cada assinatura de fase travada por hash criptográfico

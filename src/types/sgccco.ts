@@ -590,7 +590,7 @@ export interface GraphEdge {
   };
 }
 
-// Trilha de Auditoria e Rastreabilidade Completa (§Norma SENASP/DITEC)
+// Trilha de Auditoria e Rastreabilidade Completa (§Norma INC/DITEC/PF)
 export type AuditActionType =
   | 'criacao_nic'
   | 'recebimento_triagem'

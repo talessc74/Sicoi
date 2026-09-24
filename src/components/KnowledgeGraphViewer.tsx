@@ -192,7 +192,7 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
         <div>
           <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Network className="w-5 h-5 text-sky-600 dark:text-sky-400" />
-            Grafo de Conhecimento Osteológico (DITEC / SENASP)
+            Grafo de Conhecimento Osteológico (INC/DITEC/PF)
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             Persistido no banco a cada gravação. Cobre todo campo coletado nas fases, caixas, localização, assinaturas e custódia.

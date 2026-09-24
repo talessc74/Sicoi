@@ -725,7 +725,7 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
                   className="w-32 h-32"
                 />
               </div>
-              <div className="text-[10px] font-mono uppercase font-bold">SGCCCO · SENASP / DITEC</div>
+              <div className="text-[10px] font-mono uppercase font-bold">SGCCCO · INC/DITEC/PF</div>
               <div className="text-[9px] font-mono text-slate-600">Entrada: {new Date(collection.createdAt).toLocaleDateString('pt-BR')}</div>
             </div>
             <p className="text-xs text-slate-500">Etiqueta autoadesiva para aplicação externa nas caixas de polipropileno corrugado.</p>

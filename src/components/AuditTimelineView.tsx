@@ -256,7 +256,7 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className="px-2.5 py-0.5 rounded text-[11px] font-mono font-bold uppercase tracking-wider bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                Diretriz SENASP / DITEC · Rastreabilidade Irrestrita
+                Diretriz INC/DITEC/PF · Rastreabilidade Irrestrita
               </span>
               <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-semibold font-mono">
                 <ShieldCheck className="w-3.5 h-3.5" />
@@ -631,7 +631,7 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
                       <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-950/40 border-l-4 border-amber-500 rounded-r-lg text-xs space-y-1">
                         <span className="font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1">
                           <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
-                          Justificativa Técnica Pericial Obrigatória (POP-SENASP-04/REV):
+                          Justificativa Técnica Pericial Obrigatória (POP-INC-DITEC-PF-04/REV):
                         </span>
                         <p className="text-amber-800 dark:text-amber-300 italic font-mono text-[11px]">
                           "{event.justification}"
@@ -823,7 +823,7 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
               <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850 flex items-center justify-between">
                 <div>
                   <span className="font-semibold text-slate-700 dark:text-slate-300 block">
-                    Conformidade com a Portaria SENASP nº 084/2026
+                    Conformidade com a Portaria INC/DITEC/PF nº 084/2026
                   </span>
                   <span className="text-slate-500 text-[11px]">
                     Atende integralmente às exigências de cadeia de custódia (Art. 158-A a 158-F do CPP).

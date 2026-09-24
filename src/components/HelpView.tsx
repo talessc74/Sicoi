@@ -202,7 +202,7 @@ export const HelpView: React.FC<HelpViewProps> = ({
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-3 text-xs">
             <h4 className="font-bold text-slate-900 dark:text-white font-mono flex items-center gap-1.5 pb-2 border-b border-slate-200 dark:border-slate-800">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              Suporte Técnico DITEC / SENASP
+              Suporte Técnico INC/DITEC/PF
             </h4>
 
             <p className="text-slate-500 leading-relaxed text-[11px]">

@@ -170,7 +170,7 @@ app.post('/api/chat', async (req: Request, res: Response) => {
     const {
       messages = [],
       model = 'gemini-3.1-flash-lite',
-      systemInstruction = 'Você é o Perito Forense e Curador Osteológico Virtual do SGCCCO (SENASP/DITEC). Auxilie com precisão científica e técnica na análise de ossadas, cadeia de custódia, estimativa de sexo, idade, estatura, ancestralidade, traumatologia e patologias ósseas segundo os protocolos forenses oficiais.',
+      systemInstruction = 'Você é o Perito Forense e Curador Osteológico Virtual do SGCCCO (INC/DITEC/PF). Auxilie com precisão científica e técnica na análise de ossadas, cadeia de custódia, estimativa de sexo, idade, estatura, ancestralidade, traumatologia e patologias ósseas segundo os protocolos forenses oficiais.',
     } = req.body;
 
     if (!Array.isArray(messages) || messages.length === 0) {
