@@ -59,7 +59,7 @@ protocolo de governança ARGUS + XDRS (`.xdrs/_local/` daquele repositório):
 - Grafo de Conhecimento persistido em Postgres — `_local-adr-policy-004`
   (amplia a policy acima)
 - Redesenho dos agentes de IA da Fase de Curadoria — `_local-adr-policy-001`
-  (ainda não implementado neste código — ver "Estado atual" abaixo)
+  (parcialmente implementado — ver "Estado atual" abaixo)
 
 Antes de mudar o fluxo operacional, o modelo de dados ou a integração de voz,
 consulte o índice `.xdrs/_local/index.md` daquele repositório.
@@ -80,12 +80,21 @@ consulte o índice `.xdrs/_local/index.md` daquele repositório.
   campo já preenchido; a assinatura original nunca é apagada — fica marcada
   como substituída, com quem reabriu, quando e por quê — e tudo isso aparece
   automaticamente na Linha do Tempo de Auditoria.
-- **Ainda não implementado:** Fase 3 (Armazenamento provisório), Fase 4
-  (Curadoria — os dois agentes de apoio previstos), Fase 5 (Completude dos
-  formulários) e Fase 6 (Volta pro armazém/Galpão). Bloqueado pela ausência
-  dos apêndices oficiais do POP-02 (Inventário Osteológico, Inventário
-  Odontológico, Formulário de Patologias) — nenhuma fase é reconstruída antes
-  do documento oficial correspondente chegar.
+- **No ar, mas não certificado contra o formulário oficial:** Fase 3
+  (Acondicionamento Provisório), Fase 4 (Curadoria — gestão de indivíduos/MNI
+  com fusão e separação de hipóteses, inventário osteológico de 33 regiões
+  anatômicas, odontograma FDI completo de 32 dentes, exigência de foto de
+  montagem aprovada e assinatura restrita ao Curador), Fase 5 (Patologias e
+  Marcação) e Fase 6 (Galpão Definitivo) têm interface, modelo de dados e
+  fluxo de assinatura funcionando de ponta a ponta — dá pra usar. O que falta
+  é a mesma verificação que as Fases 1 e 2 já passaram: confirmar campo a
+  campo contra os apêndices oficiais do POP-02 (Inventário Osteológico,
+  Inventário Odontológico, Formulário de Patologias), que ainda não foram
+  entregues. Até lá, o conteúdo dos formulários dessas fases é a melhor
+  aproximação possível, não uma cópia fiel confirmada de um documento oficial.
+  Dentro da Fase 4, a busca de referência para comparação entre casos (um dos
+  dois agentes de apoio previstos em `_local-adr-policy-001`) é só a interface
+  — o modal existe mas a busca em si ainda não está implementada.
 - **Pendências conhecidas, fora do escopo até agora:** login/senha real (o
   cadastro de pessoas identifica quem está operando, mas não autentica),
   CORS restrito (hoje `*`), validação de entrada mais rígida no backend.
