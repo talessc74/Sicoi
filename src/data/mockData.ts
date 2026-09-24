@@ -1,48 +1,9 @@
 import {
   OsteologicalCollection,
-  UserProfile,
   ResearchAuthorization,
   ToothRecord
 } from '../types/sgccco';
 import { createEmptyPhase1Data, createEmptyPhase2Data } from './phaseDefaults';
-
-export const MOCK_USERS: UserProfile[] = [
-  {
-    id: 'usr-tec-01',
-    name: 'Carlos Alberto Menezes',
-    role: 'tecnico',
-    institution: 'Laboratório de Antropologia Forense / IML-DITEC',
-    registrationNumber: 'CRBio 48.912-04'
-  },
-  {
-    id: 'usr-cur-01',
-    name: 'Dra. Helena Beatriz Siqueira',
-    role: 'curador',
-    institution: 'SENASP / Curadoria Coleções Osteológicas',
-    registrationNumber: 'Perita Antropóloga DITEC 10.428'
-  },
-  {
-    id: 'usr-adm-01',
-    name: 'Dr. Valdemar Fontes Filho',
-    role: 'administrador',
-    institution: 'Coordenação Geral de Perícias Científicas - DITEC',
-    registrationNumber: 'SENASP-COORD 00.198'
-  },
-  {
-    id: 'usr-pesq-01',
-    name: 'Prof. Marcos Vinicius Prado',
-    role: 'pesquisador',
-    institution: 'Universidade Federal / Depto de Morfologia',
-    registrationNumber: 'Pesq. CNPq 304.912/2024'
-  },
-  {
-    id: 'usr-est-01',
-    name: 'Larissa Albuquerque Santos',
-    role: 'estudante',
-    institution: 'Programa de Iniciação Científica Forense',
-    registrationNumber: 'Matrícula Acadêmica 2024.1.009'
-  }
-];
 
 export const CONTROLLED_PATHOLOGY_TAXONOMY = [
   { code: 'TRAUM_FRAT_ANTE_CICAT', label: 'Trauma - Fratura consolidada ante-mortem com calo ósseo', category: 'Traumática' },

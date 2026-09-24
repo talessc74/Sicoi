@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { UserProfile, UserRole } from '../types/sgccco';
-import { MOCK_USERS } from '../data/mockData';
 import { useAppVersion } from '../hooks/useAppVersion';
 import {
   Home,
@@ -12,6 +11,7 @@ import {
   MapPin,
   QrCode,
   User,
+  UserPlus,
   Volume2,
   Menu,
   X,
@@ -20,9 +20,19 @@ import {
   ShieldCheck
 } from 'lucide-react';
 
+const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
+  { value: 'tecnico', label: 'Técnico' },
+  { value: 'curador', label: 'Curador' },
+  { value: 'administrador', label: 'Administrador' },
+  { value: 'pesquisador', label: 'Pesquisador' },
+  { value: 'estudante', label: 'Estudante' }
+];
+
 interface HeaderProps {
   currentUser: UserProfile;
   onUserChange: (user: UserProfile) => void;
+  people: UserProfile[];
+  onCreatePerson: (person: { name: string; role: UserRole; institution: string; registrationNumber: string }) => Promise<void>;
   onOpenQrScanner: () => void;
   activeTab: string;
   onSelectTab: (tab: string) => void;
@@ -35,6 +45,8 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   currentUser,
   onUserChange,
+  people,
+  onCreatePerson,
   onOpenQrScanner,
   activeTab,
   onSelectTab,
@@ -43,6 +55,31 @@ export const Header: React.FC<HeaderProps> = ({
   onQuickSearchDocument,
   onOpenGeminiChat
 }) => {
+  const [showAddPerson, setShowAddPerson] = useState(false);
+  const [newPersonName, setNewPersonName] = useState('');
+  const [newPersonRole, setNewPersonRole] = useState<UserRole>('tecnico');
+  const [newPersonInstitution, setNewPersonInstitution] = useState('');
+  const [newPersonRegistration, setNewPersonRegistration] = useState('');
+  const [isCreatingPerson, setIsCreatingPerson] = useState(false);
+
+  const handleCreatePersonSubmit = async () => {
+    if (!newPersonName.trim() || !newPersonInstitution.trim() || !newPersonRegistration.trim()) return;
+    setIsCreatingPerson(true);
+    try {
+      await onCreatePerson({
+        name: newPersonName.trim(),
+        role: newPersonRole,
+        institution: newPersonInstitution.trim(),
+        registrationNumber: newPersonRegistration.trim()
+      });
+      setNewPersonName('');
+      setNewPersonInstitution('');
+      setNewPersonRegistration('');
+      setShowAddPerson(false);
+    } finally {
+      setIsCreatingPerson(false);
+    }
+  };
   const [roleMenuOpen, setRoleMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [quickSearchInput, setQuickSearchInput] = useState('');
@@ -323,13 +360,13 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
 
             {roleMenuOpen && (
-              <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 p-2 z-50 text-xs">
+              <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 p-2 z-50 text-xs max-h-[70vh] overflow-y-auto">
                 <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 mb-1">
                   <p className="font-semibold text-slate-900 dark:text-white">Perfil Ativo de Acesso</p>
                   <p className="text-slate-500 dark:text-slate-400 mt-0.5">{currentUser.institution}</p>
                 </div>
                 <div className="space-y-1">
-                  {MOCK_USERS.map((usr) => (
+                  {people.map((usr) => (
                     <button
                       key={usr.id}
                       onClick={() => {
@@ -351,6 +388,66 @@ export const Header: React.FC<HeaderProps> = ({
                       <span className="text-[11px] text-slate-400 mt-0.5 truncate">{getRoleLabel(usr.role)}</span>
                     </button>
                   ))}
+                </div>
+
+                <div className="mt-1 pt-1 border-t border-slate-100 dark:border-slate-800">
+                  {!showAddPerson ? (
+                    <button
+                      onClick={() => setShowAddPerson(true)}
+                      className="w-full flex items-center gap-1.5 px-3 py-2 rounded-lg text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/40 font-medium"
+                    >
+                      <UserPlus className="w-3.5 h-3.5" />
+                      Cadastrar nova pessoa
+                    </button>
+                  ) : (
+                    <div className="p-2 space-y-1.5">
+                      <input
+                        type="text"
+                        value={newPersonName}
+                        onChange={(e) => setNewPersonName(e.target.value)}
+                        placeholder="Nome completo"
+                        className="w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
+                      />
+                      <select
+                        value={newPersonRole}
+                        onChange={(e) => setNewPersonRole(e.target.value as UserRole)}
+                        className="w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
+                      >
+                        {ROLE_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                      <input
+                        type="text"
+                        value={newPersonInstitution}
+                        onChange={(e) => setNewPersonInstitution(e.target.value)}
+                        placeholder="Instituição"
+                        className="w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
+                      />
+                      <input
+                        type="text"
+                        value={newPersonRegistration}
+                        onChange={(e) => setNewPersonRegistration(e.target.value)}
+                        placeholder="Matrícula / registro"
+                        className="w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
+                      />
+                      <div className="flex gap-1.5 pt-0.5">
+                        <button
+                          onClick={handleCreatePersonSubmit}
+                          disabled={isCreatingPerson || !newPersonName.trim() || !newPersonInstitution.trim() || !newPersonRegistration.trim()}
+                          className="flex-1 px-2 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white font-semibold"
+                        >
+                          {isCreatingPerson ? 'Salvando...' : 'Salvar'}
+                        </button>
+                        <button
+                          onClick={() => setShowAddPerson(false)}
+                          className="px-2 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

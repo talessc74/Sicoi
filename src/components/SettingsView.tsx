@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { UserProfile, UserRole } from '../types/sgccco';
-import { MOCK_USERS } from '../data/mockData';
 import {
   Settings,
   Volume2,
@@ -15,12 +14,25 @@ import {
   Sliders,
   Server,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  Users,
+  UserPlus
 } from 'lucide-react';
+
+const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
+  { value: 'tecnico', label: 'Técnico' },
+  { value: 'curador', label: 'Curador' },
+  { value: 'administrador', label: 'Administrador' },
+  { value: 'pesquisador', label: 'Pesquisador' },
+  { value: 'estudante', label: 'Estudante' }
+];
 
 interface SettingsViewProps {
   currentUser: UserProfile;
   onUserChange: (user: UserProfile) => void;
+  people: UserProfile[];
+  onCreatePerson: (person: { name: string; role: UserRole; institution: string; registrationNumber: string }) => Promise<void>;
+  onDeletePerson: (id: string) => Promise<void>;
   laboratoryMode: boolean;
   onToggleLaboratoryMode: () => void;
   collectionsCount: number;
@@ -32,6 +44,9 @@ interface SettingsViewProps {
 export const SettingsView: React.FC<SettingsViewProps> = ({
   currentUser,
   onUserChange,
+  people,
+  onCreatePerson,
+  onDeletePerson,
   laboratoryMode,
   onToggleLaboratoryMode,
   collectionsCount,
@@ -45,6 +60,32 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [autoDryingHours, setAutoDryingHours] = useState(48);
   const [requireDualSignOnPhase5, setRequireDualSignOnPhase5] = useState(true);
   const [showSaveAlert, setShowSaveAlert] = useState(false);
+  const [showAddPersonForm, setShowAddPersonForm] = useState(false);
+  const [newPersonName, setNewPersonName] = useState('');
+  const [newPersonRole, setNewPersonRole] = useState<UserRole>('tecnico');
+  const [newPersonInstitution, setNewPersonInstitution] = useState('');
+  const [newPersonRegistration, setNewPersonRegistration] = useState('');
+  const [isCreatingPerson, setIsCreatingPerson] = useState(false);
+  const [personPendingDeletion, setPersonPendingDeletion] = useState<UserProfile | null>(null);
+
+  const handleCreatePersonSubmit = async () => {
+    if (!newPersonName.trim() || !newPersonInstitution.trim() || !newPersonRegistration.trim()) return;
+    setIsCreatingPerson(true);
+    try {
+      await onCreatePerson({
+        name: newPersonName.trim(),
+        role: newPersonRole,
+        institution: newPersonInstitution.trim(),
+        registrationNumber: newPersonRegistration.trim()
+      });
+      setNewPersonName('');
+      setNewPersonInstitution('');
+      setNewPersonRegistration('');
+      setShowAddPersonForm(false);
+    } finally {
+      setIsCreatingPerson(false);
+    }
+  };
 
   const handleSavePreferences = () => {
     setShowSaveAlert(true);
@@ -253,6 +294,152 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               >
                 <Trash2 className="w-4 h-4" />
                 <span>Apagar tudo</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pessoas cadastradas — cadastro real, sem login/senha ainda */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden text-xs">
+        <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex flex-wrap justify-between items-center gap-3">
+          <div>
+            <h3 className="font-bold text-sm text-slate-900 dark:text-white font-mono flex items-center gap-2">
+              <Users className="w-4 h-4 text-sky-600" />
+              Pessoas Cadastradas ({people.length})
+            </h3>
+            <p className="text-slate-500 mt-0.5">
+              Quem pode ser selecionado como responsável ativo (assinaturas, cadeia de custódia). Sem login/senha ainda.
+            </p>
+          </div>
+          <button
+            onClick={() => setShowAddPersonForm((v) => !v)}
+            className="px-3.5 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold flex items-center gap-1.5 transition-colors"
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            Cadastrar pessoa
+          </button>
+        </div>
+
+        {showAddPersonForm && (
+          <div className="p-5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <input
+              type="text"
+              value={newPersonName}
+              onChange={(e) => setNewPersonName(e.target.value)}
+              placeholder="Nome completo"
+              className="p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+            />
+            <select
+              value={newPersonRole}
+              onChange={(e) => setNewPersonRole(e.target.value as UserRole)}
+              className="p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+            >
+              {ROLE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            <input
+              type="text"
+              value={newPersonInstitution}
+              onChange={(e) => setNewPersonInstitution(e.target.value)}
+              placeholder="Instituição"
+              className="p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+            />
+            <input
+              type="text"
+              value={newPersonRegistration}
+              onChange={(e) => setNewPersonRegistration(e.target.value)}
+              placeholder="Matrícula / registro profissional"
+              className="p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+            />
+            <div className="sm:col-span-2 flex justify-end gap-2">
+              <button
+                onClick={() => setShowAddPersonForm(false)}
+                className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleCreatePersonSubmit}
+                disabled={isCreatingPerson || !newPersonName.trim() || !newPersonInstitution.trim() || !newPersonRegistration.trim()}
+                className="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold disabled:opacity-40"
+              >
+                {isCreatingPerson ? 'Salvando...' : 'Salvar'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="divide-y divide-slate-100 dark:divide-slate-800">
+          {people.length === 0 && (
+            <p className="p-5 text-slate-400">Nenhuma pessoa cadastrada.</p>
+          )}
+          {people.map((person) => (
+            <div key={person.id} className="p-4 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{person.name}</span>
+                  <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-slate-200/60 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300">
+                    {person.role}
+                  </span>
+                  {currentUser.id === person.id && (
+                    <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-300">
+                      ativo
+                    </span>
+                  )}
+                </div>
+                <p className="text-slate-400 mt-0.5">{person.institution} · {person.registrationNumber}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {currentUser.id !== person.id && (
+                  <button
+                    onClick={() => onUserChange(person)}
+                    className="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  >
+                    Tornar ativo
+                  </button>
+                )}
+                <button
+                  onClick={() => setPersonPendingDeletion(person)}
+                  className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                  title="Remover pessoa"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {personPendingDeletion && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
+              <AlertTriangle className="w-5 h-5" />
+              <h3 className="font-bold text-base">Remover pessoa?</h3>
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              Remove <strong>{personPendingDeletion.name}</strong> da lista de responsáveis selecionáveis. Assinaturas já
+              registradas por essa pessoa não são afetadas — o nome fica preservado nelas.
+            </p>
+            <div className="flex justify-end gap-2 text-xs">
+              <button
+                onClick={() => setPersonPendingDeletion(null)}
+                className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={async () => {
+                  await onDeletePerson(personPendingDeletion.id);
+                  setPersonPendingDeletion(null);
+                }}
+                className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-medium flex items-center gap-1.5"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Remover</span>
               </button>
             </div>
           </div>

@@ -1,0 +1,43 @@
+/**
+ * Cliente HTTP para o cadastro de pessoas (papéis de acesso, sem login/senha ainda).
+ */
+import { UserProfile } from '../types/sgccco';
+
+async function parseJsonOrThrow(res: Response, fallbackMessage: string) {
+  let data: any = null;
+  try {
+    data = await res.json();
+  } catch {
+    // resposta sem corpo JSON
+  }
+  if (!res.ok) {
+    throw new Error(data?.error || `${fallbackMessage} (HTTP ${res.status})`);
+  }
+  return data;
+}
+
+export async function fetchPeople(): Promise<UserProfile[]> {
+  const res = await fetch('/api/people');
+  const data = await parseJsonOrThrow(res, 'Erro ao carregar pessoas');
+  return data.people;
+}
+
+export async function createPersonApi(person: {
+  name: string;
+  role: UserProfile['role'];
+  institution: string;
+  registrationNumber: string;
+}): Promise<UserProfile> {
+  const res = await fetch('/api/people', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(person)
+  });
+  const data = await parseJsonOrThrow(res, 'Erro ao cadastrar pessoa');
+  return data.person;
+}
+
+export async function deletePersonApi(id: string): Promise<void> {
+  const res = await fetch(`/api/people/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  await parseJsonOrThrow(res, 'Erro ao remover pessoa');
+}

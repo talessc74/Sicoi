@@ -1,0 +1,46 @@
+/**
+ * Cadastro de pessoas (papéis de acesso). Sem login/senha ainda — é o registro de
+ * quem está operando o sistema, usado para assinar fases e identificar
+ * responsáveis. Substitui a lista fixa de usuários fictícios (MOCK_USERS).
+ */
+import type { Pool } from 'pg';
+import type { UserProfile } from '../src/types/sgccco';
+
+interface PersonRow {
+  id: string;
+  name: string;
+  role: string;
+  institution: string;
+  registration_number: string;
+}
+
+function toUserProfile(row: PersonRow): UserProfile {
+  return {
+    id: row.id,
+    name: row.name,
+    role: row.role as UserProfile['role'],
+    institution: row.institution,
+    registrationNumber: row.registration_number
+  };
+}
+
+export async function listPeople(pool: Pool): Promise<UserProfile[]> {
+  const { rows } = await pool.query<PersonRow>('SELECT id, name, role, institution, registration_number FROM people ORDER BY created_at ASC');
+  return rows.map(toUserProfile);
+}
+
+export async function createPerson(
+  pool: Pool,
+  person: { name: string; role: string; institution: string; registrationNumber: string }
+): Promise<UserProfile> {
+  const { rows } = await pool.query<PersonRow>(
+    `INSERT INTO people (name, role, institution, registration_number) VALUES ($1, $2, $3, $4)
+     RETURNING id, name, role, institution, registration_number`,
+    [person.name, person.role, person.institution, person.registrationNumber]
+  );
+  return toUserProfile(rows[0]);
+}
+
+export async function deletePerson(pool: Pool, id: string): Promise<void> {
+  await pool.query('DELETE FROM people WHERE id = $1', [id]);
+}

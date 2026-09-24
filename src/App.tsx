@@ -2,17 +2,19 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   OsteologicalCollection,
   UserProfile,
+  UserRole,
   PhaseNumber,
   ResearchAuthorization
 } from './types/sgccco';
 import {
   MOCK_COLLECTIONS,
-  MOCK_USERS,
   MOCK_RESEARCH_AUTHORIZATIONS
 } from './data/mockData';
 import { createEmptyPhase1Data, createEmptyPhase2Data } from './data/phaseDefaults';
 import { fetchCollections, createCollectionApi, saveCollectionApi, wipeAllCollectionsApi } from './services/collectionsService';
+import { fetchPeople, createPersonApi, deletePersonApi } from './services/peopleService';
 import { Header } from './components/Header';
+import { FirstPersonSetup } from './components/FirstPersonSetup';
 import { HomeDashboard } from './components/HomeDashboard';
 import { DocumentSearchViewer } from './components/DocumentSearchViewer';
 import { SettingsView } from './components/SettingsView';
@@ -33,7 +35,11 @@ import { GeminiForensicChatModal } from './components/GeminiForensicChatModal';
 import { Plus, ShieldCheck, Bot, Sparkles } from 'lucide-react';
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useState<UserProfile>(MOCK_USERS[1]); // Default to Dra. Helena (Curadora)
+  // Sem login/senha ainda — currentUser é "quem está operando", escolhido entre as
+  // pessoas cadastradas no banco (ver FirstPersonSetup / handleCreatePerson). Começa
+  // null; só é preenchido depois que a lista de pessoas carrega.
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [people, setPeople] = useState<UserProfile[]>([]);
   const [collections, setCollections] = useState<OsteologicalCollection[]>([]);
   const [authorizations, setAuthorizations] = useState<ResearchAuthorization[]>(MOCK_RESEARCH_AUTHORIZATIONS);
   const [selectedNic, setSelectedNic] = useState<string>('');
@@ -73,12 +79,14 @@ export default function App() {
     hasStartedRef.current = true;
     (async () => {
       try {
-        const loaded = await fetchCollections();
-        setCollections(loaded);
-        setSelectedNic(loaded[0]?.nic || '');
-        setActivePhase(loaded[0]?.currentPhase || 1);
+        const [loadedCollections, loadedPeople] = await Promise.all([fetchCollections(), fetchPeople()]);
+        setCollections(loadedCollections);
+        setSelectedNic(loadedCollections[0]?.nic || '');
+        setActivePhase(loadedCollections[0]?.currentPhase || 1);
+        setPeople(loadedPeople);
+        setCurrentUser(loadedPeople[0] || null);
       } catch (err: any) {
-        console.error('Falha ao carregar conjuntos do banco:', err);
+        console.error('Falha ao carregar dados iniciais do banco:', err);
         setSyncError(err?.message || 'Não foi possível conectar ao banco de dados.');
         setInitialLoadFailed(true);
       } finally {
@@ -86,6 +94,28 @@ export default function App() {
       }
     })();
   }, []);
+
+  // Cadastra uma nova pessoa (papel de acesso) — sem login/senha ainda. Se for a
+  // primeira pessoa cadastrada, ela também vira o usuário ativo automaticamente.
+  const handleCreatePerson = async (person: { name: string; role: UserRole; institution: string; registrationNumber: string }) => {
+    const created = await createPersonApi(person);
+    setPeople((prev) => [...prev, created]);
+    if (!currentUser) setCurrentUser(created);
+    setSyncError(null);
+  };
+
+  const handleDeletePerson = async (id: string) => {
+    try {
+      await deletePersonApi(id);
+      const remaining = people.filter((p) => p.id !== id);
+      setPeople(remaining);
+      if (currentUser?.id === id) setCurrentUser(remaining[0] || null);
+      setSyncError(null);
+    } catch (err: any) {
+      console.error('Falha ao remover pessoa:', err);
+      setSyncError(err?.message || 'Não foi possível remover a pessoa.');
+    }
+  };
 
   // Apaga todos os conjuntos do banco — para testar o app do zero. A UI (Settings)
   // já pede confirmação antes de chamar isto.
@@ -141,6 +171,7 @@ export default function App() {
   };
 
   const handleCreateNewCollection = async () => {
+    if (!currentUser) return;
     const nextNum = String(collections.length + 841).padStart(4, '0');
     const newNic = `NIC-2026-${nextNum}`;
     const newCol: OsteologicalCollection = {
@@ -238,7 +269,7 @@ export default function App() {
   };
 
   const handleReopenPhase = (phaseToReopen: PhaseNumber, justification: string) => {
-    if (!currentCollection) return;
+    if (!currentCollection || !currentUser) return;
     const updated = { ...currentCollection };
     updated.signatures = updated.signatures.filter(s => s.phaseNumber !== phaseToReopen);
     updated.currentPhase = phaseToReopen;
@@ -289,6 +320,10 @@ export default function App() {
     );
   }
 
+  if (!currentUser) {
+    return <FirstPersonSetup onCreatePerson={handleCreatePerson} />;
+  }
+
   return (
     <div className={`min-h-screen flex flex-col font-sans transition-colors ${laboratoryMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-100/70 dark:bg-slate-950 text-slate-900 dark:text-slate-100'}`}>
       {syncError && (
@@ -301,6 +336,8 @@ export default function App() {
       <Header
         currentUser={currentUser}
         onUserChange={setCurrentUser}
+        people={people}
+        onCreatePerson={handleCreatePerson}
         onOpenQrScanner={() => setIsQrModalOpen(true)}
         activeTab={activeTab}
         onSelectTab={setActiveTab}
@@ -401,6 +438,9 @@ export default function App() {
           <SettingsView
             currentUser={currentUser}
             onUserChange={setCurrentUser}
+            people={people}
+            onCreatePerson={handleCreatePerson}
+            onDeletePerson={handleDeletePerson}
             laboratoryMode={laboratoryMode}
             onToggleLaboratoryMode={() => setLaboratoryMode(!laboratoryMode)}
             collectionsCount={collections.length}

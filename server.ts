@@ -8,6 +8,7 @@ import { getPool } from './db/pool';
 import { runMigrations } from './db/migrate';
 import { listCollections, getCollection, createCollection, saveCollection, wipeAllCollections } from './db/collectionsRepo';
 import { getGraph, getNodeWithEdges, findPath, searchNodes } from './db/graphRepo';
+import { listPeople, createPerson, deletePerson } from './db/peopleRepo';
 
 dotenv.config();
 
@@ -480,6 +481,45 @@ app.delete('/api/collections', async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Erro ao apagar todos os conjuntos:', error);
     return res.status(500).json({ error: error?.message || 'Erro ao apagar os conjuntos.' });
+  }
+});
+
+// --- Cadastro de pessoas (papéis de acesso, sem login/senha ainda) ---
+
+app.get('/api/people', async (_req: Request, res: Response) => {
+  try {
+    const pool = getPool();
+    const people = await listPeople(pool);
+    return res.json({ people });
+  } catch (error: any) {
+    console.error('Erro ao listar pessoas:', error);
+    return res.status(500).json({ error: error?.message || 'Erro ao listar pessoas.' });
+  }
+});
+
+app.post('/api/people', async (req: Request, res: Response) => {
+  try {
+    const { name, role, institution, registrationNumber } = req.body || {};
+    if (!name || !role || !institution || !registrationNumber) {
+      return res.status(400).json({ error: 'Informe name, role, institution e registrationNumber.' });
+    }
+    const pool = getPool();
+    const person = await createPerson(pool, { name, role, institution, registrationNumber });
+    return res.status(201).json({ person });
+  } catch (error: any) {
+    console.error('Erro ao cadastrar pessoa:', error);
+    return res.status(500).json({ error: error?.message || 'Erro ao cadastrar pessoa.' });
+  }
+});
+
+app.delete('/api/people/:id', async (req: Request, res: Response) => {
+  try {
+    const pool = getPool();
+    await deletePerson(pool, req.params.id);
+    return res.json({ ok: true });
+  } catch (error: any) {
+    console.error('Erro ao remover pessoa:', error);
+    return res.status(500).json({ error: error?.message || 'Erro ao remover pessoa.' });
   }
 });
 
