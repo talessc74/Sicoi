@@ -30,6 +30,13 @@ protocolo de governança ARGUS + XDRS (`.xdrs/_local/` daquele repositório):
 - Persistência PostgreSQL (`full_state` JSONB + tabelas derivadas) —
   `_local-edr-policy-002`
 - Deploy no Render e ambiente de teste do zero — `_local-edr-policy-003`
+- Cadastro real de pessoas (sem login/senha ainda) — `_local-edr-policy-004`
+- Condutor de voz: compatibilidade entre navegadores (Safari/iOS) —
+  `_local-edr-policy-005` (amplia a policy 001)
+- Motor de passos do condutor: contexto cumulativo entre falas, checklist de
+  fotos como fonte de verdade — `_local-edr-policy-006` (amplia a policy 001)
+- Bloqueios de interface sempre visíveis, nunca silenciosos —
+  `_local-edr-policy-007`
 - Modelo de dados do fluxo: assinatura universal, nível Galpão, Agente Grafo
   incremental — `_local-adr-policy-002`
 - Grafo de Conhecimento persistido em Postgres — `_local-adr-policy-004`
@@ -43,17 +50,21 @@ consulte o índice `.xdrs/_local/index.md` daquele repositório.
 ## Estado atual
 
 - **No ar:** Fase 1 (Recebimento) e Fase 2 (Limpeza até secagem), fiéis aos
-  Formulários A.1 e A.2 reais, com condução por voz, assinatura de fase
-  reconferida no servidor, persistência em Postgres e o Grafo de Conhecimento
-  persistido (aba "Ferramentas → Grafo de Conhecimento").
+  Formulários A.1 e A.2 reais, com condução por voz (multi-turno, robusta a
+  Safari/iOS), assinatura de fase reconferida no servidor, cadastro real de
+  pessoas, persistência em Postgres e o Grafo de Conhecimento persistido
+  (aba "Ferramentas → Grafo de Conhecimento"). O gate de assinatura da Fase 1
+  explica exatamente o que falta (campo, foto ou papel da pessoa ativa) em
+  vez de só desabilitar o botão.
 - **Ainda não implementado:** Fase 3 (Armazenamento provisório), Fase 4
   (Curadoria — os dois agentes de apoio previstos), Fase 5 (Completude dos
   formulários) e Fase 6 (Volta pro armazém/Galpão). Bloqueado pela ausência
   dos apêndices oficiais do POP-02 (Inventário Osteológico, Inventário
   Odontológico, Formulário de Patologias) — nenhuma fase é reconstruída antes
   do documento oficial correspondente chegar.
-- **Pendências conhecidas, fora do escopo até agora:** login/RBAC real, CORS
-  restrito (hoje `*`), validação de entrada mais rígida no backend.
+- **Pendências conhecidas, fora do escopo até agora:** login/senha real (o
+  cadastro de pessoas identifica quem está operando, mas não autentica),
+  CORS restrito (hoje `*`), validação de entrada mais rígida no backend.
 
 ## Rodando localmente
 
@@ -82,12 +93,15 @@ server.ts              servidor Express — API + serve o build em produção
 db/                     pool, migrações versionadas, camadas de acesso a dados
   migrations/*.sql       schema versionado, aplicado automaticamente no boot
   collectionsRepo.ts      persistência do conjunto (full_state + tabelas derivadas)
+  peopleRepo.ts            cadastro de pessoas (sem login/senha — só identificação)
   graphSync.ts            deriva o Grafo de Conhecimento a partir de cada conjunto
   graphRepo.ts             leitura do grafo (explain/path/search)
 src/
   types/sgccco.ts         modelo de domínio completo (todas as fases)
   data/phaseDefaults.ts    forma vazia dos formulários — fonte única de verdade
-  services/popConductorService.ts   roteiro + regras de extração por fase
+  services/popConductorService.ts   roteiro + regras de extração por fase (context-aware)
+  services/voiceAgent.ts             TTS/STT do condutor — unlock() para Safari/iOS
+  components/FirstPersonSetup.tsx    tela bloqueante de cadastro da 1ª pessoa
   components/              telas por fase, condutor de voz, visualizador do grafo
 render.yaml             Blueprint de deploy (Postgres + serviço web)
 ```
