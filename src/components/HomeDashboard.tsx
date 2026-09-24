@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { OsteologicalCollection, UserProfile } from '../types/sgccco';
+import { useAppVersion } from '../hooks/useAppVersion';
 import {
   FolderOpen,
   Users,
@@ -54,15 +55,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     7: 'Consulta & Pesquisa'
   };
 
-  // Referência de qual commit está rodando neste servidor — só para acompanhamento
-  // visual das atualizações, sem função operacional.
-  const [commitRef, setCommitRef] = useState<string | null>(null);
-  useEffect(() => {
-    fetch('/api/version')
-      .then((res) => res.json())
-      .then((data) => setCommitRef(data.commit || null))
-      .catch(() => setCommitRef(null));
-  }, []);
+  const commitRef = useAppVersion();
 
   return (
     <div className="space-y-6">

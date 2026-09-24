@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { UserProfile, UserRole } from '../types/sgccco';
 import { MOCK_USERS } from '../data/mockData';
+import { useAppVersion } from '../hooks/useAppVersion';
 import {
   Home,
   BookOpen,
@@ -46,6 +47,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [quickSearchInput, setQuickSearchInput] = useState('');
   const [operationalSubmenuOpen, setOperationalSubmenuOpen] = useState(false);
+  const commitRef = useAppVersion();
 
   const getRoleLabel = (role: UserRole) => {
     switch (role) {
@@ -447,6 +449,14 @@ export const Header: React.FC<HeaderProps> = ({
             <HelpCircle className="w-4 h-4 text-sky-600" />
             <span>Ajuda</span>
           </button>
+        </div>
+      )}
+
+      {/* Faixa fixa de referência de versão — visível em toda tela, não só no Início */}
+      {commitRef && (
+        <div className="w-full bg-slate-950 text-slate-300 text-[11px] font-mono px-4 py-1 flex items-center justify-center gap-1.5 border-t border-slate-800">
+          <span className="opacity-60">Versão em execução:</span>
+          <span className="font-bold text-white">commit {commitRef}</span>
         </div>
       )}
     </header>
