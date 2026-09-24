@@ -417,8 +417,8 @@ app.post('/api/collections', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Corpo da requisição deve conter { collection } com um NIC válido.' });
     }
     const pool = getPool();
-    await createCollection(pool, collection);
-    return res.status(201).json({ collection });
+    const persisted = await createCollection(pool, collection);
+    return res.status(201).json({ collection: persisted });
   } catch (error: any) {
     console.error('Erro ao criar conjunto:', error);
     return res.status(500).json({ error: error?.message || 'Erro ao criar conjunto.' });

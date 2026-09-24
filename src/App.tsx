@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   OsteologicalCollection,
   UserProfile,
@@ -49,8 +49,22 @@ export default function App() {
   // Carrega os conjuntos do Postgres ao abrir o app. Se o banco estiver vazio
   // (primeira execução), semeia com os dados sintéticos de demonstração — só
   // nessa situação; depois disso o banco é sempre a fonte de verdade.
+  //
+  // hasStartedRef evita que o StrictMode (que invoca efeitos duas vezes em
+  // desenvolvimento de propósito) dispare a semeadura duas vezes em paralelo —
+  // sem essa trava, a segunda chamada tenta criar o mesmo NIC e falha.
+  //
+  // Importante: como hasStartedRef já garante uma única execução real do fetch,
+  // NÃO usamos o padrão usual de "cancelled" no cleanup do efeito — o StrictMode
+  // chama esse cleanup logo após a primeira montagem, antes do fetch terminar, o
+  // que marcaria cancelled=true e faria o setCollections nunca rodar, travando a
+  // tela em "Carregando..." para sempre (bug encontrado rodando o app de verdade).
+  // O App raiz nunca desmonta de fato nesta SPA, então não há cancelamento real a
+  // proteger aqui.
+  const hasStartedRef = useRef(false);
   useEffect(() => {
-    let cancelled = false;
+    if (hasStartedRef.current) return;
+    hasStartedRef.current = true;
     (async () => {
       try {
         let loaded = await fetchCollections();
@@ -61,21 +75,16 @@ export default function App() {
           }
           loaded = seeded;
         }
-        if (!cancelled) {
-          setCollections(loaded);
-          setSelectedNic(loaded[0]?.nic || '');
-          setActivePhase(loaded[0]?.currentPhase || 1);
-        }
+        setCollections(loaded);
+        setSelectedNic(loaded[0]?.nic || '');
+        setActivePhase(loaded[0]?.currentPhase || 1);
       } catch (err: any) {
         console.error('Falha ao carregar conjuntos do banco:', err);
-        if (!cancelled) setSyncError(err?.message || 'Não foi possível conectar ao banco de dados.');
+        setSyncError(err?.message || 'Não foi possível conectar ao banco de dados.');
       } finally {
-        if (!cancelled) setIsLoadingCollections(false);
+        setIsLoadingCollections(false);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
   const currentCollection = collections.find(c => c.nic === selectedNic) || collections[0];

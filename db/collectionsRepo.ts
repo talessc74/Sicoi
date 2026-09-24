@@ -35,13 +35,21 @@ export async function getCollection(pool: Pool, nic: string): Promise<Osteologic
   return rows[0]?.full_state ?? null;
 }
 
-export async function createCollection(pool: Pool, collection: OsteologicalCollection): Promise<void> {
+/**
+ * Cria um conjunto. Idempotente por NIC: se o NIC já existe, não sobrescreve o que
+ * já está no banco — só devolve o que já lá está. Isso protege contra reenvio
+ * duplicado (ex.: StrictMode do React re-executando um efeito em desenvolvimento,
+ * ou um retry de rede) sem mascarar uma colisão real de NIC como sucesso silencioso
+ * de uma criação distinta — quem chama sempre recebe de volta o estado atual do NIC.
+ */
+export async function createCollection(pool: Pool, collection: OsteologicalCollection): Promise<OsteologicalCollection> {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    await client.query(
+    const { rowCount } = await client.query(
       `INSERT INTO collections (nic, current_phase, created_at, created_by_technician, legal_origin, full_state)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (nic) DO NOTHING`,
       [
         collection.nic,
         collection.currentPhase,
@@ -51,7 +59,9 @@ export async function createCollection(pool: Pool, collection: OsteologicalColle
         JSON.stringify(collection)
       ]
     );
-    await syncDerivedTables(client, collection);
+    if (rowCount && rowCount > 0) {
+      await syncDerivedTables(client, collection);
+    }
     await client.query('COMMIT');
   } catch (err) {
     await client.query('ROLLBACK');
@@ -59,6 +69,10 @@ export async function createCollection(pool: Pool, collection: OsteologicalColle
   } finally {
     client.release();
   }
+
+  const current = await getCollection(pool, collection.nic);
+  if (!current) throw new Error(`Falha ao criar/recuperar o conjunto ${collection.nic} após o insert.`);
+  return current;
 }
 
 /**
