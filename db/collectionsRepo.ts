@@ -14,6 +14,7 @@
 import type { Pool, PoolClient } from 'pg';
 import type { OsteologicalCollection, Phase1Data, Phase2Data } from '../src/types/sgccco';
 import { generateSignaturePayload } from '../src/services/auditService';
+import { syncGraphForCollection } from './graphSync';
 import crypto from 'crypto';
 
 function serverSideSha256(content: string): string {
@@ -144,6 +145,7 @@ async function syncDerivedTables(client: PoolClient, collection: OsteologicalCol
   await syncPhotos(client, 'phase2_photos', collection.nic, collection.phase2.photos);
   await syncSignatures(client, collection.nic, collection.signatures);
   await syncCustodyChain(client, collection.nic, collection.custodyChain);
+  await syncGraphForCollection(client, collection);
 }
 
 async function upsertPhase1Form(client: PoolClient, nic: string, p1: Phase1Data): Promise<void> {

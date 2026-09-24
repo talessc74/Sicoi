@@ -7,6 +7,7 @@ import { GoogleGenAI } from '@google/genai';
 import { getPool } from './db/pool';
 import { runMigrations } from './db/migrate';
 import { listCollections, getCollection, createCollection, saveCollection, wipeAllCollections } from './db/collectionsRepo';
+import { getGraph, getNodeWithEdges, findPath, searchNodes } from './db/graphRepo';
 
 dotenv.config();
 
@@ -479,6 +480,71 @@ app.delete('/api/collections', async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Erro ao apagar todos os conjuntos:', error);
     return res.status(500).json({ error: error?.message || 'Erro ao apagar os conjuntos.' });
+  }
+});
+
+// --- Grafo de Conhecimento Forense (§16) — mirrors os verbos de consulta do Graphify ---
+
+// Grafo completo, ou escopado a um NIC (?nic=...)
+app.get('/api/graph', async (req: Request, res: Response) => {
+  try {
+    const pool = getPool();
+    const graph = await getGraph(pool, typeof req.query.nic === 'string' ? req.query.nic : undefined);
+    return res.json(graph);
+  } catch (error: any) {
+    console.error('Erro ao carregar grafo:', error);
+    return res.status(500).json({ error: error?.message || 'Erro ao carregar grafo.' });
+  }
+});
+
+// "explain": um nó e todas as suas arestas de entrada/saída
+app.get('/api/graph/node/:id', async (req: Request, res: Response) => {
+  try {
+    const pool = getPool();
+    const result = await getNodeWithEdges(pool, req.params.id);
+    if (!result) {
+      return res.status(404).json({ error: `Nó ${req.params.id} não encontrado no grafo.` });
+    }
+    return res.json(result);
+  } catch (error: any) {
+    console.error('Erro ao explicar nó do grafo:', error);
+    return res.status(500).json({ error: error?.message || 'Erro ao explicar nó do grafo.' });
+  }
+});
+
+// "path": caminho mais curto entre dois nós
+app.get('/api/graph/path', async (req: Request, res: Response) => {
+  try {
+    const from = typeof req.query.from === 'string' ? req.query.from : '';
+    const to = typeof req.query.to === 'string' ? req.query.to : '';
+    if (!from || !to) {
+      return res.status(400).json({ error: 'Informe os parâmetros de consulta "from" e "to".' });
+    }
+    const pool = getPool();
+    const path = await findPath(pool, from, to);
+    if (!path) {
+      return res.status(404).json({ error: `Nenhum caminho encontrado entre ${from} e ${to}.` });
+    }
+    return res.json({ path });
+  } catch (error: any) {
+    console.error('Erro ao calcular caminho no grafo:', error);
+    return res.status(500).json({ error: error?.message || 'Erro ao calcular caminho no grafo.' });
+  }
+});
+
+// "query": busca por texto em label/propriedades
+app.get('/api/graph/search', async (req: Request, res: Response) => {
+  try {
+    const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+    if (!q) {
+      return res.status(400).json({ error: 'Informe o parâmetro de consulta "q".' });
+    }
+    const pool = getPool();
+    const nodes = await searchNodes(pool, q);
+    return res.json({ nodes });
+  } catch (error: any) {
+    console.error('Erro ao buscar no grafo:', error);
+    return res.status(500).json({ error: error?.message || 'Erro ao buscar no grafo.' });
   }
 });
 

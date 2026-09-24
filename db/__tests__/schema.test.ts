@@ -10,7 +10,7 @@ const pool = new Pool({ connectionString: TEST_DATABASE_URL });
 async function resetSchema() {
   await pool.query(`
     DROP TABLE IF EXISTS pop_step_audit, custody_chain, signatures, phase2_photos, phase1_photos,
-      phase2_forms, phase1_forms, collections, schema_migrations CASCADE;
+      phase2_forms, phase1_forms, graph_edges, graph_nodes, collections, schema_migrations CASCADE;
   `);
 }
 

@@ -503,10 +503,7 @@ export default function App() {
 
         {/* Grafo de Conhecimento Forense */}
         {activeTab === 'grafo' && (
-          <KnowledgeGraphViewer
-            collections={collections}
-            selectedNic={selectedNic}
-          />
+          <KnowledgeGraphViewer selectedNic={selectedNic} />
         )}
 
         {/* Linha do Tempo de Auditoria (§Diretrizes SENASP / DITEC) */}

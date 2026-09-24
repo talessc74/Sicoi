@@ -537,18 +537,51 @@ export interface LoanRecord {
   custodyTermSha256: string;
 }
 
+export type GraphNodeType =
+  | 'nic'
+  | 'individuo'
+  | 'elemento'
+  | 'patologia'
+  | 'caixa'
+  | 'localizacao'
+  | 'metodo'
+  | 'exame'
+  | 'formulario_a1'
+  | 'formulario_a2'
+  | 'foto'
+  | 'assinatura'
+  | 'evento_custodia';
+
 export interface GraphNode {
   id: string;
   label: string;
-  type: 'nic' | 'individuo' | 'elemento' | 'patologia' | 'caixa' | 'localizacao' | 'metodo' | 'exame';
+  type: GraphNodeType;
   properties: Record<string, any>;
 }
+
+export type GraphEdgeRelation =
+  | 'possui_individuo'
+  | 'contem_elemento'
+  | 'apresenta_patologia'
+  | 'armazenado_em'
+  | 'analisado_por_metodo'
+  | 'possui_exame'
+  | 'tem_formulario_a1'
+  | 'tem_formulario_a2'
+  | 'tem_foto'
+  | 'contem_caixa'
+  | 'assinado_por'
+  | 'evento_de_custodia';
 
 export interface GraphEdge {
   id: string;
   source: string;
   target: string;
-  relation: 'possui_individuo' | 'contem_elemento' | 'apresenta_patologia' | 'armazenado_em' | 'analisado_por_metodo' | 'possui_exame';
+  relation: GraphEdgeRelation;
+  // Mesma semântica do Graphify: EXTRACTED = relação direta e explícita no dado;
+  // INFERRED = deduzida por uma análise posterior (não usado nesta entrega — todas
+  // as arestas calculadas hoje são EXTRACTED).
+  confidence: 'EXTRACTED' | 'INFERRED';
   provenance: {
     recordId: string;
     field: string;

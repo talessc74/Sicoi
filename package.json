@@ -11,7 +11,8 @@
     "clean": "rm -rf dist dist-server",
     "lint": "tsc --noEmit",
     "test": "vitest run",
-    "db:migrate": "tsx db/run-migrate.ts"
+    "db:migrate": "tsx db/run-migrate.ts",
+    "db:backfill-graph": "tsx db/backfill-graph.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
