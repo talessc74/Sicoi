@@ -6,7 +6,7 @@ import { execSync } from 'child_process';
 import { GoogleGenAI } from '@google/genai';
 import { getPool } from './db/pool';
 import { runMigrations } from './db/migrate';
-import { listCollections, getCollection, createCollection, saveCollection } from './db/collectionsRepo';
+import { listCollections, getCollection, createCollection, saveCollection, wipeAllCollections } from './db/collectionsRepo';
 
 dotenv.config();
 
@@ -20,7 +20,7 @@ const isProduction = process.env.NODE_ENV === 'production';
 // CORS para evitar qualquer bloqueio entre o iframe do AI Studio e a aplicação
 app.use((_req: Request, res: Response, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (_req.method === 'OPTIONS') {
     return res.sendStatus(204);
@@ -462,6 +462,23 @@ app.put('/api/collections/:nic', async (req: Request, res: Response) => {
     // Hash de assinatura inválido é erro do cliente (payload adulterado ou hash fraco), não do servidor
     const isSignatureError = typeof error?.message === 'string' && error.message.includes('Assinatura inválida');
     return res.status(isSignatureError ? 400 : 500).json({ error: error?.message || 'Erro ao salvar conjunto.' });
+  }
+});
+
+// Apaga todos os conjuntos — para testar o app do zero, sem os dados de
+// demonstração. Exige um token de confirmação explícito no corpo, para não
+// disparar numa chamada acidental (não há autenticação real ainda).
+app.delete('/api/collections', async (req: Request, res: Response) => {
+  try {
+    if (req.body?.confirm !== 'WIPE_ALL') {
+      return res.status(400).json({ error: 'Confirmação ausente. Envie { "confirm": "WIPE_ALL" } no corpo da requisição.' });
+    }
+    const pool = getPool();
+    await wipeAllCollections(pool);
+    return res.json({ ok: true });
+  } catch (error: any) {
+    console.error('Erro ao apagar todos os conjuntos:', error);
+    return res.status(500).json({ error: error?.message || 'Erro ao apagar os conjuntos.' });
   }
 });
 

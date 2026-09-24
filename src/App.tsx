@@ -11,7 +11,7 @@ import {
   MOCK_RESEARCH_AUTHORIZATIONS
 } from './data/mockData';
 import { createEmptyPhase1Data, createEmptyPhase2Data } from './data/phaseDefaults';
-import { fetchCollections, createCollectionApi, saveCollectionApi } from './services/collectionsService';
+import { fetchCollections, createCollectionApi, saveCollectionApi, wipeAllCollectionsApi } from './services/collectionsService';
 import { Header } from './components/Header';
 import { HomeDashboard } from './components/HomeDashboard';
 import { DocumentSearchViewer } from './components/DocumentSearchViewer';
@@ -45,14 +45,20 @@ export default function App() {
   const [isGeminiChatOpen, setIsGeminiChatOpen] = useState<boolean>(false);
   const [isLoadingCollections, setIsLoadingCollections] = useState<boolean>(true);
   const [syncError, setSyncError] = useState<string | null>(null);
+  // true só quando a carga inicial falhou de verdade (ex.: banco inacessível) — um
+  // banco vazio por escolha (ninguém criou nada ainda, ou alguém limpou tudo pra
+  // testar do zero) NÃO é uma falha e não deve travar a tela.
+  const [initialLoadFailed, setInitialLoadFailed] = useState<boolean>(false);
+  const [isResettingData, setIsResettingData] = useState<boolean>(false);
 
-  // Carrega os conjuntos do Postgres ao abrir o app. Se o banco estiver vazio
-  // (primeira execução), semeia com os dados sintéticos de demonstração — só
-  // nessa situação; depois disso o banco é sempre a fonte de verdade.
+  // Carrega os conjuntos do Postgres ao abrir o app. O banco é sempre a fonte de
+  // verdade — um banco vazio é um estado válido (ninguém criou conjunto ainda),
+  // não é mais semeado automaticamente com dados de exemplo (isso escondia a
+  // possibilidade de testar o app do zero). Ver handleSeedExampleData para
+  // carregar os exemplos sob demanda.
   //
   // hasStartedRef evita que o StrictMode (que invoca efeitos duas vezes em
-  // desenvolvimento de propósito) dispare a semeadura duas vezes em paralelo —
-  // sem essa trava, a segunda chamada tenta criar o mesmo NIC e falha.
+  // desenvolvimento de propósito) dispare o fetch duas vezes em paralelo.
   //
   // Importante: como hasStartedRef já garante uma única execução real do fetch,
   // NÃO usamos o padrão usual de "cancelled" no cleanup do efeito — o StrictMode
@@ -67,25 +73,56 @@ export default function App() {
     hasStartedRef.current = true;
     (async () => {
       try {
-        let loaded = await fetchCollections();
-        if (loaded.length === 0) {
-          const seeded: OsteologicalCollection[] = [];
-          for (const mock of MOCK_COLLECTIONS) {
-            seeded.push(await createCollectionApi(mock));
-          }
-          loaded = seeded;
-        }
+        const loaded = await fetchCollections();
         setCollections(loaded);
         setSelectedNic(loaded[0]?.nic || '');
         setActivePhase(loaded[0]?.currentPhase || 1);
       } catch (err: any) {
         console.error('Falha ao carregar conjuntos do banco:', err);
         setSyncError(err?.message || 'Não foi possível conectar ao banco de dados.');
+        setInitialLoadFailed(true);
       } finally {
         setIsLoadingCollections(false);
       }
     })();
   }, []);
+
+  // Apaga todos os conjuntos do banco — para testar o app do zero. A UI (Settings)
+  // já pede confirmação antes de chamar isto.
+  const handleWipeAllData = async () => {
+    setIsResettingData(true);
+    try {
+      await wipeAllCollectionsApi();
+      setCollections([]);
+      setSelectedNic('');
+      setActiveTab('inicio');
+      setSyncError(null);
+    } catch (err: any) {
+      console.error('Falha ao limpar os dados:', err);
+      setSyncError(err?.message || 'Não foi possível limpar os dados.');
+    } finally {
+      setIsResettingData(false);
+    }
+  };
+
+  // Carrega os 3 conjuntos de demonstração sob demanda — nunca automaticamente.
+  const handleSeedExampleData = async () => {
+    setIsResettingData(true);
+    try {
+      const seeded: OsteologicalCollection[] = [];
+      for (const mock of MOCK_COLLECTIONS) {
+        seeded.push(await createCollectionApi(mock));
+      }
+      setCollections((prev) => [...seeded, ...prev]);
+      setSelectedNic(seeded[0]?.nic || '');
+      setSyncError(null);
+    } catch (err: any) {
+      console.error('Falha ao carregar dados de exemplo:', err);
+      setSyncError(err?.message || 'Não foi possível carregar os dados de exemplo.');
+    } finally {
+      setIsResettingData(false);
+    }
+  };
 
   const currentCollection = collections.find(c => c.nic === selectedNic) || collections[0];
 
@@ -201,6 +238,7 @@ export default function App() {
   };
 
   const handleReopenPhase = (phaseToReopen: PhaseNumber, justification: string) => {
+    if (!currentCollection) return;
     const updated = { ...currentCollection };
     updated.signatures = updated.signatures.filter(s => s.phaseNumber !== phaseToReopen);
     updated.currentPhase = phaseToReopen;
@@ -236,7 +274,7 @@ export default function App() {
     );
   }
 
-  if (!currentCollection) {
+  if (initialLoadFailed) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-slate-100 dark:bg-slate-950 text-slate-700 dark:text-slate-300 text-sm text-center p-6">
         <p className="font-semibold">Não foi possível carregar os conjuntos do banco de dados.</p>
@@ -315,7 +353,7 @@ export default function App() {
       )}
 
       {/* Sequential Phase Ribbon if on 'fases' tab */}
-      {activeTab === 'fases' && (
+      {activeTab === 'fases' && currentCollection && (
         <PhaseProgressRibbon
           collection={currentCollection}
           activePhase={activePhase}
@@ -365,6 +403,10 @@ export default function App() {
             onUserChange={setCurrentUser}
             laboratoryMode={laboratoryMode}
             onToggleLaboratoryMode={() => setLaboratoryMode(!laboratoryMode)}
+            collectionsCount={collections.length}
+            isResettingData={isResettingData}
+            onWipeAllData={handleWipeAllData}
+            onSeedExampleData={handleSeedExampleData}
           />
         )}
 
@@ -380,7 +422,20 @@ export default function App() {
         )}
 
         {/* Fluxo Operacional por Fases */}
-        {activeTab === 'fases' && (
+        {activeTab === 'fases' && !currentCollection && (
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-10 text-center space-y-3">
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Nenhum conjunto osteológico cadastrado ainda.</p>
+            <p className="text-xs text-slate-500">Crie um novo conjunto (NIC) para começar, ou carregue os dados de exemplo em Configurações.</p>
+            <button
+              onClick={handleCreateNewCollection}
+              className="px-4 py-2 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-semibold inline-flex items-center gap-1.5"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Novo Conjunto (NIC)</span>
+            </button>
+          </div>
+        )}
+        {activeTab === 'fases' && currentCollection && (
           <>
             {activePhase === 1 && (
               <Phase1Recebimento
@@ -496,7 +551,7 @@ export default function App() {
       </main>
 
       {/* Public QR Code Inspection Modal */}
-      {isQrModalOpen && (
+      {isQrModalOpen && currentCollection && (
         <PublicQRInspectionModal
           collection={currentCollection}
           onClose={() => setIsQrModalOpen(false)}

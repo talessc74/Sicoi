@@ -27,6 +27,16 @@ export async function listCollections(pool: Pool): Promise<OsteologicalCollectio
   return rows.map((r) => r.full_state);
 }
 
+/**
+ * Apaga todos os conjuntos e tudo que depende deles (formulários, fotos, assinaturas,
+ * custódia, trilha de auditoria de voz) — via ON DELETE CASCADE das tabelas
+ * relacionadas. Usado para permitir testar o app do zero, sem os dados de
+ * demonstração. Irreversível; quem chama decide se pede confirmação antes.
+ */
+export async function wipeAllCollections(pool: Pool): Promise<void> {
+  await pool.query('DELETE FROM collections');
+}
+
 export async function getCollection(pool: Pool, nic: string): Promise<OsteologicalCollection | null> {
   const { rows } = await pool.query<{ full_state: OsteologicalCollection }>(
     'SELECT full_state FROM collections WHERE nic = $1',

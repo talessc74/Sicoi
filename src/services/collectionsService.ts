@@ -42,3 +42,13 @@ export async function saveCollectionApi(collection: OsteologicalCollection): Pro
   const data = await parseJsonOrThrow(res, 'Erro ao salvar conjunto');
   return data.collection;
 }
+
+/** Apaga todos os conjuntos do banco. Irreversível — a UI deve confirmar antes de chamar. */
+export async function wipeAllCollectionsApi(): Promise<void> {
+  const res = await fetch('/api/collections', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ confirm: 'WIPE_ALL' })
+  });
+  await parseJsonOrThrow(res, 'Erro ao apagar os conjuntos');
+}
