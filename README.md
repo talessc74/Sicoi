@@ -1,0 +1,93 @@
+# SGCCCO — Sistema de Gestão Curatorial e Científica de Coleções Osteológicas
+
+Sistema de custódia e gestão de coleções osteológicas forenses (SENASP/DITEC).
+Conduz o fluxo operacional passo a passo — por voz ou texto — a partir dos
+formulários oficiais reais (Formulário A.1, Formulário A.2, POP-01), persiste
+tudo em PostgreSQL, e mantém um grafo de conhecimento consultável conectando
+conjuntos, caixas, indivíduos, patologias, localização, responsáveis e datas.
+
+**Produção:** deploy via Render Blueprint, auto-deploy a partir de `main`.
+A URL exata do serviço está no painel do Render (Dashboard → `sgcccco`); o
+indicador de versão no topo de qualquer tela da aplicação mostra o hash do
+commit em execução, para conferir que o deploy corresponde ao código aqui.
+
+## Stack
+
+- React 19 + Vite 8 + TypeScript, Tailwind 4
+- Express (Node) como servidor único — API + arquivos estáticos em produção
+- PostgreSQL (`pg`, migrações versionadas em arquivo, sem ORM)
+- `@google/genai` (Gemini) — extração estruturada de fala transcrita para os
+  campos do formulário-alvo; nunca recebe áudio bruto diretamente
+
+## Governança e decisões arquiteturais (XDRS)
+
+Este código implementa decisões registradas formalmente no repositório
+[`talessc74/2026SENASP`](https://github.com/talessc74/2026SENASP), sob o
+protocolo de governança ARGUS + XDRS (`.xdrs/_local/` daquele repositório):
+
+- Fidelidade aos formulários oficiais reais e motor de condução por voz —
+  `_local-edr-policy-001`
+- Persistência PostgreSQL (`full_state` JSONB + tabelas derivadas) —
+  `_local-edr-policy-002`
+- Deploy no Render e ambiente de teste do zero — `_local-edr-policy-003`
+- Modelo de dados do fluxo: assinatura universal, nível Galpão, Agente Grafo
+  incremental — `_local-adr-policy-002`
+- Grafo de Conhecimento persistido em Postgres — `_local-adr-policy-004`
+  (amplia a policy acima)
+- Redesenho dos agentes de IA da Fase de Curadoria — `_local-adr-policy-001`
+  (ainda não implementado neste código — ver "Estado atual" abaixo)
+
+Antes de mudar o fluxo operacional, o modelo de dados ou a integração de voz,
+consulte o índice `.xdrs/_local/index.md` daquele repositório.
+
+## Estado atual
+
+- **No ar:** Fase 1 (Recebimento) e Fase 2 (Limpeza até secagem), fiéis aos
+  Formulários A.1 e A.2 reais, com condução por voz, assinatura de fase
+  reconferida no servidor, persistência em Postgres e o Grafo de Conhecimento
+  persistido (aba "Ferramentas → Grafo de Conhecimento").
+- **Ainda não implementado:** Fase 3 (Armazenamento provisório), Fase 4
+  (Curadoria — os dois agentes de apoio previstos), Fase 5 (Completude dos
+  formulários) e Fase 6 (Volta pro armazém/Galpão). Bloqueado pela ausência
+  dos apêndices oficiais do POP-02 (Inventário Osteológico, Inventário
+  Odontológico, Formulário de Patologias) — nenhuma fase é reconstruída antes
+  do documento oficial correspondente chegar.
+- **Pendências conhecidas, fora do escopo até agora:** login/RBAC real, CORS
+  restrito (hoje `*`), validação de entrada mais rígida no backend.
+
+## Rodando localmente
+
+```bash
+npm install --legacy-peer-deps
+cp .env.example .env   # preencher DATABASE_URL, GEMINI_API_KEY
+npm run db:migrate     # aplica as migrações em db/migrations/
+npm run dev            # http://localhost:3000
+```
+
+Outros comandos úteis:
+
+```bash
+npm run test              # suíte de testes (vitest) — inclui testes de schema/persistência contra um Postgres local
+npm run lint               # tsc --noEmit
+npm run db:backfill-graph  # sincroniza o grafo para conjuntos já existentes no banco
+```
+
+`npm run test` espera um Postgres local acessível via `TEST_DATABASE_URL`
+(padrão: banco `sgcccco_test`) — ver `db/__tests__/`.
+
+## Estrutura
+
+```
+server.ts              servidor Express — API + serve o build em produção
+db/                     pool, migrações versionadas, camadas de acesso a dados
+  migrations/*.sql       schema versionado, aplicado automaticamente no boot
+  collectionsRepo.ts      persistência do conjunto (full_state + tabelas derivadas)
+  graphSync.ts            deriva o Grafo de Conhecimento a partir de cada conjunto
+  graphRepo.ts             leitura do grafo (explain/path/search)
+src/
+  types/sgccco.ts         modelo de domínio completo (todas as fases)
+  data/phaseDefaults.ts    forma vazia dos formulários — fonte única de verdade
+  services/popConductorService.ts   roteiro + regras de extração por fase
+  components/              telas por fase, condutor de voz, visualizador do grafo
+render.yaml             Blueprint de deploy (Postgres + serviço web)
+```
