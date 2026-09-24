@@ -1,0 +1,29 @@
+# Blueprint do Render — cria o serviço web (Express + Vite build) e o Postgres
+# gerenciado juntos, um clicando em "New +" > "Blueprint" e apontando pra este
+# repositório. A URL pública nasce no painel do Render, não depende desta sessão.
+databases:
+  - name: sgcccco-db
+    databaseName: sgcccco
+    user: sgcccco_app
+    plan: free
+
+services:
+  - type: web
+    name: sgcccco
+    runtime: node
+    plan: free
+    buildCommand: npm install --include=dev --legacy-peer-deps && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: sgcccco-db
+          property: connectionString
+      # Definidos manualmente no painel do Render após o primeiro deploy
+      # (Environment > Add Environment Variable) — nunca ficam no código:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: APP_URL
+        sync: false
