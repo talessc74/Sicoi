@@ -163,29 +163,38 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
     onUpdateCollection(updated);
   };
 
-  // Validação para assinatura, fiel aos campos obrigatórios (*) do Formulário A.1
-  const requiredFieldsFilled =
-    Boolean(p1.equipeEnvolvidaLimpeza.value) &&
-    Boolean(p1.dataAnalise.value) &&
-    Boolean(p1.horaAnalise.value) &&
-    p1.foto1SacoFechado.value === true &&
-    p1.foto2PlacaCemiterio.value !== undefined &&
-    p1.foto3RemanescentesMateriais.value !== undefined &&
-    p1.foto4_1RemanescentesIsolados.value === true &&
-    p1.foto4_2MateriaisIsolados.value !== undefined &&
-    (p1.tipoMaterial.value?.length || 0) > 0 &&
-    (p1.estadoPreservacao.value?.length || 0) > 0 &&
-    (p1.exameGenetico.value?.length || 0) > 0 &&
-    Boolean(p1.geneticoResponsavelColeta.value) &&
-    (p1.analiseIsotopica.value?.length || 0) > 0 &&
-    Boolean(p1.isotopicaResponsavelColeta.value) &&
-    Boolean(p1.corSacoLavagem.value) &&
-    Boolean(p1.tipoLimpeza.value) &&
-    p1.houveDanos.value !== undefined &&
-    (p1.houveDanos.value === false || Boolean(p1.descricaoDanos.value));
+  // Validação para assinatura, fiel aos campos obrigatórios (*) do Formulário A.1.
+  // Cada entrada também vira um item legível na lista de pendências abaixo — sem
+  // isso, o botão só fica cinza sem nenhuma pista do porquê (mesma classe de bug
+  // já corrigida na voz: bloqueio silencioso).
+  const missingFieldLabels: string[] = [];
+  if (!Boolean(p1.equipeEnvolvidaLimpeza.value)) missingFieldLabels.push('equipe envolvida');
+  if (!Boolean(p1.dataAnalise.value)) missingFieldLabels.push('data da análise');
+  if (!Boolean(p1.horaAnalise.value)) missingFieldLabels.push('hora da análise');
+  if (p1.foto1SacoFechado.value !== true) missingFieldLabels.push('foto do saco fechado');
+  if (p1.foto2PlacaCemiterio.value === undefined) missingFieldLabels.push('foto da placa do cemitério (ou "não se aplica")');
+  if (p1.foto3RemanescentesMateriais.value === undefined) missingFieldLabels.push('foto dos materiais associados (ou "não se aplica")');
+  if (p1.foto4_1RemanescentesIsolados.value !== true) missingFieldLabels.push('foto dos remanescentes isolados');
+  if (p1.foto4_2MateriaisIsolados.value === undefined) missingFieldLabels.push('foto dos materiais associados isolados (ou "não se aplica")');
+  if ((p1.tipoMaterial.value?.length || 0) === 0) missingFieldLabels.push('tipo de material');
+  if ((p1.estadoPreservacao.value?.length || 0) === 0) missingFieldLabels.push('estado de preservação');
+  if ((p1.exameGenetico.value?.length || 0) === 0) missingFieldLabels.push('exame genético');
+  if (!Boolean(p1.geneticoResponsavelColeta.value)) missingFieldLabels.push('responsável pela coleta genética');
+  if ((p1.analiseIsotopica.value?.length || 0) === 0) missingFieldLabels.push('análise isotópica');
+  if (!Boolean(p1.isotopicaResponsavelColeta.value)) missingFieldLabels.push('responsável pela coleta isotópica');
+  if (!Boolean(p1.corSacoLavagem.value)) missingFieldLabels.push('cor do saco de lavagem');
+  if (!Boolean(p1.tipoLimpeza.value)) missingFieldLabels.push('tipo de limpeza');
+  if (p1.houveDanos.value === undefined) missingFieldLabels.push('se houve dano');
+  if (p1.houveDanos.value === true && !Boolean(p1.descricaoDanos.value)) missingFieldLabels.push('descrição do dano');
+  const requiredFieldsFilled = missingFieldLabels.length === 0;
   const hasBoxes = collection.phase1.preliminaryBoxes.length > 0;
   const hasPhotos = collection.phase1.photos.length > 0;
   const canSign = requiredFieldsFilled && hasBoxes && hasPhotos && isTechnician;
+
+  const signBlockers: string[] = [...missingFieldLabels];
+  if (!hasBoxes) signBlockers.push('nenhuma caixa preliminar cadastrada');
+  if (!hasPhotos) signBlockers.push('nenhuma foto anexada');
+  if (!isTechnician) signBlockers.push(`a pessoa ativa agora ("${currentUser.name}") tem o papel "${currentUser.role}" — só um Técnico pode assinar a Fase 1. Troque a pessoa ativa no menu de perfil, no topo da tela.`);
 
   return (
     <div className="space-y-6">
@@ -225,6 +234,7 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
               <button
                 onClick={() => setShowSignModal(true)}
                 disabled={!canSign}
+                title={signBlockers.length > 0 ? `Ainda não é possível assinar: ${signBlockers.join('; ')}` : undefined}
                 className="px-4 py-2 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-semibold hover:opacity-95 disabled:opacity-40 transition-all flex items-center gap-2 shadow-xs"
               >
                 <CheckCircle2 className="w-4 h-4" />
@@ -330,14 +340,29 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
                     ✓ Fase 1 Assinada
                   </div>
                 ) : (
-                  <button
-                    onClick={() => setShowSignModal(true)}
-                    disabled={!canSign}
-                    className="w-full py-2.5 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-semibold hover:opacity-95 disabled:opacity-40 transition-all flex items-center justify-center gap-2 shadow-xs"
-                  >
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                    <span>Concluir e Assinar Fase 1</span>
-                  </button>
+                  <>
+                    <button
+                      onClick={() => setShowSignModal(true)}
+                      disabled={!canSign}
+                      className="w-full py-2.5 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-semibold hover:opacity-95 disabled:opacity-40 transition-all flex items-center justify-center gap-2 shadow-xs"
+                    >
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      <span>Concluir e Assinar Fase 1</span>
+                    </button>
+                    {signBlockers.length > 0 && (
+                      <div className="mt-2 p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-[11px] text-amber-700 dark:text-amber-300">
+                        <div className="flex items-center gap-1.5 font-semibold mb-1">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          <span>Ainda não é possível assinar:</span>
+                        </div>
+                        <ul className="list-disc list-inside space-y-0.5">
+                          {signBlockers.map((blocker, idx) => (
+                            <li key={idx}>{blocker}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>
