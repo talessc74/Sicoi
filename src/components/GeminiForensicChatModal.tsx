@@ -42,7 +42,7 @@ export const GeminiForensicChatModal: React.FC<GeminiForensicChatModalProps> = (
       {
         id: 'msg-init',
         role: 'assistant',
-        content: `Olá, ${currentUser.name}! Sou o Assistente Forense com IA integrado ao SGCCCO. Posso apoiar na interpretação de parâmetros osteológicos (estimativa de sexo, idade pelo método Suchey-Brooks, NMI, tafonomia), conferência de lacres conforme a Cadeia de Custódia (CPP Art. 158) e transcrição de notas periciais por voz. Em que posso auxiliá-lo?`,
+        content: `Olá, ${currentUser.name}! Sou o Assistente Forense com IA integrado ao SIGCOI. Posso apoiar na interpretação de parâmetros osteológicos (estimativa de sexo, idade pelo método Suchey-Brooks, NMI, tafonomia), conferência de lacres conforme a Cadeia de Custódia (CPP Art. 158) e transcrição de notas periciais por voz. Em que posso auxiliá-lo?`,
         timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
         modelUsed: 'gemini-3.5-flash',
       },
@@ -83,8 +83,8 @@ export const GeminiForensicChatModal: React.FC<GeminiForensicChatModalProps> = (
   if (!isOpen) return null;
 
   const roleInstructions: Record<'perito' | 'custodia' | 'antropologo', string> = {
-    perito: `Você é o Perito Médico-Legista e Antropologista Forense Oficial do SGCCCO v3.2 (INC/DITEC/PF). Responda com linguagem científica técnica, considerando a coleção ${activeCollection?.nic || 'Geral'}. Forneça diretrizes osteométricas precisas, estimativas antropológicas (sexo, idade, ancestralidade, estatura), diagnóstico diferencial de lesões peri-mortem vs pós-mortem, e cálculos de NMI (Número Mínimo de Indivíduos).`,
-    custodia: `Você é o Encarregado da Cadeia de Custódia Oficial do SGCCCO (conforme Art. 158-A a 158-F do CPP). Seu foco é rigor absoluto na integridade física dos lacres, protocolo de recebimento, termos de descarte biológico, rastreabilidade dos invólucros e legalidade processual penal.`,
+    perito: `Você é o Perito Médico-Legista e Antropologista Forense Oficial do SIGCOI v3.2 (INC/DITEC/PF). Responda com linguagem científica técnica, considerando a coleção ${activeCollection?.nic || 'Geral'}. Forneça diretrizes osteométricas precisas, estimativas antropológicas (sexo, idade, ancestralidade, estatura), diagnóstico diferencial de lesões peri-mortem vs pós-mortem, e cálculos de NMI (Número Mínimo de Indivíduos).`,
+    custodia: `Você é o Encarregado da Cadeia de Custódia Oficial do SIGCOI (conforme Art. 158-A a 158-F do CPP). Seu foco é rigor absoluto na integridade física dos lacres, protocolo de recebimento, termos de descarte biológico, rastreabilidade dos invólucros e legalidade processual penal.`,
     antropologo: `Você é o Curador Especialista em Antropologia Física e Conservação Curatorial. Seu foco é na higienização sem degradação do colágeno ósseo, acondicionamento em caixas de polipropileno corrugado, secagem controlada e preservação das características métricas e morfológicas para pesquisa.`,
   };
 
@@ -232,7 +232,7 @@ export const GeminiForensicChatModal: React.FC<GeminiForensicChatModalProps> = (
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                  Perito Virtual IA · SGCCCO
+                  Perito Virtual IA · SIGCOI
                 </h3>
                 <span className="flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 font-semibold">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>

@@ -119,7 +119,7 @@ export const Header: React.FC<HeaderProps> = ({
             className="text-left flex items-center gap-2 group focus:outline-hidden shrink-0"
           >
             <span className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-mono font-bold px-2 py-1 rounded shadow-xs group-hover:bg-sky-600 transition-colors shrink-0">
-              SGCCCO
+              SIGCOI
             </span>
             <div className="hidden sm:block shrink-0">
               <span className="font-sans text-sm md:text-base font-bold text-slate-800 dark:text-slate-100 group-hover:text-sky-600 transition-colors whitespace-nowrap">

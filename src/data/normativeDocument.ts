@@ -1,5 +1,5 @@
 /**
- * SGCCCO - Documento Normativo e Manual Técnico Oficial v3.2
+ * SIGCOI - Documento Normativo e Manual Técnico Oficial v3.2
  * Portaria INC/DITEC/PF - Diretrizes para Gestão e Custódia de Coleções Osteológicas Forenses
  */
 
@@ -25,7 +25,7 @@ export const NORMATIVE_DOCUMENT_SECTIONS: DocumentSection[] = [
     phaseApplicable: 'todas',
     regulatoryReference: 'Portaria Conjunta INC/DITEC/PF nº 14/2026, Art. 1º',
     keywords: ['finalidade', 'âmbito', 'senasp', 'ditec', 'osteologia forense', 'diretrizes'],
-    content: `O Sistema de Gerenciamento e Custódia de Coleções Osteológicas (SGCCCO) tem por finalidade estabelecer as diretrizes técnicas, científicas e operacionais para a recepção, higienização, acondicionamento provisório, curadoria bioantropológica, catalogação de patologias, guarda definitiva em galpão e disponibilização para pesquisa de remanescentes ósseos humanos sob custódia do Estado.
+    content: `O Sistema Integrado de Gestão da Coleção Osteológica Identificada (SIGCOI) tem por finalidade estabelecer as diretrizes técnicas, científicas e operacionais para a recepção, higienização, acondicionamento provisório, curadoria bioantropológica, catalogação de patologias, guarda definitiva em galpão e disponibilização para pesquisa de remanescentes ósseos humanos sob custódia do Estado.
 Todos os procedimentos devem observar o princípio da dignidade da pessoa humana, o respeito aos restos mortais e o rigor metodológico forense previsto na legislação processual penal brasileira.`
   },
   {
@@ -112,7 +112,7 @@ Para cada indivíduo segregado (IND-01, IND-02), o curador aplicará métodos co
     content: `O registro de lesões patológicas, anomalias de desenvolvimento e traumatismos obedecerá à taxonomia controlada oficial da DITEC.
 Caso seja identificada condição não catalogada, o curador poderá inseri-la mediante justificativa técnica formal.
 Em casos de exames complementares de Tomografia Computadorizada (TC) ou Radiografia Digital, as imagens no formato DICOM devem ser acopladas ao registro com extração automática dos parâmetros radiológicos (kVp, espessura de corte milimétrica e unidades Hounsfield médias).
-Marcação Física: Cada osso relevante deve receber a inscrição indelével do código SGCCCO (ex: "SGCCCO/NIC-2026-0841/IND-01/FEM-D") com tinta nanquim preta aplicada sobre camada base protetora de resina acrílica Paraloid B-72 a 20%, garantindo reversibilidade química e perenidade mecânica.
+Marcação Física: Cada osso relevante deve receber a inscrição indelével do código SIGCOI (ex: "SIGCOI/NIC-2026-0841/IND-01/FEM-D") com tinta nanquim preta aplicada sobre camada base protetora de resina acrílica Paraloid B-72 a 20%, garantindo reversibilidade química e perenidade mecânica.
 A finalização da Fase 5 exige a conclusão de 100% dos itens do Checklist Determinístico e a dupla assinatura digital (Curador Científico + Técnico de Embalagem).`
   },
   {
@@ -140,7 +140,7 @@ Por razões de integridade e segurança física, nenhuma decisão automatizada p
     keywords: ['abac', 'pesquisa', 'comitê de ética', 'cep', 'autorização', 'empréstimo', 'exportação reprodutível', 'hash sha-256'],
     content: `O acesso aos dados do acervo por pesquisadores vinculados a universidades e centros científicos submete-se ao modelo de Controle de Acesso Baseado em Atributos (ABAC).
 O pesquisador deve apresentar parecer de aprovação emitido por Comitê de Ética em Pesquisa (CEP/CONEP) e processo SEI institucional.
-O Administrador do SGCCCO delimitará o escopo da autorização, vinculando os NICs específicos e as variáveis anatômicas autorizadas.
+O Administrador do SIGCOI delimitará o escopo da autorização, vinculando os NICs específicos e as variáveis anatômicas autorizadas.
 Qualquer exportação de dados analíticos gerará um cabeçalho de reprodutibilidade científica contendo versão do banco de dados, data/hora ISO 8601, parâmetros do filtro e hash SHA-256 dos dados exportados, garantindo a rastreabilidade em publicações científicas.
 Saídas temporárias de peças para análises externas destrutivas (ex: datação radiocarbônica, isótopos estáveis ou DNA antigo) exigem termo formal de empréstimo com prazo determinado de retorno e vistoria prévia e posterior.`
   },

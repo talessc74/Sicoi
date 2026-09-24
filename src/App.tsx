@@ -209,7 +209,7 @@ export default function App() {
           boxCode: `CX-${nextNum}`,
           presumedIndividualLabel: 'Caixa do caso',
           currentLocation: 'Bancada de Recepção',
-          qrCode: `SGCCCO://BOX/CX-${newNic}`,
+          qrCode: `SIGCOI://BOX/CX-${newNic}`,
           cleaningStatus: 'pendente'
         }]
       },
@@ -651,7 +651,7 @@ export default function App() {
       <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-4 px-6 text-xs text-slate-500 flex flex-wrap justify-between items-center gap-4">
         <div className="flex items-center gap-2">
           <ShieldCheck className="w-4 h-4 text-emerald-600" />
-          <span>SGCCCO · Sistema de Gerenciamento e Custódia de Coleções Osteológicas · INC/DITEC/PF</span>
+          <span>SIGCOI · Sistema Integrado de Gestão da Coleção Osteológica Identificada · INC/DITEC/PF</span>
         </div>
         <div className="flex items-center gap-4 font-mono text-[11px] text-slate-400">
           <button onClick={() => setActiveTab('auditoria')} className="hover:text-slate-600 dark:hover:text-slate-200">

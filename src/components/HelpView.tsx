@@ -45,7 +45,7 @@ export const HelpView: React.FC<HelpViewProps> = ({
     },
     {
       question: 'Qual é a técnica correta para marcação óssea permanente?',
-      answer: `O POP-OSTEO-05 determina a aplicação de uma camada base de resina acrílica Paraloid B-72 a 20% em acetona sobre a cortical óssea, seguida da escrita manual com tinta nanquim indelével preta do código oficial SGCCCO (ex: SGCCCO/NIC-2026-0841/IND-01/FEM-D), selando-se posteriormente com uma camada adicional de Paraloid.`
+      answer: `O POP-OSTEO-05 determina a aplicação de uma camada base de resina acrílica Paraloid B-72 a 20% em acetona sobre a cortical óssea, seguida da escrita manual com tinta nanquim indelével preta do código oficial SIGCOI (ex: SIGCOI/NIC-2026-0841/IND-01/FEM-D), selando-se posteriormente com uma camada adicional de Paraloid.`
     },
     {
       question: 'Como um pesquisador externo obtém autorização de acesso aos dados?',
@@ -77,7 +77,7 @@ export const HelpView: React.FC<HelpViewProps> = ({
           <span>Central de Ajuda, Tutoriais & Dúvidas Frequentes</span>
         </div>
         <h2 className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-0.5">
-          Guia de Apoio Operacional SGCCCO (v3.2)
+          Guia de Apoio Operacional SIGCOI (v3.2)
         </h2>
         <p className="text-xs text-slate-500 mt-1">
           Orientações passo a passo sobre a operação pericial, respostas às dúvidas mais comuns e glossário terminológico.

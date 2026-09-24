@@ -148,8 +148,8 @@ async function generateWithResilience(
 
   // Se todos os modelos retornaram 503 (sobrecarga temporária na infraestrutura Google Gemini)
   return {
-    reply: `⚠️ **Aviso de Sobrecarga Temporária na Nuvem Google (HTTP 503):**\nOs servidores da API do Google Gemini estão com picos temporários de demanda neste exato minuto.\n\nEnquanto a conexão se restabelece, as diretrizes procedimentais do SGCCCO permanecem ativas:\n- **Cadeia de Custódia:** Mantenha a integridade física de todos os lacres e registros no Termo de Recebimento (Art. 158 do CPP).\n- **Fases Operacionais:** As etapas de lavagem em água deionizada, secagem em estufa a 37°C e acondicionamento em polipropileno continuam sem interrupção.\n\n*Dica: Você pode reenviar sua pergunta agora ou alternar para o modelo gemini-3.1-flash-lite.*`,
-    modelUsed: 'SGCCCO Protocolo de Resiliência',
+    reply: `⚠️ **Aviso de Sobrecarga Temporária na Nuvem Google (HTTP 503):**\nOs servidores da API do Google Gemini estão com picos temporários de demanda neste exato minuto.\n\nEnquanto a conexão se restabelece, as diretrizes procedimentais do SIGCOI permanecem ativas:\n- **Cadeia de Custódia:** Mantenha a integridade física de todos os lacres e registros no Termo de Recebimento (Art. 158 do CPP).\n- **Fases Operacionais:** As etapas de lavagem em água deionizada, secagem em estufa a 37°C e acondicionamento em polipropileno continuam sem interrupção.\n\n*Dica: Você pode reenviar sua pergunta agora ou alternar para o modelo gemini-3.1-flash-lite.*`,
+    modelUsed: 'SIGCOI Protocolo de Resiliência',
     fallbackNotice: 'Serviço do Google temporariamente em alta demanda (503). Retentativa automática configurada.',
   };
 }
@@ -170,7 +170,7 @@ app.post('/api/chat', async (req: Request, res: Response) => {
     const {
       messages = [],
       model = 'gemini-3.1-flash-lite',
-      systemInstruction = 'Você é o Perito Forense e Curador Osteológico Virtual do SGCCCO (INC/DITEC/PF). Auxilie com precisão científica e técnica na análise de ossadas, cadeia de custódia, estimativa de sexo, idade, estatura, ancestralidade, traumatologia e patologias ósseas segundo os protocolos forenses oficiais.',
+      systemInstruction = 'Você é o Perito Forense e Curador Osteológico Virtual do SIGCOI (INC/DITEC/PF). Auxilie com precisão científica e técnica na análise de ossadas, cadeia de custódia, estimativa de sexo, idade, estatura, ancestralidade, traumatologia e patologias ósseas segundo os protocolos forenses oficiais.',
     } = req.body;
 
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -210,7 +210,7 @@ app.post('/api/chat', async (req: Request, res: Response) => {
       // Em qualquer outro erro inesperado, retornar resposta graciosa sem derrubar a UI com 500/503
       return res.json({
         reply: `⚠️ Ocorreu uma oscilação na resposta do modelo (${modelError?.message || 'indisponível'}). Por favor, reenvie a consulta utilizando o modelo gemini-3.1-flash-lite.`,
-        modelUsed: 'SGCCCO Assistente de Contingência',
+        modelUsed: 'SIGCOI Assistente de Contingência',
         fallbackNotice: 'Oscilação temporária na API detectada.',
       });
     }
@@ -218,7 +218,7 @@ app.post('/api/chat', async (req: Request, res: Response) => {
     console.error('Erro na rota /api/chat:', error);
     return res.json({
       reply: '⚠️ Erro temporário ao comunicar com o servidor de IA. Por favor, tente novamente.',
-      modelUsed: 'SGCCCO Falha Recuperável',
+      modelUsed: 'SIGCOI Falha Recuperável',
     });
   }
 });
@@ -619,7 +619,7 @@ async function setupServer() {
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`SGCCCO Full-Stack Server rodando na porta ${PORT} (${isProduction ? 'Produção' : 'Desenvolvimento'})`);
+    console.log(`SIGCOI Full-Stack Server rodando na porta ${PORT} (${isProduction ? 'Produção' : 'Desenvolvimento'})`);
   });
 }
 

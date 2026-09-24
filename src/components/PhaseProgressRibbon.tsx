@@ -157,7 +157,7 @@ export const PhaseProgressRibbon: React.FC<PhaseProgressRibbonProps> = ({
               <h3 className="font-semibold text-base">Reabertura Justificada — Fase {reopenModalPhase}</h3>
             </div>
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
-              Conforme a regra §7 do SGCCCO, uma fase assinada é imutável. Sua reabertura requer privilégio de <strong>Curador</strong> ou <strong>Administrador</strong>, registra o usuário solicitante e gera nova versão na trilha de auditoria. A versão anterior é preservada no histórico.
+              Conforme a regra §7 do SIGCOI, uma fase assinada é imutável. Sua reabertura requer privilégio de <strong>Curador</strong> ou <strong>Administrador</strong>, registra o usuário solicitante e gera nova versão na trilha de auditoria. A versão anterior é preservada no histórico.
             </p>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
               Justificativa Técnica Obrigatória:

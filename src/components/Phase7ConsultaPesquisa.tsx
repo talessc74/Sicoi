@@ -140,7 +140,7 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
     const timestamp = new Date().toISOString();
     const exportDataset = {
       reproducibilityHeader: {
-        system: 'SGCCCO v3.2 - INC/DITEC/PF',
+        system: 'SIGCOI v3.2 - INC/DITEC/PF',
         databaseVersion: '2026.3-PROD',
         exportedAt: timestamp,
         exportedBy: currentUser.name,
@@ -164,7 +164,7 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
           element: p.associatedElementCode || p.elementName
         })),
         // REGRA DE SEGURANÇA §7: Dados restritos de origem NUNCA são exportados!
-        legalOriginRestricted: 'OMITTED_BY_SGCCCO_PRIVACY_POLICY_RULE_7'
+        legalOriginRestricted: 'OMITTED_BY_SIGCOI_PRIVACY_POLICY_RULE_7'
       }))
     };
 
@@ -597,7 +597,7 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
                   const url = URL.createObjectURL(blob);
                   const a = document.createElement('a');
                   a.href = url;
-                  a.download = `SGCCCO-export-${Date.now()}.json`;
+                  a.download = `SIGCOI-export-${Date.now()}.json`;
                   a.click();
                   URL.revokeObjectURL(url);
                 }}

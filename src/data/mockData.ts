@@ -279,7 +279,7 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
           boxCode: 'CX-0841-A',
           presumedIndividualLabel: 'Indivíduo Presumido A (Esqueleto maior)',
           currentLocation: 'Galpão Definitivo Central - Prédio 3, Sala 01, Estante 12, Prateleira 04',
-          qrCode: 'SGCCCO://BOX/CX-2026-0841-A',
+          qrCode: 'SIGCOI://BOX/CX-2026-0841-A',
           cleaningStatus: 'seca',
           dryingStartedAt: '2026-06-12T10:00:00Z',
           dryingDurationHours: 72
@@ -289,7 +289,7 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
           boxCode: 'CX-0841-B',
           presumedIndividualLabel: 'Indivíduo Presumido B (Crânio secundário e ossos menores)',
           currentLocation: 'Galpão Definitivo Central - Prédio 3, Sala 01, Estante 12, Prateleira 04',
-          qrCode: 'SGCCCO://BOX/CX-2026-0841-B',
+          qrCode: 'SIGCOI://BOX/CX-2026-0841-B',
           cleaningStatus: 'seca',
           dryingStartedAt: '2026-06-12T10:00:00Z',
           dryingDurationHours: 72
@@ -469,7 +469,7 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
           classificationMethod: 'Inspeção macroscópica e tomografia computadorizada multislice',
           referencesConsulted: [
             'Ortner (2003) Identification of Pathological Conditions in Human Skeletal Remains, p. 132-140',
-            'Grafo SGCCCO - Caso comparativo NIC-2025-0419'
+            'Grafo SIGCOI - Caso comparativo NIC-2025-0419'
           ],
           reviewedAndApprovedBy: 'Dra. Helena Beatriz Siqueira'
         },
@@ -508,7 +508,7 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
             isDraftUntilConfirmed: false
           },
           dicomMetadata: {
-            patientPseudoId: 'ANON-SGCCCO-0841',
+            patientPseudoId: 'ANON-SIGCOI-0841',
             studyDate: '2026-06-28',
             seriesDescription: 'Femur D Reconstruction Thin Bone Kernel',
             slicesCount: 64
@@ -519,7 +519,7 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
         {
           elementId: 'elem-0841-25',
           elementName: 'Fêmur Direito',
-          appliedMarkCode: 'SGCCCO/NIC-2026-0841/IND-01/FEM-D',
+          appliedMarkCode: 'SIGCOI/NIC-2026-0841/IND-01/FEM-D',
           inkType: 'tinta_nanquim_indelevel_acrilica_paraloid_b72',
           appliedByTechnician: 'Carlos Alberto Menezes',
           appliedAt: '2026-07-01T10:30:00Z',
@@ -528,7 +528,7 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
         {
           elementId: 'elem-0841-1',
           elementName: 'Calvária Craniana',
-          appliedMarkCode: 'SGCCCO/NIC-2026-0841/IND-01/CRAN',
+          appliedMarkCode: 'SIGCOI/NIC-2026-0841/IND-01/CRAN',
           inkType: 'tinta_nanquim_indelevel_acrilica_paraloid_b72',
           appliedByTechnician: 'Carlos Alberto Menezes',
           appliedAt: '2026-07-01T10:40:00Z',
@@ -545,7 +545,7 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
         {
           category: 'marcacao_fisica',
           url: 'https://images.unsplash.com/photo-1576086213369-97a306d36557?w=800&auto=format&fit=crop&q=80',
-          caption: 'Aplicação da sigla institucional SGCCCO com verniz de proteção Paraloid B-72',
+          caption: 'Aplicação da sigla institucional SIGCOI com verniz de proteção Paraloid B-72',
           hash: '48102938401928401928301928401928'
         }
       ],
@@ -704,7 +704,7 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
           boxCode: 'CX-0914-A',
           presumedIndividualLabel: 'Indivíduo Único A',
           currentLocation: 'Laboratório Central - Sala B-10, Estante 02, Prateleira 01',
-          qrCode: 'SGCCCO://BOX/CX-2026-0914-A',
+          qrCode: 'SIGCOI://BOX/CX-2026-0914-A',
           cleaningStatus: 'seca',
           dryingStartedAt: '2026-07-16T14:00:00Z',
           dryingDurationHours: 68
@@ -860,7 +860,7 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
           boxCode: 'CX-0955-A',
           presumedIndividualLabel: 'Indivíduo A presumido',
           currentLocation: 'Bancada de Triagem e Recepção Inicial',
-          qrCode: 'SGCCCO://BOX/CX-2026-0955-A',
+          qrCode: 'SIGCOI://BOX/CX-2026-0955-A',
           cleaningStatus: 'pendente'
         },
         {
@@ -868,7 +868,7 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
           boxCode: 'CX-0955-B',
           presumedIndividualLabel: 'Material esquelético fragmentar não dissociado',
           currentLocation: 'Bancada de Triagem e Recepção Inicial',
-          qrCode: 'SGCCCO://BOX/CX-2026-0955-B',
+          qrCode: 'SIGCOI://BOX/CX-2026-0955-B',
           cleaningStatus: 'pendente'
         }
       ]

@@ -1,4 +1,4 @@
--- SGCCCO — schema inicial de persistência
+-- SIGCOI — schema inicial de persistência
 -- Cobre: conjuntos osteológicos, Formulário A.1 (Fase 1), Formulário A.2 / POP-01 9.5-9.7 (Fase 2),
 -- fotos, assinaturas de fase, cadeia de custódia e trilha de auditoria da condução por voz.
 --

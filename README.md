@@ -1,4 +1,4 @@
-# SGCCCO — Sistema de Gestão Curatorial e Científica de Coleções Osteológicas
+# SIGCOI — Sistema Integrado de Gestão da Coleção Osteológica Identificada
 
 Sistema de custódia e gestão de coleções osteológicas forenses, desenvolvido
 para a INC/DITEC/PF. Ele conduz o fluxo operacional real de recebimento,

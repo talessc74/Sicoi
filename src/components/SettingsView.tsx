@@ -109,7 +109,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <span>Painel de Parâmetros Operacionais & Segurança</span>
         </div>
         <h2 className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-0.5">
-          Configurações do Sistema SGCCCO (v3.2)
+          Configurações do Sistema SIGCOI (v3.2)
         </h2>
         <p className="text-xs text-slate-500 mt-1">
           Ajustes de segurança criptográfica, matriz ABAC de atribuição de papéis, preferências laboratoriais e conformidade LGPD.

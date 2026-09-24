@@ -33,7 +33,7 @@ export function generateSignaturePayload(data: {
   timestamp: string;
   dataSnapshotJson: string;
 }): string {
-  return `SGCCCO-SIG-v3.2|NIC:${data.nic}|PHASE:${data.phaseNumber}|BY:${data.signedBy}|ROLE:${data.role}|TIME:${data.timestamp}|SNAPSHOT:${data.dataSnapshotJson}`;
+  return `SIGCOI-SIG-v3.2|NIC:${data.nic}|PHASE:${data.phaseNumber}|BY:${data.signedBy}|ROLE:${data.role}|TIME:${data.timestamp}|SNAPSHOT:${data.dataSnapshotJson}`;
 }
 
 export function generateExportHeader(data: {
@@ -48,7 +48,7 @@ export function generateExportHeader(data: {
 }): string {
   return `
 ================================================================================
-SGCCCO v3.2 - INC/DITEC/PF - RELATÓRIO CIENTÍFICO COM TRILHA DE REPRODUTIBILIDADE
+SIGCOI v3.2 - INC/DITEC/PF - RELATÓRIO CIENTÍFICO COM TRILHA DE REPRODUTIBILIDADE
 --------------------------------------------------------------------------------
 NIC: ${data.nic}
 INDIVÍDUO: ${data.individualCode || 'CONJUNTO GERAL'}

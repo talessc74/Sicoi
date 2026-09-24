@@ -149,7 +149,7 @@ export const DicomViewer: React.FC<DicomViewerProps> = ({ exam, onClose }) => {
           <div className="absolute top-3 right-3 z-20 text-[10px] font-mono text-slate-400 pointer-events-none text-right bg-black/60 p-2 rounded backdrop-blur-xs">
             <div>W: {windowPreset === 'bone' ? 2000 : 400} L: {windowPreset === 'bone' ? 500 : 50}</div>
             <div>ZOOM: {(zoomLevel * 100).toFixed(0)}%</div>
-            <div>SGCCCO-DICOM v3.2</div>
+            <div>SIGCOI-DICOM v3.2</div>
           </div>
 
           {/* Simulated Osteological CT Slice Rendering */}

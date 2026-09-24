@@ -156,7 +156,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
     setRefSearchResults([
       `Ortner (2003) Identification of Pathological Conditions in Human Skeletal Remains, p. 120-145: Variações morfológicas compatíveis com "${query}".`,
       `Buikstra & Ubelaker (1994) Standards for Data Collection from Human Skeletal Remains: Protocolo de pontuação osteométrica.`,
-      `Caso do Grafo SGCCCO (NIC-2025-0419 / IND-01): Calo ósseo remodelado em diáfise femoral sob método Trotter & Gleser.`
+      `Caso do Grafo SIGCOI (NIC-2025-0419 / IND-01): Calo ósseo remodelado em diáfise femoral sob método Trotter & Gleser.`
     ]);
     setShowRefSearchModal(true);
   };

@@ -74,7 +74,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-white">
-            Sistema de Gerenciamento e Custódia de Coleções Osteológicas (SGCCCO)
+            Sistema Integrado de Gestão da Coleção Osteológica Identificada (SIGCOI)
           </h1>
 
           <p className="text-sm text-slate-300 leading-relaxed font-sans">

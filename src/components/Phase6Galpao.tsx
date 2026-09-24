@@ -364,7 +364,7 @@ export const Phase6Galpao: React.FC<Phase6GalpaoProps> = ({
             <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-center space-y-3">
               <div className="w-32 h-32 mx-auto bg-white p-2 rounded-xl border border-slate-200 flex items-center justify-center">
                 <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=SGCCCO://${collection.nic}`}
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=SIGCOI://${collection.nic}`}
                   alt="QR Code Ativo"
                   className="w-28 h-28"
                 />
