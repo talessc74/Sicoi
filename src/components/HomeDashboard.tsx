@@ -285,7 +285,16 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                       </span>
                     </td>
                     <td className="px-5 py-3.5 font-mono">
-                      {col.phase4.individuals.length || col.phase1.preliminaryBoxes.length} {col.phase4.individuals.length === 1 ? 'indivíduo' : 'indivíduos'}
+                      {col.phase4.individuals.length > 0 ? (
+                        <>{col.phase4.individuals.length} {col.phase4.individuals.length === 1 ? 'indivíduo (MNI)' : 'indivíduos (MNI)'}</>
+                      ) : (
+                        // Fase 4 (Curadoria) ainda não aconteceu neste conjunto — não há MNI confirmado
+                        // ainda. Mostrar a contagem de caixas como se fosse "indivíduos" confundia quem
+                        // via o painel (uma caixa a mais não é um indivíduo a mais, é só uma caixa a mais).
+                        <span className="text-slate-400" title="Fase 4 (Curadoria) ainda não realizada — nenhum indivíduo confirmado">
+                          {col.phase1.preliminaryBoxes.length} {col.phase1.preliminaryBoxes.length === 1 ? 'presumido' : 'presumidos'}
+                        </span>
+                      )}
                     </td>
                     <td className="px-5 py-3.5 font-mono">
                       {col.phase1.preliminaryBoxes.length} {col.phase1.preliminaryBoxes.length === 1 ? 'caixa' : 'caixas'}

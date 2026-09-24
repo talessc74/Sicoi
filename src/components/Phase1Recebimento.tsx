@@ -13,7 +13,7 @@ import {
 } from '../types/sgccco';
 import { PopConversationalConductor } from './PopConversationalConductor';
 import { calculateSha256, generateSignaturePayload } from '../services/auditService';
-import { Shield, Lock, FileText, Camera, Box, CheckCircle2, AlertCircle, Sparkles, Printer, Bot } from 'lucide-react';
+import { Shield, Lock, FileText, Camera, Box, CheckCircle2, AlertCircle, Sparkles, Printer, Bot, Trash2 } from 'lucide-react';
 
 interface Phase1RecebimentoProps {
   collection: OsteologicalCollection;
@@ -108,6 +108,19 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
     };
     const updated = { ...collection };
     updated.phase1 = { ...updated.phase1, preliminaryBoxes: [...updated.phase1.preliminaryBoxes, newBox] };
+    onUpdateCollection(updated);
+  };
+
+  // Nunca deixa a caixa preliminar chegar a zero — sempre precisa de pelo menos uma
+  // pra representar o material recebido. Só existia "Adicionar Caixa"; sem remover,
+  // uma caixa criada por engano (duplo toque, teste) ficava presa no conjunto.
+  const handleRemoveBox = (boxId: string) => {
+    if (collection.phase1.preliminaryBoxes.length <= 1) return;
+    const updated = { ...collection };
+    updated.phase1 = {
+      ...updated.phase1,
+      preliminaryBoxes: updated.phase1.preliminaryBoxes.filter((b) => b.id !== boxId)
+    };
     onUpdateCollection(updated);
   };
 
@@ -600,9 +613,20 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
                           </span>
                         </div>
                       </div>
-                      <span className="px-2 py-0.5 rounded text-[10px] uppercase font-mono font-semibold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                        Status: {box.cleaningStatus}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded text-[10px] uppercase font-mono font-semibold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                          Status: {box.cleaningStatus}
+                        </span>
+                        {!isLocked && collection.phase1.preliminaryBoxes.length > 1 && (
+                          <button
+                            onClick={() => handleRemoveBox(box.id)}
+                            title="Remover esta caixa (ex.: criada por engano)"
+                            className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
