@@ -109,7 +109,7 @@ export const Header: React.FC<HeaderProps> = ({
   const isOperationalActive = ['fases', 'auditoria', 'grafo', 'estantes', 'pesquisa'].includes(activeTab);
 
   return (
-    <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40 shadow-xs w-full max-w-full overflow-x-hidden">
+    <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40 shadow-xs w-full max-w-full">
       {/* Top Main Navigation Bar */}
       <div className="max-w-7xl mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-2 sm:gap-4 w-full">
         {/* Brand / Logo */}
