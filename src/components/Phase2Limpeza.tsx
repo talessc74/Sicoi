@@ -3,7 +3,7 @@ import { OsteologicalCollection, UserProfile, FieldWithAiSuggestion, CleaningIns
 import { PopConversationalConductor } from './PopConversationalConductor';
 import { calculateSha256, generateSignaturePayload } from '../services/auditService';
 import { getLatestPhaseSignature } from '../utils/signatures';
-import { Droplet, Wind, Clock, CheckCircle2, ShieldCheck, Bot, FileText, Sparkles, Box, Save } from 'lucide-react';
+import { Droplet, Wind, Clock, CheckCircle2, ShieldCheck, Bot, FileText, Sparkles, Box, Save, AlertCircle } from 'lucide-react';
 
 const INSTRUMENT_OPTIONS: { value: CleaningInstrument; label: string }[] = [
   { value: 'esponja', label: 'Esponja' },
@@ -75,15 +75,18 @@ export const Phase2Limpeza: React.FC<Phase2LimpezaProps> = ({ collection, curren
     onUpdateCollection(updated);
   };
 
-  const requiredFieldsFilled =
-    Boolean(p2.equipeEnvolvidaLimpeza.value) &&
-    Boolean(p2.dataAnalise.value) &&
-    Boolean(p2.horaAnalise.value) &&
-    (p2.instrumentosUtilizados.value?.length || 0) > 0 &&
-    p2.houveDanosMaceracao.value !== undefined &&
-    (p2.houveDanosMaceracao.value === false || Boolean(p2.descricaoDanosMaceracao.value)) &&
-    Boolean(p2.formaSecagem.value) &&
-    p2.dryingConfirmationAllBoxes;
+  // Itemizado (em vez de um booleano só) para poder mostrar exatamente o que falta —
+  // mesma lógica já usada na Fase 1, que corrigiu o mesmo tipo de bloqueio silencioso.
+  const missingFieldLabels: string[] = [];
+  if (!Boolean(p2.equipeEnvolvidaLimpeza.value)) missingFieldLabels.push('equipe envolvida');
+  if (!Boolean(p2.dataAnalise.value)) missingFieldLabels.push('data da análise');
+  if (!Boolean(p2.horaAnalise.value)) missingFieldLabels.push('hora da análise');
+  if ((p2.instrumentosUtilizados.value?.length || 0) === 0) missingFieldLabels.push('instrumentos utilizados');
+  if (p2.houveDanosMaceracao.value === undefined) missingFieldLabels.push('se houve dano na maceração');
+  if (p2.houveDanosMaceracao.value === true && !Boolean(p2.descricaoDanosMaceracao.value)) missingFieldLabels.push('descrição do dano na maceração');
+  if (!Boolean(p2.formaSecagem.value)) missingFieldLabels.push('forma de secagem');
+  if (!p2.dryingConfirmationAllBoxes) missingFieldLabels.push('confirmação de secagem de todas as caixas');
+  const requiredFieldsFilled = missingFieldLabels.length === 0;
 
   // O preenchimento já salva sozinho a cada campo (onUpdateCollection é chamado em todo
   // setField) — este botão não faz nada tecnicamente novo, só reenvia o estado atual e dá
@@ -130,6 +133,9 @@ export const Phase2Limpeza: React.FC<Phase2LimpezaProps> = ({ collection, curren
   };
 
   const canSign = requiredFieldsFilled && allBoxesDry && isTechnician;
+  const signBlockers: string[] = [...missingFieldLabels];
+  if (!allBoxesDry) signBlockers.push('todas as caixas precisam estar com status "Seca"');
+  if (!isTechnician) signBlockers.push(`a pessoa ativa agora ("${currentUser.name}") tem o papel "${currentUser.role}" — só um Técnico pode assinar a Fase 2. Troque a pessoa ativa no menu de perfil, no topo da tela.`);
 
   return (
     <div className="space-y-6">
@@ -170,7 +176,7 @@ export const Phase2Limpeza: React.FC<Phase2LimpezaProps> = ({ collection, curren
                 onClick={() => setShowSignModal(true)}
                 disabled={!canSign}
                 className="px-4 py-2 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-semibold hover:opacity-95 disabled:opacity-40 transition-all flex items-center gap-2 shadow-xs"
-                title={!allBoxesDry ? 'Todas as caixas devem estar com status "Seca" para liberar a assinatura.' : ''}
+                title={signBlockers.length > 0 ? `Ainda não é possível assinar: ${signBlockers.join('; ')}` : undefined}
               >
                 <CheckCircle2 className="w-4 h-4" />
                 <span>Assinar Fase 2</span>
@@ -178,6 +184,20 @@ export const Phase2Limpeza: React.FC<Phase2LimpezaProps> = ({ collection, curren
             )}
           </div>
         </div>
+
+        {!isLocked && signBlockers.length > 0 && (
+          <div className="mt-4 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300">
+            <div className="flex items-center gap-1.5 font-semibold mb-1.5">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>Ainda falta o seguinte para poder concluir e assinar a Fase 2:</span>
+            </div>
+            <ul className="list-disc list-inside space-y-0.5">
+              {signBlockers.map((blocker, idx) => (
+                <li key={idx}>{blocker}</li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
 
       {/* Seletor de Modo de Interação */}

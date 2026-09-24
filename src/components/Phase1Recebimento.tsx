@@ -297,6 +297,25 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
             )}
           </div>
         </div>
+
+        {/* Antes essa lista só aparecia no modo Condutor (painel "Espelho do Formulário"),
+            deixada de fora do modo Formulário Manual — que é o que a maioria usa. Resultado:
+            o botão "Revisar & Assinar" ficava cinza sem explicação nenhuma visível, só um
+            title (que exige passar o mouse por cima e não funciona em toque). Movida pra
+            cá, no banner do topo, aparece nos dois modos. */}
+        {!isLocked && signBlockers.length > 0 && (
+          <div className="mt-4 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300">
+            <div className="flex items-center gap-1.5 font-semibold mb-1.5">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>Ainda falta o seguinte para poder concluir e assinar a Fase 1:</span>
+            </div>
+            <ul className="list-disc list-inside space-y-0.5">
+              {signBlockers.map((blocker, idx) => (
+                <li key={idx}>{blocker}</li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
 
       {/* Seletor de Modo de Interação: Condutor por Voz vs Formulário A.1 Manual */}
