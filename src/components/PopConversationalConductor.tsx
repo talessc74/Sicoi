@@ -319,24 +319,49 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
     onUpdateCollection(updated);
   };
 
+  // Mensagem visível no chat quando o microfone não funciona — sem isso, o usuário
+  // toca no botão e nada acontece, sem nenhuma pista do porquê (bug encontrado ao
+  // preparar um teste em iPhone: Safari/iOS não implementa a Web Speech API de
+  // reconhecimento de voz, só a de síntese — então o condutor fala, mas não ouve).
+  const pushSystemMessage = (text: string) => {
+    setMessages(prev => [...prev, {
+      id: `msg-sys-${Date.now()}`,
+      sender: 'system',
+      text,
+      timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+    }]);
+  };
+
   // Trigger microphone input
   const handleToggleVoice = () => {
     if (isListening) {
       voiceService.stopListening();
       setIsListening(false);
-    } else {
-      setIsListening(true);
-      voiceService.startListening(
-        (transcript) => {
-          setIsListening(false);
-          handleSendMessage(transcript, true);
-        },
-        (err) => {
-          setIsListening(false);
-          console.warn('Microphone fallback/error:', err);
-        }
-      );
+      return;
     }
+
+    if (!voiceService.isSupported) {
+      pushSystemMessage(
+        'Este navegador não suporta reconhecimento de voz (comum no Safari/iOS — a narração funciona, mas ouvir sua fala não). Use o campo de texto abaixo: é o mesmo motor de extração, só sem o áudio.'
+      );
+      return;
+    }
+
+    setIsListening(true);
+    voiceService.startListening(
+      (transcript) => {
+        setIsListening(false);
+        handleSendMessage(transcript, true);
+      },
+      (err) => {
+        setIsListening(false);
+        console.warn('Microphone fallback/error:', err);
+        const reason = typeof err === 'string' ? err : err?.error || err?.message || 'erro desconhecido';
+        pushSystemMessage(
+          `Não consegui captar sua fala (${reason}). Confira se a permissão de microfone foi concedida ao navegador, ou responda pelo campo de texto abaixo.`
+        );
+      }
+    );
   };
 
   // Capture step photo via conversation
@@ -508,18 +533,25 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
                 <Shield className="w-4 h-4" />
               </div>
             )}
+            {msg.sender === 'system' && (
+              <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs font-bold text-xs mt-0.5">
+                <Info className="w-4 h-4" />
+              </div>
+            )}
 
             <div
               className={`max-w-[85%] sm:max-w-[75%] rounded-2xl p-4 shadow-2xs ${
                 msg.sender === 'user'
                   ? 'bg-sky-600 text-white rounded-tr-xs'
+                  : msg.sender === 'system'
+                  ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800 rounded-tl-xs'
                   : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-tl-xs'
               }`}
             >
               {/* Message Header */}
               <div className="flex items-center justify-between gap-3 mb-1 text-[11px] opacity-80">
                 <span className="font-semibold font-mono">
-                  {msg.sender === 'user' ? currentUser.name : 'Condutor Forense SENASP'}
+                  {msg.sender === 'user' ? currentUser.name : msg.sender === 'system' ? 'Sistema' : 'Condutor Forense SENASP'}
                 </span>
                 <div className="flex items-center gap-1.5">
                   {msg.isVoiceInput && (
@@ -633,11 +665,23 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
               className={`p-2.5 rounded-xl text-xs font-semibold flex items-center justify-center transition-all ${
                 isListening
                   ? 'bg-rose-600 text-white animate-pulse shadow-md ring-2 ring-rose-300'
+                  : !voiceService.isSupported
+                  ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 border border-slate-300 dark:border-slate-700'
                   : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700'
               }`}
-              title={isListening ? 'Parar escuta' : 'Ditar resposta por voz (mãos livres)'}
+              title={
+                isListening
+                  ? 'Parar escuta'
+                  : !voiceService.isSupported
+                  ? 'Reconhecimento de voz não suportado neste navegador — toque para ver detalhes'
+                  : 'Ditar resposta por voz (mãos livres)'
+              }
             >
-              {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5 text-sky-600 dark:text-sky-400" />}
+              {isListening ? (
+                <MicOff className="w-5 h-5" />
+              ) : (
+                <Mic className={`w-5 h-5 ${voiceService.isSupported ? 'text-sky-600 dark:text-sky-400' : 'text-slate-400 dark:text-slate-600'}`} />
+              )}
             </button>
 
             {/* Photo Shortcut Button */}
