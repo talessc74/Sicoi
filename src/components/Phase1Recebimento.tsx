@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   OsteologicalCollection,
   UserProfile,
-  PreliminaryBox,
   FieldWithAiSuggestion,
   MaterialType,
   PreservationCharacteristic,
@@ -14,7 +13,7 @@ import {
 import { PopConversationalConductor } from './PopConversationalConductor';
 import { calculateSha256, generateSignaturePayload } from '../services/auditService';
 import { getLatestPhaseSignature } from '../utils/signatures';
-import { Shield, Lock, FileText, Camera, Box, CheckCircle2, AlertCircle, Sparkles, Printer, Bot, Trash2, Save } from 'lucide-react';
+import { Shield, Lock, FileText, Camera, CheckCircle2, AlertCircle, Sparkles, Printer, Bot, Save } from 'lucide-react';
 
 interface Phase1RecebimentoProps {
   collection: OsteologicalCollection;
@@ -94,35 +93,6 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
 
   const setField = <K extends keyof typeof p1>(key: K, value: FieldWithAiSuggestion<any>) => {
     const updated = { ...collection, phase1: { ...collection.phase1, [key]: value } };
-    onUpdateCollection(updated);
-  };
-
-  const handleAddBox = () => {
-    const count = collection.phase1.preliminaryBoxes.length + 1;
-    const letter = String.fromCharCode(64 + count);
-    const newBox: PreliminaryBox = {
-      id: `CX-${collection.nic}-${letter}`,
-      boxCode: `CX-${collection.nic.split('-')[2]}-${letter}`,
-      presumedIndividualLabel: `Indivíduo Presumido ${letter}`,
-      currentLocation: 'Bancada de Triagem e Recepção Inicial',
-      qrCode: `SGCCCO://BOX/CX-${collection.nic}-${letter}`,
-      cleaningStatus: 'pendente'
-    };
-    const updated = { ...collection };
-    updated.phase1 = { ...updated.phase1, preliminaryBoxes: [...updated.phase1.preliminaryBoxes, newBox] };
-    onUpdateCollection(updated);
-  };
-
-  // Nunca deixa a caixa preliminar chegar a zero — sempre precisa de pelo menos uma
-  // pra representar o material recebido. Só existia "Adicionar Caixa"; sem remover,
-  // uma caixa criada por engano (duplo toque, teste) ficava presa no conjunto.
-  const handleRemoveBox = (boxId: string) => {
-    if (collection.phase1.preliminaryBoxes.length <= 1) return;
-    const updated = { ...collection };
-    updated.phase1 = {
-      ...updated.phase1,
-      preliminaryBoxes: updated.phase1.preliminaryBoxes.filter((b) => b.id !== boxId)
-    };
     onUpdateCollection(updated);
   };
 
@@ -642,62 +612,6 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
                   />
                 )}
               </FormSection>
-
-              {/* Separação em Caixas Preliminares */}
-              <div className="pt-3 border-t border-slate-200 dark:border-slate-800">
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <h4 className="font-semibold text-xs text-slate-900 dark:text-white flex items-center gap-1.5">
-                      <Box className="w-4 h-4 text-amber-600" />
-                      Separação em Caixas de Triagem
-                    </h4>
-                    <p className="text-[11px] text-slate-400">Uma caixa por indivíduo presumido + elementos não associados</p>
-                  </div>
-                  {!isLocked && (
-                    <button
-                      onClick={handleAddBox}
-                      className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-medium hover:bg-slate-200"
-                    >
-                      + Adicionar Caixa
-                    </button>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  {collection.phase1.preliminaryBoxes.map((box) => (
-                    <div
-                      key={box.id}
-                      className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex flex-wrap items-center justify-between gap-3 text-xs"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className="p-2 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-mono font-bold">
-                          {box.boxCode}
-                        </div>
-                        <div>
-                          <span className="font-semibold text-slate-900 dark:text-white block">{box.presumedIndividualLabel}</span>
-                          <span className="text-slate-400 font-mono text-[11px]">
-                            QR: {box.qrCode} · Local: {box.currentLocation}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded text-[10px] uppercase font-mono font-semibold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                          Status: {box.cleaningStatus}
-                        </span>
-                        {!isLocked && collection.phase1.preliminaryBoxes.length > 1 && (
-                          <button
-                            onClick={() => handleRemoveBox(box.id)}
-                            title="Remover esta caixa (ex.: criada por engano)"
-                            className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
 
               {!hasPhotos && (
                 <div className="p-4 rounded-xl border border-dashed border-amber-300 dark:border-amber-800/60 bg-amber-50/40 dark:bg-amber-950/20 text-xs text-amber-800 dark:text-amber-300 flex items-center gap-2">
