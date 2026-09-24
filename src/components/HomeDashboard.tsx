@@ -1,6 +1,5 @@
 import React from 'react';
 import { OsteologicalCollection, UserProfile } from '../types/sgccco';
-import { useAppVersion } from '../hooks/useAppVersion';
 import {
   FolderOpen,
   Users,
@@ -55,8 +54,6 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     7: 'Consulta & Pesquisa'
   };
 
-  const commitRef = useAppVersion();
-
   return (
     <div className="space-y-6">
       {/* Hero Welcome Banner */}
@@ -64,13 +61,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         <div className="relative z-10 max-w-3xl space-y-3">
           <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-sky-500/20 text-sky-300 border border-sky-400/30 text-xs font-mono">
             <ShieldCheck className="w-3.5 h-3.5 text-sky-400" />
-            <span>INC/DITEC/PF · Plataforma Oficial de Custódia Forense</span>
-            {commitRef && (
-              <>
-                <span className="opacity-40">·</span>
-                <span title="Referência do commit atualmente em execução">commit {commitRef}</span>
-              </>
-            )}
+            <span>INC/DITEC/PF · Coleção Osteológica Identificada (COI)</span>
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-white">
