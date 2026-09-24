@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { OsteologicalCollection, UserProfile } from '../types/sgccco';
 import {
   FolderOpen,
@@ -54,6 +54,16 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     7: 'Consulta & Pesquisa'
   };
 
+  // Referência de qual commit está rodando neste servidor — só para acompanhamento
+  // visual das atualizações, sem função operacional.
+  const [commitRef, setCommitRef] = useState<string | null>(null);
+  useEffect(() => {
+    fetch('/api/version')
+      .then((res) => res.json())
+      .then((data) => setCommitRef(data.commit || null))
+      .catch(() => setCommitRef(null));
+  }, []);
+
   return (
     <div className="space-y-6">
       {/* Hero Welcome Banner */}
@@ -62,6 +72,12 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-sky-500/20 text-sky-300 border border-sky-400/30 text-xs font-mono">
             <ShieldCheck className="w-3.5 h-3.5 text-sky-400" />
             <span>SENASP / DITEC · Plataforma Oficial de Custódia Forense</span>
+            {commitRef && (
+              <>
+                <span className="opacity-40">·</span>
+                <span title="Referência do commit atualmente em execução">commit {commitRef}</span>
+              </>
+            )}
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-white">
@@ -276,7 +292,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                       </span>
                     </td>
                     <td className="px-5 py-3.5 font-mono">
-                      {col.phase4.individuals.length || col.phase1.apparentMni.value} {col.phase4.individuals.length === 1 ? 'indivíduo' : 'indivíduos'}
+                      {col.phase4.individuals.length || col.phase1.preliminaryBoxes.length} {col.phase4.individuals.length === 1 ? 'indivíduo' : 'indivíduos'}
                     </td>
                     <td className="px-5 py-3.5 font-mono">
                       {col.phase1.preliminaryBoxes.length} {col.phase1.preliminaryBoxes.length === 1 ? 'caixa' : 'caixas'}

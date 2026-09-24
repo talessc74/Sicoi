@@ -4,6 +4,7 @@ import {
   ResearchAuthorization,
   ToothRecord
 } from '../types/sgccco';
+import { createEmptyPhase1Data, createEmptyPhase2Data } from './phaseDefaults';
 
 export const MOCK_USERS: UserProfile[] = [
   {
@@ -155,7 +156,7 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
         signedByName: 'Carlos Alberto Menezes',
         signedByRole: 'tecnico',
         signedAt: '2026-06-10T11:45:00Z',
-        sha256Hash: 'a8f3b210c49e7829d41029481bc92a819034f812e9b019385c490a18fbc7102e',
+        sha256Hash: 'c6ed4abbfefcf8080e6038c9ccba40c25209fe42ae10e3b84e6d3fdcc5d51951',
         status: 'locked'
       },
       {
@@ -164,7 +165,7 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
         signedByName: 'Carlos Alberto Menezes',
         signedByRole: 'tecnico',
         signedAt: '2026-06-15T16:20:00Z',
-        sha256Hash: '5e71bc9842a1048201f9481cb9284019a4891bca7281093481ec0184bfa91028',
+        sha256Hash: '2b9a54a9b3091d1b86c67beaeeb410439c2617a2cef03740f70bac6187c5d6b0',
         status: 'locked'
       },
       {
@@ -267,25 +268,36 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
       sensitiveNotes: 'Documento original de transferência cartorária anexado sob chave RSA-4096.'
     },
     phase1: {
-      deliveryDocumentNumber: { value: 'GUIA-REMESSA-SENASP-2026/0491', isAiSuggested: false },
-      originInstitution: { value: 'Serviço Municipal de Necrotérios e Cemitérios', isAiSuggested: false },
-      receivedBagsCount: { value: 2, isAiSuggested: false },
-      bagSealNumbers: { value: ['LACRE-AZUL-0841A', 'LACRE-AZUL-0841B'], isAiSuggested: false },
-      initialConditionNotes: {
-        value: 'Material esquelético seco, impregnado com resquício de sedimento argiloso. Sem tecidos moles remanescentes. Presença de dois crânios indicando NMI >= 2.',
+      ...createEmptyPhase1Data(),
+      equipeEnvolvidaLimpeza: { value: 'Técnico Carlos Alberto Menezes', isAiSuggested: false },
+      dataAnalise: { value: '2026-06-10', isAiSuggested: false },
+      horaAnalise: { value: '08h45min', isAiSuggested: false },
+      foto1SacoFechado: { value: true, isAiSuggested: false },
+      foto2PlacaCemiterio: { value: 'nao_se_aplica', isAiSuggested: false },
+      foto3RemanescentesMateriais: { value: 'sim', isAiSuggested: false },
+      foto4_1RemanescentesIsolados: { value: true, isAiSuggested: false },
+      foto4_2MateriaisIsolados: { value: 'nao_se_aplica', isAiSuggested: false },
+      tipoMaterial: { value: ['ossos', 'dentes'], isAiSuggested: false },
+      estadoPreservacao: {
+        value: ['seco', 'manchas'],
         isAiSuggested: true,
         transcriptSnippet: 'Sacos entregues com lacre íntegro, visualizo ossadas secas com terra, noto imediatamente dois crânios distintos confirmando no mínimo dois indivíduos.'
       },
-      apparentMni: { value: 2, isAiSuggested: true, transcriptSnippet: 'Dois crânios bem evidentes na abertura dos sacos.' },
-      preliminaryBonesNoted: {
-        value: ['Crânio A com mandíbula', 'Crânio B incompleto', 'Fêmures bilaterais', 'Costelas fragmentadas', 'Ossos ilíacos'],
+      observacoesGeraisPreservacao: {
+        value: 'Material esquelético seco, impregnado com resquício de sedimento argiloso. Sem tecidos moles remanescentes. Presença de dois crânios indicando NMI >= 2.',
         isAiSuggested: true
       },
-      initialPhotos: [
+      exameGenetico: { value: ['falange'], isAiSuggested: false },
+      geneticoResponsavelColeta: { value: 'Carlos Alberto Menezes', isAiSuggested: false },
+      analiseIsotopica: { value: ['dente'], isAiSuggested: false },
+      isotopicaResponsavelColeta: { value: 'Carlos Alberto Menezes', isAiSuggested: false },
+      corSacoLavagem: { value: 'Azul', isAiSuggested: false },
+      tipoLimpeza: { value: 'agua_fria', isAiSuggested: false },
+      houveDanos: { value: false, isAiSuggested: false },
+      photos: [
         {
           id: 'p1-img-01',
-          stepNumber: 1,
-          description: 'Abertura dos sacos e conferência dos lacres de entrada',
+          category: 'foto1_saco_fechado',
           author: 'Carlos Alberto Menezes',
           timestamp: '2026-06-10T08:45:00Z',
           sha256Hash: '4819a82019284019283019284019283019284019283019284019283019284019',
@@ -293,8 +305,7 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
         },
         {
           id: 'p1-img-02',
-          stepNumber: 3,
-          description: 'Visão panorâmica dos ossos sobre a bancada de triagem',
+          category: 'foto4_1_remanescentes_isolados',
           author: 'Carlos Alberto Menezes',
           timestamp: '2026-06-10T09:15:00Z',
           sha256Hash: '9182049182039481029384019284019283019284019283019284019283019284',
@@ -325,40 +336,26 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
       ]
     },
     phase2: {
-      cleaningSessions: [
-        {
-          id: 'cln-001',
-          boxId: 'CX-2026-0841-A',
-          startedAt: '2026-06-11T09:00:00Z',
-          finishedAt: '2026-06-12T09:30:00Z',
-          methodUsed: 'lavagem_mecanica_pinceis',
-          waterTemperatureC: 24,
-          operatorName: 'Carlos Alberto Menezes',
-          observations: {
-            value: 'Lavagem mecânica delicada com pincéis de cerdas macias em água destilada corrente. Sedimento argiloso removido sem abrasão cortical.',
-            isAiSuggested: true,
-            transcriptSnippet: 'Usando pincel de cerda macia e água destilada a vinte e quatro graus para tirar a terra sem raspar a cortical do osso.'
-          },
-          photos: []
-        },
-        {
-          id: 'cln-002',
-          boxId: 'CX-2026-0841-B',
-          startedAt: '2026-06-11T10:00:00Z',
-          finishedAt: '2026-06-12T10:00:00Z',
-          methodUsed: 'lavagem_mecanica_pinceis',
-          waterTemperatureC: 24,
-          operatorName: 'Carlos Alberto Menezes',
-          observations: {
-            value: 'Lavagem cuidadosa de fragmentos faciais e costelas frágeis.',
-            isAiSuggested: false
-          },
-          photos: []
-        }
-      ],
+      ...createEmptyPhase2Data(),
+      maceracaoTemperaturaC: { value: 70, isAiSuggested: false },
+      maceracaoDuracaoHoras: { value: 5, isAiSuggested: false },
+      maceracaoCiclosMonitoramento: { value: 3, isAiSuggested: false },
+      maceracaoResultado: { value: 'satisfatoria', isAiSuggested: false },
+      limpezaManualRealizada: {
+        value: true,
+        isAiSuggested: true,
+        transcriptSnippet: 'Usando pincel de cerda macia e água destilada a vinte e quatro graus para tirar a terra sem raspar a cortical do osso.'
+      },
+      limpezaManualObservacoes: {
+        value: 'Lavagem mecânica delicada com pincéis de cerdas macias em água destilada corrente. Sedimento argiloso removido sem abrasão cortical.',
+        isAiSuggested: true
+      },
+      secagemTemperaturaC: { value: 220, isAiSuggested: false },
       dryingConfirmationAllBoxes: true,
       dryingConfirmedAt: '2026-06-15T16:00:00Z',
-      dryingConfirmedBy: 'Carlos Alberto Menezes'
+      dryingConfirmedBy: 'Carlos Alberto Menezes',
+      acondicionamentoCaixaOssuariaCodigo: { value: 'CX-2026-0841-A', isAiSuggested: false },
+      acondicionamentoPlacaNicQrFixada: { value: true, isAiSuggested: false }
     },
     phase3: {
       boxLocations: [
@@ -667,7 +664,7 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
         signedByName: 'Carlos Alberto Menezes',
         signedByRole: 'tecnico',
         signedAt: '2026-07-15T12:00:00Z',
-        sha256Hash: '4910284019283019284019283019284019283019284019283019284019283019',
+        sha256Hash: '1ed3e2aa28d39f8ad358fadf59a1f8ffb6e1199224659ca2d890486abe6b7d10',
         status: 'locked'
       },
       {
@@ -676,7 +673,7 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
         signedByName: 'Carlos Alberto Menezes',
         signedByRole: 'tecnico',
         signedAt: '2026-07-19T17:00:00Z',
-        sha256Hash: '5029384019283019284019283019284019283019284019283019284019283019',
+        sha256Hash: '55a88894b84ee9f5e6c1bd451b4e106f791bff470ee182daa5f33d8a1af6548f',
         status: 'locked'
       },
       {
@@ -726,20 +723,25 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
       sensitiveNotes: 'Acompanha termo judicial de guarda acadêmico-científica.'
     },
     phase1: {
-      deliveryDocumentNumber: { value: 'OFICIO-IML-2026/881', isAiSuggested: false },
-      originInstitution: { value: 'IML Regional / Polícia Científica', isAiSuggested: false },
-      receivedBagsCount: { value: 1, isAiSuggested: false },
-      bagSealNumbers: { value: ['LACRE-VERMELHO-914'], isAiSuggested: false },
-      initialConditionNotes: {
-        value: 'Esqueleto único adulto em bom estado geral de conservação.',
-        isAiSuggested: false
-      },
-      apparentMni: { value: 1, isAiSuggested: false },
-      preliminaryBonesNoted: {
-        value: ['Crânio com dentes', 'Ossos longos completos', 'Pelve íntegra'],
-        isAiSuggested: false
-      },
-      initialPhotos: [],
+      ...createEmptyPhase1Data(),
+      equipeEnvolvidaLimpeza: { value: 'Técnico Carlos Alberto Menezes', isAiSuggested: false },
+      dataAnalise: { value: '2026-07-16', isAiSuggested: false },
+      horaAnalise: { value: '08h00min', isAiSuggested: false },
+      foto1SacoFechado: { value: true, isAiSuggested: false },
+      foto2PlacaCemiterio: { value: 'nao_se_aplica', isAiSuggested: false },
+      foto3RemanescentesMateriais: { value: 'nao_se_aplica', isAiSuggested: false },
+      foto4_1RemanescentesIsolados: { value: true, isAiSuggested: false },
+      foto4_2MateriaisIsolados: { value: 'nao_se_aplica', isAiSuggested: false },
+      tipoMaterial: { value: ['ossos', 'dentes'], isAiSuggested: false },
+      estadoPreservacao: { value: ['preservado_integro'], isAiSuggested: false },
+      observacoesGeraisPreservacao: { value: 'Esqueleto único adulto em bom estado geral de conservação.', isAiSuggested: false },
+      exameGenetico: { value: ['dente_higido'], isAiSuggested: false },
+      geneticoResponsavelColeta: { value: 'Carlos Alberto Menezes', isAiSuggested: false },
+      analiseIsotopica: { value: ['nao_coletado'], isAiSuggested: false },
+      isotopicaResponsavelColeta: { value: 'Não aplicável', isAiSuggested: false },
+      corSacoLavagem: { value: 'Vermelho', isAiSuggested: false },
+      tipoLimpeza: { value: 'a_seco', isAiSuggested: false },
+      houveDanos: { value: false, isAiSuggested: false },
       preliminaryBoxes: [
         {
           id: 'CX-2026-0914-A',
@@ -754,25 +756,19 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
       ]
     },
     phase2: {
-      cleaningSessions: [
-        {
-          id: 'cln-0914',
-          boxId: 'CX-2026-0914-A',
-          startedAt: '2026-07-16T08:00:00Z',
-          finishedAt: '2026-07-16T12:00:00Z',
-          methodUsed: 'lavagem_mecanica_pinceis',
-          waterTemperatureC: 22,
-          operatorName: 'Carlos Alberto Menezes',
-          observations: {
-            value: 'Material limpo sem intercorrências.',
-            isAiSuggested: false
-          },
-          photos: []
-        }
-      ],
+      ...createEmptyPhase2Data(),
+      maceracaoTemperaturaC: { value: 65, isAiSuggested: false },
+      maceracaoDuracaoHoras: { value: 4, isAiSuggested: false },
+      maceracaoCiclosMonitoramento: { value: 2, isAiSuggested: false },
+      maceracaoResultado: { value: 'satisfatoria', isAiSuggested: false },
+      limpezaManualRealizada: { value: true, isAiSuggested: false },
+      limpezaManualObservacoes: { value: 'Material limpo sem intercorrências.', isAiSuggested: false },
+      secagemTemperaturaC: { value: 210, isAiSuggested: false },
       dryingConfirmationAllBoxes: true,
       dryingConfirmedAt: '2026-07-19T16:30:00Z',
-      dryingConfirmedBy: 'Carlos Alberto Menezes'
+      dryingConfirmedBy: 'Carlos Alberto Menezes',
+      acondicionamentoCaixaOssuariaCodigo: { value: 'CX-2026-0914-A', isAiSuggested: false },
+      acondicionamentoPlacaNicQrFixada: { value: true, isAiSuggested: false }
     },
     phase3: {
       boxLocations: [
@@ -903,14 +899,7 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
       sensitiveNotes: 'Acondicionado sob sigilo judiciário nível 2.'
     },
     phase1: {
-      deliveryDocumentNumber: { value: '', isAiSuggested: false },
-      originInstitution: { value: '', isAiSuggested: false },
-      receivedBagsCount: { value: 2, isAiSuggested: false },
-      bagSealNumbers: { value: [], isAiSuggested: false },
-      initialConditionNotes: { value: '', isAiSuggested: false },
-      apparentMni: { value: 1, isAiSuggested: false },
-      preliminaryBonesNoted: { value: [], isAiSuggested: false },
-      initialPhotos: [],
+      ...createEmptyPhase1Data(),
       preliminaryBoxes: [
         {
           id: 'CX-2026-0955-A',
@@ -930,10 +919,7 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
         }
       ]
     },
-    phase2: {
-      cleaningSessions: [],
-      dryingConfirmationAllBoxes: false
-    },
+    phase2: createEmptyPhase2Data(),
     phase3: {
       boxLocations: [],
       enteredQueueAt: ''

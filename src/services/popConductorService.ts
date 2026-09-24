@@ -55,184 +55,433 @@ export interface PopDefinition {
 export const SENASP_POPS: Record<PhaseNumber, PopDefinition> = {
   1: {
     phaseNumber: 1,
-    popCode: 'POP-SENASP-01',
-    popTitle: 'Recebimento e Triagem Inicial',
-    regulatoryRef: 'Portaria SENASP/MJSP nº 04/2023 · Art. 158-B CPP',
-    introMessage: 'Olá! Sou o Condutor do POP-SENASP-01 (Recebimento e Triagem Inicial). Vou orientar passo a passo a conferência de entrada, lacres de custódia e triagem anatômica preliminar. Você pode responder falando no microfone ou digitando.',
+    popCode: 'POP-01',
+    popTitle: 'Análise Preliminar e Limpeza dos Remanescentes Ósseos',
+    regulatoryRef: 'POP-01 v1 · COI-INC · Formulário A.1',
+    introMessage: 'Olá! Sou o Condutor do POP-01 (Análise Preliminar e Limpeza dos Remanescentes Ósseos). Vou orientar o preenchimento do Formulário A.1, passo a passo, exatamente na ordem do procedimento. Você pode responder falando no microfone ou digitando.',
     steps: [
       {
         stepNumber: 1,
-        stepTitle: 'Conferência de Invólucros e Lacres de Custódia',
-        conductorPrompt: 'Primeiro passo (§Art. 158-B CPP): Quantos sacos ou caixas de transporte foram entregues e quais são os números de lacre gravados nos fechos?',
-        regulatoryNotice: 'Obrigatório conferir a integridade física dos lacres antes do rompimento.',
-        requiresPhoto: true,
-        photoPrompt: 'Registrar foto frontal dos sacos e lacres inviolados',
+        stepTitle: 'Identificação da Sessão (Livro de Protocolo)',
+        conductorPrompt: 'Primeiro passo (POP-01 §9.2): Quem é a equipe envolvida na análise e limpeza, e qual a data e a hora de início do processamento?',
+        regulatoryNotice: 'Registro obrigatório no Livro de Protocolo da Sala de Análise Preliminar e Maceração.',
+        requiresPhoto: false,
         quickSuggestions: [
-          '2 sacos entregues com lacres azul LAC-0841A e LAC-0841B intactos.',
-          '1 saco de transporte com lacre verde LAC-9012 íntegro.',
-          '3 sacos com lacres LAC-101, LAC-102 e LAC-103 sem violação aparente.'
+          'Equipe: Técnico João e Técnica Maria. Data de hoje, início às 09h15min.',
+          'Equipe composta por dois peritos. Hoje, 14h30min.'
         ],
         extractData: (input: string) => {
-          const lower = input.toLowerCase();
-          let bags = 1;
-          if (lower.includes('dois') || lower.includes('2') || lower.includes('duas')) bags = 2;
-          else if (lower.includes('três') || lower.includes('tres') || lower.includes('3')) bags = 3;
-          else if (lower.includes('quatro') || lower.includes('4')) bags = 4;
+          const data: Record<string, any> = {};
+          const equipeMatch = input.match(/equipe[:\s]+([^.]+?)(?:\.|data|hora|$)/i);
+          if (equipeMatch) data.equipeEnvolvidaLimpeza = equipeMatch[1].trim();
+          else if (input.trim().length > 3) data.equipeEnvolvidaLimpeza = input.trim();
 
-          const seals: string[] = [];
-          const sealMatches = input.match(/(lacre[s]?|lac|fecho[s]?)\s*[:\-]?\s*([A-Za-z0-9\-]+)/gi);
-          if (sealMatches) {
-            sealMatches.forEach(s => {
-              const clean = s.replace(/(lacre[s]?|lac|fecho[s]?)\s*[:\-]?\s*/i, '').trim();
-              if (clean.length >= 3) seals.push(clean.toUpperCase());
-            });
-          }
-          if (seals.length === 0) {
-            // Check for general alphanumerics like LAC-0841A or 0841A
-            const altMatches = input.match(/\b([A-Z]{2,4}-?[0-9]{3,5}[A-Z]?)\b/gi);
-            if (altMatches) {
-              altMatches.forEach(m => seals.push(m.toUpperCase()));
-            }
-          }
-          if (seals.length === 0) {
-            seals.push(`LACRE-${Math.floor(1000 + Math.random() * 9000)}`);
-          }
+          const horaMatch = input.match(/(\d{1,2}h\d{0,2}(?:min)?)/i);
+          if (horaMatch) data.horaAnalise = horaMatch[1];
+
+          if (/\bhoje\b/i.test(input)) data.dataAnalise = new Date().toISOString().slice(0, 10);
+          const dataMatch = input.match(/(\d{2}\/\d{2}\/\d{4})/);
+          if (dataMatch) data.dataAnalise = dataMatch[1];
+
+          const missing: string[] = [];
+          if (!data.equipeEnvolvidaLimpeza) missing.push('equipe envolvida');
+          if (!data.dataAnalise) missing.push('data');
+          if (!data.horaAnalise) missing.push('hora');
 
           return {
-            data: {
-              receivedBagsCount: bags,
-              bagSealNumbers: seals
-            },
-            summaryText: `${bags} invólucro(s) registrado(s) · Lacres: ${seals.join(', ')}`,
-            isComplete: true
+            data,
+            summaryText: missing.length === 0
+              ? `Equipe: ${data.equipeEnvolvidaLimpeza} · ${data.dataAnalise} ${data.horaAnalise}`
+              : `Ainda falta informar: ${missing.join(', ')}.`,
+            isComplete: missing.length === 0
           };
         }
       },
       {
         stepNumber: 2,
-        stepTitle: 'Condição Inicial do Material e Sedimentos',
-        conductorPrompt: 'Segundo passo: Qual é o estado preliminar dos ossos? Descreva umidade (seco/úmido), impregnação de terra/sedimentos ou se há tecidos moles aderidos.',
-        regulatoryNotice: 'POP-01 item 4.2: Proibido lavar antes da conferência de sedimentos.',
-        requiresPhoto: false,
+        stepTitle: 'Checklist Fotográfico (Formulário A.1, campos 5-9)',
+        conductorPrompt: 'Segundo passo (POP-01 §9.2, conforme POP-03): Confirme cada fotografia obrigatória — saco fechado com lacre e escala; placa do cemitério, se houver; remanescentes com materiais associados; remanescentes isolados; e materiais associados isolados, se houver.',
+        regulatoryNotice: 'Foto 1 e Foto 4.1 são sempre obrigatórias. As demais são "se aplicável".',
+        requiresPhoto: true,
+        photoPrompt: 'Registrar as fotos do checklist na ordem do POP-03',
         quickSuggestions: [
-          'Ossadas secas com impregnação argilosa avermelhada, sem tecidos moles.',
-          'Material úmido com resíduos de solo arenoso, presença de raízes vegetais finas.',
-          'Ossos secos, esbranquiçados por intemperismo solar superficial, ausência de tecidos moles.'
+          'Foto do saco fechado feita. Placa de cemitério não se aplica. Materiais associados não se aplica. Remanescentes isolados fotografados.',
+          'Todas as fotos obrigatórias feitas, incluindo placa do cemitério e materiais associados isolados.'
         ],
         extractData: (input: string) => {
+          const lower = input.toLowerCase();
+          const data: Record<string, any> = {};
+
+          if (/saco.*(fechado|lacre)/.test(lower) || /foto\s*1\b/.test(lower)) data.foto1SacoFechado = true;
+          if (/(placa).*(cemit[ée]rio)/.test(lower)) {
+            data.foto2PlacaCemiterio = /n[ãa]o se aplica|sem placa/.test(lower) ? 'nao_se_aplica' : 'sim';
+          }
+          if (/materiais associados/.test(lower) && !/isolad/.test(lower)) {
+            data.foto3RemanescentesMateriais = /n[ãa]o se aplica/.test(lower) ? 'nao_se_aplica' : 'sim';
+          }
+          if (/remanescentes isolad/.test(lower) || /foto\s*4\.?1\b/.test(lower)) data.foto4_1RemanescentesIsolados = true;
+          if (/materiais associados isolad/.test(lower) || /foto\s*4\.?2\b/.test(lower)) {
+            data.foto4_2MateriaisIsolados = /n[ãa]o se aplica/.test(lower) ? 'nao_se_aplica' : 'sim';
+          }
+          if (/todas as fotos/.test(lower)) {
+            data.foto1SacoFechado = true;
+            data.foto4_1RemanescentesIsolados = true;
+            if (!data.foto2PlacaCemiterio) data.foto2PlacaCemiterio = 'sim';
+            if (!data.foto3RemanescentesMateriais) data.foto3RemanescentesMateriais = 'sim';
+            if (!data.foto4_2MateriaisIsolados) data.foto4_2MateriaisIsolados = 'sim';
+          }
+
+          const missing: string[] = [];
+          if (!data.foto1SacoFechado) missing.push('foto do saco fechado');
+          if (data.foto2PlacaCemiterio === undefined) missing.push('foto da placa do cemitério (ou "não se aplica")');
+          if (data.foto3RemanescentesMateriais === undefined) missing.push('foto dos remanescentes com materiais associados (ou "não se aplica")');
+          if (!data.foto4_1RemanescentesIsolados) missing.push('foto dos remanescentes isolados');
+          if (data.foto4_2MateriaisIsolados === undefined) missing.push('foto dos materiais associados isolados (ou "não se aplica")');
+
           return {
-            data: {
-              initialConditionNotes: input.trim()
-            },
-            summaryText: `Condição registrada: "${input.trim().slice(0, 70)}..."`,
-            isComplete: input.trim().length > 8
+            data,
+            summaryText: missing.length === 0 ? 'Checklist fotográfico completo.' : `Ainda falta: ${missing.join('; ')}.`,
+            isComplete: missing.length === 0
           };
         }
       },
       {
         stepNumber: 3,
-        stepTitle: 'Triagem Anatômica e Estimativa de NMI',
-        conductorPrompt: 'Terceiro passo: Durante a triagem preliminar na bancada, quais elementos anatômicos principais foram identificados? Qual a estimativa de Número Mínimo de Indivíduos (NMI)?',
-        regulatoryNotice: 'Basear o NMI em elementos repetidos (ex.: crânios, mandíbulas, fêmures esquerdos).',
-        requiresPhoto: true,
-        photoPrompt: 'Fotografia panorâmica dos elementos na bancada de triagem',
+        stepTitle: 'Tipo de Material Presente (campo 10)',
+        conductorPrompt: 'Terceiro passo: Que tipos de material estão presentes no saco? Ossos, dentes, cabelo, unha, próteses, vestes, pertences, tecidos moles?',
+        requiresPhoto: false,
         quickSuggestions: [
-          '2 crânios com mandíbulas e fêmures bilaterais. NMI preliminar de 2.',
-          '1 crânio íntegro com esqueleto pós-craniano compatível. NMI de 1 indivíduo.',
-          'Fragmentos cranianos dispersos e 3 fêmures direitos. NMI preliminar de 3 indivíduos.'
+          'Ossos e dentes presentes, sem outros materiais.',
+          'Ossos, vestes e uma prótese dentária, descrita como coroa metálica no incisivo superior.'
         ],
         extractData: (input: string) => {
           const lower = input.toLowerCase();
-          let mni = 1;
-          if (lower.includes('dois') || lower.includes('2') || lower.includes('duas')) mni = 2;
-          else if (lower.includes('três') || lower.includes('tres') || lower.includes('3')) mni = 3;
-          else if (lower.includes('quatro') || lower.includes('4')) mni = 4;
-
-          const bones: string[] = [];
-          if (lower.includes('crânio') || lower.includes('cranio')) bones.push('Crânio(s)');
-          if (lower.includes('mandíbula') || lower.includes('mandibula')) bones.push('Mandíbula(s)');
-          if (lower.includes('fêmur') || lower.includes('femur')) bones.push('Fêmures');
-          if (lower.includes('úmero') || lower.includes('umero')) bones.push('Úmeros');
-          if (lower.includes('pelve') || lower.includes('ilíaco') || lower.includes('iliaco')) bones.push('Ossos ilíacos');
-          if (lower.includes('costela')) bones.push('Costelas');
-          if (lower.includes('vértebra') || lower.includes('vertebra')) bones.push('Vértebras');
-          if (bones.length === 0) bones.push('Elementos esqueléticos dispersos');
+          const types: string[] = [];
+          if (lower.includes('osso')) types.push('ossos');
+          if (lower.includes('dente')) types.push('dentes');
+          if (lower.includes('cabelo')) types.push('cabelo');
+          if (lower.includes('unha')) types.push('unha');
+          if (lower.includes('prótese') || lower.includes('protese')) types.push('proteses');
+          if (lower.includes('veste')) types.push('vestes');
+          if (lower.includes('pertence')) types.push('pertences');
+          if (lower.includes('tecido mole') || lower.includes('mumificad')) types.push('tecidos_moles');
 
           return {
-            data: {
-              apparentMni: mni,
-              preliminaryBonesNoted: bones
-            },
-            summaryText: `NMI Preliminar: ${mni} | Ossos: ${bones.join(', ')}`,
-            isComplete: true
+            data: types.length > 0 ? { tipoMaterial: types } : {},
+            summaryText: types.length > 0 ? `Material presente: ${types.join(', ')}.` : 'Nenhum tipo de material reconhecido ainda.',
+            isComplete: types.length > 0
+          };
+        }
+      },
+      {
+        stepNumber: 4,
+        stepTitle: 'Estado de Preservação (campo 16)',
+        conductorPrompt: 'Quarto passo: Como está o estado de preservação dos remanescentes? Preservado/íntegro, degradado, fragmentado, friável, com erosão, úmido, seco, com fungo visível, manchas, perda de cortical, carbonização ou insetos?',
+        requiresPhoto: false,
+        quickSuggestions: [
+          'Preservado e seco, sem sinais de degradação.',
+          'Degradado, com fragmentação e perda de cortical em alguns segmentos.'
+        ],
+        extractData: (input: string) => {
+          const lower = input.toLowerCase();
+          const chars: string[] = [];
+          if (lower.includes('preservado') || lower.includes('íntegro') || lower.includes('integro')) chars.push('preservado_integro');
+          if (lower.includes('degradad')) chars.push('degradado');
+          if (lower.includes('fragment')) chars.push('fragmentacao');
+          if (lower.includes('friável') || lower.includes('friavel')) chars.push('friavel');
+          if (lower.includes('erosão') || lower.includes('erosao')) chars.push('erosao');
+          if (lower.includes('úmido') || lower.includes('umido')) chars.push('umido');
+          if (lower.includes('seco')) chars.push('seco');
+          if (lower.includes('fungo')) chars.push('fungo_visivel');
+          if (lower.includes('mancha')) chars.push('manchas');
+          if (lower.includes('perda de cortical') || lower.includes('cortical')) chars.push('perda_cortical');
+          if (lower.includes('carboniz')) chars.push('carbonizacao');
+          if (lower.includes('inseto') || lower.includes('pupa')) chars.push('insetos_pupas');
+
+          return {
+            data: chars.length > 0 ? { estadoPreservacao: chars, observacoesGeraisPreservacao: input.trim() } : {},
+            summaryText: chars.length > 0 ? `Estado de preservação: ${chars.join(', ')}.` : 'Nenhuma característica de preservação reconhecida ainda.',
+            isComplete: chars.length > 0
+          };
+        }
+      },
+      {
+        stepNumber: 5,
+        stepTitle: 'Coleta de Amostra Biológica — Exame Genético (POP-01 §9.3.1)',
+        conductorPrompt: 'Quinto passo — importante: isto precisa ser feito ANTES da maceração. Foi coletada amostra para exame genético? De qual elemento (falange, ossos tarsais, dente hígido, primeira costela, patela) e quem é o responsável pela coleta?',
+        regulatoryNotice: 'POP-01 §9.3.1: a coleta compromete-se se feita após a maceração — ordem de prioridade: falange distal, demais falanges, tarsais, dente, costela, patela.',
+        requiresPhoto: false,
+        quickSuggestions: [
+          'Coletada falange distal, responsável Técnico João.',
+          'Não coletado, sem indicação de exame genético neste caso.'
+        ],
+        extractData: (input: string) => {
+          const lower = input.toLowerCase();
+          const elements: string[] = [];
+          if (lower.includes('não coletad') || lower.includes('nao coletad')) elements.push('nao_coletado');
+          else {
+            if (lower.includes('falange')) elements.push('falange');
+            if (lower.includes('tarsa')) elements.push('ossos_tarsais');
+            if (lower.includes('dente') || lower.includes('molar') || lower.includes('incisivo') || lower.includes('canino')) elements.push('dente_higido');
+            if (lower.includes('costela')) elements.push('primeira_costela');
+            if (lower.includes('patela')) elements.push('patela');
+            if (elements.length === 0 && lower.includes('outro')) elements.push('outros');
+          }
+
+          const respMatch = input.match(/respons[áa]vel[:\s]+([^.]+)/i);
+          const data: Record<string, any> = {};
+          if (elements.length > 0) data.exameGenetico = elements;
+          if (respMatch) data.geneticoResponsavelColeta = respMatch[1].trim();
+          else if (elements[0] === 'nao_coletado') data.geneticoResponsavelColeta = 'Não aplicável';
+
+          const missing: string[] = [];
+          if (!data.exameGenetico) missing.push('elemento coletado (ou "não coletado")');
+          if (!data.geneticoResponsavelColeta) missing.push('responsável pela coleta');
+
+          return {
+            data,
+            summaryText: missing.length === 0 ? `Exame genético: ${data.exameGenetico?.join(', ')} · Responsável: ${data.geneticoResponsavelColeta}` : `Ainda falta: ${missing.join('; ')}.`,
+            isComplete: missing.length === 0
+          };
+        }
+      },
+      {
+        stepNumber: 6,
+        stepTitle: 'Coleta de Amostra Biológica — Análise Isotópica (POP-01 §9.3.2)',
+        conductorPrompt: 'Sexto passo: Foi coletada amostra para análise isotópica — cabelo, unha ou dente? Quem é o responsável pela coleta?',
+        requiresPhoto: false,
+        quickSuggestions: [
+          'Coletado cabelo e unhas, responsável Técnica Maria.',
+          'Não coletado.'
+        ],
+        extractData: (input: string) => {
+          const lower = input.toLowerCase();
+          const materials: string[] = [];
+          if (lower.includes('não coletad') || lower.includes('nao coletad')) materials.push('nao_coletado');
+          else {
+            if (lower.includes('cabelo')) materials.push('cabelo');
+            if (lower.includes('unha')) materials.push('unha');
+            if (lower.includes('dente')) materials.push('dente');
+          }
+
+          const respMatch = input.match(/respons[áa]vel[:\s]+([^.]+)/i);
+          const data: Record<string, any> = {};
+          if (materials.length > 0) data.analiseIsotopica = materials;
+          if (respMatch) data.isotopicaResponsavelColeta = respMatch[1].trim();
+          else if (materials[0] === 'nao_coletado') data.isotopicaResponsavelColeta = 'Não aplicável';
+
+          const missing: string[] = [];
+          if (!data.analiseIsotopica) missing.push('material coletado (ou "não coletado")');
+          if (!data.isotopicaResponsavelColeta) missing.push('responsável pela coleta');
+
+          return {
+            data,
+            summaryText: missing.length === 0 ? `Análise isotópica: ${data.analiseIsotopica?.join(', ')} · Responsável: ${data.isotopicaResponsavelColeta}` : `Ainda falta: ${missing.join('; ')}.`,
+            isComplete: missing.length === 0
+          };
+        }
+      },
+      {
+        stepNumber: 7,
+        stepTitle: 'Limpeza (campos 32-33)',
+        conductorPrompt: 'Sétimo passo: Qual a cor do saco de lavagem atribuído a este conjunto, e qual tipo de limpeza foi empregado — a seco, água fria ou água quente?',
+        requiresPhoto: false,
+        quickSuggestions: [
+          'Saco azul, limpeza a seco.',
+          'Saco verde, limpeza com água quente.'
+        ],
+        extractData: (input: string) => {
+          const lower = input.toLowerCase();
+          const data: Record<string, any> = {};
+          const corMatch = input.match(/saco\s+(\w+)/i) || input.match(/cor\s*[:\s]+(\w+)/i);
+          if (corMatch) data.corSacoLavagem = corMatch[1];
+
+          if (lower.includes('água quente') || lower.includes('agua quente')) data.tipoLimpeza = 'agua_quente';
+          else if (lower.includes('água fria') || lower.includes('agua fria')) data.tipoLimpeza = 'agua_fria';
+          else if (lower.includes('a seco') || lower.includes('seco')) data.tipoLimpeza = 'a_seco';
+
+          const missing: string[] = [];
+          if (!data.corSacoLavagem) missing.push('cor do saco de lavagem');
+          if (!data.tipoLimpeza) missing.push('tipo de limpeza');
+
+          return {
+            data,
+            summaryText: missing.length === 0 ? `Saco ${data.corSacoLavagem} · Limpeza: ${data.tipoLimpeza}` : `Ainda falta: ${missing.join('; ')}.`,
+            isComplete: missing.length === 0
+          };
+        }
+      },
+      {
+        stepNumber: 8,
+        stepTitle: 'Danos Durante o Processamento (campos 34-35)',
+        conductorPrompt: 'Último passo do Formulário A.1: houve algum dano durante o processamento? Se sim, descreva.',
+        requiresPhoto: false,
+        quickSuggestions: [
+          'Não houve danos.',
+          'Sim, pequena fratura na extremidade distal do rádio esquerdo durante a remoção de tecido aderido.'
+        ],
+        extractData: (input: string) => {
+          const lower = input.toLowerCase();
+          const data: Record<string, any> = {};
+          if (/n[ãa]o houve|sem dano|nenhum dano/.test(lower)) {
+            data.houveDanos = false;
+          } else if (/sim|houve dano|dano/.test(lower)) {
+            data.houveDanos = true;
+            data.descricaoDanos = input.trim();
+          }
+
+          const missing: string[] = [];
+          if (data.houveDanos === undefined) missing.push('se houve dano (sim/não)');
+          if (data.houveDanos === true && !data.descricaoDanos) missing.push('descrição do dano');
+
+          return {
+            data,
+            summaryText: missing.length === 0
+              ? (data.houveDanos ? `Dano registrado: "${data.descricaoDanos.slice(0, 60)}..."` : 'Sem danos registrados.')
+              : `Ainda falta: ${missing.join('; ')}.`,
+            isComplete: missing.length === 0
           };
         }
       }
     ],
-    completionMessage: 'Parabéns! Todos os 3 passos do POP-SENASP-01 foram preenchidos pela conversa. Os dados já foram consolidados na coleção. Agora você pode gerar as etiquetas de caixas e assinar a Fase 1 com certificado digital.'
+    completionMessage: 'Formulário A.1 concluído. Todos os campos obrigatórios do POP-01 (itens 9.2 a 9.4) foram preenchidos e gravados. Prossiga para a maceração e limpeza (Fase 2).'
   },
   2: {
     phaseNumber: 2,
-    popCode: 'POP-SENASP-02',
-    popTitle: 'Limpeza e Higienização Forense',
-    regulatoryRef: 'POP-SENASP-02 · Diretrizes DITEC/SENASP',
-    introMessage: 'Iniciando o Condutor do POP-SENASP-02 (Limpeza e Secagem). Vamos registrar o método de higienização mecânica ou aquosa e conferir o protocolo de secagem em estufa.',
+    popCode: 'POP-01',
+    popTitle: 'Maceração, Limpeza, Secagem e Acondicionamento',
+    regulatoryRef: 'POP-01 v1 · COI-INC · §9.5-9.7',
+    introMessage: 'Continuando o Condutor do POP-01: agora vamos registrar a maceração, a limpeza manual, a secagem em estufa e o acondicionamento na caixa ossuária.',
     steps: [
       {
         stepNumber: 1,
-        stepTitle: 'Método de Higienização e Temperatura',
-        conductorPrompt: 'Passo 1 do POP-02: Qual o método de limpeza empregado na caixa selecionada e a temperatura média da água utilizada?',
+        stepTitle: 'Maceração (POP-01 §9.5)',
+        conductorPrompt: 'Primeiro passo: qual foi a temperatura da água de maceração (60-80°C), a duração aproximada (4-6h), e o resultado — a maceração foi satisfatória ou precisou de novo ciclo?',
         requiresPhoto: false,
         quickSuggestions: [
-          'Lavagem mecânica suave com pincéis de cerdas macias em água a 24°C.',
-          'Pincelamento a seco com escovas macias (sem uso de água).',
-          'Maceração aquosa controlada a 23°C com água destilada corrente.'
+          'Água a 70 graus, 5 horas, maceração satisfatória.',
+          'Água a 65 graus, 4 horas, necessitou novo ciclo por resistência dos tecidos.'
         ],
         extractData: (input: string) => {
           const lower = input.toLowerCase();
-          let method: 'lavagem_mecanica_pinceis' | 'pincelamento_seco' | 'outro_justificado' = 'lavagem_mecanica_pinceis';
-          if (lower.includes('seco') || lower.includes('pincelamento')) method = 'pincelamento_seco';
-          else if (lower.includes('macer') || lower.includes('outro')) method = 'outro_justificado';
+          const data: Record<string, any> = {};
+          const tempMatch = input.match(/(\d{2,3})\s*(graus|°|c\b)/i);
+          if (tempMatch) data.maceracaoTemperaturaC = parseInt(tempMatch[1], 10);
+          const horasMatch = input.match(/(\d{1,2})\s*hora/i);
+          if (horasMatch) data.maceracaoDuracaoHoras = parseInt(horasMatch[1], 10);
+          if (lower.includes('novo ciclo') || lower.includes('resist')) data.maceracaoResultado = 'necessitou_novo_ciclo';
+          else if (lower.includes('satisfat')) data.maceracaoResultado = 'satisfatoria';
 
-          let temp = 24;
-          const match = input.match(/(\d+)\s*(°|graus|c)/i);
-          if (match) temp = parseInt(match[1], 10);
+          const missing: string[] = [];
+          if (!data.maceracaoTemperaturaC) missing.push('temperatura da água');
+          if (!data.maceracaoDuracaoHoras) missing.push('duração em horas');
+          if (!data.maceracaoResultado) missing.push('resultado (satisfatória ou novo ciclo)');
 
           return {
-            data: {
-              methodUsed: method,
-              waterTemperatureC: temp,
-              observations: input.trim()
-            },
-            summaryText: `Método: ${method} · Temperatura: ${temp}°C`,
-            isComplete: true
+            data,
+            summaryText: missing.length === 0
+              ? `Maceração: ${data.maceracaoTemperaturaC}°C, ${data.maceracaoDuracaoHoras}h, ${data.maceracaoResultado}`
+              : `Ainda falta: ${missing.join('; ')}.`,
+            isComplete: missing.length === 0
           };
         }
       },
       {
         stepNumber: 2,
-        stepTitle: 'Conferência de Secagem Completa em Estufa',
-        conductorPrompt: 'Passo 2 do POP-02: Confirme se os ossos já cumpriram o período regulamentar em estufa ventilada (mínimo 72h) e se encontram completamente secos e sem odores.',
-        requiresPhoto: true,
-        photoPrompt: 'Fotografia dos ossos secos dispostos em bancada sobre papel absorvente neutro',
+        stepTitle: 'Limpeza Manual (POP-01 §9.5)',
+        conductorPrompt: 'Segundo passo: a limpeza manual com esponjas e escovas foi realizada até a remoção dos tecidos moles remanescentes? Alguma observação?',
+        requiresPhoto: false,
         quickSuggestions: [
-          'Confirmo secagem completa após 72 horas em estufa ventilada a 30°C.',
-          'Material perfeitamente seco, sem sinais de fungos ou umidade residual.',
-          'Secagem concluída em 48h com umidade relativa inferior a 45%.'
+          'Sim, limpeza manual concluída, tecidos moles totalmente removidos.',
+          'Sim, com uso cauteloso de instrumento cortante em área de aderência forte.'
         ],
         extractData: (input: string) => {
+          const lower = input.toLowerCase();
+          const data: Record<string, any> = {};
+          if (/\bsim\b/.test(lower) || lower.includes('concluíd') || lower.includes('concluid') || lower.includes('realizad')) {
+            data.limpezaManualRealizada = true;
+            data.limpezaManualObservacoes = input.trim();
+          } else if (/\bn[ãa]o\b/.test(lower)) {
+            data.limpezaManualRealizada = false;
+          }
+
           return {
-            data: {
-              dryingConfirmed: true,
-              dryingNotes: input.trim()
-            },
-            summaryText: 'Secagem integral confirmada conforme POP-02.',
-            isComplete: true
+            data,
+            summaryText: data.limpezaManualRealizada === undefined
+              ? 'Ainda falta confirmar se a limpeza manual foi realizada.'
+              : `Limpeza manual: ${data.limpezaManualRealizada ? 'realizada' : 'não realizada'}.`,
+            isComplete: data.limpezaManualRealizada !== undefined
+          };
+        }
+      },
+      {
+        stepNumber: 3,
+        stepTitle: 'Secagem em Estufa (POP-01 §9.6)',
+        conductorPrompt: 'Terceiro passo: qual a temperatura da estufa (200-250°C), e você confirma que a secagem foi concluída, sem umidade visível em nenhuma caixa?',
+        requiresPhoto: false,
+        quickSuggestions: [
+          'Estufa a 220 graus. Secagem completa confirmada, sem umidade em nenhuma caixa.',
+          'Estufa a 230 graus, ainda com umidade residual, precisa de mais um ciclo.'
+        ],
+        extractData: (input: string) => {
+          const lower = input.toLowerCase();
+          const data: Record<string, any> = {};
+          const tempMatch = input.match(/(\d{3})\s*(graus|°|c\b)/i);
+          if (tempMatch) data.secagemTemperaturaC = parseInt(tempMatch[1], 10);
+          if (lower.includes('completa') && (lower.includes('confirm') || lower.includes('sem umidade'))) {
+            data.dryingConfirmationAllBoxes = true;
+          } else if (lower.includes('umidade residual') || lower.includes('ainda com umidade')) {
+            data.dryingConfirmationAllBoxes = false;
+          }
+
+          const missing: string[] = [];
+          if (!data.secagemTemperaturaC) missing.push('temperatura da estufa');
+          if (data.dryingConfirmationAllBoxes === undefined) missing.push('confirmação de secagem completa');
+
+          return {
+            data,
+            summaryText: missing.length === 0
+              ? `Estufa a ${data.secagemTemperaturaC}°C · Secagem completa: ${data.dryingConfirmationAllBoxes ? 'sim' : 'não'}`
+              : `Ainda falta: ${missing.join('; ')}.`,
+            isComplete: missing.length === 0 && data.dryingConfirmationAllBoxes === true
+          };
+        }
+      },
+      {
+        stepNumber: 4,
+        stepTitle: 'Acondicionamento em Caixa Ossuária (POP-01 §9.7)',
+        conductorPrompt: 'Último passo: qual o código da caixa ossuária de destino, e a placa identificadora com o NIC e QR code já foi fixada na caixa?',
+        requiresPhoto: false,
+        quickSuggestions: [
+          'Caixa CX-0841-A, placa fixada.',
+          'Caixa CX-0841-B, placa ainda não fixada.'
+        ],
+        extractData: (input: string) => {
+          const lower = input.toLowerCase();
+          const data: Record<string, any> = {};
+          const codigoMatch = input.match(/caixa\s+([A-Za-z0-9\-]+)/i);
+          if (codigoMatch) data.acondicionamentoCaixaOssuariaCodigo = codigoMatch[1].toUpperCase();
+          if (lower.includes('placa fixad') || (lower.includes('placa') && lower.includes('sim'))) {
+            data.acondicionamentoPlacaNicQrFixada = true;
+          } else if (lower.includes('não fixad') || lower.includes('nao fixad')) {
+            data.acondicionamentoPlacaNicQrFixada = false;
+          }
+
+          const missing: string[] = [];
+          if (!data.acondicionamentoCaixaOssuariaCodigo) missing.push('código da caixa ossuária');
+          if (!data.acondicionamentoPlacaNicQrFixada) missing.push('confirmação de que a placa NIC/QR foi fixada');
+
+          return {
+            data,
+            summaryText: missing.length === 0
+              ? `Caixa ${data.acondicionamentoCaixaOssuariaCodigo} · Placa fixada.`
+              : `Ainda falta: ${missing.join('; ')}.`,
+            isComplete: missing.length === 0
           };
         }
       }
     ],
-    completionMessage: 'Higienização e secagem do POP-02 concluídas com sucesso. O conjunto está apto para transferência ao acondicionamento provisório.'
+    completionMessage: 'Maceração, limpeza, secagem e acondicionamento (POP-01 §9.5-9.7) concluídos. O conjunto está pronto para o armazenamento provisório (Fase 3).'
   },
   3: {
     phaseNumber: 3,
