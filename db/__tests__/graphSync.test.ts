@@ -75,7 +75,7 @@ describe('computeGraphForCollection', () => {
   it('gera um nó de caixa por preliminaryBoxes, ligado ao conjunto por contem_caixa', () => {
     const col = baseCollection('NIC-GRAPH-0002');
     col.phase1.preliminaryBoxes = [
-      { id: 'box-1', boxCode: 'CX-001', presumedIndividualLabel: 'IND-01', currentLocation: 'Sala A', qrCode: 'qr-1', cleaningStatus: 'seca' }
+      { id: 'box-1', boxCode: 'CX-001', presumedIndividualLabel: 'IND-01', currentLocation: 'Sala A', qrCode: 'qr-1' }
     ];
 
     const { nodes, edges } = computeGraphForCollection(col);
@@ -133,7 +133,7 @@ describe('syncGraphForCollection (via createCollection/saveCollection)', () => {
   it('persiste nós e arestas ao criar um conjunto, e atualiza (não duplica) ao salvar de novo', async () => {
     const col = baseCollection('NIC-GRAPH-0010');
     col.phase1.preliminaryBoxes = [
-      { id: 'box-a', boxCode: 'CX-A', presumedIndividualLabel: 'IND-01', currentLocation: 'Sala A', qrCode: 'qr-a', cleaningStatus: 'pendente' }
+      { id: 'box-a', boxCode: 'CX-A', presumedIndividualLabel: 'IND-01', currentLocation: 'Sala A', qrCode: 'qr-a' }
     ];
     await createCollection(pool, col);
 
@@ -141,13 +141,13 @@ describe('syncGraphForCollection (via createCollection/saveCollection)', () => {
     expect(firstNodes.length).toBeGreaterThan(0);
     expect(firstNodes.map((r) => r.id)).toEqual(expect.arrayContaining(['NIC-GRAPH-0010', 'A1-NIC-GRAPH-0010', 'A2-NIC-GRAPH-0010', 'BOX-box-a']));
 
-    col.phase1.preliminaryBoxes[0].cleaningStatus = 'seca';
+    col.phase1.preliminaryBoxes[0].currentLocation = 'Sala B';
     await saveCollection(pool, col);
 
     const { rows: secondNodes } = await pool.query('SELECT id, node_type, properties FROM graph_nodes WHERE nic = $1', [col.nic]);
     expect(secondNodes).toHaveLength(firstNodes.length); // sem duplicação
     const boxRow = secondNodes.find((r) => r.id === 'BOX-box-a');
-    expect(boxRow?.properties.cleaningStatus).toBe('seca'); // refletiu a atualização
+    expect(boxRow?.properties.currentLocation).toBe('Sala B'); // refletiu a atualização
 
     const { rows: edgeRows } = await pool.query('SELECT relation FROM graph_edges WHERE nic = $1', [col.nic]);
     expect(edgeRows.some((r) => r.relation === 'contem_caixa')).toBe(true);

@@ -41,7 +41,19 @@ export const Phase2Limpeza: React.FC<Phase2LimpezaProps> = ({ collection, curren
   const isTechnician = currentUser.role === 'tecnico';
 
   const p2 = collection.phase2;
-  const boxes = collection.phase1.preliminaryBoxes;
+  // O status de limpeza/secagem vive em phase2.boxDryingStatus (não em
+  // phase1.preliminaryBoxes — ver comentário em BoxDryingStatus, types/sgccco.ts).
+  // Uma caixa sem entrada ainda é 'pendente'. Faz o merge aqui pra manter o resto do
+  // componente (JSX, allBoxesDry) lendo box.cleaningStatus como antes.
+  const boxes = collection.phase1.preliminaryBoxes.map((box) => {
+    const drying = p2.boxDryingStatus.find((d) => d.boxId === box.id);
+    return {
+      ...box,
+      cleaningStatus: drying?.cleaningStatus || ('pendente' as const),
+      dryingStartedAt: drying?.dryingStartedAt,
+      dryingDurationHours: drying?.dryingDurationHours
+    };
+  });
   const allBoxesDry = boxes.length > 0 && boxes.every((b) => b.cleaningStatus === 'seca');
 
   const setField = <K extends keyof typeof p2>(key: K, value: FieldWithAiSuggestion<any>) => {
@@ -49,27 +61,38 @@ export const Phase2Limpeza: React.FC<Phase2LimpezaProps> = ({ collection, curren
   };
 
   const handleUpdateBoxStatus = (boxId: string, newStatus: (typeof boxes)[0]['cleaningStatus']) => {
-    const updated = { ...collection };
-    updated.phase1 = {
-      ...updated.phase1,
-      preliminaryBoxes: updated.phase1.preliminaryBoxes.map((b) => {
-        if (b.id !== boxId) return b;
-        const next = { ...b, cleaningStatus: newStatus };
-        if (newStatus === 'em_secagem' && !next.dryingStartedAt) {
-          next.dryingStartedAt = new Date().toISOString();
-          next.dryingDurationHours = 0;
-        } else if (newStatus === 'seca' && !next.dryingDurationHours) {
-          next.dryingDurationHours = 72;
-        }
-        return next;
-      })
+    // Escreve só em phase2 — nunca em phase1. A Fase 1 já está assinada e travada quando
+    // a Fase 2 começa; se isto mexesse em phase1.preliminaryBoxes, o servidor recalcularia
+    // um hash diferente do que foi assinado e rejeitaria a gravação inteira com
+    // "Assinatura inválida" (o status mudava na tela e sumia de volta no próximo reload —
+    // era exatamente esse o bug).
+    const existing = p2.boxDryingStatus.find((d) => d.boxId === boxId);
+    const next = {
+      boxId,
+      cleaningStatus: newStatus,
+      dryingStartedAt: existing?.dryingStartedAt,
+      dryingDurationHours: existing?.dryingDurationHours
     };
+    if (newStatus === 'em_secagem' && !next.dryingStartedAt) {
+      next.dryingStartedAt = new Date().toISOString();
+      next.dryingDurationHours = 0;
+    } else if (newStatus === 'seca' && !next.dryingDurationHours) {
+      next.dryingDurationHours = 72;
+    }
 
-    const allDry = updated.phase1.preliminaryBoxes.every((b) => b.cleaningStatus === 'seca');
-    updated.phase2 = {
-      ...updated.phase2,
-      dryingConfirmationAllBoxes: allDry,
-      ...(allDry ? { dryingConfirmedAt: new Date().toISOString(), dryingConfirmedBy: currentUser.name } : {})
+    const updatedBoxDryingStatus = [...p2.boxDryingStatus.filter((d) => d.boxId !== boxId), next];
+    const allDry = collection.phase1.preliminaryBoxes.every(
+      (b) => updatedBoxDryingStatus.find((d) => d.boxId === b.id)?.cleaningStatus === 'seca'
+    );
+
+    const updated: OsteologicalCollection = {
+      ...collection,
+      phase2: {
+        ...collection.phase2,
+        boxDryingStatus: updatedBoxDryingStatus,
+        dryingConfirmationAllBoxes: allDry,
+        ...(allDry ? { dryingConfirmedAt: new Date().toISOString(), dryingConfirmedBy: currentUser.name } : {})
+      }
     };
 
     onUpdateCollection(updated);

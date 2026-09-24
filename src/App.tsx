@@ -209,8 +209,7 @@ export default function App() {
           boxCode: `CX-${nextNum}`,
           presumedIndividualLabel: 'Caixa do caso',
           currentLocation: 'Bancada de Recepção',
-          qrCode: `SIGCOI://BOX/CX-${newNic}`,
-          cleaningStatus: 'pendente'
+          qrCode: `SIGCOI://BOX/CX-${newNic}`
         }]
       },
       phase2: createEmptyPhase2Data(),

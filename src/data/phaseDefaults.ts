@@ -72,6 +72,7 @@ export function createEmptyPhase2Data(): Phase2Data {
 
     formaSecagem: field(undefined as any),
 
+    boxDryingStatus: [],
     dryingConfirmationAllBoxes: false,
 
     photos: []

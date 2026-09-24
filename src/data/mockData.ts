@@ -279,20 +279,14 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
           boxCode: 'CX-0841-A',
           presumedIndividualLabel: 'Indivíduo Presumido A (Esqueleto maior)',
           currentLocation: 'Galpão Definitivo Central - Prédio 3, Sala 01, Estante 12, Prateleira 04',
-          qrCode: 'SIGCOI://BOX/CX-2026-0841-A',
-          cleaningStatus: 'seca',
-          dryingStartedAt: '2026-06-12T10:00:00Z',
-          dryingDurationHours: 72
+          qrCode: 'SIGCOI://BOX/CX-2026-0841-A'
         },
         {
           id: 'CX-2026-0841-B',
           boxCode: 'CX-0841-B',
           presumedIndividualLabel: 'Indivíduo Presumido B (Crânio secundário e ossos menores)',
           currentLocation: 'Galpão Definitivo Central - Prédio 3, Sala 01, Estante 12, Prateleira 04',
-          qrCode: 'SIGCOI://BOX/CX-2026-0841-B',
-          cleaningStatus: 'seca',
-          dryingStartedAt: '2026-06-12T10:00:00Z',
-          dryingDurationHours: 72
+          qrCode: 'SIGCOI://BOX/CX-2026-0841-B'
         }
       ]
     },
@@ -309,6 +303,10 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
       },
       houveDanosMaceracao: { value: false, isAiSuggested: false },
       formaSecagem: { value: 'estufa', isAiSuggested: false },
+      boxDryingStatus: [
+        { boxId: 'CX-2026-0841-A', cleaningStatus: 'seca', dryingStartedAt: '2026-06-12T10:00:00Z', dryingDurationHours: 72 },
+        { boxId: 'CX-2026-0841-B', cleaningStatus: 'seca', dryingStartedAt: '2026-06-12T10:00:00Z', dryingDurationHours: 72 }
+      ],
       dryingConfirmationAllBoxes: true,
       dryingConfirmedAt: '2026-06-15T16:00:00Z',
       dryingConfirmedBy: 'Carlos Alberto Menezes'
@@ -704,10 +702,7 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
           boxCode: 'CX-0914-A',
           presumedIndividualLabel: 'Indivíduo Único A',
           currentLocation: 'Laboratório Central - Sala B-10, Estante 02, Prateleira 01',
-          qrCode: 'SIGCOI://BOX/CX-2026-0914-A',
-          cleaningStatus: 'seca',
-          dryingStartedAt: '2026-07-16T14:00:00Z',
-          dryingDurationHours: 68
+          qrCode: 'SIGCOI://BOX/CX-2026-0914-A'
         }
       ]
     },
@@ -720,6 +715,9 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
       instrumentosUtilizados: { value: ['esponja', 'escova_dentes'], isAiSuggested: false },
       houveDanosMaceracao: { value: false, isAiSuggested: false },
       formaSecagem: { value: 'estufa', isAiSuggested: false },
+      boxDryingStatus: [
+        { boxId: 'CX-2026-0914-A', cleaningStatus: 'seca', dryingStartedAt: '2026-07-16T14:00:00Z', dryingDurationHours: 68 }
+      ],
       dryingConfirmationAllBoxes: true,
       dryingConfirmedAt: '2026-07-19T16:30:00Z',
       dryingConfirmedBy: 'Carlos Alberto Menezes'
@@ -860,16 +858,14 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
           boxCode: 'CX-0955-A',
           presumedIndividualLabel: 'Indivíduo A presumido',
           currentLocation: 'Bancada de Triagem e Recepção Inicial',
-          qrCode: 'SIGCOI://BOX/CX-2026-0955-A',
-          cleaningStatus: 'pendente'
+          qrCode: 'SIGCOI://BOX/CX-2026-0955-A'
         },
         {
           id: 'CX-2026-0955-B',
           boxCode: 'CX-0955-B',
           presumedIndividualLabel: 'Material esquelético fragmentar não dissociado',
           currentLocation: 'Bancada de Triagem e Recepção Inicial',
-          qrCode: 'SIGCOI://BOX/CX-2026-0955-B',
-          cleaningStatus: 'pendente'
+          qrCode: 'SIGCOI://BOX/CX-2026-0955-B'
         }
       ]
     },

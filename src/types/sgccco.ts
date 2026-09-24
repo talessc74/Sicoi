@@ -193,6 +193,16 @@ export interface PreliminaryBox {
   presumedIndividualLabel: string;
   currentLocation: string;
   qrCode: string;
+}
+
+// Status de limpeza/secagem por caixa — pertence à Fase 2 (Maceração e Secagem), não à
+// Fase 1. Mora aqui, e não em PreliminaryBox, porque a Fase 1 já está assinada e travada
+// quando a Fase 2 começa a mexer nisso: se esses campos ficassem dentro de
+// phase1.preliminaryBoxes, qualquer mudança de status quebraria o hash da assinatura da
+// Fase 1 (o servidor recalcula o hash sobre o phase1 inteiro a cada gravação) e o
+// salvamento seria sempre rejeitado com "Assinatura inválida".
+export interface BoxDryingStatus {
+  boxId: string;
   cleaningStatus: 'pendente' | 'em_lavagem' | 'em_limpeza' | 'em_secagem' | 'seca';
   dryingStartedAt?: string;
   dryingDurationHours?: number;
@@ -240,6 +250,8 @@ export interface Phase2Data {
 
   // Rastreamento operacional de secagem por caixa — não é campo do A.2, mas necessário
   // para o bloqueio de fase (§6): todas as caixas devem estar secas antes de assinar.
+  // Uma caixa sem entrada aqui é considerada 'pendente' (ver Phase2Limpeza.tsx).
+  boxDryingStatus: BoxDryingStatus[];
   dryingConfirmationAllBoxes: boolean;
   dryingConfirmedAt?: string;
   dryingConfirmedBy?: string;
