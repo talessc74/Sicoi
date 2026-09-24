@@ -8,6 +8,7 @@
 export class VoiceSpeechService {
   private synth: SpeechSynthesis | null = null;
   private recognition: any = null;
+  private unlocked = false;
   public isSupported = false;
 
   constructor() {
@@ -22,6 +23,24 @@ export class VoiceSpeechService {
         this.isSupported = true;
       }
     }
+  }
+
+  /**
+   * Safari/iOS só libera speechSynthesis.speak() se a PRIMEIRA chamada da sessão
+   * acontecer dentro de um toque direto do usuário (mesma regra de autoplay de
+   * áudio/vídeo) — senão, engole a fala em silêncio, sem erro nenhum. Nossa
+   * narração real dispara depois (setTimeout, callback assíncrono), nunca no
+   * instante exato do toque, então cai nesse bloqueio. Chamar unlock() de dentro
+   * de um onClick (botão de microfone, enviar, sugestão rápida) resolve isso uma
+   * única vez por sessão — chamadas de speak() depois, mesmo assíncronas, tocam
+   * normalmente.
+   */
+  unlock(): void {
+    if (this.unlocked || !this.synth) return;
+    this.unlocked = true;
+    const silent = new SpeechSynthesisUtterance(' ');
+    silent.volume = 0;
+    this.synth.speak(silent);
   }
 
   speak(text: string, onEnd?: () => void): void {

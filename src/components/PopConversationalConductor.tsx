@@ -112,6 +112,11 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
 
   // Submit a user message to the conductor
   const handleSendMessage = async (rawText: string, isVoice = false) => {
+    // Destrava a síntese de voz no iOS/Safari — precisa acontecer dentro de um
+    // toque direto do usuário (botão Enviar, sugestão rápida, tecla Enter); ver
+    // voiceAgent.ts. Idempotente, então é seguro chamar toda vez.
+    voiceService.unlock();
+
     const text = rawText.trim();
     if (!text || isLocked) return;
 
@@ -334,6 +339,7 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
 
   // Trigger microphone input
   const handleToggleVoice = () => {
+    voiceService.unlock(); // toque direto do usuário — ver voiceAgent.ts
     if (isListening) {
       voiceService.stopListening();
       setIsListening(false);
