@@ -38,6 +38,12 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   const totalBoxes = collections.reduce((acc, c) => acc + c.phase1.preliminaryBoxes.length, 0);
   const totalIndividuals = collections.reduce((acc, c) => acc + c.phase4.individuals.length, 0);
   const collectionsInDefinitiveStorage = collections.filter(c => c.currentPhase >= 6 && c.phase6.finalLocations.length > 0).length;
+  // "Catalogado" = passou pela assinatura da Fase 6 e chegou na Fase 7 — ou seja, as 6
+  // fases com travamento sequencial (§6/§14) estão todas concluídas e assinadas. Antes
+  // disso mostrava sempre "100% catalogados" fixo no texto, independente do estado real
+  // dos conjuntos — dava a impressão de que tudo já tinha sido concluído.
+  const fullyCatalogedCount = collections.filter(c => c.currentPhase >= 7).length;
+  const catalogedPercent = totalCollections > 0 ? Math.round((fullyCatalogedCount / totalCollections) * 100) : 0;
 
   const phaseCounts = [1, 2, 3, 4, 5, 6, 7].map(ph => ({
     phase: ph,
@@ -121,7 +127,12 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             <div className="text-2xl font-bold font-mono text-slate-900 dark:text-white">
               {totalCollections} <span className="text-xs font-normal text-slate-400">NICs</span>
             </div>
-            <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">100% catalogados</span>
+            <span
+              className={`text-[11px] font-medium ${catalogedPercent === 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}
+              title={`${fullyCatalogedCount} de ${totalCollections} conjuntos com as 6 fases seladas (assinadas) concluídas`}
+            >
+              {catalogedPercent}% catalogados
+            </span>
           </div>
           <div className="w-12 h-12 rounded-xl bg-sky-50 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-900 flex items-center justify-center text-sky-600 dark:text-sky-400">
             <FolderOpen className="w-6 h-6" />
