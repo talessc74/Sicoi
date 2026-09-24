@@ -39,6 +39,19 @@ function parseSpokenDate(input: string): string | undefined {
   return undefined;
 }
 
+/**
+ * Um campo "já está preenchido" no context (collection) quando tem valor real —
+ * inclusive `false` conta como resposta dada (ex.: "não houve danos"). Sem isso,
+ * checar `!!valor` trataria uma resposta negativa legítima como "ainda não
+ * respondido" e reabriria a pergunta.
+ */
+function alreadySet(context: any, phase: 'phase1' | 'phase2', field: string): boolean {
+  const v = context?.[phase]?.[field]?.value;
+  if (v === undefined || v === null || v === '') return false;
+  if (Array.isArray(v)) return v.length > 0;
+  return true;
+}
+
 export interface ConductorChatMessage {
   id: string;
   sender: 'conductor' | 'user' | 'system';
@@ -59,6 +72,13 @@ export interface ConductorChatMessage {
   fieldTags?: string[];
 }
 
+export interface PopConductorPhotoChecklistItem {
+  field: string;
+  category: string;
+  label: string;
+  triState: boolean;
+}
+
 export interface PopConductorStep {
   stepNumber: number;
   stepTitle: string;
@@ -66,6 +86,7 @@ export interface PopConductorStep {
   regulatoryNotice?: string;
   requiresPhoto: boolean;
   photoPrompt?: string;
+  photoChecklistItems?: PopConductorPhotoChecklistItem[];
   quickSuggestions: string[];
   extractData: (input: string, context?: any) => {
     data: Record<string, any>;
@@ -146,11 +167,21 @@ export const SENASP_POPS: Record<PhaseNumber, PopDefinition> = {
         regulatoryNotice: 'Foto 1 e Foto 4.1 são sempre obrigatórias. As demais são "se aplicável".',
         requiresPhoto: true,
         photoPrompt: 'Registrar as fotos do checklist na ordem do POP-03',
+        // Cada item tem seu próprio botão de foto na UI (ver PopConversationalConductor) —
+        // tocar nele anexa a foto NA categoria certa e já marca este campo, em vez do
+        // botão genérico "Fotografar Passo" que não sabia a qual item pertencia a foto.
+        photoChecklistItems: [
+          { field: 'foto1SacoFechado', category: 'foto1_saco_fechado', label: 'Saco fechado com lacre e escala', triState: false },
+          { field: 'foto2PlacaCemiterio', category: 'foto2_placa_cemiterio', label: 'Placa do cemitério', triState: true },
+          { field: 'foto3RemanescentesMateriais', category: 'foto3_remanescentes_materiais', label: 'Remanescentes com materiais associados', triState: true },
+          { field: 'foto4_1RemanescentesIsolados', category: 'foto4_1_remanescentes_isolados', label: 'Remanescentes isolados', triState: false },
+          { field: 'foto4_2MateriaisIsolados', category: 'foto4_2_materiais_isolados', label: 'Materiais associados isolados', triState: true }
+        ],
         quickSuggestions: [
           'Foto do saco fechado feita. Placa de cemitério não se aplica. Materiais associados não se aplica. Remanescentes isolados fotografados.',
           'Todas as fotos obrigatórias feitas, incluindo placa do cemitério e materiais associados isolados.'
         ],
-        extractData: (input: string) => {
+        extractData: (input: string, context?: any) => {
           const lower = input.toLowerCase();
           const data: Record<string, any> = {};
 
@@ -158,7 +189,11 @@ export const SENASP_POPS: Record<PhaseNumber, PopDefinition> = {
           if (/(placa).*(cemit[ée]rio)/.test(lower)) {
             data.foto2PlacaCemiterio = /n[ãa]o se aplica|sem placa/.test(lower) ? 'nao_se_aplica' : 'sim';
           }
-          if (/materiais associados/.test(lower) && !/isolad/.test(lower)) {
+          // Lookahead negativo (não "!/isolad/.test" no texto inteiro) — uma frase
+          // real quase sempre menciona os dois itens juntos ("materiais associados
+          // não se aplica... materiais associados isolados sim"), e checar "isolad"
+          // em qualquer lugar do texto bloqueava o reconhecimento do foto3 inteiro.
+          if (/materiais associados(?!\s*isolad)/.test(lower)) {
             data.foto3RemanescentesMateriais = /n[ãa]o se aplica/.test(lower) ? 'nao_se_aplica' : 'sim';
           }
           if (/remanescentes isolad/.test(lower) || /foto\s*4\.?1\b/.test(lower)) data.foto4_1RemanescentesIsolados = true;
@@ -174,11 +209,11 @@ export const SENASP_POPS: Record<PhaseNumber, PopDefinition> = {
           }
 
           const missing: string[] = [];
-          if (!data.foto1SacoFechado) missing.push('foto do saco fechado');
-          if (data.foto2PlacaCemiterio === undefined) missing.push('foto da placa do cemitério (ou "não se aplica")');
-          if (data.foto3RemanescentesMateriais === undefined) missing.push('foto dos remanescentes com materiais associados (ou "não se aplica")');
-          if (!data.foto4_1RemanescentesIsolados) missing.push('foto dos remanescentes isolados');
-          if (data.foto4_2MateriaisIsolados === undefined) missing.push('foto dos materiais associados isolados (ou "não se aplica")');
+          if (!alreadySet(context, 'phase1', 'foto1SacoFechado') && !data.foto1SacoFechado) missing.push('foto do saco fechado');
+          if (!alreadySet(context, 'phase1', 'foto2PlacaCemiterio') && data.foto2PlacaCemiterio === undefined) missing.push('foto da placa do cemitério (ou "não se aplica")');
+          if (!alreadySet(context, 'phase1', 'foto3RemanescentesMateriais') && data.foto3RemanescentesMateriais === undefined) missing.push('foto dos remanescentes com materiais associados (ou "não se aplica")');
+          if (!alreadySet(context, 'phase1', 'foto4_1RemanescentesIsolados') && !data.foto4_1RemanescentesIsolados) missing.push('foto dos remanescentes isolados');
+          if (!alreadySet(context, 'phase1', 'foto4_2MateriaisIsolados') && data.foto4_2MateriaisIsolados === undefined) missing.push('foto dos materiais associados isolados (ou "não se aplica")');
 
           return {
             data,
@@ -257,7 +292,7 @@ export const SENASP_POPS: Record<PhaseNumber, PopDefinition> = {
           'Coletada falange distal, responsável Técnico João.',
           'Não coletado, sem indicação de exame genético neste caso.'
         ],
-        extractData: (input: string) => {
+        extractData: (input: string, context?: any) => {
           const lower = input.toLowerCase();
           const elements: string[] = [];
           if (lower.includes('não coletad') || lower.includes('nao coletad')) elements.push('nao_coletado');
@@ -277,12 +312,14 @@ export const SENASP_POPS: Record<PhaseNumber, PopDefinition> = {
           else if (elements[0] === 'nao_coletado') data.geneticoResponsavelColeta = 'Não aplicável';
 
           const missing: string[] = [];
-          if (!data.exameGenetico) missing.push('elemento coletado (ou "não coletado")');
-          if (!data.geneticoResponsavelColeta) missing.push('responsável pela coleta');
+          if (!alreadySet(context, 'phase1', 'exameGenetico') && !data.exameGenetico) missing.push('elemento coletado (ou "não coletado")');
+          if (!alreadySet(context, 'phase1', 'geneticoResponsavelColeta') && !data.geneticoResponsavelColeta) missing.push('responsável pela coleta');
 
           return {
             data,
-            summaryText: missing.length === 0 ? `Exame genético: ${data.exameGenetico?.join(', ')} · Responsável: ${data.geneticoResponsavelColeta}` : `Ainda falta: ${missing.join('; ')}.`,
+            summaryText: missing.length === 0
+              ? `Exame genético: ${data.exameGenetico?.join(', ') ?? context?.phase1?.exameGenetico?.value?.join(', ')} · Responsável: ${data.geneticoResponsavelColeta ?? context?.phase1?.geneticoResponsavelColeta?.value}`
+              : `Ainda falta: ${missing.join('; ')}.`,
             isComplete: missing.length === 0
           };
         }
@@ -296,7 +333,7 @@ export const SENASP_POPS: Record<PhaseNumber, PopDefinition> = {
           'Coletado cabelo e unhas, responsável Técnica Maria.',
           'Não coletado.'
         ],
-        extractData: (input: string) => {
+        extractData: (input: string, context?: any) => {
           const lower = input.toLowerCase();
           const materials: string[] = [];
           if (lower.includes('não coletad') || lower.includes('nao coletad')) materials.push('nao_coletado');
@@ -313,12 +350,14 @@ export const SENASP_POPS: Record<PhaseNumber, PopDefinition> = {
           else if (materials[0] === 'nao_coletado') data.isotopicaResponsavelColeta = 'Não aplicável';
 
           const missing: string[] = [];
-          if (!data.analiseIsotopica) missing.push('material coletado (ou "não coletado")');
-          if (!data.isotopicaResponsavelColeta) missing.push('responsável pela coleta');
+          if (!alreadySet(context, 'phase1', 'analiseIsotopica') && !data.analiseIsotopica) missing.push('material coletado (ou "não coletado")');
+          if (!alreadySet(context, 'phase1', 'isotopicaResponsavelColeta') && !data.isotopicaResponsavelColeta) missing.push('responsável pela coleta');
 
           return {
             data,
-            summaryText: missing.length === 0 ? `Análise isotópica: ${data.analiseIsotopica?.join(', ')} · Responsável: ${data.isotopicaResponsavelColeta}` : `Ainda falta: ${missing.join('; ')}.`,
+            summaryText: missing.length === 0
+              ? `Análise isotópica: ${data.analiseIsotopica?.join(', ') ?? context?.phase1?.analiseIsotopica?.value?.join(', ')} · Responsável: ${data.isotopicaResponsavelColeta ?? context?.phase1?.isotopicaResponsavelColeta?.value}`
+              : `Ainda falta: ${missing.join('; ')}.`,
             isComplete: missing.length === 0
           };
         }
@@ -332,7 +371,7 @@ export const SENASP_POPS: Record<PhaseNumber, PopDefinition> = {
           'Saco azul, limpeza a seco.',
           'Saco verde, limpeza com água quente.'
         ],
-        extractData: (input: string) => {
+        extractData: (input: string, context?: any) => {
           const lower = input.toLowerCase();
           const data: Record<string, any> = {};
           const corMatch = input.match(/saco\s+(\w+)/i) || input.match(/cor\s*[:\s]+(\w+)/i);
@@ -343,12 +382,14 @@ export const SENASP_POPS: Record<PhaseNumber, PopDefinition> = {
           else if (lower.includes('a seco') || lower.includes('seco')) data.tipoLimpeza = 'a_seco';
 
           const missing: string[] = [];
-          if (!data.corSacoLavagem) missing.push('cor do saco de lavagem');
-          if (!data.tipoLimpeza) missing.push('tipo de limpeza');
+          if (!alreadySet(context, 'phase1', 'corSacoLavagem') && !data.corSacoLavagem) missing.push('cor do saco de lavagem');
+          if (!alreadySet(context, 'phase1', 'tipoLimpeza') && !data.tipoLimpeza) missing.push('tipo de limpeza');
 
           return {
             data,
-            summaryText: missing.length === 0 ? `Saco ${data.corSacoLavagem} · Limpeza: ${data.tipoLimpeza}` : `Ainda falta: ${missing.join('; ')}.`,
+            summaryText: missing.length === 0
+              ? `Saco ${data.corSacoLavagem ?? context?.phase1?.corSacoLavagem?.value} · Limpeza: ${data.tipoLimpeza ?? context?.phase1?.tipoLimpeza?.value}`
+              : `Ainda falta: ${missing.join('; ')}.`,
             isComplete: missing.length === 0
           };
         }
@@ -362,24 +403,32 @@ export const SENASP_POPS: Record<PhaseNumber, PopDefinition> = {
           'Não houve danos.',
           'Sim, pequena fratura na extremidade distal do rádio esquerdo durante a remoção de tecido aderido.'
         ],
-        extractData: (input: string) => {
+        extractData: (input: string, context?: any) => {
           const lower = input.toLowerCase();
           const data: Record<string, any> = {};
+          const alreadyHouve = alreadySet(context, 'phase1', 'houveDanos');
+          const alreadyDescricao = alreadySet(context, 'phase1', 'descricaoDanos');
+          const contextHouve = context?.phase1?.houveDanos?.value;
+
           if (/n[ãa]o houve|sem dano|nenhum dano/.test(lower)) {
             data.houveDanos = false;
           } else if (/sim|houve dano|dano/.test(lower)) {
             data.houveDanos = true;
             data.descricaoDanos = input.trim();
+          } else if (alreadyHouve && contextHouve === true && !alreadyDescricao && input.trim().length > 3) {
+            // Resposta de acompanhamento descrevendo o dano, sem repetir "sim"/"dano".
+            data.descricaoDanos = input.trim();
           }
 
+          const houveEfetivo = data.houveDanos ?? contextHouve;
           const missing: string[] = [];
-          if (data.houveDanos === undefined) missing.push('se houve dano (sim/não)');
-          if (data.houveDanos === true && !data.descricaoDanos) missing.push('descrição do dano');
+          if (!alreadyHouve && data.houveDanos === undefined) missing.push('se houve dano (sim/não)');
+          if (houveEfetivo === true && !alreadyDescricao && !data.descricaoDanos) missing.push('descrição do dano');
 
           return {
             data,
             summaryText: missing.length === 0
-              ? (data.houveDanos ? `Dano registrado: "${data.descricaoDanos.slice(0, 60)}..."` : 'Sem danos registrados.')
+              ? (houveEfetivo ? `Dano registrado: "${(data.descricaoDanos ?? context?.phase1?.descricaoDanos?.value ?? '').slice(0, 60)}..."` : 'Sem danos registrados.')
               : `Ainda falta: ${missing.join('; ')}.`,
             isComplete: missing.length === 0
           };
@@ -490,24 +539,31 @@ export const SENASP_POPS: Record<PhaseNumber, PopDefinition> = {
           'Não houve danos.',
           'Sim, pequena fissura na epífise distal do rádio direito durante a limpeza mecânica.'
         ],
-        extractData: (input: string) => {
+        extractData: (input: string, context?: any) => {
           const lower = input.toLowerCase();
           const data: Record<string, any> = {};
+          const alreadyHouve = alreadySet(context, 'phase2', 'houveDanosMaceracao');
+          const alreadyDescricao = alreadySet(context, 'phase2', 'descricaoDanosMaceracao');
+          const contextHouve = context?.phase2?.houveDanosMaceracao?.value;
+
           if (/n[ãa]o houve|sem dano|nenhum dano/.test(lower)) {
             data.houveDanosMaceracao = false;
           } else if (/sim|houve dano|dano/.test(lower)) {
             data.houveDanosMaceracao = true;
             data.descricaoDanosMaceracao = input.trim();
+          } else if (alreadyHouve && contextHouve === true && !alreadyDescricao && input.trim().length > 3) {
+            data.descricaoDanosMaceracao = input.trim();
           }
 
+          const houveEfetivo = data.houveDanosMaceracao ?? contextHouve;
           const missing: string[] = [];
-          if (data.houveDanosMaceracao === undefined) missing.push('se houve dano (sim/não)');
-          if (data.houveDanosMaceracao === true && !data.descricaoDanosMaceracao) missing.push('descrição do dano');
+          if (!alreadyHouve && data.houveDanosMaceracao === undefined) missing.push('se houve dano (sim/não)');
+          if (houveEfetivo === true && !alreadyDescricao && !data.descricaoDanosMaceracao) missing.push('descrição do dano');
 
           return {
             data,
             summaryText: missing.length === 0
-              ? (data.houveDanosMaceracao ? `Dano registrado: "${data.descricaoDanosMaceracao.slice(0, 60)}..."` : 'Sem danos registrados na maceração.')
+              ? (houveEfetivo ? `Dano registrado: "${(data.descricaoDanosMaceracao ?? context?.phase2?.descricaoDanosMaceracao?.value ?? '').slice(0, 60)}..."` : 'Sem danos registrados na maceração.')
               : `Ainda falta: ${missing.join('; ')}.`,
             isComplete: missing.length === 0
           };
@@ -522,7 +578,7 @@ export const SENASP_POPS: Record<PhaseNumber, PopDefinition> = {
           'Secagem em estufa. Concluída, sem umidade em nenhuma caixa.',
           'Secagem em temperatura ambiente, ainda não concluída.'
         ],
-        extractData: (input: string) => {
+        extractData: (input: string, context?: any) => {
           const lower = input.toLowerCase();
           const data: Record<string, any> = {};
 
@@ -537,16 +593,24 @@ export const SENASP_POPS: Record<PhaseNumber, PopDefinition> = {
             data.dryingConfirmationAllBoxes = false;
           }
 
+          // dryingConfirmationAllBoxes não é FieldWithAiSuggestion (é boolean puro no
+          // Phase2Data), então lê direto do context, sem o ?.value dos outros campos.
+          const alreadyFormaSecagem = !!context?.phase2?.formaSecagem?.value;
+          const contextConfirmation = context?.phase2?.dryingConfirmationAllBoxes;
+          const alreadyConfirmation = contextConfirmation !== undefined;
+
           const missing: string[] = [];
-          if (!data.formaSecagem) missing.push('forma de secagem');
-          if (data.dryingConfirmationAllBoxes === undefined) missing.push('confirmação de secagem completa');
+          if (!alreadyFormaSecagem && !data.formaSecagem) missing.push('forma de secagem');
+          if (!alreadyConfirmation && data.dryingConfirmationAllBoxes === undefined) missing.push('confirmação de secagem completa');
+
+          const confirmacaoEfetiva = data.dryingConfirmationAllBoxes ?? contextConfirmation;
 
           return {
             data,
             summaryText: missing.length === 0
-              ? `Secagem: ${data.formaSecagem} · Completa: ${data.dryingConfirmationAllBoxes ? 'sim' : 'não'}`
+              ? `Secagem: ${data.formaSecagem ?? context?.phase2?.formaSecagem?.value} · Completa: ${confirmacaoEfetiva ? 'sim' : 'não'}`
               : `Ainda falta: ${missing.join('; ')}.`,
-            isComplete: missing.length === 0 && data.dryingConfirmationAllBoxes === true
+            isComplete: missing.length === 0 && confirmacaoEfetiva === true
           };
         }
       }

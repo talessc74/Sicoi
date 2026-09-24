@@ -4,6 +4,7 @@ import {
   SENASP_POPS,
   ConductorChatMessage,
   PopConductorStep,
+  PopConductorPhotoChecklistItem,
   DEFAULT_AI_AGENT_CONFIG,
   AiConductorAgentConfig
 } from '../services/popConductorService';
@@ -425,6 +426,108 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
     }, 400);
   };
 
+  // Reavalia se o passo atual ficou completo a partir do que já está salvo na
+  // coleção (sem fala nova) e, se estiver, avança — usado depois de qualquer ação
+  // que muda o formulário sem passar pelo chat de texto/voz (botões do checklist de
+  // fotos). Sem isso, tocar nos botões nunca liberava o próximo passo: só o texto/voz
+  // disparava a checagem de avanço.
+  const checkStepCompletionAndAdvance = (updatedCollection: OsteologicalCollection) => {
+    if (!currentStep) return;
+    const result = currentStep.extractData('', updatedCollection);
+    if (!result.isComplete) return;
+
+    const nextStepIdx = currentStepIndex + 1;
+    const hasMoreSteps = nextStepIdx < popDef.steps.length;
+    let replyText = `Entendido e anotado: ${result.summaryText}. `;
+
+    setTimeout(() => {
+      if (hasMoreSteps) {
+        const nextStep = popDef.steps[nextStepIdx];
+        replyText += `Prosseguindo para o Passo ${nextStep.stepNumber}: ${nextStep.conductorPrompt}`;
+        setMessages(prev => [...prev, {
+          id: `msg-cond-${Date.now()}`,
+          sender: 'conductor',
+          text: replyText,
+          timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+          stepNumber: nextStep.stepNumber,
+          requiresPhoto: nextStep.requiresPhoto,
+          suggestedReplies: nextStep.quickSuggestions
+        }]);
+        setCurrentStepIndex(nextStepIdx);
+        speakText(replyText);
+      } else {
+        replyText += popDef.completionMessage;
+        setMessages(prev => [...prev, {
+          id: `msg-cond-${Date.now()}`,
+          sender: 'conductor',
+          text: replyText,
+          timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+          fieldTags: ['Concluído', 'Apto para Assinatura']
+        }]);
+        setCurrentStepIndex(popDef.steps.length);
+        speakText(replyText);
+      }
+    }, 400);
+  };
+
+  // Fotografa um item específico do checklist (Fase 1, Passo 2) — ao contrário do
+  // botão genérico "Fotografar Passo", esta foto já entra na categoria certa e marca
+  // o campo do Formulário A.1 correspondente, então tirar a foto realmente libera o
+  // avanço (antes, tirar fotos e o checklist eram dois sistemas que não se falavam).
+  const handleCaptureChecklistPhoto = async (item: PopConductorPhotoChecklistItem) => {
+    const url = 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=800&auto=format&fit=crop&q=80';
+    const hash = await calculateSha256(`${url}|${item.category}|${collection.nic}|${currentUser.id}`);
+    const caption = `${item.label} — ${popDef.popCode}`;
+    const newPhoto = {
+      id: `photo-p1-${item.category}-${Date.now()}`,
+      category: item.category,
+      author: currentUser.name,
+      timestamp: new Date().toISOString(),
+      sha256Hash: hash,
+      url,
+      caption
+    };
+
+    setMessages(prev => [...prev, {
+      id: `msg-photo-${Date.now()}`,
+      sender: 'user',
+      text: `[Fotografia Forense Registrada]: ${caption}`,
+      timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      photoAttached: newPhoto
+    }]);
+
+    const updated = { ...collection };
+    const p1 = { ...updated.phase1 };
+    (p1 as any)[item.field] = { value: item.triState ? 'sim' : true, isAiSuggested: false };
+    p1.photos = [...p1.photos, newPhoto];
+    updated.phase1 = p1;
+    onUpdateCollection(updated);
+    if (onStepPhotoCaptured) onStepPhotoCaptured(newPhoto);
+
+    checkStepCompletionAndAdvance(updated);
+  };
+
+  // Marca um item tri-state do checklist como "não se aplica" (ex.: não há placa de
+  // cemitério neste caso) — sem foto, já que não há o que fotografar.
+  const handleMarkChecklistNotApplicable = (item: PopConductorPhotoChecklistItem) => {
+    if (!item.triState) return;
+
+    setMessages(prev => [...prev, {
+      id: `msg-nsa-${Date.now()}`,
+      sender: 'user',
+      text: `${item.label}: não se aplica.`,
+      timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+    }]);
+
+    const updated = { ...collection };
+    const p1 = { ...updated.phase1 };
+    (p1 as any)[item.field] = { value: 'nao_se_aplica', isAiSuggested: false };
+    updated.phase1 = p1;
+    onUpdateCollection(updated);
+
+    checkStepCompletionAndAdvance(updated);
+  };
+
   // Restart conversation
   const handleRestartConversation = () => {
     setCurrentStepIndex(0);
@@ -607,8 +710,51 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
                 </div>
               )}
 
-              {/* Conductor Step Regulatory Notice or Photo Button */}
-              {msg.sender === 'conductor' && msg.requiresPhoto && (
+              {/* Conductor Step Regulatory Notice or Photo Button(s) */}
+              {msg.sender === 'conductor' &&
+                msg.requiresPhoto &&
+                msg.stepNumber === currentStep?.stepNumber &&
+                currentStep?.photoChecklistItems && (
+                  <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-700 space-y-1.5">
+                    <div className="text-[11px] text-amber-600 dark:text-amber-400 flex items-center gap-1 font-medium mb-1">
+                      <Info className="w-3.5 h-3.5" />
+                      <span>Checklist fotográfico (§Art. 158-B) — cada item libera o campo correspondente</span>
+                    </div>
+                    {currentStep.photoChecklistItems.map((item) => {
+                      const currentValue = (collection.phase1 as any)[item.field]?.value;
+                      const isDone = item.triState ? currentValue === 'sim' || currentValue === 'nao_se_aplica' : currentValue === true;
+                      return (
+                        <div key={item.field} className="flex items-center justify-between gap-2 bg-slate-50 dark:bg-slate-900/60 rounded-lg px-2.5 py-1.5">
+                          <span className={`text-xs flex items-center gap-1.5 ${isDone ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-slate-600 dark:text-slate-300'}`}>
+                            {isDone && <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />}
+                            {item.label}
+                            {item.triState && currentValue === 'nao_se_aplica' && <span className="text-[10px] font-mono opacity-70">(não se aplica)</span>}
+                          </span>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              onClick={() => handleCaptureChecklistPhoto(item)}
+                              disabled={isDone}
+                              className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-[11px] font-semibold flex items-center gap-1 transition-colors"
+                            >
+                              <Camera className="w-3 h-3" />
+                              Fotografar
+                            </button>
+                            {item.triState && (
+                              <button
+                                onClick={() => handleMarkChecklistNotApplicable(item)}
+                                disabled={isDone}
+                                className="px-2 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 disabled:opacity-40 text-slate-700 dark:text-slate-200 text-[11px] font-semibold transition-colors"
+                              >
+                                Não se aplica
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              {msg.sender === 'conductor' && msg.requiresPhoto && !currentStep?.photoChecklistItems && (
                 <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-700 flex flex-wrap items-center justify-between gap-2">
                   <div className="text-[11px] text-amber-600 dark:text-amber-400 flex items-center gap-1 font-medium">
                     <Info className="w-3.5 h-3.5" />

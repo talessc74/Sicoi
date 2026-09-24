@@ -100,6 +100,53 @@ describe('POP-01 · Fase 1 (Formulário A.1) — trava de avanço por passo', ()
     expect(completo.isComplete).toBe(true);
     expect(completo.data.descricaoDanos).toContain('fratura');
   });
+
+  describe('Passos multi-campo — uma resposta em duas falas não trava (context cumulativo)', () => {
+    it('Passo 2 (fotos): já ter foto1 e foto4.1 salvos no context libera o passo quando só faltam as tri-state', () => {
+      const context = {
+        phase1: {
+          foto1SacoFechado: { value: true },
+          foto4_1RemanescentesIsolados: { value: true }
+        }
+      };
+      const result = step(phase1Steps, 2).extractData('Placa de cemitério não se aplica. Materiais associados não se aplica. Materiais associados isolados não se aplica.', context as any);
+      expect(result.data.foto1SacoFechado).toBeUndefined(); // não reextrai o que já está salvo
+      expect(result.isComplete).toBe(true);
+    });
+
+    it('Passo 5 (exame genético): elemento já salvo no context, resposta de acompanhamento só com o responsável fecha o passo', () => {
+      const context = { phase1: { exameGenetico: { value: ['falange'] } } };
+      const result = step(phase1Steps, 5).extractData('Responsável: Técnico João.', context as any);
+      expect(result.isComplete).toBe(true);
+      expect(result.data.geneticoResponsavelColeta).toBe('Técnico João');
+    });
+
+    it('Passo 6 (isotópica): material já salvo no context, resposta de acompanhamento só com o responsável fecha o passo', () => {
+      const context = { phase1: { analiseIsotopica: { value: ['cabelo'] } } };
+      const result = step(phase1Steps, 6).extractData('Responsável: Técnica Maria.', context as any);
+      expect(result.isComplete).toBe(true);
+    });
+
+    it('Passo 7 (limpeza): cor já salva no context, resposta de acompanhamento só com o tipo de limpeza fecha o passo', () => {
+      const context = { phase1: { corSacoLavagem: { value: 'azul' } } };
+      const result = step(phase1Steps, 7).extractData('Limpeza a seco.', context as any);
+      expect(result.isComplete).toBe(true);
+      expect(result.data.corSacoLavagem).toBeUndefined();
+    });
+
+    it('Passo 8 (danos): "houveDanos=true" já salvo no context, resposta de acompanhamento livre vira a descrição', () => {
+      const context = { phase1: { houveDanos: { value: true } } };
+      const result = step(phase1Steps, 8).extractData('Pequena fratura na extremidade distal do rádio.', context as any);
+      expect(result.isComplete).toBe(true);
+      expect(result.data.descricaoDanos).toContain('fratura');
+    });
+
+    it('Passo 8: "houveDanos=false" já salvo no context não reabre a pergunta (false conta como resposta dada)', () => {
+      const context = { phase1: { houveDanos: { value: false } } };
+      const result = step(phase1Steps, 8).extractData('', context as any);
+      expect(result.isComplete).toBe(true);
+    });
+  });
 });
 
 describe('POP-01 · Fase 2 (Formulário A.2 — Maceração e Secagem) — trava de avanço por passo', () => {
@@ -153,5 +200,30 @@ describe('POP-01 · Fase 2 (Formulário A.2 — Maceração e Secagem) — trava
     expect(result.isComplete).toBe(true);
     expect(result.data.formaSecagem).toBe('estufa');
     expect(result.data.dryingConfirmationAllBoxes).toBe(true);
+  });
+
+  describe('Passos multi-campo — uma resposta em duas falas não trava (context cumulativo)', () => {
+    it('Passo 3 (danos maceração): "houveDanosMaceracao=true" já salvo, acompanhamento livre vira a descrição', () => {
+      const context = { phase2: { houveDanosMaceracao: { value: true } } };
+      const result = step(phase2Steps, 3).extractData('Pequena fissura no rádio direito.', context as any);
+      expect(result.isComplete).toBe(true);
+      expect(result.data.descricaoDanosMaceracao).toContain('fissura');
+    });
+
+    it('Passo 4 (secagem): forma já salva no context, resposta de acompanhamento só com a confirmação fecha o passo', () => {
+      const context = { phase2: { formaSecagem: { value: 'estufa' } } };
+      const result = step(phase2Steps, 4).extractData('Concluída, sem umidade em nenhuma caixa.', context as any);
+      expect(result.isComplete).toBe(true);
+      expect(result.data.formaSecagem).toBeUndefined();
+    });
+
+    it('Passo 4: confirmação "false" já salva no context não é tratada como ainda-não-respondida', () => {
+      const context = { phase2: { formaSecagem: { value: 'estufa' }, dryingConfirmationAllBoxes: false } };
+      const result = step(phase2Steps, 4).extractData('', context as any);
+      // false já é uma resposta real (secagem incompleta) — o passo não deve pedir
+      // "confirmação de secagem completa" de novo nem marcar como completo.
+      expect(result.summaryText).not.toContain('Ainda falta');
+      expect(result.isComplete).toBe(false); // completo só quando a confirmação é true
+    });
   });
 });
