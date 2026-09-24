@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { GraphNode, GraphNodeType, GraphEdge } from '../types/sgccco';
-import { Network, Search, Info, Route, Loader2 } from 'lucide-react';
+import { Network, Search, Info, Route, Loader2, RefreshCw } from 'lucide-react';
 
 interface KnowledgeGraphViewerProps {
   selectedNic?: string;
@@ -78,7 +78,10 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
   const [isSearchingGlobal, setIsSearchingGlobal] = useState(false);
 
   // Carrega o grafo persistido — o conjunto todo, ou escopado ao NIC selecionado na tela.
-  useEffect(() => {
+  // Só refaz sozinho quando o NIC selecionado muda (ou ao montar a tela); uma mudança feita
+  // em outra aba/tela enquanto esta já estava aberta não chega aqui sozinha — por isso o
+  // botão "Atualizar" ao lado do título busca de novo sob demanda.
+  const loadGraph = useCallback(() => {
     let cancelled = false;
     setIsLoadingGraph(true);
     setLoadError(null);
@@ -97,6 +100,8 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
       cancelled = true;
     };
   }, [selectedNic]);
+
+  useEffect(() => loadGraph(), [loadGraph]);
 
   const selectNode = useCallback((nodeId: string) => {
     setSelectedNodeId(nodeId);
@@ -195,6 +200,14 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
         </div>
 
         <div className="flex flex-wrap items-center gap-2 text-xs">
+          <button
+            onClick={loadGraph}
+            disabled={isLoadingGraph}
+            title="Recarregar o grafo agora (uma mudança feita em outra aba/tela não aparece aqui sozinha)"
+            className="p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoadingGraph ? 'animate-spin' : ''}`} />
+          </button>
           <div className="relative">
             <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
             <input
