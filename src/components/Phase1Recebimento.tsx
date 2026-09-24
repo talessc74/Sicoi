@@ -13,6 +13,7 @@ import {
 } from '../types/sgccco';
 import { PopConversationalConductor } from './PopConversationalConductor';
 import { calculateSha256, generateSignaturePayload } from '../services/auditService';
+import { getLatestPhaseSignature } from '../utils/signatures';
 import { Shield, Lock, FileText, Camera, Box, CheckCircle2, AlertCircle, Sparkles, Printer, Bot, Trash2 } from 'lucide-react';
 
 interface Phase1RecebimentoProps {
@@ -82,7 +83,7 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
   const [signing, setSigning] = useState(false);
   const [showPrintLabel, setShowPrintLabel] = useState(false);
 
-  const phaseSignature = collection.signatures.find((s) => s.phaseNumber === 1);
+  const phaseSignature = getLatestPhaseSignature(collection.signatures, 1);
   const isLocked = phaseSignature?.status === 'locked';
 
   const canViewRestrictedLegal = currentUser.role === 'curador' || currentUser.role === 'administrador';
@@ -124,7 +125,18 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
     onUpdateCollection(updated);
   };
 
-  const handleTakePhoto = async (category: Phase1PhotoCategory) => {
+  // Anexa a foto e marca o campo do checklist correspondente numa única atualização.
+  // Antes eram duas chamadas separadas (uma síncrona pro campo, outra async pra foto,
+  // cada uma lendo `collection` do fechamento no momento do clique): como a segunda só
+  // resolve depois do await do hash, ela sempre aplicava por cima um snapshot do estado
+  // ANTES da primeira mudança, apagando silenciosamente o campo que acabara de ser
+  // marcado. Combinar em uma função só, que só escreve depois que a foto (e seu hash)
+  // já está pronta, elimina essa corrida.
+  const handleTakePhotoAndSetField = async (
+    category: Phase1PhotoCategory,
+    fieldKey: keyof typeof p1,
+    fieldValue: FieldWithAiSuggestion<any>
+  ) => {
     const photoId = `photo-p1-${category}-${Date.now()}`;
     const url = 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=800&auto=format&fit=crop&q=80';
     const hash = await calculateSha256(`${url}|${category}|${collection.nic}|${currentUser.id}`);
@@ -137,7 +149,11 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
       url
     };
     const updated = { ...collection };
-    updated.phase1 = { ...updated.phase1, photos: [...updated.phase1.photos, newPhoto] };
+    updated.phase1 = {
+      ...updated.phase1,
+      photos: [...updated.phase1.photos, newPhoto],
+      [fieldKey]: fieldValue
+    };
     onUpdateCollection(updated);
   };
 
@@ -425,8 +441,7 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
                   done={p1.foto1SacoFechado.value === true}
                   disabled={isLocked}
                   onCapture={() => {
-                    handleTakePhoto('foto1_saco_fechado');
-                    setField('foto1SacoFechado', { value: true, isAiSuggested: false });
+                    handleTakePhotoAndSetField('foto1_saco_fechado', 'foto1SacoFechado', { value: true, isAiSuggested: false });
                   }}
                 />
                 <TriStateRow
@@ -434,8 +449,11 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
                   value={p1.foto2PlacaCemiterio.value}
                   disabled={isLocked}
                   onChange={(v) => {
-                    setField('foto2PlacaCemiterio', { value: v, isAiSuggested: false });
-                    if (v === 'sim') handleTakePhoto('foto2_placa_cemiterio');
+                    if (v === 'sim') {
+                      handleTakePhotoAndSetField('foto2_placa_cemiterio', 'foto2PlacaCemiterio', { value: v, isAiSuggested: false });
+                    } else {
+                      setField('foto2PlacaCemiterio', { value: v, isAiSuggested: false });
+                    }
                   }}
                 />
                 <TriStateRow
@@ -443,8 +461,11 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
                   value={p1.foto3RemanescentesMateriais.value}
                   disabled={isLocked}
                   onChange={(v) => {
-                    setField('foto3RemanescentesMateriais', { value: v, isAiSuggested: false });
-                    if (v === 'sim') handleTakePhoto('foto3_remanescentes_materiais');
+                    if (v === 'sim') {
+                      handleTakePhotoAndSetField('foto3_remanescentes_materiais', 'foto3RemanescentesMateriais', { value: v, isAiSuggested: false });
+                    } else {
+                      setField('foto3RemanescentesMateriais', { value: v, isAiSuggested: false });
+                    }
                   }}
                 />
                 <PhotoChecklistRow
@@ -452,8 +473,7 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
                   done={p1.foto4_1RemanescentesIsolados.value === true}
                   disabled={isLocked}
                   onCapture={() => {
-                    handleTakePhoto('foto4_1_remanescentes_isolados');
-                    setField('foto4_1RemanescentesIsolados', { value: true, isAiSuggested: false });
+                    handleTakePhotoAndSetField('foto4_1_remanescentes_isolados', 'foto4_1RemanescentesIsolados', { value: true, isAiSuggested: false });
                   }}
                 />
                 <TriStateRow
@@ -461,8 +481,11 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
                   value={p1.foto4_2MateriaisIsolados.value}
                   disabled={isLocked}
                   onChange={(v) => {
-                    setField('foto4_2MateriaisIsolados', { value: v, isAiSuggested: false });
-                    if (v === 'sim') handleTakePhoto('foto4_2_materiais_isolados');
+                    if (v === 'sim') {
+                      handleTakePhotoAndSetField('foto4_2_materiais_isolados', 'foto4_2MateriaisIsolados', { value: v, isAiSuggested: false });
+                    } else {
+                      setField('foto4_2MateriaisIsolados', { value: v, isAiSuggested: false });
+                    }
                   }}
                 />
               </FormSection>

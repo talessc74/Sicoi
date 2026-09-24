@@ -14,6 +14,7 @@ import {
   generateInitialOdontogram
 } from '../data/mockData';
 import { calculateSha256, generateSignaturePayload } from '../services/auditService';
+import { getLatestPhaseSignature } from '../utils/signatures';
 import {
   UserCheck,
   Search,
@@ -54,7 +55,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
   const [showSignModal, setShowSignModal] = useState(false);
   const [signing, setSigning] = useState(false);
 
-  const phaseSignature = collection.signatures.find(s => s.phaseNumber === 4);
+  const phaseSignature = getLatestPhaseSignature(collection.signatures, 4);
   const isLocked = phaseSignature?.status === 'locked';
 
   const isCurator = currentUser.role === 'curador';
@@ -191,7 +192,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
     updated.phase4.curationVersionStatus = 'aprovada';
     updated.phase4.curatorAuthor = currentUser.name;
     updated.signatures = [
-      ...updated.signatures.filter(s => s.phaseNumber !== 4),
+      ...updated.signatures.map((s) => (s.phaseNumber === 4 ? { ...s, status: 'unlocked_for_revision' as const } : s)),
       {
         phaseNumber: 4,
         signedBy: currentUser.id,

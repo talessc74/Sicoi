@@ -6,6 +6,7 @@ import {
   CustodyMovement
 } from '../types/sgccco';
 import { calculateSha256, generateSignaturePayload } from '../services/auditService';
+import { getLatestPhaseSignature } from '../utils/signatures';
 import { PublicQRInspectionModal } from './PublicQRInspectionModal';
 import {
   Warehouse,
@@ -42,7 +43,7 @@ export const Phase6Galpao: React.FC<Phase6GalpaoProps> = ({
   const [showSignDualModal, setShowSignDualModal] = useState(false);
   const [signing, setSigning] = useState(false);
 
-  const phaseSignature = collection.signatures.find(s => s.phaseNumber === 6);
+  const phaseSignature = getLatestPhaseSignature(collection.signatures, 6);
   const isLocked = phaseSignature?.status === 'locked';
 
   // Verificação rigorosa de pré-condições (§6)
@@ -151,7 +152,7 @@ export const Phase6Galpao: React.FC<Phase6GalpaoProps> = ({
     const phase6Hash = await calculateSha256(payload);
 
     updated.signatures = [
-      ...updated.signatures.filter(s => s.phaseNumber !== 6),
+      ...updated.signatures.map((s) => (s.phaseNumber === 6 ? { ...s, status: 'unlocked_for_revision' as const } : s)),
       {
         phaseNumber: 6,
         signedBy: currentUser.id,

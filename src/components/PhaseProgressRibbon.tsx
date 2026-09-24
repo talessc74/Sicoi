@@ -1,5 +1,6 @@
 import React from 'react';
 import { OsteologicalCollection, PhaseNumber, UserRole } from '../types/sgccco';
+import { getLatestPhaseSignature } from '../utils/signatures';
 import { Lock, Unlock, CheckCircle2, AlertCircle, RotateCcw, ShieldCheck } from 'lucide-react';
 
 interface PhaseProgressRibbonProps {
@@ -37,7 +38,7 @@ export const PhaseProgressRibbon: React.FC<PhaseProgressRibbonProps> = ({
   };
 
   const getPhaseSignature = (p: PhaseNumber) => {
-    return collection.signatures.find(s => s.phaseNumber === p);
+    return getLatestPhaseSignature(collection.signatures, p);
   };
 
   const isPhaseAccessible = (p: PhaseNumber): boolean => {

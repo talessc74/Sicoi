@@ -7,6 +7,7 @@ import {
 } from '../types/sgccco';
 import { DicomViewer } from './DicomViewer';
 import { calculateSha256, generateSignaturePayload } from '../services/auditService';
+import { getLatestPhaseSignature } from '../utils/signatures';
 import {
   Activity,
   Layers,
@@ -43,7 +44,7 @@ export const Phase5Patologias: React.FC<Phase5PatologiasProps> = ({
   const [showSignModal, setShowSignModal] = useState(false);
   const [signing, setSigning] = useState(false);
 
-  const phaseSignature = collection.signatures.find(s => s.phaseNumber === 5);
+  const phaseSignature = getLatestPhaseSignature(collection.signatures, 5);
   const isLocked = phaseSignature?.status === 'locked';
 
   const isCurator = currentUser.role === 'curador';
@@ -182,7 +183,7 @@ export const Phase5Patologias: React.FC<Phase5PatologiasProps> = ({
 
     if (hasCuratorSign && hasTechSign) {
       updated.signatures = [
-        ...updated.signatures.filter(s => s.phaseNumber !== 5),
+        ...updated.signatures.map((s) => (s.phaseNumber === 5 ? { ...s, status: 'unlocked_for_revision' as const } : s)),
         {
           phaseNumber: 5,
           signedBy: currentUser.id,

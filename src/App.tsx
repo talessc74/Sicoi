@@ -270,23 +270,24 @@ export default function App() {
 
   const handleReopenPhase = (phaseToReopen: PhaseNumber, justification: string) => {
     if (!currentCollection || !currentUser) return;
+    const timestamp = new Date().toISOString();
     const updated = { ...currentCollection };
-    updated.signatures = updated.signatures.filter(s => s.phaseNumber !== phaseToReopen);
+    // Preserva o registro de assinatura original (quem assinou, quando, hash) em vez de
+    // apagá-lo — a reabertura fica marcada nele mesmo (status + justificativa + quem/quando
+    // reabriu), o que a Linha do Tempo de Auditoria já sabe transformar automaticamente em
+    // um evento "Reabertura Pericial Justificada" (ver getAuditTrailForCollection).
+    updated.signatures = updated.signatures.map((s) =>
+      s.phaseNumber === phaseToReopen && s.status === 'locked'
+        ? {
+            ...s,
+            status: 'unlocked_for_revision' as const,
+            reopenedBy: currentUser.name,
+            reopenedAt: timestamp,
+            reopenJustification: justification
+          }
+        : s
+    );
     updated.currentPhase = phaseToReopen;
-
-    updated.custodyChain.push({
-      id: `cst-reopen-${Date.now()}`,
-      timestamp: new Date().toISOString(),
-      sourceLocation: `Fase ${phaseToReopen} (Travada)`,
-      targetLocation: `Fase ${phaseToReopen} (Reaberta)`,
-      carrierPerson: currentUser.name,
-      receiverPerson: currentUser.name,
-      carrierSignatureHash: 'REOPEN-AUTH',
-      receiverSignatureHash: 'REOPEN-AUTH',
-      purpose: 'consulta_pesquisa',
-      status: 'concluido',
-      boxIds: updated.phase1.preliminaryBoxes.map(b => b.id)
-    });
 
     handleUpdateCollection(updated);
     setActivePhase(phaseToReopen);

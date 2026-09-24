@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { OsteologicalCollection, UserProfile, StorageLocation, CustodyMovement } from '../types/sgccco';
 import { calculateSha256, generateSignaturePayload } from '../services/auditService';
+import { getLatestPhaseSignature } from '../utils/signatures';
 import { WAREHOUSE_STRUCTURE } from '../data/mockData';
 import { MapPin, QrCode, CheckCircle2, Clock, Box, ShieldCheck, ArrowRight } from 'lucide-react';
 
@@ -27,7 +28,7 @@ export const Phase3Acondicionamento: React.FC<Phase3AcondicionamentoProps> = ({
   const [signing, setSigning] = useState(false);
   const [simulatedScanSuccess, setSimulatedScanSuccess] = useState(false);
 
-  const phaseSignature = collection.signatures.find(s => s.phaseNumber === 3);
+  const phaseSignature = getLatestPhaseSignature(collection.signatures, 3);
   const isLocked = phaseSignature?.status === 'locked';
   const isTechnician = currentUser.role === 'tecnico';
 
@@ -102,7 +103,7 @@ export const Phase3Acondicionamento: React.FC<Phase3AcondicionamentoProps> = ({
 
     const updated = { ...collection };
     updated.signatures = [
-      ...updated.signatures.filter(s => s.phaseNumber !== 3),
+      ...updated.signatures.map((s) => (s.phaseNumber === 3 ? { ...s, status: 'unlocked_for_revision' as const } : s)),
       {
         phaseNumber: 3,
         signedBy: currentUser.id,

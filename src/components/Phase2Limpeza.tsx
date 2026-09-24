@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { OsteologicalCollection, UserProfile, FieldWithAiSuggestion, CleaningInstrument } from '../types/sgccco';
 import { PopConversationalConductor } from './PopConversationalConductor';
 import { calculateSha256, generateSignaturePayload } from '../services/auditService';
+import { getLatestPhaseSignature } from '../utils/signatures';
 import { Droplet, Wind, Clock, CheckCircle2, ShieldCheck, Bot, FileText, Sparkles, Box } from 'lucide-react';
 
 const INSTRUMENT_OPTIONS: { value: CleaningInstrument; label: string }[] = [
@@ -34,7 +35,7 @@ export const Phase2Limpeza: React.FC<Phase2LimpezaProps> = ({ collection, curren
   const [showSignModal, setShowSignModal] = useState(false);
   const [signing, setSigning] = useState(false);
 
-  const phaseSignature = collection.signatures.find((s) => s.phaseNumber === 2);
+  const phaseSignature = getLatestPhaseSignature(collection.signatures, 2);
   const isLocked = phaseSignature?.status === 'locked';
   const isTechnician = currentUser.role === 'tecnico';
 
