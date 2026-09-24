@@ -26,6 +26,24 @@ describe('POP-01 · Fase 1 (Formulário A.1) — trava de avanço por passo', ()
     expect(result.data.dataAnalise).toBe(new Date().toISOString().slice(0, 10));
   });
 
+  it('Passo 1: reconhece data falada por extenso ("24 de setembro de 2026"), não só "hoje" ou DD/MM/AAAA', () => {
+    const result = step(phase1Steps, 1).extractData('Data de início 24 de setembro de 2026 hora 7h30', {} as any);
+    expect(result.data.dataAnalise).toBe('2026-09-24');
+    expect(result.data.horaAnalise).toBe('7h30');
+  });
+
+  it('Passo 1: uma resposta de acompanhamento só com data/hora não sobrescreve a equipe já registrada', () => {
+    // Reproduz o bug relatado: equipe já foi dita numa fala anterior (já está no
+    // "context"/collection), e o usuário só complementa a data que faltava — a
+    // resposta de acompanhamento não deve virar o novo valor de "equipe".
+    const context = { phase1: { equipeEnvolvidaLimpeza: { value: 'Técnico João e Técnica Maria' } } };
+    const result = step(phase1Steps, 1).extractData('Data de início 24 de setembro de 2026 hora 7h30', context as any);
+    expect(result.data.equipeEnvolvidaLimpeza).toBeUndefined(); // não reextrai o que já está salvo
+    expect(result.data.dataAnalise).toBe('2026-09-24');
+    expect(result.data.horaAnalise).toBe('7h30');
+    expect(result.isComplete).toBe(true); // equipe já vem do context, data e hora vieram agora
+  });
+
   it('Passo 2 (checklist fotográfico): incompleto enquanto alguma foto obrigatória não foi confirmada', () => {
     const result = step(phase1Steps, 2).extractData('Foto do saco fechado feita.', {} as any);
     expect(result.isComplete).toBe(false);

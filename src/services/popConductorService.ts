@@ -6,6 +6,39 @@
 
 import { PhaseNumber } from '../types/sgccco';
 
+const MONTHS_PT: Record<string, string> = {
+  janeiro: '01', fevereiro: '02', marco: '03', abril: '04', maio: '05', junho: '06',
+  julho: '07', agosto: '08', setembro: '09', outubro: '10', novembro: '11', dezembro: '12'
+};
+
+/**
+ * Reconhece data falada em português ("24 de setembro de 2026", sem ano assume o
+ * ano corrente), "hoje", ou o formato numérico DD/MM/AAAA. Transcrição de voz
+ * praticamente nunca produz DD/MM/AAAA — sem isso, qualquer data falada por
+ * extenso travava o passo pra sempre pedindo "data" mesmo já tendo sido dita.
+ */
+function parseSpokenDate(input: string): string | undefined {
+  if (/\bhoje\b/i.test(input)) return new Date().toISOString().slice(0, 10);
+
+  const numeric = input.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  if (numeric) return `${numeric[3]}-${numeric[2]}-${numeric[1]}`;
+
+  const spoken = input.match(/\b(\d{1,2})\s*(?:de\s+)?([a-zà-öø-ÿ]+)(?:\s+de\s+(\d{4}))?/i);
+  if (spoken) {
+    const day = spoken[1].padStart(2, '0');
+    const monthName = spoken[2]
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '');
+    const month = MONTHS_PT[monthName];
+    if (month) {
+      const year = spoken[3] || String(new Date().getFullYear());
+      return `${year}-${month}-${day}`;
+    }
+  }
+  return undefined;
+}
+
 export interface ConductorChatMessage {
   id: string;
   sender: 'conductor' | 'user' | 'system';
@@ -70,28 +103,37 @@ export const SENASP_POPS: Record<PhaseNumber, PopDefinition> = {
           'Equipe: Técnico João e Técnica Maria. Data de hoje, início às 09h15min.',
           'Equipe composta por dois peritos. Hoje, 14h30min.'
         ],
-        extractData: (input: string) => {
+        extractData: (input: string, context?: any) => {
           const data: Record<string, any> = {};
+          const alreadyHasEquipe = !!context?.phase1?.equipeEnvolvidaLimpeza?.value;
+          const alreadyHasData = !!context?.phase1?.dataAnalise?.value;
+          const alreadyHasHora = !!context?.phase1?.horaAnalise?.value;
+
           const equipeMatch = input.match(/equipe[:\s]+([^.]+?)(?:\.|data|hora|$)/i);
           if (equipeMatch) data.equipeEnvolvidaLimpeza = equipeMatch[1].trim();
-          else if (input.trim().length > 3) data.equipeEnvolvidaLimpeza = input.trim();
 
           const horaMatch = input.match(/(\d{1,2}h\d{0,2}(?:min)?)/i);
           if (horaMatch) data.horaAnalise = horaMatch[1];
 
-          if (/\bhoje\b/i.test(input)) data.dataAnalise = new Date().toISOString().slice(0, 10);
-          const dataMatch = input.match(/(\d{2}\/\d{2}\/\d{4})/);
-          if (dataMatch) data.dataAnalise = dataMatch[1];
+          const parsedDate = parseSpokenDate(input);
+          if (parsedDate) data.dataAnalise = parsedDate;
+
+          // Só trata a frase inteira como "equipe" quando não achou a palavra-chave,
+          // ainda não há equipe registrada, e a frase não é claramente só data/hora
+          // (uma correção de "esqueci a data" não deve sobrescrever a equipe já dita).
+          if (!data.equipeEnvolvidaLimpeza && !alreadyHasEquipe && !horaMatch && !parsedDate && input.trim().length > 3) {
+            data.equipeEnvolvidaLimpeza = input.trim();
+          }
 
           const missing: string[] = [];
-          if (!data.equipeEnvolvidaLimpeza) missing.push('equipe envolvida');
-          if (!data.dataAnalise) missing.push('data');
-          if (!data.horaAnalise) missing.push('hora');
+          if (!alreadyHasEquipe && !data.equipeEnvolvidaLimpeza) missing.push('equipe envolvida');
+          if (!alreadyHasData && !data.dataAnalise) missing.push('data');
+          if (!alreadyHasHora && !data.horaAnalise) missing.push('hora');
 
           return {
             data,
             summaryText: missing.length === 0
-              ? `Equipe: ${data.equipeEnvolvidaLimpeza} · ${data.dataAnalise} ${data.horaAnalise}`
+              ? `Equipe: ${data.equipeEnvolvidaLimpeza ?? context?.phase1?.equipeEnvolvidaLimpeza?.value} · ${data.dataAnalise ?? context?.phase1?.dataAnalise?.value} ${data.horaAnalise ?? context?.phase1?.horaAnalise?.value}`
               : `Ainda falta informar: ${missing.join(', ')}.`,
             isComplete: missing.length === 0
           };
@@ -362,28 +404,34 @@ export const SENASP_POPS: Record<PhaseNumber, PopDefinition> = {
           'Equipe: Técnico João e Técnica Maria. Data de hoje, início às 14h00min.',
           'Equipe composta por dois peritos. Hoje, 09h30min.'
         ],
-        extractData: (input: string) => {
+        extractData: (input: string, context?: any) => {
           const data: Record<string, any> = {};
+          const alreadyHasEquipe = !!context?.phase2?.equipeEnvolvidaLimpeza?.value;
+          const alreadyHasData = !!context?.phase2?.dataAnalise?.value;
+          const alreadyHasHora = !!context?.phase2?.horaAnalise?.value;
+
           const equipeMatch = input.match(/equipe[:\s]+([^.]+?)(?:\.|data|hora|$)/i);
           if (equipeMatch) data.equipeEnvolvidaLimpeza = equipeMatch[1].trim();
-          else if (input.trim().length > 3) data.equipeEnvolvidaLimpeza = input.trim();
 
           const horaMatch = input.match(/(\d{1,2}h\d{0,2}(?:min)?)/i);
           if (horaMatch) data.horaAnalise = horaMatch[1];
 
-          if (/\bhoje\b/i.test(input)) data.dataAnalise = new Date().toISOString().slice(0, 10);
-          const dataMatch = input.match(/(\d{2}\/\d{2}\/\d{4})/);
-          if (dataMatch) data.dataAnalise = dataMatch[1];
+          const parsedDate = parseSpokenDate(input);
+          if (parsedDate) data.dataAnalise = parsedDate;
+
+          if (!data.equipeEnvolvidaLimpeza && !alreadyHasEquipe && !horaMatch && !parsedDate && input.trim().length > 3) {
+            data.equipeEnvolvidaLimpeza = input.trim();
+          }
 
           const missing: string[] = [];
-          if (!data.equipeEnvolvidaLimpeza) missing.push('equipe envolvida');
-          if (!data.dataAnalise) missing.push('data');
-          if (!data.horaAnalise) missing.push('hora');
+          if (!alreadyHasEquipe && !data.equipeEnvolvidaLimpeza) missing.push('equipe envolvida');
+          if (!alreadyHasData && !data.dataAnalise) missing.push('data');
+          if (!alreadyHasHora && !data.horaAnalise) missing.push('hora');
 
           return {
             data,
             summaryText: missing.length === 0
-              ? `Equipe: ${data.equipeEnvolvidaLimpeza} · ${data.dataAnalise} ${data.horaAnalise}`
+              ? `Equipe: ${data.equipeEnvolvidaLimpeza ?? context?.phase2?.equipeEnvolvidaLimpeza?.value} · ${data.dataAnalise ?? context?.phase2?.dataAnalise?.value} ${data.horaAnalise ?? context?.phase2?.horaAnalise?.value}`
               : `Ainda falta informar: ${missing.join(', ')}.`,
             isComplete: missing.length === 0
           };
