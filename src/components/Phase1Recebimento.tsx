@@ -14,7 +14,7 @@ import {
 import { PopConversationalConductor } from './PopConversationalConductor';
 import { calculateSha256, generateSignaturePayload } from '../services/auditService';
 import { getLatestPhaseSignature } from '../utils/signatures';
-import { Shield, Lock, FileText, Camera, Box, CheckCircle2, AlertCircle, Sparkles, Printer, Bot, Trash2 } from 'lucide-react';
+import { Shield, Lock, FileText, Camera, Box, CheckCircle2, AlertCircle, Sparkles, Printer, Bot, Trash2, Save } from 'lucide-react';
 
 interface Phase1RecebimentoProps {
   collection: OsteologicalCollection;
@@ -80,6 +80,7 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
 }) => {
   const [interactionMode, setInteractionMode] = useState<'conversacional' | 'formulario'>('conversacional');
   const [showSignModal, setShowSignModal] = useState(false);
+  const [justSaved, setJustSaved] = useState(false);
   const [signing, setSigning] = useState(false);
   const [showPrintLabel, setShowPrintLabel] = useState(false);
 
@@ -155,6 +156,16 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
       [fieldKey]: fieldValue
     };
     onUpdateCollection(updated);
+  };
+
+  // O preenchimento já salva sozinho a cada campo (onUpdateCollection é chamado em todo
+  // setField) — mas sem um botão pra apertar, ninguém tem como confirmar isso na hora. Este
+  // botão não faz nada tecnicamente novo: só reenvia o estado atual e dá uma confirmação
+  // visual local, pra quem quer ter certeza antes de sair da tela.
+  const handleManualSave = () => {
+    onUpdateCollection({ ...collection });
+    setJustSaved(true);
+    setTimeout(() => setJustSaved(false), 2500);
   };
 
   const handleSignPhase = async () => {
@@ -246,6 +257,20 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {!isLocked && (
+              <button
+                onClick={handleManualSave}
+                className={`px-3 py-2 rounded-xl border text-xs font-medium flex items-center gap-1.5 transition-colors ${
+                  justSaved
+                    ? 'border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300'
+                    : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'
+                }`}
+                title="O preenchimento já é salvo automaticamente a cada campo — este botão só confirma isso agora, na hora."
+              >
+                {justSaved ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <Save className="w-4 h-4 text-slate-500" />}
+                <span>{justSaved ? 'Salvo!' : 'Salvar Formulário'}</span>
+              </button>
+            )}
             <button
               onClick={() => setShowPrintLabel(true)}
               className="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-800 dark:text-slate-200 flex items-center gap-1.5 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"

@@ -3,7 +3,7 @@ import { OsteologicalCollection, UserProfile, FieldWithAiSuggestion, CleaningIns
 import { PopConversationalConductor } from './PopConversationalConductor';
 import { calculateSha256, generateSignaturePayload } from '../services/auditService';
 import { getLatestPhaseSignature } from '../utils/signatures';
-import { Droplet, Wind, Clock, CheckCircle2, ShieldCheck, Bot, FileText, Sparkles, Box } from 'lucide-react';
+import { Droplet, Wind, Clock, CheckCircle2, ShieldCheck, Bot, FileText, Sparkles, Box, Save } from 'lucide-react';
 
 const INSTRUMENT_OPTIONS: { value: CleaningInstrument; label: string }[] = [
   { value: 'esponja', label: 'Esponja' },
@@ -33,6 +33,7 @@ interface Phase2LimpezaProps {
 export const Phase2Limpeza: React.FC<Phase2LimpezaProps> = ({ collection, currentUser, onUpdateCollection }) => {
   const [interactionMode, setInteractionMode] = useState<'conversacional' | 'formulario'>('conversacional');
   const [showSignModal, setShowSignModal] = useState(false);
+  const [justSaved, setJustSaved] = useState(false);
   const [signing, setSigning] = useState(false);
 
   const phaseSignature = getLatestPhaseSignature(collection.signatures, 2);
@@ -83,6 +84,15 @@ export const Phase2Limpeza: React.FC<Phase2LimpezaProps> = ({ collection, curren
     (p2.houveDanosMaceracao.value === false || Boolean(p2.descricaoDanosMaceracao.value)) &&
     Boolean(p2.formaSecagem.value) &&
     p2.dryingConfirmationAllBoxes;
+
+  // O preenchimento já salva sozinho a cada campo (onUpdateCollection é chamado em todo
+  // setField) — este botão não faz nada tecnicamente novo, só reenvia o estado atual e dá
+  // uma confirmação visual local, pra quem quer ter certeza antes de sair da tela.
+  const handleManualSave = () => {
+    onUpdateCollection({ ...collection });
+    setJustSaved(true);
+    setTimeout(() => setJustSaved(false), 2500);
+  };
 
   const handleSignPhase = async () => {
     setSigning(true);
@@ -136,6 +146,20 @@ export const Phase2Limpeza: React.FC<Phase2LimpezaProps> = ({ collection, curren
           </div>
 
           <div className="flex items-center gap-3">
+            {!isLocked && (
+              <button
+                onClick={handleManualSave}
+                className={`px-3 py-2 rounded-xl border text-xs font-medium flex items-center gap-1.5 transition-colors ${
+                  justSaved
+                    ? 'border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300'
+                    : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'
+                }`}
+                title="O preenchimento já é salvo automaticamente a cada campo — este botão só confirma isso agora, na hora."
+              >
+                {justSaved ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <Save className="w-4 h-4 text-slate-500" />}
+                <span>{justSaved ? 'Salvo!' : 'Salvar Formulário'}</span>
+              </button>
+            )}
             {isLocked ? (
               <div className="px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-900 flex items-center gap-2 text-xs font-mono text-emerald-700 dark:text-emerald-300 font-semibold">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
