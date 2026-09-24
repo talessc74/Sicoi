@@ -337,25 +337,20 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
     },
     phase2: {
       ...createEmptyPhase2Data(),
-      maceracaoTemperaturaC: { value: 70, isAiSuggested: false },
-      maceracaoDuracaoHoras: { value: 5, isAiSuggested: false },
-      maceracaoCiclosMonitoramento: { value: 3, isAiSuggested: false },
-      maceracaoResultado: { value: 'satisfatoria', isAiSuggested: false },
-      limpezaManualRealizada: {
-        value: true,
+      equipeEnvolvidaLimpeza: { value: 'Técnico Carlos Alberto Menezes', isAiSuggested: false },
+      dataAnalise: { value: '2026-06-11', isAiSuggested: false },
+      horaAnalise: { value: '09h00min', isAiSuggested: false },
+      maceracaoCiclosNecessarios: { value: 1, isAiSuggested: false },
+      instrumentosUtilizados: {
+        value: ['pinceis', 'esponja'],
         isAiSuggested: true,
-        transcriptSnippet: 'Usando pincel de cerda macia e água destilada a vinte e quatro graus para tirar a terra sem raspar a cortical do osso.'
+        transcriptSnippet: 'Usando pincel de cerda macia e esponja para tirar a terra sem raspar a cortical do osso.'
       },
-      limpezaManualObservacoes: {
-        value: 'Lavagem mecânica delicada com pincéis de cerdas macias em água destilada corrente. Sedimento argiloso removido sem abrasão cortical.',
-        isAiSuggested: true
-      },
-      secagemTemperaturaC: { value: 220, isAiSuggested: false },
+      houveDanosMaceracao: { value: false, isAiSuggested: false },
+      formaSecagem: { value: 'estufa', isAiSuggested: false },
       dryingConfirmationAllBoxes: true,
       dryingConfirmedAt: '2026-06-15T16:00:00Z',
-      dryingConfirmedBy: 'Carlos Alberto Menezes',
-      acondicionamentoCaixaOssuariaCodigo: { value: 'CX-2026-0841-A', isAiSuggested: false },
-      acondicionamentoPlacaNicQrFixada: { value: true, isAiSuggested: false }
+      dryingConfirmedBy: 'Carlos Alberto Menezes'
     },
     phase3: {
       boxLocations: [
@@ -757,18 +752,16 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
     },
     phase2: {
       ...createEmptyPhase2Data(),
-      maceracaoTemperaturaC: { value: 65, isAiSuggested: false },
-      maceracaoDuracaoHoras: { value: 4, isAiSuggested: false },
-      maceracaoCiclosMonitoramento: { value: 2, isAiSuggested: false },
-      maceracaoResultado: { value: 'satisfatoria', isAiSuggested: false },
-      limpezaManualRealizada: { value: true, isAiSuggested: false },
-      limpezaManualObservacoes: { value: 'Material limpo sem intercorrências.', isAiSuggested: false },
-      secagemTemperaturaC: { value: 210, isAiSuggested: false },
+      equipeEnvolvidaLimpeza: { value: 'Técnico Carlos Alberto Menezes', isAiSuggested: false },
+      dataAnalise: { value: '2026-07-16', isAiSuggested: false },
+      horaAnalise: { value: '08h30min', isAiSuggested: false },
+      maceracaoCiclosNecessarios: { value: 1, isAiSuggested: false },
+      instrumentosUtilizados: { value: ['esponja', 'escova_dentes'], isAiSuggested: false },
+      houveDanosMaceracao: { value: false, isAiSuggested: false },
+      formaSecagem: { value: 'estufa', isAiSuggested: false },
       dryingConfirmationAllBoxes: true,
       dryingConfirmedAt: '2026-07-19T16:30:00Z',
-      dryingConfirmedBy: 'Carlos Alberto Menezes',
-      acondicionamentoCaixaOssuariaCodigo: { value: 'CX-2026-0914-A', isAiSuggested: false },
-      acondicionamentoPlacaNicQrFixada: { value: true, isAiSuggested: false }
+      dryingConfirmedBy: 'Carlos Alberto Menezes'
     },
     phase3: {
       boxLocations: [

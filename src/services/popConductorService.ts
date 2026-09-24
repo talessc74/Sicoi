@@ -349,139 +349,161 @@ export const SENASP_POPS: Record<PhaseNumber, PopDefinition> = {
   2: {
     phaseNumber: 2,
     popCode: 'POP-01',
-    popTitle: 'Maceração, Limpeza, Secagem e Acondicionamento',
-    regulatoryRef: 'POP-01 v1 · COI-INC · §9.5-9.7',
-    introMessage: 'Continuando o Condutor do POP-01: agora vamos registrar a maceração, a limpeza manual, a secagem em estufa e o acondicionamento na caixa ossuária.',
+    popTitle: 'Análise Preliminar e Limpeza — Maceração e Secagem',
+    regulatoryRef: 'POP-01 v1 · COI-INC · Formulário A.2',
+    introMessage: 'Continuando o Condutor do POP-01: agora vamos preencher o Formulário A.2, a partir do início da maceração até o fim da secagem.',
     steps: [
       {
         stepNumber: 1,
-        stepTitle: 'Maceração (POP-01 §9.5)',
-        conductorPrompt: 'Primeiro passo: qual foi a temperatura da água de maceração (60-80°C), a duração aproximada (4-6h), e o resultado — a maceração foi satisfatória ou precisou de novo ciclo?',
+        stepTitle: 'Identificação da Sessão (Formulário A.2)',
+        conductorPrompt: 'Primeiro passo: quem é a equipe envolvida na limpeza, e qual a data e a hora de início da maceração?',
         requiresPhoto: false,
         quickSuggestions: [
-          'Água a 70 graus, 5 horas, maceração satisfatória.',
-          'Água a 65 graus, 4 horas, necessitou novo ciclo por resistência dos tecidos.'
+          'Equipe: Técnico João e Técnica Maria. Data de hoje, início às 14h00min.',
+          'Equipe composta por dois peritos. Hoje, 09h30min.'
         ],
         extractData: (input: string) => {
-          const lower = input.toLowerCase();
           const data: Record<string, any> = {};
-          const tempMatch = input.match(/(\d{2,3})\s*(graus|°|c\b)/i);
-          if (tempMatch) data.maceracaoTemperaturaC = parseInt(tempMatch[1], 10);
-          const horasMatch = input.match(/(\d{1,2})\s*hora/i);
-          if (horasMatch) data.maceracaoDuracaoHoras = parseInt(horasMatch[1], 10);
-          if (lower.includes('novo ciclo') || lower.includes('resist')) data.maceracaoResultado = 'necessitou_novo_ciclo';
-          else if (lower.includes('satisfat')) data.maceracaoResultado = 'satisfatoria';
+          const equipeMatch = input.match(/equipe[:\s]+([^.]+?)(?:\.|data|hora|$)/i);
+          if (equipeMatch) data.equipeEnvolvidaLimpeza = equipeMatch[1].trim();
+          else if (input.trim().length > 3) data.equipeEnvolvidaLimpeza = input.trim();
+
+          const horaMatch = input.match(/(\d{1,2}h\d{0,2}(?:min)?)/i);
+          if (horaMatch) data.horaAnalise = horaMatch[1];
+
+          if (/\bhoje\b/i.test(input)) data.dataAnalise = new Date().toISOString().slice(0, 10);
+          const dataMatch = input.match(/(\d{2}\/\d{2}\/\d{4})/);
+          if (dataMatch) data.dataAnalise = dataMatch[1];
 
           const missing: string[] = [];
-          if (!data.maceracaoTemperaturaC) missing.push('temperatura da água');
-          if (!data.maceracaoDuracaoHoras) missing.push('duração em horas');
-          if (!data.maceracaoResultado) missing.push('resultado (satisfatória ou novo ciclo)');
+          if (!data.equipeEnvolvidaLimpeza) missing.push('equipe envolvida');
+          if (!data.dataAnalise) missing.push('data');
+          if (!data.horaAnalise) missing.push('hora');
 
           return {
             data,
             summaryText: missing.length === 0
-              ? `Maceração: ${data.maceracaoTemperaturaC}°C, ${data.maceracaoDuracaoHoras}h, ${data.maceracaoResultado}`
-              : `Ainda falta: ${missing.join('; ')}.`,
+              ? `Equipe: ${data.equipeEnvolvidaLimpeza} · ${data.dataAnalise} ${data.horaAnalise}`
+              : `Ainda falta informar: ${missing.join(', ')}.`,
             isComplete: missing.length === 0
           };
         }
       },
       {
         stepNumber: 2,
-        stepTitle: 'Limpeza Manual (POP-01 §9.5)',
-        conductorPrompt: 'Segundo passo: a limpeza manual com esponjas e escovas foi realizada até a remoção dos tecidos moles remanescentes? Alguma observação?',
+        stepTitle: 'Maceração — Ciclos e Instrumentos (campos 5-7)',
+        conductorPrompt: 'Segundo passo: quantos ciclos de maceração foram necessários, e quais instrumentos foram utilizados na limpeza — esponja, escova de dentes, escova grande, lâmina de bisturi, faca, pinça, pincéis, máquina redutora de corpos, panela/fogão?',
         requiresPhoto: false,
         quickSuggestions: [
-          'Sim, limpeza manual concluída, tecidos moles totalmente removidos.',
-          'Sim, com uso cauteloso de instrumento cortante em área de aderência forte.'
+          'Um ciclo, usamos esponja e escova de dentes.',
+          'Dois ciclos, usamos escova grande, pincéis e panela/fogão.'
         ],
         extractData: (input: string) => {
           const lower = input.toLowerCase();
           const data: Record<string, any> = {};
-          if (/\bsim\b/.test(lower) || lower.includes('concluíd') || lower.includes('concluid') || lower.includes('realizad')) {
-            data.limpezaManualRealizada = true;
-            data.limpezaManualObservacoes = input.trim();
-          } else if (/\bn[ãa]o\b/.test(lower)) {
-            data.limpezaManualRealizada = false;
-          }
+
+          const ciclosMatch = input.match(/(\d+)\s*ciclo/i);
+          if (ciclosMatch) data.maceracaoCiclosNecessarios = parseInt(ciclosMatch[1], 10);
+          else if (/\bum\b|\buma\b/i.test(lower) && lower.includes('ciclo')) data.maceracaoCiclosNecessarios = 1;
+          else if (/\bdois\b|\bduas\b/i.test(lower) && lower.includes('ciclo')) data.maceracaoCiclosNecessarios = 2;
+          else if (/\btr[êe]s\b/i.test(lower) && lower.includes('ciclo')) data.maceracaoCiclosNecessarios = 3;
+
+          const instruments: string[] = [];
+          if (lower.includes('esponja')) instruments.push('esponja');
+          if (lower.includes('escova de dentes')) instruments.push('escova_dentes');
+          else if (lower.includes('escova grande')) instruments.push('escova_grande');
+          if (lower.includes('lâmina') || lower.includes('lamina') || lower.includes('bisturi')) instruments.push('lamina_bisturi');
+          if (lower.includes('faca')) instruments.push('faca');
+          if (lower.includes('pinça') || lower.includes('pinca')) instruments.push('pinca');
+          if (lower.includes('pincéis') || lower.includes('pinceis') || lower.includes('pincel')) instruments.push('pinceis');
+          if (lower.includes('máquina redutora') || lower.includes('maquina redutora')) instruments.push('maquina_redutora_corpos');
+          if (lower.includes('panela') || lower.includes('fogão') || lower.includes('fogao')) instruments.push('panela_fogao');
+          if (instruments.length === 0 && lower.includes('outr')) instruments.push('outra');
+          if (instruments.length > 0) data.instrumentosUtilizados = instruments;
+
+          const missing: string[] = [];
+          if (!data.instrumentosUtilizados) missing.push('instrumentos utilizados');
 
           return {
             data,
-            summaryText: data.limpezaManualRealizada === undefined
-              ? 'Ainda falta confirmar se a limpeza manual foi realizada.'
-              : `Limpeza manual: ${data.limpezaManualRealizada ? 'realizada' : 'não realizada'}.`,
-            isComplete: data.limpezaManualRealizada !== undefined
+            summaryText: missing.length === 0
+              ? `Ciclos: ${data.maceracaoCiclosNecessarios ?? 'não informado'} · Instrumentos: ${data.instrumentosUtilizados.join(', ')}`
+              : `Ainda falta: ${missing.join('; ')}.`,
+            isComplete: missing.length === 0
           };
         }
       },
       {
         stepNumber: 3,
-        stepTitle: 'Secagem em Estufa (POP-01 §9.6)',
-        conductorPrompt: 'Terceiro passo: qual a temperatura da estufa (200-250°C), e você confirma que a secagem foi concluída, sem umidade visível em nenhuma caixa?',
+        stepTitle: 'Danos Durante a Maceração (campos 8-9)',
+        conductorPrompt: 'Terceiro passo: houve algum dano durante a maceração? Se sim, descreva.',
         requiresPhoto: false,
         quickSuggestions: [
-          'Estufa a 220 graus. Secagem completa confirmada, sem umidade em nenhuma caixa.',
-          'Estufa a 230 graus, ainda com umidade residual, precisa de mais um ciclo.'
+          'Não houve danos.',
+          'Sim, pequena fissura na epífise distal do rádio direito durante a limpeza mecânica.'
         ],
         extractData: (input: string) => {
           const lower = input.toLowerCase();
           const data: Record<string, any> = {};
-          const tempMatch = input.match(/(\d{3})\s*(graus|°|c\b)/i);
-          if (tempMatch) data.secagemTemperaturaC = parseInt(tempMatch[1], 10);
-          if (lower.includes('completa') && (lower.includes('confirm') || lower.includes('sem umidade'))) {
-            data.dryingConfirmationAllBoxes = true;
-          } else if (lower.includes('umidade residual') || lower.includes('ainda com umidade')) {
-            data.dryingConfirmationAllBoxes = false;
+          if (/n[ãa]o houve|sem dano|nenhum dano/.test(lower)) {
+            data.houveDanosMaceracao = false;
+          } else if (/sim|houve dano|dano/.test(lower)) {
+            data.houveDanosMaceracao = true;
+            data.descricaoDanosMaceracao = input.trim();
           }
 
           const missing: string[] = [];
-          if (!data.secagemTemperaturaC) missing.push('temperatura da estufa');
-          if (data.dryingConfirmationAllBoxes === undefined) missing.push('confirmação de secagem completa');
+          if (data.houveDanosMaceracao === undefined) missing.push('se houve dano (sim/não)');
+          if (data.houveDanosMaceracao === true && !data.descricaoDanosMaceracao) missing.push('descrição do dano');
 
           return {
             data,
             summaryText: missing.length === 0
-              ? `Estufa a ${data.secagemTemperaturaC}°C · Secagem completa: ${data.dryingConfirmationAllBoxes ? 'sim' : 'não'}`
+              ? (data.houveDanosMaceracao ? `Dano registrado: "${data.descricaoDanosMaceracao.slice(0, 60)}..."` : 'Sem danos registrados na maceração.')
               : `Ainda falta: ${missing.join('; ')}.`,
-            isComplete: missing.length === 0 && data.dryingConfirmationAllBoxes === true
+            isComplete: missing.length === 0
           };
         }
       },
       {
         stepNumber: 4,
-        stepTitle: 'Acondicionamento em Caixa Ossuária (POP-01 §9.7)',
-        conductorPrompt: 'Último passo: qual o código da caixa ossuária de destino, e a placa identificadora com o NIC e QR code já foi fixada na caixa?',
+        stepTitle: 'Secagem (campo 10)',
+        conductorPrompt: 'Último passo do Formulário A.2: qual foi a forma de secagem — estufa, aquecedor ou temperatura ambiente? E você confirma que a secagem está concluída, sem umidade visível em nenhuma caixa?',
         requiresPhoto: false,
         quickSuggestions: [
-          'Caixa CX-0841-A, placa fixada.',
-          'Caixa CX-0841-B, placa ainda não fixada.'
+          'Secagem em estufa. Concluída, sem umidade em nenhuma caixa.',
+          'Secagem em temperatura ambiente, ainda não concluída.'
         ],
         extractData: (input: string) => {
           const lower = input.toLowerCase();
           const data: Record<string, any> = {};
-          const codigoMatch = input.match(/caixa\s+([A-Za-z0-9\-]+)/i);
-          if (codigoMatch) data.acondicionamentoCaixaOssuariaCodigo = codigoMatch[1].toUpperCase();
-          if (lower.includes('placa fixad') || (lower.includes('placa') && lower.includes('sim'))) {
-            data.acondicionamentoPlacaNicQrFixada = true;
-          } else if (lower.includes('não fixad') || lower.includes('nao fixad')) {
-            data.acondicionamentoPlacaNicQrFixada = false;
+
+          if (lower.includes('estufa')) data.formaSecagem = 'estufa';
+          else if (lower.includes('aquecedor')) data.formaSecagem = 'aquecedor';
+          else if (lower.includes('temperatura ambiente') || lower.includes('ambiente')) data.formaSecagem = 'temperatura_ambiente';
+
+          if (lower.includes('conclu') && (lower.includes('confirm') || lower.includes('sem umidade') || !lower.includes('não') && !lower.includes('nao'))) {
+            data.dryingConfirmationAllBoxes = true;
+          }
+          if (lower.includes('não conclu') || lower.includes('nao conclu') || lower.includes('umidade residual') || lower.includes('ainda com umidade')) {
+            data.dryingConfirmationAllBoxes = false;
           }
 
           const missing: string[] = [];
-          if (!data.acondicionamentoCaixaOssuariaCodigo) missing.push('código da caixa ossuária');
-          if (!data.acondicionamentoPlacaNicQrFixada) missing.push('confirmação de que a placa NIC/QR foi fixada');
+          if (!data.formaSecagem) missing.push('forma de secagem');
+          if (data.dryingConfirmationAllBoxes === undefined) missing.push('confirmação de secagem completa');
 
           return {
             data,
             summaryText: missing.length === 0
-              ? `Caixa ${data.acondicionamentoCaixaOssuariaCodigo} · Placa fixada.`
+              ? `Secagem: ${data.formaSecagem} · Completa: ${data.dryingConfirmationAllBoxes ? 'sim' : 'não'}`
               : `Ainda falta: ${missing.join('; ')}.`,
-            isComplete: missing.length === 0
+            isComplete: missing.length === 0 && data.dryingConfirmationAllBoxes === true
           };
         }
       }
     ],
-    completionMessage: 'Maceração, limpeza, secagem e acondicionamento (POP-01 §9.5-9.7) concluídos. O conjunto está pronto para o armazenamento provisório (Fase 3).'
+    completionMessage: 'Formulário A.2 concluído — maceração e secagem registradas (POP-01 §9.5-9.6). O conjunto está pronto para o armazenamento provisório (Fase 3).'
   },
   3: {
     phaseNumber: 3,

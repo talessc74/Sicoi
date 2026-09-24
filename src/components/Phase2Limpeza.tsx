@@ -1,8 +1,26 @@
 import React, { useState } from 'react';
-import { OsteologicalCollection, UserProfile, FieldWithAiSuggestion } from '../types/sgccco';
+import { OsteologicalCollection, UserProfile, FieldWithAiSuggestion, CleaningInstrument } from '../types/sgccco';
 import { PopConversationalConductor } from './PopConversationalConductor';
 import { calculateSha256, generateSignaturePayload } from '../services/auditService';
 import { Droplet, Wind, Clock, CheckCircle2, ShieldCheck, Bot, FileText, Sparkles, Box } from 'lucide-react';
+
+const INSTRUMENT_OPTIONS: { value: CleaningInstrument; label: string }[] = [
+  { value: 'esponja', label: 'Esponja' },
+  { value: 'escova_dentes', label: 'Escova de dentes' },
+  { value: 'escova_grande', label: 'Escova grande' },
+  { value: 'lamina_bisturi', label: 'Lâmina de bisturi' },
+  { value: 'faca', label: 'Faca' },
+  { value: 'pinca', label: 'Pinça' },
+  { value: 'pinceis', label: 'Pincéis' },
+  { value: 'maquina_redutora_corpos', label: 'Máquina redutora de corpos' },
+  { value: 'panela_fogao', label: 'Panela/Fogão' },
+  { value: 'outra', label: 'Outra' }
+];
+
+function toggleInArray<T>(arr: T[] | undefined, value: T): T[] {
+  const current = arr || [];
+  return current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
+}
 
 interface Phase2LimpezaProps {
   collection: OsteologicalCollection;
@@ -56,14 +74,14 @@ export const Phase2Limpeza: React.FC<Phase2LimpezaProps> = ({ collection, curren
   };
 
   const requiredFieldsFilled =
-    Boolean(p2.maceracaoTemperaturaC.value) &&
-    Boolean(p2.maceracaoDuracaoHoras.value) &&
-    Boolean(p2.maceracaoResultado.value) &&
-    p2.limpezaManualRealizada.value === true &&
-    Boolean(p2.secagemTemperaturaC.value) &&
-    p2.dryingConfirmationAllBoxes &&
-    Boolean(p2.acondicionamentoCaixaOssuariaCodigo.value) &&
-    p2.acondicionamentoPlacaNicQrFixada.value === true;
+    Boolean(p2.equipeEnvolvidaLimpeza.value) &&
+    Boolean(p2.dataAnalise.value) &&
+    Boolean(p2.horaAnalise.value) &&
+    (p2.instrumentosUtilizados.value?.length || 0) > 0 &&
+    p2.houveDanosMaceracao.value !== undefined &&
+    (p2.houveDanosMaceracao.value === false || Boolean(p2.descricaoDanosMaceracao.value)) &&
+    Boolean(p2.formaSecagem.value) &&
+    p2.dryingConfirmationAllBoxes;
 
   const handleSignPhase = async () => {
     setSigning(true);
@@ -110,10 +128,10 @@ export const Phase2Limpeza: React.FC<Phase2LimpezaProps> = ({ collection, curren
           <div>
             <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 font-mono text-xs font-semibold uppercase">
               <Droplet className="w-4 h-4" />
-              <span>Fase 2 · Maceração, Limpeza e Secagem (POP-01 §9.5-9.7)</span>
+              <span>Fase 2 · Maceração, Limpeza e Secagem (POP-01 §9.5-9.6)</span>
             </div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-0.5">{collection.nic}</h2>
-            <p className="text-xs text-slate-500 mt-1">Controle de maceração, limpeza manual, secagem completa e acondicionamento em caixa ossuária.</p>
+            <p className="text-xs text-slate-500 mt-1">Formulário A.2: maceração, instrumentos utilizados, danos e forma de secagem, até a confirmação de secagem completa.</p>
           </div>
 
           <div className="flex items-center gap-3">
@@ -164,7 +182,7 @@ export const Phase2Limpeza: React.FC<Phase2LimpezaProps> = ({ collection, curren
             }`}
           >
             <FileText className="w-4 h-4 text-slate-500" />
-            <span>Formulário Manual (§9.5-9.7)</span>
+            <span>Formulário Manual (§9.5-9.6)</span>
           </button>
         </div>
 
@@ -198,10 +216,10 @@ export const Phase2Limpeza: React.FC<Phase2LimpezaProps> = ({ collection, curren
                 </span>
               </div>
 
-              <SummaryRow label="Maceração" value={p2.maceracaoTemperaturaC.value ? `${p2.maceracaoTemperaturaC.value}°C · ${p2.maceracaoDuracaoHoras.value || '?'}h · ${p2.maceracaoResultado.value || ''}` : undefined} />
-              <SummaryRow label="Limpeza Manual" value={p2.limpezaManualRealizada.value === undefined ? undefined : p2.limpezaManualRealizada.value ? 'Realizada' : 'Não realizada'} />
-              <SummaryRow label="Secagem" value={p2.secagemTemperaturaC.value ? `${p2.secagemTemperaturaC.value}°C · Completa: ${p2.dryingConfirmationAllBoxes ? 'sim' : 'não'}` : undefined} />
-              <SummaryRow label="Acondicionamento" value={p2.acondicionamentoCaixaOssuariaCodigo.value ? `Caixa ${p2.acondicionamentoCaixaOssuariaCodigo.value} · Placa: ${p2.acondicionamentoPlacaNicQrFixada.value ? 'fixada' : 'pendente'}` : undefined} />
+              <SummaryRow label="Equipe" value={p2.equipeEnvolvidaLimpeza.value} />
+              <SummaryRow label="Maceração" value={p2.instrumentosUtilizados.value?.length ? `${p2.maceracaoCiclosNecessarios.value ?? '?'} ciclo(s) · ${p2.instrumentosUtilizados.value.join(', ')}` : undefined} />
+              <SummaryRow label="Danos" value={p2.houveDanosMaceracao.value === undefined ? undefined : p2.houveDanosMaceracao.value ? p2.descricaoDanosMaceracao.value : 'Nenhum'} />
+              <SummaryRow label="Secagem" value={p2.formaSecagem.value ? `${p2.formaSecagem.value} · Completa: ${p2.dryingConfirmationAllBoxes ? 'sim' : 'não'}` : undefined} />
 
               <div className="space-y-2">
                 <span className="text-[10px] font-mono uppercase text-slate-400 font-semibold block">Caixas:</span>
@@ -316,43 +334,66 @@ export const Phase2Limpeza: React.FC<Phase2LimpezaProps> = ({ collection, curren
               </div>
             </div>
 
-            {/* Formulário de Maceração, Limpeza, Secagem e Acondicionamento */}
+            {/* Formulário A.2 — Maceração e Secagem */}
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-5">
               <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                 <Droplet className="w-4 h-4 text-sky-600" />
-                Maceração, Limpeza, Secagem e Acondicionamento (POP-01 §9.5-9.7)
+                Formulário A.2 — Análise Preliminar e Limpeza (Maceração e Secagem)
               </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <NumberInput label="Temp. maceração (°C) *" disabled={isLocked} value={p2.maceracaoTemperaturaC.value} onChange={(v) => setField('maceracaoTemperaturaC', { value: v, isAiSuggested: false })} />
-                <NumberInput label="Duração (horas) *" disabled={isLocked} value={p2.maceracaoDuracaoHoras.value} onChange={(v) => setField('maceracaoDuracaoHoras', { value: v, isAiSuggested: false })} />
-                <SelectInput
-                  label="Resultado *"
+                <TextInput label="Equipe envolvida na limpeza *" disabled={isLocked} value={p2.equipeEnvolvidaLimpeza.value || ''} onChange={(v) => setField('equipeEnvolvidaLimpeza', { value: v, isAiSuggested: false })} />
+                <DateInput label="Data *" disabled={isLocked} value={p2.dataAnalise.value || ''} onChange={(v) => setField('dataAnalise', { value: v, isAiSuggested: false })} />
+                <TextInput label="Hora (ex: 11h20min) *" disabled={isLocked} value={p2.horaAnalise.value || ''} onChange={(v) => setField('horaAnalise', { value: v, isAiSuggested: false })} />
+              </div>
+
+              <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
+                <h4 className="text-[11px] font-mono uppercase font-bold text-slate-500 dark:text-slate-400">Maceração</h4>
+                <NumberInput label="Quantos ciclos foram necessários?" disabled={isLocked} value={p2.maceracaoCiclosNecessarios.value} onChange={(v) => setField('maceracaoCiclosNecessarios', { value: v, isAiSuggested: false })} />
+                <span className="block text-slate-600 dark:text-slate-400 font-medium text-xs mt-2">Instrumentos utilizados *</span>
+                <MultiChip
+                  options={INSTRUMENT_OPTIONS}
+                  selected={p2.instrumentosUtilizados.value || []}
                   disabled={isLocked}
-                  value={p2.maceracaoResultado.value || ''}
-                  options={[
-                    { value: 'satisfatoria', label: 'Satisfatória' },
-                    { value: 'necessitou_novo_ciclo', label: 'Necessitou novo ciclo' }
-                  ]}
-                  onChange={(v) => setField('maceracaoResultado', { value: v, isAiSuggested: false })}
+                  onToggle={(v) => setField('instrumentosUtilizados', { value: toggleInArray(p2.instrumentosUtilizados.value, v), isAiSuggested: false })}
                 />
+                {p2.instrumentosUtilizados.value?.includes('outra') && (
+                  <TextInput label="Outra (descrição)" disabled={isLocked} value={p2.instrumentosOutraDescricao.value || ''} onChange={(v) => setField('instrumentosOutraDescricao', { value: v, isAiSuggested: false })} />
+                )}
               </div>
 
-              <div className="flex items-center gap-3 text-xs">
-                <span className="text-slate-600 dark:text-slate-400 font-medium">Limpeza manual realizada *</span>
-                <label className="flex items-center gap-1.5">
-                  <input type="radio" disabled={isLocked} checked={p2.limpezaManualRealizada.value === true} onChange={() => setField('limpezaManualRealizada', { value: true, isAiSuggested: false })} />
-                  Sim
-                </label>
-                <label className="flex items-center gap-1.5">
-                  <input type="radio" disabled={isLocked} checked={p2.limpezaManualRealizada.value === false} onChange={() => setField('limpezaManualRealizada', { value: false, isAiSuggested: false })} />
-                  Não
-                </label>
+              <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
+                <h4 className="text-[11px] font-mono uppercase font-bold text-slate-500 dark:text-slate-400">Danos</h4>
+                <div className="flex items-center gap-3 text-xs">
+                  <span className="text-slate-600 dark:text-slate-400 font-medium">Houve dano(s) durante a maceração? *</span>
+                  <label className="flex items-center gap-1.5">
+                    <input type="radio" disabled={isLocked} checked={p2.houveDanosMaceracao.value === true} onChange={() => setField('houveDanosMaceracao', { value: true, isAiSuggested: false })} />
+                    Sim
+                  </label>
+                  <label className="flex items-center gap-1.5">
+                    <input type="radio" disabled={isLocked} checked={p2.houveDanosMaceracao.value === false} onChange={() => setField('houveDanosMaceracao', { value: false, isAiSuggested: false })} />
+                    Não
+                  </label>
+                </div>
+                {p2.houveDanosMaceracao.value === true && (
+                  <TextInput label="Descreva o(s) dano(s) *" disabled={isLocked} value={p2.descricaoDanosMaceracao.value || ''} onChange={(v) => setField('descricaoDanosMaceracao', { value: v, isAiSuggested: false })} />
+                )}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <NumberInput label="Temp. estufa (°C) *" disabled={isLocked} value={p2.secagemTemperaturaC.value} onChange={(v) => setField('secagemTemperaturaC', { value: v, isAiSuggested: false })} />
-                <div className="flex items-center gap-3 text-xs pt-5">
+              <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
+                <h4 className="text-[11px] font-mono uppercase font-bold text-slate-500 dark:text-slate-400">Secagem</h4>
+                <SelectInput
+                  label="Forma de secagem *"
+                  disabled={isLocked}
+                  value={p2.formaSecagem.value || ''}
+                  options={[
+                    { value: 'estufa', label: 'Estufa' },
+                    { value: 'aquecedor', label: 'Aquecedor' },
+                    { value: 'temperatura_ambiente', label: 'Temperatura ambiente' }
+                  ]}
+                  onChange={(v) => setField('formaSecagem', { value: v, isAiSuggested: false })}
+                />
+                <div className="flex items-center gap-3 text-xs pt-1">
                   <span className="text-slate-600 dark:text-slate-400 font-medium">Secagem completa (todas as caixas) *</span>
                   <input
                     type="checkbox"
@@ -371,19 +412,6 @@ export const Phase2Limpeza: React.FC<Phase2LimpezaProps> = ({ collection, curren
                   />
                 </div>
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <TextInput label="Código da caixa ossuária *" disabled={isLocked} value={p2.acondicionamentoCaixaOssuariaCodigo.value || ''} onChange={(v) => setField('acondicionamentoCaixaOssuariaCodigo', { value: v, isAiSuggested: false })} />
-                <div className="flex items-center gap-2 text-xs pt-5">
-                  <span className="text-slate-600 dark:text-slate-400 font-medium">Placa NIC/QR fixada *</span>
-                  <input
-                    type="checkbox"
-                    disabled={isLocked}
-                    checked={p2.acondicionamentoPlacaNicQrFixada.value === true}
-                    onChange={(e) => setField('acondicionamentoPlacaNicQrFixada', { value: e.target.checked, isAiSuggested: false })}
-                  />
-                </div>
-              </div>
             </div>
           </div>
 
@@ -396,7 +424,7 @@ export const Phase2Limpeza: React.FC<Phase2LimpezaProps> = ({ collection, curren
               </div>
               <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
                 O material só avança para a Fase 3 (Acondicionamento Provisório) após confirmação de que todas as caixas
-                estão secas e o Formulário §9.5-9.7 está completo.
+                estão secas e o Formulário §9.5-9.6 está completo.
               </p>
 
               <div className="p-3 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 font-mono text-[11px] space-y-1">
@@ -426,8 +454,8 @@ export const Phase2Limpeza: React.FC<Phase2LimpezaProps> = ({ collection, curren
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl">
             <h3 className="font-bold text-base text-slate-900 dark:text-white mb-2">Assinatura Técnica — Fase 2</h3>
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
-              Eu, {currentUser.name}, técnico responsável, atesto que o conjunto {collection.nic} passou pela maceração,
-              limpeza manual e secagem (POP-01 §9.5-9.6) e foi acondicionado em caixa ossuária (§9.7).
+              Eu, {currentUser.name}, técnico responsável, atesto que o conjunto {collection.nic} passou pela maceração
+              e secagem conforme o Formulário A.2 (POP-01 §9.5-9.6), com todas as caixas confirmadas secas.
             </p>
 
             <div className="flex justify-end gap-2 text-xs">
@@ -463,6 +491,47 @@ const TextInput: React.FC<{ label: string; value: string; disabled?: boolean; on
       onChange={(e) => onChange(e.target.value)}
       className="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
     />
+  </div>
+);
+
+const DateInput: React.FC<{ label: string; value: string; disabled?: boolean; onChange: (v: string) => void }> = ({ label, value, disabled, onChange }) => (
+  <div>
+    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1 text-xs">{label}</label>
+    <input
+      type="date"
+      disabled={disabled}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
+    />
+  </div>
+);
+
+const MultiChip: React.FC<{
+  options: { value: string; label: string }[];
+  selected: string[];
+  disabled?: boolean;
+  onToggle: (v: any) => void;
+}> = ({ options, selected, disabled, onToggle }) => (
+  <div className="flex flex-wrap gap-1.5">
+    {options.map((o) => {
+      const active = selected.includes(o.value);
+      return (
+        <button
+          key={o.value}
+          type="button"
+          disabled={disabled}
+          onClick={() => onToggle(o.value)}
+          className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
+            active
+              ? 'bg-sky-600 border-sky-600 text-white'
+              : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+          } disabled:opacity-50`}
+        >
+          {o.label}
+        </button>
+      );
+    })}
   </div>
 );
 

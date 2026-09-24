@@ -59,19 +59,20 @@ export function createEmptyPhase1Data(): Phase1Data {
 
 export function createEmptyPhase2Data(): Phase2Data {
   return {
-    maceracaoTemperaturaC: field(undefined as any),
-    maceracaoDuracaoHoras: field(undefined as any),
-    maceracaoCiclosMonitoramento: field(0),
-    maceracaoResultado: field(undefined as any),
-    limpezaManualRealizada: field(undefined as any),
-    limpezaManualObservacoes: field(''),
+    equipeEnvolvidaLimpeza: field(''),
+    dataAnalise: field(''),
+    horaAnalise: field(''),
 
-    secagemTemperaturaC: field(undefined as any),
-    secagemCiclos: [],
+    maceracaoCiclosNecessarios: field(undefined as any),
+    instrumentosUtilizados: field([]),
+    instrumentosOutraDescricao: field(''),
+
+    houveDanosMaceracao: field(undefined as any),
+    descricaoDanosMaceracao: field(''),
+
+    formaSecagem: field(undefined as any),
+
     dryingConfirmationAllBoxes: false,
-
-    acondicionamentoCaixaOssuariaCodigo: field(''),
-    acondicionamentoPlacaNicQrFixada: field(false),
 
     photos: []
   };

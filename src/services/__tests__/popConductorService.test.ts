@@ -84,41 +84,56 @@ describe('POP-01 · Fase 1 (Formulário A.1) — trava de avanço por passo', ()
   });
 });
 
-describe('POP-01 · Fase 2 (Maceração/Secagem/Acondicionamento) — trava de avanço por passo', () => {
-  it('Passo 1 (maceração): incompleto faltando resultado', () => {
-    const result = step(phase2Steps, 1).extractData('Água a 70 graus, 5 horas.', {} as any);
+describe('POP-01 · Fase 2 (Formulário A.2 — Maceração e Secagem) — trava de avanço por passo', () => {
+  it('Passo 1 (identificação): incompleto quando falta equipe, data ou hora', () => {
+    const result = step(phase2Steps, 1).extractData('Equipe: Técnico João', {} as any);
     expect(result.isComplete).toBe(false);
-    expect(result.data.maceracaoTemperaturaC).toBe(70);
-    expect(result.data.maceracaoDuracaoHoras).toBe(5);
+    expect(result.data.equipeEnvolvidaLimpeza).toBeDefined();
+    expect(result.data.dataAnalise).toBeUndefined();
   });
 
-  it('Passo 1: completo com temperatura, duração e resultado', () => {
-    const result = step(phase2Steps, 1).extractData('Água a 70 graus, 5 horas, maceração satisfatória.', {} as any);
+  it('Passo 1: completo com equipe, data e hora', () => {
+    const result = step(phase2Steps, 1).extractData('Equipe: Técnico João. Hoje, 14h00min.', {} as any);
     expect(result.isComplete).toBe(true);
-    expect(result.data.maceracaoResultado).toBe('satisfatoria');
+    expect(result.data.horaAnalise).toBe('14h00min');
   });
 
-  it('Passo 3 (secagem): nunca completa se ainda há umidade residual, mesmo com temperatura informada', () => {
-    const result = step(phase2Steps, 3).extractData('Estufa a 230 graus, ainda com umidade residual.', {} as any);
+  it('Passo 2 (maceração): incompleto sem instrumentos reconhecidos', () => {
+    const result = step(phase2Steps, 2).extractData('Um ciclo.', {} as any);
     expect(result.isComplete).toBe(false);
+    expect(result.data.maceracaoCiclosNecessarios).toBe(1);
+    expect(result.data.instrumentosUtilizados).toBeUndefined();
+  });
+
+  it('Passo 2: completo ao reconhecer ao menos um instrumento (ciclos não é obrigatório no A.2)', () => {
+    const result = step(phase2Steps, 2).extractData('Usamos esponja e escova de dentes.', {} as any);
+    expect(result.isComplete).toBe(true);
+    expect(result.data.instrumentosUtilizados).toEqual(['esponja', 'escova_dentes']);
+  });
+
+  it('Passo 3 (danos): "não houve danos" fecha o passo sem exigir descrição', () => {
+    const result = step(phase2Steps, 3).extractData('Não houve danos.', {} as any);
+    expect(result.isComplete).toBe(true);
+    expect(result.data.houveDanosMaceracao).toBe(false);
+  });
+
+  it('Passo 3: "sim" com descrição fecha o passo', () => {
+    const result = step(phase2Steps, 3).extractData('Sim, pequena fissura no rádio direito.', {} as any);
+    expect(result.isComplete).toBe(true);
+    expect(result.data.descricaoDanosMaceracao).toContain('fissura');
+  });
+
+  it('Passo 4 (secagem): nunca completa se a secagem não foi concluída, mesmo com a forma informada', () => {
+    const result = step(phase2Steps, 4).extractData('Secagem em estufa, ainda não concluída.', {} as any);
+    expect(result.isComplete).toBe(false);
+    expect(result.data.formaSecagem).toBe('estufa');
     expect(result.data.dryingConfirmationAllBoxes).toBe(false);
   });
 
-  it('Passo 3: completa apenas quando a secagem é confirmada como concluída', () => {
-    const result = step(phase2Steps, 3).extractData('Estufa a 220 graus. Secagem completa confirmada, sem umidade em nenhuma caixa.', {} as any);
+  it('Passo 4: completa apenas quando a forma de secagem e a confirmação de conclusão estão presentes', () => {
+    const result = step(phase2Steps, 4).extractData('Secagem em estufa. Concluída, sem umidade em nenhuma caixa.', {} as any);
     expect(result.isComplete).toBe(true);
+    expect(result.data.formaSecagem).toBe('estufa');
     expect(result.data.dryingConfirmationAllBoxes).toBe(true);
-  });
-
-  it('Passo 4 (acondicionamento): incompleto sem confirmar a placa fixada', () => {
-    const result = step(phase2Steps, 4).extractData('Caixa CX-0841-A.', {} as any);
-    expect(result.isComplete).toBe(false);
-  });
-
-  it('Passo 4: completo com código da caixa e placa fixada', () => {
-    const result = step(phase2Steps, 4).extractData('Caixa CX-0841-A, placa fixada.', {} as any);
-    expect(result.isComplete).toBe(true);
-    expect(result.data.acondicionamentoCaixaOssuariaCodigo).toBe('CX-0841-A');
-    expect(result.data.acondicionamentoPlacaNicQrFixada).toBe(true);
   });
 });

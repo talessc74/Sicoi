@@ -198,37 +198,51 @@ export interface PreliminaryBox {
   dryingDurationHours?: number;
 }
 
-// Ciclo de secagem de 4h em estufa (POP-01 §9.6) — repetido até não haver umidade residual visível
-export interface DryingCycle {
-  cycleNumber: number;
-  startedAt: string;
-  finishedAt?: string;
-  umidadeResidual: boolean | null; // null = ciclo em andamento, ainda não inspecionado
-}
+// Instrumento de limpeza empregado na maceração (Formulário A.2, campo 6)
+export type CleaningInstrument =
+  | 'esponja'
+  | 'escova_dentes'
+  | 'escova_grande'
+  | 'lamina_bisturi'
+  | 'faca'
+  | 'pinca'
+  | 'pinceis'
+  | 'maquina_redutora_corpos'
+  | 'panela_fogao'
+  | 'outra';
+
+// Forma de secagem (Formulário A.2, campo 10) — o formulário real pergunta o método,
+// não uma temperatura.
+export type DryingMethod = 'estufa' | 'aquecedor' | 'temperatura_ambiente';
 
 /**
- * Fase 2: Maceração e Limpeza (POP-01 §9.5), Secagem (§9.6) e Acondicionamento
- * em caixa ossuária (§9.7).
+ * Fase 2: Análise Preliminar e Limpeza dos Remanescentes Ósseos — etapa de Maceração
+ * e Secagem. Campos fiéis ao Formulário A.2 (POP-01 v1, itens 9.5-9.6). O NIC do
+ * conjunto corresponde ao campo 1 do formulário e não é repetido aqui.
  */
 export interface Phase2Data {
-  // Maceração e limpeza manual (§9.5)
-  maceracaoTemperaturaC: FieldWithAiSuggestion<number>; // 60-80°C conforme o POP
-  maceracaoDuracaoHoras: FieldWithAiSuggestion<number>; // 4-6h conforme o POP
-  maceracaoCiclosMonitoramento: FieldWithAiSuggestion<number>; // inspeções a cada 2h
-  maceracaoResultado: FieldWithAiSuggestion<'satisfatoria' | 'necessitou_novo_ciclo'>;
-  limpezaManualRealizada: FieldWithAiSuggestion<boolean>;
-  limpezaManualObservacoes: FieldWithAiSuggestion<string>;
+  // Introdução (campos 2-4)
+  equipeEnvolvidaLimpeza: FieldWithAiSuggestion<string>;
+  dataAnalise: FieldWithAiSuggestion<string>;
+  horaAnalise: FieldWithAiSuggestion<string>;
 
-  // Secagem (§9.6) — ciclos de 4h em estufa (200-250°C) até ausência de umidade visível
-  secagemTemperaturaC: FieldWithAiSuggestion<number>;
-  secagemCiclos: DryingCycle[];
+  // Maceração (campos 5-7)
+  maceracaoCiclosNecessarios: FieldWithAiSuggestion<number>;
+  instrumentosUtilizados: FieldWithAiSuggestion<CleaningInstrument[]>;
+  instrumentosOutraDescricao: FieldWithAiSuggestion<string>;
+
+  // Danos durante a maceração (campos 8-9)
+  houveDanosMaceracao: FieldWithAiSuggestion<boolean>;
+  descricaoDanosMaceracao: FieldWithAiSuggestion<string>;
+
+  // Secagem (campo 10)
+  formaSecagem: FieldWithAiSuggestion<DryingMethod>;
+
+  // Rastreamento operacional de secagem por caixa — não é campo do A.2, mas necessário
+  // para o bloqueio de fase (§6): todas as caixas devem estar secas antes de assinar.
   dryingConfirmationAllBoxes: boolean;
   dryingConfirmedAt?: string;
   dryingConfirmedBy?: string;
-
-  // Acondicionamento em caixa ossuária (§9.7)
-  acondicionamentoCaixaOssuariaCodigo: FieldWithAiSuggestion<string>;
-  acondicionamentoPlacaNicQrFixada: FieldWithAiSuggestion<boolean>;
 
   photos: Phase1Photo[];
 }
