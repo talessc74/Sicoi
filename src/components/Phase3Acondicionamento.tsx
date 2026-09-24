@@ -191,7 +191,7 @@ export const Phase3Acondicionamento: React.FC<Phase3AcondicionamentoProps> = ({
                       className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-mono text-xs"
                     >
                       {boxes.map(b => (
-                        <option key={b.id} value={b.id}>{b.boxCode} ({b.presumedIndividualLabel})</option>
+                        <option key={b.id} value={b.id}>{b.boxCode}</option>
                       ))}
                     </select>
                   </div>
@@ -277,7 +277,7 @@ export const Phase3Acondicionamento: React.FC<Phase3AcondicionamentoProps> = ({
                       </div>
                       <div>
                         <span className="font-semibold text-slate-900 dark:text-white block">
-                          {box.presumedIndividualLabel}
+                          Caixa do caso
                         </span>
                         <span className="text-slate-400 font-mono text-[11px]">
                           {loc
@@ -329,7 +329,7 @@ export const Phase3Acondicionamento: React.FC<Phase3AcondicionamentoProps> = ({
                       {col.nic}
                     </span>
                     <span className="text-[10px] text-slate-400 font-mono">
-                      Caixas: {col.phase1.preliminaryBoxes.length} (indivíduos presumidos)
+                      Caixas: {col.phase1.preliminaryBoxes.length}
                     </span>
                   </div>
 

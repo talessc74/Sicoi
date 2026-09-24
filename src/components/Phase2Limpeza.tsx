@@ -272,7 +272,6 @@ export const Phase2Limpeza: React.FC<Phase2LimpezaProps> = ({ collection, curren
                   <div key={box.id} className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center justify-between text-xs">
                     <div>
                       <div className="font-mono font-bold text-slate-900 dark:text-white">{box.boxCode}</div>
-                      <div className="text-[10px] text-slate-500">{box.presumedIndividualLabel}</div>
                     </div>
                     <span
                       className={`px-2 py-0.5 rounded-full font-mono text-[10px] font-bold ${
@@ -328,7 +327,6 @@ export const Phase2Limpeza: React.FC<Phase2LimpezaProps> = ({ collection, curren
                     <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                       <div className="flex items-center gap-2">
                         <span className="font-mono font-bold text-sm text-slate-900 dark:text-white">{box.boxCode}</span>
-                        <span className="text-xs text-slate-600 dark:text-slate-300">{box.presumedIndividualLabel}</span>
                       </div>
                       <span
                         className={`px-2.5 py-0.5 rounded-full font-mono text-[11px] font-semibold uppercase ${
