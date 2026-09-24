@@ -32,7 +32,7 @@ import { WarehouseRackMap } from './components/WarehouseRackMap';
 import { PublicQRInspectionModal } from './components/PublicQRInspectionModal';
 import { AuditTimelineView } from './components/AuditTimelineView';
 import { GeminiForensicChatModal } from './components/GeminiForensicChatModal';
-import { Plus, ShieldCheck, Bot, Sparkles } from 'lucide-react';
+import { Plus, ShieldCheck, Bot, Sparkles, Loader2, CheckCircle2 } from 'lucide-react';
 
 export default function App() {
   // Sem login/senha ainda — currentUser é "quem está operando", escolhido entre as
@@ -51,6 +51,11 @@ export default function App() {
   const [isGeminiChatOpen, setIsGeminiChatOpen] = useState<boolean>(false);
   const [isLoadingCollections, setIsLoadingCollections] = useState<boolean>(true);
   const [syncError, setSyncError] = useState<string | null>(null);
+  // Todo campo do formulário já salva sozinho a cada mudança (ver handleUpdateCollection) —
+  // mas isso nunca aparecia na tela, então não havia como o operador confirmar que o
+  // preenchimento estava sendo salvo. Só o erro era visível; o sucesso ficava silencioso.
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   // true só quando a carga inicial falhou de verdade (ex.: banco inacessível) — um
   // banco vazio por escolha (ninguém criou nada ainda, ou alguém limpou tudo pra
   // testar do zero) NÃO é uma falha e não deve travar a tela.
@@ -163,11 +168,18 @@ export default function App() {
     const previous = collections;
     setCollections(prev => prev.map(c => c.nic === updated.nic ? updated : c));
     setSyncError(null);
-    saveCollectionApi(updated).catch((err: any) => {
-      console.error('Falha ao salvar conjunto:', err);
-      setCollections(previous);
-      setSyncError(err?.message || 'Não foi possível salvar a alteração no banco de dados.');
-    });
+    setSaveStatus('saving');
+    saveCollectionApi(updated)
+      .then(() => {
+        setSaveStatus('saved');
+        setLastSavedAt(new Date().toISOString());
+      })
+      .catch((err: any) => {
+        console.error('Falha ao salvar conjunto:', err);
+        setCollections(previous);
+        setSaveStatus('idle');
+        setSyncError(err?.message || 'Não foi possível salvar a alteração no banco de dados.');
+      });
   };
 
   const handleCreateNewCollection = async () => {
@@ -376,7 +388,24 @@ export default function App() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-3 shrink-0">
+              {/* Todo campo salva sozinho a cada mudança — este indicador é a única forma
+                  de o operador confirmar isso, já que antes o sucesso era silencioso. */}
+              {saveStatus === 'saving' && (
+                <span className="flex items-center gap-1 text-[11px] font-mono text-slate-400 whitespace-nowrap">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  Salvando...
+                </span>
+              )}
+              {saveStatus === 'saved' && lastSavedAt && (
+                <span
+                  className="flex items-center gap-1 text-[11px] font-mono text-emerald-600 dark:text-emerald-400 whitespace-nowrap"
+                  title="O preenchimento é salvo automaticamente a cada campo respondido — não é preciso clicar em nada para não perder o progresso."
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Salvo automaticamente às {new Date(lastSavedAt).toLocaleTimeString('pt-BR')}
+                </span>
+              )}
               <button
                 onClick={handleCreateNewCollection}
                 className="px-2.5 py-1 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-medium text-xs flex items-center gap-1 transition-colors whitespace-nowrap"

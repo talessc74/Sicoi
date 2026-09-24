@@ -1,15 +1,28 @@
 # SGCCCO — Sistema de Gestão Curatorial e Científica de Coleções Osteológicas
 
-Sistema de custódia e gestão de coleções osteológicas forenses (SENASP/DITEC).
-Conduz o fluxo operacional passo a passo — por voz ou texto — a partir dos
-formulários oficiais reais (Formulário A.1, Formulário A.2, POP-01), persiste
-tudo em PostgreSQL, e mantém um grafo de conhecimento consultável conectando
-conjuntos, caixas, indivíduos, patologias, localização, responsáveis e datas.
+Sistema de custódia e gestão de coleções osteológicas forenses, desenvolvido
+para a SENASP/DITEC. Ele conduz o fluxo operacional real de recebimento,
+limpeza e curadoria de remanescentes ósseos — passo a passo, por voz ou por
+texto — a partir dos formulários oficiais em uso (Formulário A.1, Formulário
+A.2, POP-01), com cada assinatura de fase travada por hash criptográfico
+SHA-256 e uma trilha de auditoria completa e imutável de tudo o que foi
+feito, por quem e quando. Tudo é persistido em PostgreSQL, e o acervo pode
+ser explorado como um grafo de conhecimento conectando conjuntos, caixas,
+indivíduos, patologias, localização física, responsáveis e datas.
 
-**Produção:** deploy via Render Blueprint, auto-deploy a partir de `main`.
-A URL exata do serviço está no painel do Render (Dashboard → `sgcccco`); o
-indicador de versão no topo de qualquer tela da aplicação mostra o hash do
-commit em execução, para conferir que o deploy corresponde ao código aqui.
+## Acessar agora
+
+**Aplicação em produção:** <https://sgcccco.onrender.com>
+
+O deploy é automático a partir da branch `main` deste repositório (via Render
+Blueprint — ver `render.yaml`). O indicador de versão fixo no topo de
+qualquer tela da aplicação mostra o hash do commit em execução, para
+conferir a qualquer momento que o que está no ar corresponde exatamente ao
+código deste repositório.
+
+Não há login/senha ainda (ver "Pendências conhecidas" abaixo) — ao abrir o
+sistema pela primeira vez, ele pede o cadastro da primeira pessoa (nome,
+papel, instituição, matrícula) para identificar quem está operando.
 
 ## Stack
 
@@ -55,7 +68,14 @@ consulte o índice `.xdrs/_local/index.md` daquele repositório.
   pessoas, persistência em Postgres e o Grafo de Conhecimento persistido
   (aba "Ferramentas → Grafo de Conhecimento"). O gate de assinatura da Fase 1
   explica exatamente o que falta (campo, foto ou papel da pessoa ativa) em
-  vez de só desabilitar o botão.
+  vez de só desabilitar o botão. Todo campo do formulário salva sozinho a
+  cada mudança — um indicador visível ("Salvo automaticamente às HH:MM:SS")
+  confirma isso em tempo real, sem precisar de um botão de salvar separado.
+  Curador e Administrador podem reabrir uma fase já assinada (botão
+  "Reabrir", com justificativa técnica obrigatória) para corrigir qualquer
+  campo já preenchido; a assinatura original nunca é apagada — fica marcada
+  como substituída, com quem reabriu, quando e por quê — e tudo isso aparece
+  automaticamente na Linha do Tempo de Auditoria.
 - **Ainda não implementado:** Fase 3 (Armazenamento provisório), Fase 4
   (Curadoria — os dois agentes de apoio previstos), Fase 5 (Completude dos
   formulários) e Fase 6 (Volta pro armazém/Galpão). Bloqueado pela ausência
@@ -103,5 +123,8 @@ src/
   services/voiceAgent.ts             TTS/STT do condutor — unlock() para Safari/iOS
   components/FirstPersonSetup.tsx    tela bloqueante de cadastro da 1ª pessoa
   components/              telas por fase, condutor de voz, visualizador do grafo
+  utils/signatures.ts      leitura da assinatura vigente de uma fase (a mais
+                            recente — uma fase pode acumular histórico de
+                            reaberturas sem perder nenhum registro anterior)
 render.yaml             Blueprint de deploy (Postgres + serviço web)
 ```
