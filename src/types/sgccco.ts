@@ -1,4 +1,4 @@
-// SIGCOI - Sistema Integrado de Gestão da Coleção Osteológica Identificada
+// SIGCOI - Sistema de Gestão da Coleção Osteológica Identificada
 // Modelos de Domínio, Tipagens Estritas e Estados de Transição (§1 a §16)
 
 export type UserRole = 'tecnico' | 'curador' | 'administrador' | 'pesquisador' | 'estudante';

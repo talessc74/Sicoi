@@ -25,7 +25,7 @@ export const NORMATIVE_DOCUMENT_SECTIONS: DocumentSection[] = [
     phaseApplicable: 'todas',
     regulatoryReference: 'Portaria Conjunta INC/DITEC/PF nº 14/2026, Art. 1º',
     keywords: ['finalidade', 'âmbito', 'senasp', 'ditec', 'osteologia forense', 'diretrizes'],
-    content: `O Sistema Integrado de Gestão da Coleção Osteológica Identificada (SIGCOI) tem por finalidade estabelecer as diretrizes técnicas, científicas e operacionais para a recepção, higienização, acondicionamento provisório, curadoria bioantropológica, catalogação de patologias, guarda definitiva em galpão e disponibilização para pesquisa de remanescentes ósseos humanos sob custódia do Estado.
+    content: `O Sistema de Gestão da Coleção Osteológica Identificada (SIGCOI) tem por finalidade estabelecer as diretrizes técnicas, científicas e operacionais para a recepção, higienização, acondicionamento provisório, curadoria bioantropológica, catalogação de patologias, guarda definitiva em galpão e disponibilização para pesquisa de remanescentes ósseos humanos sob custódia do Estado.
 Todos os procedimentos devem observar o princípio da dignidade da pessoa humana, o respeito aos restos mortais e o rigor metodológico forense previsto na legislação processual penal brasileira.`
   },
   {
