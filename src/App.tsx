@@ -204,16 +204,14 @@ export default function App() {
       },
       phase1: {
         ...createEmptyPhase1Data(),
-        preliminaryBoxes: [
-          {
-            id: `CX-${newNic}-A`,
-            boxCode: `CX-${nextNum}-A`,
-            presumedIndividualLabel: 'Indivíduo Presumido A',
-            currentLocation: 'Bancada de Recepção',
-            qrCode: `SGCCCO://BOX/CX-${newNic}-A`,
-            cleaningStatus: 'pendente'
-          }
-        ]
+        preliminaryBoxes: [{
+          id: `CX-${newNic}`,
+          boxCode: `CX-${nextNum}`,
+          presumedIndividualLabel: 'Caixa do caso',
+          currentLocation: 'Bancada de Recepção',
+          qrCode: `SGCCCO://BOX/CX-${newNic}`,
+          cleaningStatus: 'pendente'
+        }]
       },
       phase2: createEmptyPhase2Data(),
       phase3: {
