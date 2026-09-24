@@ -109,7 +109,7 @@ export const Header: React.FC<HeaderProps> = ({
   const isOperationalActive = ['fases', 'auditoria', 'grafo', 'estantes', 'pesquisa'].includes(activeTab);
 
   return (
-    <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40 shadow-xs w-full max-w-full">
+    <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40 shadow-xs w-full max-w-full overflow-x-hidden">
       {/* Top Main Navigation Bar */}
       <div className="max-w-7xl mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-2 sm:gap-4 w-full">
         {/* Brand / Logo */}
@@ -133,7 +133,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Primary Navigation Links (Desktop: adaptativo de lg a 2xl) */}
-        <nav className="hidden lg:flex items-center gap-1 xl:gap-1.5 text-xs xl:text-sm font-medium shrink-0">
+        <nav className="hidden xl:flex items-center gap-1 xl:gap-1.5 text-xs xl:text-sm font-medium shrink-0">
           {/* Início */}
           <button
             onClick={() => onSelectTab('inicio')}
@@ -456,7 +456,7 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Mobile Hamburger Toggle */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="lg:hidden p-1.5 sm:p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0"
+            className="xl:hidden p-1.5 sm:p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0"
             aria-label="Abrir menu de navegação"
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -466,7 +466,7 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Mobile Navigation Drawer */}
       {mobileMenuOpen && (
-        <div className="lg:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 space-y-1 text-xs">
+        <div className="xl:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 space-y-1 text-xs">
           <button
             onClick={() => { onSelectTab('inicio'); setMobileMenuOpen(false); }}
             className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2 ${
