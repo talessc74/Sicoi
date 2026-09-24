@@ -76,6 +76,21 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
     return getAuditTrailForCollection(currentCollection);
   }, [currentCollection]);
 
+  if (!currentCollection) {
+    return (
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-12 text-center">
+        <ShieldCheck className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+        <h3 className="text-base font-semibold text-slate-800 dark:text-slate-200">
+          Nenhum conjunto (NIC) cadastrado ainda
+        </h3>
+        <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+          A Linha do Tempo de Auditoria mostra o histórico de um conjunto específico.
+          Cadastre um Novo Conjunto (NIC) para começar a gerar eventos de auditoria.
+        </p>
+      </div>
+    );
+  }
+
   // Lista única de operadores para o filtro
   const uniqueOperators = useMemo(() => {
     const map = new Map<string, string>();
