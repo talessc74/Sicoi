@@ -202,7 +202,7 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
   const canSign = requiredFieldsFilled && hasBoxes && hasPhotos && isTechnician;
 
   const signBlockers: string[] = [...missingFieldLabels];
-  if (!hasBoxes) signBlockers.push('nenhuma caixa preliminar cadastrada');
+  if (!hasBoxes) signBlockers.push('nenhuma caixa vinculada ao caso');
   if (!hasPhotos) signBlockers.push('nenhuma foto anexada');
   if (!isTechnician) signBlockers.push(`a pessoa ativa agora ("${currentUser.name}") tem o papel "${currentUser.role}" — só um Técnico pode assinar a Fase 1. Troque a pessoa ativa no menu de perfil, no topo da tela.`);
 

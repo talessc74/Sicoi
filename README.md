@@ -24,6 +24,10 @@ Não há login/senha ainda (ver "Pendências conhecidas" abaixo) — ao abrir o
 sistema pela primeira vez, ele pede o cadastro da primeira pessoa (nome,
 papel, instituição, matrícula) para identificar quem está operando.
 
+## Fontes normativas
+
+A [Portaria DITEC/PF nº 1415/2024](docs/normativos/portaria-ditec-pf-1415-2024-coi-inc.pdf), que institui a COI-INC, está arquivada integralmente em [`docs/normativos/`](docs/normativos/README.md). Ela é uma fonte distinta do POP-01 e dos Formulários A.1 e A.2.
+
 ## Stack
 
 - React 19 + Vite 8 + TypeScript, Tailwind 4
