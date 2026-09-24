@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
+import { execSync } from 'child_process';
 import { GoogleGenAI } from '@google/genai';
 import { getPool } from './db/pool';
 import { runMigrations } from './db/migrate';
@@ -50,6 +51,27 @@ function getGeminiClient(): GoogleGenAI {
 }
 
 // Endpoint de diagnóstico de status da API e autenticação
+// Commit atual (4 primeiros dígitos), calculado uma vez no boot e cacheado —
+// referência visual de qual versão do código está rodando, mostrada no dashboard.
+let cachedCommitShort: string | null = null;
+function getCommitShort(): string | null {
+  if (cachedCommitShort !== null) return cachedCommitShort;
+  try {
+    cachedCommitShort = execSync('git rev-parse HEAD', { cwd: __dirname, stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString()
+      .trim()
+      .slice(0, 4);
+  } catch {
+    cachedCommitShort = '';
+  }
+  return cachedCommitShort || null;
+}
+
+// Endpoint de versão: referência de qual commit está rodando neste servidor
+app.get('/api/version', (_req: Request, res: Response) => {
+  res.json({ commit: getCommitShort() });
+});
+
 app.get('/api/status', (_req: Request, res: Response) => {
   const apiKey = getCleanApiKey();
   const hasKey = Boolean(apiKey && apiKey.length > 5);
