@@ -13,13 +13,9 @@
  */
 import type { Pool, PoolClient } from 'pg';
 import type { OsteologicalCollection, Phase1Data, Phase2Data } from '../src/types/sgccco';
-import { generateSignaturePayload } from '../src/services/auditService';
+import { signatureMatchesCurrentPhase } from './signatureValidation';
 import { syncGraphForCollection } from './graphSync';
 import crypto from 'crypto';
-
-function serverSideSha256(content: string): string {
-  return crypto.createHash('sha256').update(content, 'utf-8').digest('hex');
-}
 
 export async function listCollections(pool: Pool): Promise<OsteologicalCollection[]> {
   const { rows } = await pool.query<{ full_state: OsteologicalCollection }>(
@@ -88,30 +84,16 @@ export async function createCollection(pool: Pool, collection: OsteologicalColle
 
 /**
  * Persiste um conjunto já existente. Antes de gravar, recalcula e confere o hash
- * de cada assinatura presente no payload — se o hash recebido não bate com o
- * recalculado a partir do payload canônico, a assinatura é rejeitada (o cliente
- * nunca decide sozinho que um hash é válido).
+ * de cada assinatura ativa presente no payload — se o hash recebido não bate
+ * com o recalculado a partir do payload canônico, a assinatura é rejeitada.
+ * Assinaturas reabertas conservam o hash do estado anterior para auditoria.
  */
 export async function saveCollection(pool: Pool, collection: OsteologicalCollection): Promise<void> {
   for (const sig of collection.signatures) {
-    const dataSnapshotJson =
-      sig.phaseNumber === 1
-        ? JSON.stringify(collection.phase1)
-        : sig.phaseNumber === 2
-        ? JSON.stringify(collection.phase2)
-        : null;
-    if (!dataSnapshotJson) continue; // fases 3-7: verificação de hash fora do escopo deste plano
-    const expectedHash = serverSideSha256(
-      generateSignaturePayload({
-        nic: collection.nic,
-        phaseNumber: sig.phaseNumber,
-        signedBy: sig.signedBy,
-        role: sig.signedByRole,
-        timestamp: sig.signedAt,
-        dataSnapshotJson
-      })
-    );
-    if (expectedHash !== sig.sha256Hash) {
+    // Uma assinatura reaberta preserva o hash da versão anterior da fase.
+    // Depois da revisão, esse hash não pode ser comparado ao estado atual.
+    if (sig.status === 'unlocked_for_revision') continue;
+    if (!signatureMatchesCurrentPhase(collection, sig)) {
       throw new Error(
         `Assinatura inválida para NIC ${collection.nic}, Fase ${sig.phaseNumber}: hash não confere com o payload canônico recalculado no servidor.`
       );
