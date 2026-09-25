@@ -271,7 +271,7 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
       case 'acondicionamento_provisorio':
       case 'embalagem_inerte':
         return <Layers className="w-4 h-4 text-amber-600 dark:text-amber-400" />;
-      case 'curadoria_mni':
+      case 'curadoria_nmi':
       case 'pareamento_anatomico':
       case 'perfil_biologico':
         return <User className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />;
@@ -603,7 +603,7 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
               <option value="limpeza_higienizacao">Higienização e Limpeza</option>
               <option value="secagem_concluida">Secagem e Umidade</option>
               <option value="acondicionamento_provisorio">Estante Provisória</option>
-              <option value="curadoria_mni">Curadoria e NMI</option>
+              <option value="curadoria_nmi">Curadoria e NMI</option>
               <option value="pareamento_anatomico">Pareamento Anatômico</option>
               <option value="perfil_biologico">Perfil Biológico</option>
               <option value="patologia_registrada">Patologias Ósseas</option>

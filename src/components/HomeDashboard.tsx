@@ -272,7 +272,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-sans">
               {collections.map(col => {
                 const currentSigned = col.signatures.some(s => s.phaseNumber === col.currentPhase && s.status === 'locked');
-                const mniNotDetermined = col.phase4.individuals.length === 0;
+                const nmiNotDetermined = col.phase4.individuals.length === 0;
                 const locationText = col.phase6.finalLocations[0]
                   ? `${col.phase6.finalLocations[0].location.facility} · ${col.phase6.finalLocations[0].location.rack}`
                   : col.phase3.boxLocations[0]
@@ -298,7 +298,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                       </span>
                     </td>
                     <td className="px-5 py-3.5 font-mono">
-                      {!mniNotDetermined ? (
+                      {!nmiNotDetermined ? (
                         <>{col.phase4.individuals.length} {col.phase4.individuals.length === 1 ? 'indivíduo (NMI)' : 'indivíduos (NMI)'}</>
                       ) : (
                         // Sem curadoria concluída, o número de caixas não informa o NMI.
@@ -324,7 +324,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                             <AlertCircle className="w-3.5 h-3.5" /> Em edição técnica
                           </span>
                         )}
-                        {mniNotDetermined && (
+                        {nmiNotDetermined && (
                           <span className="rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-amber-800 dark:text-amber-300">
                             Pendente: NMI
                           </span>

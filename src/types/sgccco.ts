@@ -285,7 +285,7 @@ export interface IndividualHypothesis {
   code: string;
   nameOrLabel?: string;
   confidence: BiologicalConfidence;
-  mniDiagnosticElement?: string;
+  nmiDiagnosticElement?: string;
   status?: 'valido' | 'preliminar' | 'revisao' | string;
   associatedBoxId?: string;
   justification?: string;
@@ -609,7 +609,7 @@ export type AuditActionType =
   | 'limpeza_higienizacao'
   | 'secagem_concluida'
   | 'acondicionamento_provisorio'
-  | 'curadoria_mni'
+  | 'curadoria_nmi'
   | 'pareamento_anatomico'
   | 'perfil_biologico'
   | 'patologia_registrada'
