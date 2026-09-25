@@ -52,6 +52,189 @@ function alreadySet(context: any, phase: 'phase1' | 'phase2', field: string): bo
   return true;
 }
 
+/**
+ * Opção de lista do Formulário A.1 (tipo de material, estado de preservação, exame
+ * genético, análise isotópica). `field` = campo de descrição obrigatória quando a
+ * opção é marcada; opções sem `field` entram só para separar trechos da fala.
+ */
+interface DescribedOption {
+  value: string;
+  label: string;
+  keywords: string[];
+  field?: string;
+}
+
+// Palavras que sozinhas não descrevem nada ("coletada", "uma"...): ficam de fora
+// ao decidir se um trecho da fala traz uma descrição de verdade.
+const FILLER_WORDS = new Set([
+  'foi', 'foram', 'coletado', 'coletada', 'coletados', 'coletadas', 'presente', 'presentes',
+  'um', 'uma', 'uns', 'umas', 'com', 'de', 'do', 'da', 'dos', 'das', 'e', 'o', 'a', 'os', 'as',
+  'tem', 'há', 'ha', 'também', 'tambem', 'no', 'na', 'em'
+]);
+
+const isResponsavelSegment = (segment: string) => /^respons[áa]vel\b/i.test(segment.trim());
+
+function splitSpeechSegments(input: string): string[] {
+  return input
+    .split(/[,;.]|\s+e\s+/i)
+    .map((seg) => seg.trim())
+    .filter(Boolean);
+}
+
+function optionInSegment(segment: string, options: DescribedOption[]): DescribedOption | undefined {
+  const lower = segment.toLowerCase();
+  return options.find((o) => o.keywords.some((k) => lower.includes(k)));
+}
+
+function stripLeadingFiller(text: string): string {
+  const words = text.split(/\s+/);
+  while (words.length > 1 && FILLER_WORDS.has(words[0].toLowerCase())) words.shift();
+  return words.join(' ');
+}
+
+/**
+ * Descrições ditas junto com a opção ("uma prótese dentária, descrita como coroa
+ * metálica" → descrição da prótese). O trecho que cita a opção, mais os trechos
+ * seguintes que não citam outra opção, formam a descrição — desde que sobre alguma
+ * palavra além do nome da opção e das palavras de ligação.
+ */
+function captureInlineDescriptions(
+  input: string,
+  options: DescribedOption[],
+  selected: string[]
+): Record<string, string> {
+  const parts: Record<string, string[]> = {};
+  let current: DescribedOption | undefined;
+  for (const segment of splitSpeechSegments(input)) {
+    if (isResponsavelSegment(segment)) {
+      current = undefined;
+      continue;
+    }
+    const found = optionInSegment(segment, options);
+    if (found) {
+      current = found;
+      if (found.field && selected.includes(found.value)) parts[found.field] = [segment];
+    } else if (current?.field && parts[current.field]) {
+      parts[current.field].push(segment);
+    }
+  }
+
+  const result: Record<string, string> = {};
+  for (const option of options) {
+    if (!option.field || !parts[option.field]) continue;
+    const text = parts[option.field].join(', ');
+    let leftover = text.toLowerCase();
+    for (const k of option.keywords) leftover = leftover.split(k).join(' ');
+    const meaningful = leftover
+      .split(/[^a-zà-öø-ÿ0-9]+/i)
+      .filter((w) => w.length >= 3 && !FILLER_WORDS.has(w));
+    if (meaningful.length > 0) result[option.field] = stripLeadingFiller(text);
+  }
+  return result;
+}
+
+function describedFieldValue(context: any, data: Record<string, any>, field: string): string {
+  if (typeof data[field] === 'string') return data[field];
+  return context?.phase1?.[field]?.value || '';
+}
+
+/** Opções marcadas cuja descrição obrigatória ainda está vazia. */
+export function pendingOptionDescriptions(
+  selected: string[],
+  options: DescribedOption[],
+  context: any,
+  data: Record<string, any> = {}
+): DescribedOption[] {
+  return options.filter(
+    (o) => o.field && selected.includes(o.value) && !describedFieldValue(context, data, o.field).trim()
+  );
+}
+
+/**
+ * Passo de lista com descrições (passos 3 a 6 do POP-01). Enquanto a lista já está
+ * gravada e falta descrição, a fala é lida como a descrição que falta — sem
+ * reinterpretar opções (descrever "camisa com botões de osso" não pode marcar "Ossos").
+ */
+function extractDescribedChoice(
+  input: string,
+  context: any,
+  cfg: {
+    listField: string;
+    options: DescribedOption[];
+    detect: (lower: string) => string[];
+  }
+): { data: Record<string, any>; selected: string[]; pending: DescribedOption[] } {
+  const data: Record<string, any> = {};
+  const selectedBefore: string[] = context?.phase1?.[cfg.listField]?.value || [];
+  const pendingBefore = pendingOptionDescriptions(selectedBefore, cfg.options, context);
+  const speech = splitSpeechSegments(input).filter((seg) => !isResponsavelSegment(seg)).join(', ');
+
+  if (selectedBefore.length > 0 && pendingBefore.length > 0) {
+    const inline = captureInlineDescriptions(input, cfg.options, pendingBefore.map((o) => o.value));
+    if (Object.keys(inline).length > 0) Object.assign(data, inline);
+    else if (speech.length > 2) data[pendingBefore[0].field!] = speech;
+  } else {
+    const detected = cfg.detect(input.toLowerCase());
+    if (detected.length > 0) {
+      data[cfg.listField] = detected;
+      Object.assign(data, captureInlineDescriptions(input, cfg.options, detected));
+      // Opção retirada nesta fala: a descrição dela deixa de valer.
+      for (const option of cfg.options) {
+        if (option.field && !detected.includes(option.value) && context?.phase1?.[option.field]?.value) {
+          data[option.field] = '';
+        }
+      }
+    }
+  }
+
+  const selected: string[] = data[cfg.listField] ?? selectedBefore;
+  return { data, selected, pending: pendingOptionDescriptions(selected, cfg.options, context, data) };
+}
+
+function describedChoiceSummary(missing: string[], pending: DescribedOption[], doneText: string): string {
+  if (missing.length === 0) return doneText;
+  const ask = pending.length > 0 ? ` Descreva agora: ${pending[0].label}.` : '';
+  return `Ainda falta: ${missing.join('; ')}.${ask}`;
+}
+
+export const MATERIAL_OPTIONS_CONDUCTOR: DescribedOption[] = [
+  { value: 'ossos', label: 'Ossos', keywords: ['osso'] },
+  { value: 'dentes', label: 'Dentes', keywords: ['dente'] },
+  { value: 'cabelo', label: 'Cabelo', keywords: ['cabelo'], field: 'cabeloDescricao' },
+  { value: 'unha', label: 'Unha', keywords: ['unha'] },
+  { value: 'proteses', label: 'Próteses', keywords: ['prótese', 'protese'], field: 'protesesDescricao' },
+  { value: 'vestes', label: 'Vestes', keywords: ['veste'], field: 'vestesDescricao' },
+  { value: 'pertences', label: 'Pertences', keywords: ['pertence'], field: 'pertencesDescricao' },
+  { value: 'tecidos_moles', label: 'Tecidos moles e/ou mumificados', keywords: ['tecido mole', 'mumificad'], field: 'tecidosMolesDescricao' }
+];
+
+export const PRESERVATION_OPTIONS_CONDUCTOR: DescribedOption[] = [
+  { value: 'mumificado', label: 'Mumificado', keywords: ['mumificad'] },
+  { value: 'adipocera', label: 'Adipocera', keywords: ['adipocer'] },
+  { value: 'outros', label: 'Outros (estado de preservação)', keywords: ['outro'], field: 'estadoPreservacaoOutrosDescricao' }
+];
+
+export const GENETIC_OPTIONS_CONDUCTOR: DescribedOption[] = [
+  { value: 'falange', label: 'Falange', keywords: ['falange'], field: 'geneticoFalangeDescricao' },
+  { value: 'ossos_tarsais', label: 'Ossos tarsais', keywords: ['tarsa'], field: 'geneticoOssosTarsaisDescricao' },
+  { value: 'dente_higido', label: 'Dente hígido', keywords: ['dente', 'molar', 'incisivo', 'canino'], field: 'geneticoDenteHigidoDescricao' },
+  { value: 'primeira_costela', label: '1ª costela', keywords: ['costela'], field: 'geneticoPrimeiraCostelaDescricao' },
+  { value: 'patela', label: 'Patela', keywords: ['patela'], field: 'geneticoPatelaDescricao' },
+  { value: 'outros', label: 'Outros (exame genético)', keywords: ['outro'], field: 'geneticoOutrosDescricao' }
+];
+
+export const ISOTOPIC_OPTIONS_CONDUCTOR: DescribedOption[] = [
+  { value: 'cabelo', label: 'Cabelo (análise isotópica)', keywords: ['cabelo'], field: 'isotopicaCabeloDescricao' },
+  { value: 'unha', label: 'Unha (análise isotópica)', keywords: ['unha'], field: 'isotopicaUnhaDescricao' },
+  { value: 'dente', label: 'Dente (análise isotópica)', keywords: ['dente'], field: 'isotopicaDenteDescricao' }
+];
+
+const aiFieldHint = (listField: string, options: DescribedOption[]) =>
+  `Campos deste passo: ${listField} (lista de valores: ${options.map((o) => o.value).join(', ')}); descrições obrigatórias por opção marcada: ${options
+    .filter((o) => o.field)
+    .map((o) => `${o.field} (${o.label})`)
+    .join(', ')}.`;
+
 export interface ConductorChatMessage {
   id: string;
   sender: 'conductor' | 'user' | 'system';
@@ -88,6 +271,13 @@ export interface PopConductorStep {
   photoPrompt?: string;
   photoChecklistItems?: PopConductorPhotoChecklistItem[];
   quickSuggestions: string[];
+  /** Nomes de campo enviados à IA, para ela preencher exatamente estes campos. */
+  aiFieldHints?: string;
+  /**
+   * O que ainda falta depois de juntar o que já estava gravado com o que foi extraído
+   * agora (regra ou IA). Se devolver algo, o passo não avança, mesmo que a IA confirme.
+   */
+  blockingCheck?: (context: any, data: Record<string, any>) => string[];
   extractData: (input: string, context?: any) => {
     data: Record<string, any>;
     summaryText: string;
@@ -225,101 +415,145 @@ export const INC_DITEC_PF_POPS: Record<PhaseNumber, PopDefinition> = {
       {
         stepNumber: 3,
         stepTitle: 'Tipo de Material Presente (campo 10)',
-        conductorPrompt: 'Terceiro passo: Que tipos de material estão presentes no saco? Ossos, dentes, cabelo, unha, próteses, vestes, pertences, tecidos moles?',
+        conductorPrompt: 'Terceiro passo: Que tipos de material estão presentes no saco? Ossos, dentes, cabelo, unha, próteses, vestes, pertences, tecidos moles? Para cabelo, próteses, vestes, pertences e tecidos moles, descreva cada um.',
         requiresPhoto: false,
         quickSuggestions: [
           'Ossos e dentes presentes, sem outros materiais.',
           'Ossos, vestes e uma prótese dentária, descrita como coroa metálica no incisivo superior.'
         ],
-        extractData: (input: string) => {
-          const lower = input.toLowerCase();
-          const types: string[] = [];
-          if (lower.includes('osso')) types.push('ossos');
-          if (lower.includes('dente')) types.push('dentes');
-          if (lower.includes('cabelo')) types.push('cabelo');
-          if (lower.includes('unha')) types.push('unha');
-          if (lower.includes('prótese') || lower.includes('protese')) types.push('proteses');
-          if (lower.includes('veste')) types.push('vestes');
-          if (lower.includes('pertence')) types.push('pertences');
-          if (lower.includes('tecido mole') || lower.includes('mumificad')) types.push('tecidos_moles');
+        aiFieldHints: aiFieldHint('tipoMaterial', MATERIAL_OPTIONS_CONDUCTOR),
+        blockingCheck: (context: any, data: Record<string, any>) => {
+          const selected: string[] = data.tipoMaterial ?? context?.phase1?.tipoMaterial?.value ?? [];
+          return pendingOptionDescriptions(selected, MATERIAL_OPTIONS_CONDUCTOR, context, data).map((o) => `descrição de "${o.label}"`);
+        },
+        extractData: (input: string, context?: any) => {
+          const { data, selected, pending } = extractDescribedChoice(input, context, {
+            listField: 'tipoMaterial',
+            options: MATERIAL_OPTIONS_CONDUCTOR,
+            detect: (lower) => {
+              const types: string[] = [];
+              if (lower.includes('osso')) types.push('ossos');
+              if (lower.includes('dente')) types.push('dentes');
+              if (lower.includes('cabelo')) types.push('cabelo');
+              if (lower.includes('unha')) types.push('unha');
+              if (lower.includes('prótese') || lower.includes('protese')) types.push('proteses');
+              if (lower.includes('veste')) types.push('vestes');
+              if (lower.includes('pertence')) types.push('pertences');
+              if (lower.includes('tecido mole') || lower.includes('mumificad')) types.push('tecidos_moles');
+              return types;
+            }
+          });
+
+          const missing: string[] = [];
+          if (selected.length === 0) missing.push('tipo de material');
+          pending.forEach((o) => missing.push(`descrição de "${o.label}"`));
 
           return {
-            data: types.length > 0 ? { tipoMaterial: types } : {},
-            summaryText: types.length > 0 ? `Material presente: ${types.join(', ')}.` : 'Nenhum tipo de material reconhecido ainda.',
-            isComplete: types.length > 0
+            data,
+            summaryText: describedChoiceSummary(missing, pending, `Material presente: ${selected.join(', ')}.`),
+            isComplete: missing.length === 0
           };
         }
       },
       {
         stepNumber: 4,
         stepTitle: 'Estado de Preservação (campo 16)',
-        conductorPrompt: 'Quarto passo: Como está o estado de preservação dos remanescentes? Preservado/íntegro, degradado, fragmentado, friável, com erosão, úmido, seco, com fungo visível, manchas, perda de cortical, carbonização ou insetos?',
+        conductorPrompt: 'Quarto passo: Como está o estado de preservação dos remanescentes? Preservado/íntegro, degradado, fragmentado, friável, com erosão, úmido, seco, com fungo visível, manchas, perda de cortical, carbonização, insetos, mumificado, adipocera ou outros? Se for "outros", descreva.',
         requiresPhoto: false,
         quickSuggestions: [
           'Preservado e seco, sem sinais de degradação.',
           'Degradado, com fragmentação e perda de cortical em alguns segmentos.'
         ],
-        extractData: (input: string) => {
-          const lower = input.toLowerCase();
-          const chars: string[] = [];
-          if (lower.includes('preservado') || lower.includes('íntegro') || lower.includes('integro')) chars.push('preservado_integro');
-          if (lower.includes('degradad')) chars.push('degradado');
-          if (lower.includes('fragment')) chars.push('fragmentacao');
-          if (lower.includes('friável') || lower.includes('friavel')) chars.push('friavel');
-          if (lower.includes('erosão') || lower.includes('erosao')) chars.push('erosao');
-          if (lower.includes('úmido') || lower.includes('umido')) chars.push('umido');
-          if (lower.includes('seco')) chars.push('seco');
-          if (lower.includes('fungo')) chars.push('fungo_visivel');
-          if (lower.includes('mancha')) chars.push('manchas');
-          if (lower.includes('perda de cortical') || lower.includes('cortical')) chars.push('perda_cortical');
-          if (lower.includes('carboniz')) chars.push('carbonizacao');
-          if (lower.includes('inseto') || lower.includes('pupa')) chars.push('insetos_pupas');
+        aiFieldHints: aiFieldHint('estadoPreservacao', PRESERVATION_OPTIONS_CONDUCTOR),
+        blockingCheck: (context: any, data: Record<string, any>) => {
+          const selected: string[] = data.estadoPreservacao ?? context?.phase1?.estadoPreservacao?.value ?? [];
+          return pendingOptionDescriptions(selected, PRESERVATION_OPTIONS_CONDUCTOR, context, data).map((o) => `descrição de "${o.label}"`);
+        },
+        extractData: (input: string, context?: any) => {
+          const { data, selected, pending } = extractDescribedChoice(input, context, {
+            listField: 'estadoPreservacao',
+            options: PRESERVATION_OPTIONS_CONDUCTOR,
+            detect: (lower) => {
+              const chars: string[] = [];
+              if (lower.includes('preservado') || lower.includes('íntegro') || lower.includes('integro')) chars.push('preservado_integro');
+              if (lower.includes('degradad')) chars.push('degradado');
+              if (lower.includes('fragment')) chars.push('fragmentacao');
+              if (lower.includes('friável') || lower.includes('friavel')) chars.push('friavel');
+              if (lower.includes('erosão') || lower.includes('erosao')) chars.push('erosao');
+              if (lower.includes('úmido') || lower.includes('umido')) chars.push('umido');
+              if (lower.includes('seco')) chars.push('seco');
+              if (lower.includes('fungo')) chars.push('fungo_visivel');
+              if (lower.includes('mancha')) chars.push('manchas');
+              if (lower.includes('perda de cortical') || lower.includes('cortical')) chars.push('perda_cortical');
+              if (lower.includes('carboniz')) chars.push('carbonizacao');
+              if (lower.includes('inseto') || lower.includes('pupa')) chars.push('insetos_pupas');
+              if (lower.includes('mumificad')) chars.push('mumificado');
+              if (lower.includes('adipocer')) chars.push('adipocera');
+              if (lower.includes('outro')) chars.push('outros');
+              return chars;
+            }
+          });
+          if (data.estadoPreservacao) data.observacoesGeraisPreservacao = input.trim();
+
+          const missing: string[] = [];
+          if (selected.length === 0) missing.push('estado de preservação');
+          pending.forEach((o) => missing.push(`descrição de "${o.label}"`));
 
           return {
-            data: chars.length > 0 ? { estadoPreservacao: chars, observacoesGeraisPreservacao: input.trim() } : {},
-            summaryText: chars.length > 0 ? `Estado de preservação: ${chars.join(', ')}.` : 'Nenhuma característica de preservação reconhecida ainda.',
-            isComplete: chars.length > 0
+            data,
+            summaryText: describedChoiceSummary(missing, pending, `Estado de preservação: ${selected.join(', ')}.`),
+            isComplete: missing.length === 0
           };
         }
       },
       {
         stepNumber: 5,
         stepTitle: 'Coleta de Amostra Biológica — Exame Genético (POP-01 §9.3.1)',
-        conductorPrompt: 'Quinto passo — importante: isto precisa ser feito ANTES da maceração. Foi coletada amostra para exame genético? De qual elemento (falange, ossos tarsais, dente hígido, primeira costela, patela) e quem é o responsável pela coleta?',
+        conductorPrompt: 'Quinto passo — importante: isto precisa ser feito ANTES da maceração. Foi coletada amostra para exame genético? De qual elemento (falange, ossos tarsais, dente hígido, primeira costela, patela ou outro), com a descrição de cada um, e quem é o responsável pela coleta?',
         regulatoryNotice: 'POP-01 §9.3.1: a coleta compromete-se se feita após a maceração — ordem de prioridade: falange distal, demais falanges, tarsais, dente, costela, patela.',
         requiresPhoto: false,
         quickSuggestions: [
-          'Coletada falange distal, responsável Técnico João.',
+          'Coletada falange distal da mão direita, responsável Técnico João.',
           'Não coletado, sem indicação de exame genético para este conjunto.'
         ],
+        aiFieldHints: `${aiFieldHint('exameGenetico', GENETIC_OPTIONS_CONDUCTOR)} Responsável: geneticoResponsavelColeta.`,
+        blockingCheck: (context: any, data: Record<string, any>) => {
+          const selected: string[] = data.exameGenetico ?? context?.phase1?.exameGenetico?.value ?? [];
+          return pendingOptionDescriptions(selected, GENETIC_OPTIONS_CONDUCTOR, context, data).map((o) => `descrição de "${o.label}"`);
+        },
         extractData: (input: string, context?: any) => {
-          const lower = input.toLowerCase();
-          const elements: string[] = [];
-          if (lower.includes('não coletad') || lower.includes('nao coletad')) elements.push('nao_coletado');
-          else {
-            if (lower.includes('falange')) elements.push('falange');
-            if (lower.includes('tarsa')) elements.push('ossos_tarsais');
-            if (lower.includes('dente') || lower.includes('molar') || lower.includes('incisivo') || lower.includes('canino')) elements.push('dente_higido');
-            if (lower.includes('costela')) elements.push('primeira_costela');
-            if (lower.includes('patela')) elements.push('patela');
-            if (elements.length === 0 && lower.includes('outro')) elements.push('outros');
-          }
+          const { data, selected, pending } = extractDescribedChoice(input, context, {
+            listField: 'exameGenetico',
+            options: GENETIC_OPTIONS_CONDUCTOR,
+            detect: (lower) => {
+              const elements: string[] = [];
+              if (lower.includes('não coletad') || lower.includes('nao coletad')) return ['nao_coletado'];
+              if (lower.includes('falange')) elements.push('falange');
+              if (lower.includes('tarsa')) elements.push('ossos_tarsais');
+              if (lower.includes('dente') || lower.includes('molar') || lower.includes('incisivo') || lower.includes('canino')) elements.push('dente_higido');
+              if (lower.includes('costela')) elements.push('primeira_costela');
+              if (lower.includes('patela')) elements.push('patela');
+              if (lower.includes('outro')) elements.push('outros');
+              return elements;
+            }
+          });
 
           const respMatch = input.match(/respons[áa]vel[:\s]+([^.]+)/i);
-          const data: Record<string, any> = {};
-          if (elements.length > 0) data.exameGenetico = elements;
           if (respMatch) data.geneticoResponsavelColeta = respMatch[1].trim();
-          else if (elements[0] === 'nao_coletado') data.geneticoResponsavelColeta = 'Não aplicável';
+          else if (selected[0] === 'nao_coletado' && !alreadySet(context, 'phase1', 'geneticoResponsavelColeta')) data.geneticoResponsavelColeta = 'Não aplicável';
 
           const missing: string[] = [];
-          if (!alreadySet(context, 'phase1', 'exameGenetico') && !data.exameGenetico) missing.push('elemento coletado (ou "não coletado")');
+          if (selected.length === 0) missing.push('elemento coletado (ou "não coletado")');
           if (!alreadySet(context, 'phase1', 'geneticoResponsavelColeta') && !data.geneticoResponsavelColeta) missing.push('responsável pela coleta');
+          pending.forEach((o) => missing.push(`descrição de "${o.label}"`));
 
           return {
             data,
-            summaryText: missing.length === 0
-              ? `Exame genético: ${data.exameGenetico?.join(', ') ?? context?.phase1?.exameGenetico?.value?.join(', ')} · Responsável: ${data.geneticoResponsavelColeta ?? context?.phase1?.geneticoResponsavelColeta?.value}`
-              : `Ainda falta: ${missing.join('; ')}.`,
+            summaryText: describedChoiceSummary(
+              missing,
+              pending,
+              `Exame genético: ${selected.join(', ')} · Responsável: ${data.geneticoResponsavelColeta ?? context?.phase1?.geneticoResponsavelColeta?.value}`
+            ),
             isComplete: missing.length === 0
           };
         }
@@ -327,37 +561,47 @@ export const INC_DITEC_PF_POPS: Record<PhaseNumber, PopDefinition> = {
       {
         stepNumber: 6,
         stepTitle: 'Coleta de Amostra Biológica — Análise Isotópica (POP-01 §9.3.2)',
-        conductorPrompt: 'Sexto passo: Foi coletada amostra para análise isotópica — cabelo, unha ou dente? Quem é o responsável pela coleta?',
+        conductorPrompt: 'Sexto passo: Foi coletada amostra para análise isotópica — cabelo, unha ou dente? Descreva cada amostra e diga quem é o responsável pela coleta.',
         requiresPhoto: false,
         quickSuggestions: [
-          'Coletado cabelo e unhas, responsável Técnica Maria.',
+          'Coletado cabelo da região occipital, responsável Técnica Maria.',
           'Não coletado.'
         ],
+        aiFieldHints: `${aiFieldHint('analiseIsotopica', ISOTOPIC_OPTIONS_CONDUCTOR)} Responsável: isotopicaResponsavelColeta.`,
+        blockingCheck: (context: any, data: Record<string, any>) => {
+          const selected: string[] = data.analiseIsotopica ?? context?.phase1?.analiseIsotopica?.value ?? [];
+          return pendingOptionDescriptions(selected, ISOTOPIC_OPTIONS_CONDUCTOR, context, data).map((o) => `descrição de "${o.label}"`);
+        },
         extractData: (input: string, context?: any) => {
-          const lower = input.toLowerCase();
-          const materials: string[] = [];
-          if (lower.includes('não coletad') || lower.includes('nao coletad')) materials.push('nao_coletado');
-          else {
-            if (lower.includes('cabelo')) materials.push('cabelo');
-            if (lower.includes('unha')) materials.push('unha');
-            if (lower.includes('dente')) materials.push('dente');
-          }
+          const { data, selected, pending } = extractDescribedChoice(input, context, {
+            listField: 'analiseIsotopica',
+            options: ISOTOPIC_OPTIONS_CONDUCTOR,
+            detect: (lower) => {
+              if (lower.includes('não coletad') || lower.includes('nao coletad')) return ['nao_coletado'];
+              const materials: string[] = [];
+              if (lower.includes('cabelo')) materials.push('cabelo');
+              if (lower.includes('unha')) materials.push('unha');
+              if (lower.includes('dente')) materials.push('dente');
+              return materials;
+            }
+          });
 
           const respMatch = input.match(/respons[áa]vel[:\s]+([^.]+)/i);
-          const data: Record<string, any> = {};
-          if (materials.length > 0) data.analiseIsotopica = materials;
           if (respMatch) data.isotopicaResponsavelColeta = respMatch[1].trim();
-          else if (materials[0] === 'nao_coletado') data.isotopicaResponsavelColeta = 'Não aplicável';
+          else if (selected[0] === 'nao_coletado' && !alreadySet(context, 'phase1', 'isotopicaResponsavelColeta')) data.isotopicaResponsavelColeta = 'Não aplicável';
 
           const missing: string[] = [];
-          if (!alreadySet(context, 'phase1', 'analiseIsotopica') && !data.analiseIsotopica) missing.push('material coletado (ou "não coletado")');
+          if (selected.length === 0) missing.push('material coletado (ou "não coletado")');
           if (!alreadySet(context, 'phase1', 'isotopicaResponsavelColeta') && !data.isotopicaResponsavelColeta) missing.push('responsável pela coleta');
+          pending.forEach((o) => missing.push(`descrição de "${o.label}"`));
 
           return {
             data,
-            summaryText: missing.length === 0
-              ? `Análise isotópica: ${data.analiseIsotopica?.join(', ') ?? context?.phase1?.analiseIsotopica?.value?.join(', ')} · Responsável: ${data.isotopicaResponsavelColeta ?? context?.phase1?.isotopicaResponsavelColeta?.value}`
-              : `Ainda falta: ${missing.join('; ')}.`,
+            summaryText: describedChoiceSummary(
+              missing,
+              pending,
+              `Análise isotópica: ${selected.join(', ')} · Responsável: ${data.isotopicaResponsavelColeta ?? context?.phase1?.isotopicaResponsavelColeta?.value}`
+            ),
             isComplete: missing.length === 0
           };
         }

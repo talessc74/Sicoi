@@ -164,6 +164,7 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
           `Passo ${currentStep.stepNumber} de ${popDef.steps.length} — ${currentStep.stepTitle}`,
           `Pergunta do condutor: ${currentStep.conductorPrompt}`,
           currentStep.regulatoryNotice ? `Norma aplicável: ${currentStep.regulatoryNotice}` : '',
+          currentStep.aiFieldHints || '',
           `Leitura preliminar de um motor de regras simples sobre esta mesma fala (pode confirmar ou corrigir): ${summaryText || 'nada reconhecido'}.`,
           `Campos que o motor de regras já extraiu nesta fala: ${JSON.stringify(extractedPayload)}.`
         ]
@@ -188,6 +189,18 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
 
     if (!aiDecided) {
       narrationTags = ['Motor determinístico (regras locais)'];
+    }
+
+    // Descrições obrigatórias (Fase 1, passos 3 a 6): conferidas sobre o que já estava
+    // gravado + o que foi extraído agora, venha da regra ou da IA. Se faltar alguma, o
+    // passo não avança, mesmo que a IA tenha confirmado.
+    if (currentStep?.blockingCheck) {
+      const stillMissing = currentStep.blockingCheck(collection, extractedPayload);
+      if (stillMissing.length > 0) {
+        if (isComplete) narrationText = '';
+        isComplete = false;
+        summaryText = `Ainda falta: ${stillMissing.join('; ')}. Descreva agora: ${stillMissing[0].replace(/^descrição de /, '')}.`;
+      }
     }
 
     // Aplica as extrações ao conjunto — sempre, esteja o passo completo ou não,
@@ -254,6 +267,8 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
     }, 600);
   };
 
+  const PHASE1_OPTIONAL_FIELDS = ['geneticoPrimeiraCostelaDescricao', 'geneticoPatelaDescricao'];
+
   // Categorias do checklist fotográfico da Fase 1, cada uma vinculada ao campo booleano/tri-state
   // do Formulário A.1 que a extração pode acionar por voz.
   const PHASE1_PHOTO_TRIGGERS: { field: string; category: string; truthy: (v: any) => boolean }[] = [
@@ -275,7 +290,8 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
       const p1 = { ...updated.phase1 };
       for (const [key, value] of Object.entries(extractedData)) {
         if (value === undefined) continue;
-        if (key in p1) {
+        // Campos opcionais do A.1 (ausentes em conjuntos antigos) também aceitam extração.
+        if (key in p1 || PHASE1_OPTIONAL_FIELDS.includes(key)) {
           (p1 as any)[key] = { value, isAiSuggested: true };
         }
       }
