@@ -170,7 +170,7 @@ app.post('/api/chat', async (req: Request, res: Response) => {
     const {
       messages = [],
       model = 'gemini-3.1-flash-lite',
-      systemInstruction = 'Você é o Perito Forense e Curador Osteológico Virtual do SIGCOI (INC/DITEC/PF). Auxilie com precisão científica e técnica na análise de ossadas, cadeia de custódia, estimativa de sexo, idade, estatura, ancestralidade, traumatologia e patologias ósseas segundo os protocolos forenses oficiais.',
+      systemInstruction = 'Você é o assistente de curadoria do SIGCOI, sistema de gestão da Coleção Osteológica Identificada do INC (COI-INC/DITEC/PF) — biobanco e coleção de referência para pesquisa aplicada, capacitação e ensino em antropologia forense, instituída pela Portaria DITEC/PF nº 1415/2024, sem finalidade de resolução de casos criminais. Auxilie com precisão científica e técnica na análise de remanescentes ósseos, controle e rastreabilidade do acervo, estimativa de sexo, idade, estatura, ancestralidade, traumatologia e patologias ósseas segundo os protocolos científicos da coleção.',
     } = req.body;
 
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -269,7 +269,7 @@ app.post('/api/pop-step', async (req: Request, res: Response) => {
     }
 
     const ai = getGeminiClient();
-    const systemInstruction = `Você é o Condutor do POP-01 (COI-INC), conduzindo por voz o preenchimento de um formulário oficial de antropologia forense. Sua única tarefa é interpretar a fala do usuário dentro do contexto do passo atual e devolver o JSON estruturado pedido. Nunca invente valor que não foi falado. Nunca decida stepConfirmed=true se um campo obrigatório continua faltando.
+    const systemInstruction = `Você é o Condutor do POP-01 (COI-INC), conduzindo por voz o preenchimento de um formulário oficial de gestão da Coleção Osteológica Identificada do INC (COI-INC), coleção de referência para pesquisa e ensino. Sua única tarefa é interpretar a fala do usuário dentro do contexto do passo atual e devolver o JSON estruturado pedido. Nunca invente valor que não foi falado. Nunca decida stepConfirmed=true se um campo obrigatório continua faltando.
 
 Contexto do passo atual:
 ${stepContext}`;
@@ -353,7 +353,7 @@ app.post('/api/transcribe', async (req: Request, res: Response) => {
               },
             },
             {
-              text: 'Transcreva com máxima fidelidade todas as palavras ditadas neste áudio em português do Brasil. Preserve termos técnicos forenses, médicos e anatômicos. Retorne apenas o texto transcrito, sem introduções.',
+              text: 'Transcreva com máxima fidelidade todas as palavras ditadas neste áudio em português do Brasil. Preserve termos técnicos antropológicos, médicos e anatômicos. Retorne apenas o texto transcrito, sem introduções.',
             },
           ],
         },
@@ -378,7 +378,7 @@ app.post('/api/transcribe', async (req: Request, res: Response) => {
               },
             },
             {
-              text: 'Transcreva em português do Brasil todas as palavras faladas neste áudio pericial. Retorne apenas a transcrição direta.',
+              text: 'Transcreva em português do Brasil todas as palavras faladas neste áudio. Retorne apenas a transcrição direta.',
             },
           ],
         },
@@ -523,7 +523,7 @@ app.delete('/api/people/:id', async (req: Request, res: Response) => {
   }
 });
 
-// --- Grafo de Conhecimento Forense (§16) — mirrors os verbos de consulta do Graphify ---
+// --- Grafo de Conhecimento (§16) — mirrors os verbos de consulta do Graphify ---
 
 // Grafo completo, ou escopado a um NIC (?nic=...)
 app.get('/api/graph', async (req: Request, res: Response) => {

@@ -60,7 +60,7 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
       <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-200 dark:border-slate-800">
         <div>
           <h4 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-            Odontograma Forense (Padrão FDI / ISO 3950)
+            Odontograma (Padrão FDI / ISO 3950)
           </h4>
           <p className="text-[11px] text-slate-500 dark:text-slate-400">
             Dentadura permanente · 32 elementos anatômicos · Clique para inspecionar ou alterar

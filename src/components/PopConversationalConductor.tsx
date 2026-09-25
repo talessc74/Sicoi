@@ -378,7 +378,7 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
     const photoId = `photo-pop-${phaseNumber}-${Date.now()}`;
     const url = 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=800&auto=format&fit=crop&q=80';
     const hash = await calculateSha256(`${url}|${category}|${collection.nic}|${currentUser.id}`);
-    const caption = `Registro pericial do ${popDef.popCode} - Passo ${step}`;
+    const caption = `Registro fotográfico do ${popDef.popCode} - Passo ${step}`;
     const newPhoto = {
       id: photoId,
       category,
@@ -393,7 +393,7 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
     const photoMessage: ConductorChatMessage = {
       id: `msg-photo-${Date.now()}`,
       sender: 'user',
-      text: `[Fotografia Forense Registrada]: ${caption}`,
+      text: `[Fotografia Registrada]: ${caption}`,
       timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
       photoAttached: newPhoto
     };
@@ -491,7 +491,7 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
     setMessages(prev => [...prev, {
       id: `msg-photo-${Date.now()}`,
       sender: 'user',
-      text: `[Fotografia Forense Registrada]: ${caption}`,
+      text: `[Fotografia Registrada]: ${caption}`,
       timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
       photoAttached: newPhoto
     }]);
@@ -660,7 +660,7 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
               {/* Message Header */}
               <div className="flex items-center justify-between gap-3 mb-1 text-[11px] opacity-80">
                 <span className="font-semibold font-mono">
-                  {msg.sender === 'user' ? currentUser.name : msg.sender === 'system' ? 'Sistema' : 'Condutor Forense INC/DITEC/PF'}
+                  {msg.sender === 'user' ? currentUser.name : msg.sender === 'system' ? 'Sistema' : 'Condutor do POP · COI-INC'}
                 </span>
                 <div className="flex items-center gap-1.5">
                   {msg.isVoiceInput && (
@@ -840,7 +840,7 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
             <button
               onClick={() => handleCapturePhoto()}
               className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 transition-colors"
-              title="Capturar foto pericial"
+              title="Capturar foto de registro"
             >
               <Camera className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
             </button>

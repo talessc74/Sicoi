@@ -646,7 +646,7 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
         timestamp: '2026-07-15T09:00:00Z',
         sourceLocation: 'Instituto de Medicina Legal - Custódia Regional',
         targetLocation: 'Área de Triagem Laboratorial',
-        carrierPerson: 'Agente Pericial 3910',
+        carrierPerson: 'Técnico de Transporte 3910',
         receiverPerson: 'Carlos Alberto Menezes',
         carrierSignatureHash: 'hash-cst-0914-1',
         receiverSignatureHash: 'hash-cst-0914-2',
@@ -846,7 +846,7 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
       cemeteryName: 'Cemitério da Paz e Memória',
       cemeteryPlot: 'Quadra 07, Jazigo 190',
       deathDeclarationNumber: 'DO-2018-091244-DF',
-      legalProcessNumber: 'Processo Criminal nº 0019284-90.2026.8.07.0001',
+      legalProcessNumber: 'Processo de Exumação nº 0019284-90.2026.8.07.0001',
       courtDistrict: 'Vara de Família e Sucessões de Brasília',
       sensitiveNotes: 'Acondicionado sob sigilo judiciário nível 2.'
     },
@@ -926,7 +926,7 @@ export const INITIAL_RESEARCH_AUTHORIZATIONS: ResearchAuthorization[] = [
   },
   {
     id: 'AUTH-2026-009',
-    title: 'Análise Paleopatológica de Lesões Traumáticas Consolidadas em Coleções Forenses',
+    title: 'Análise Paleopatológica de Lesões Traumáticas Consolidadas em Coleções Osteológicas Identificadas',
     principalInvestigator: 'Dra. Camila Nogueira Diniz',
     investigatorEmail: 'camila.diniz@fiocruz.br',
     institution: 'Fundação Oswaldo Cruz - Antropologia Biológica',

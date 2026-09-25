@@ -1,5 +1,5 @@
 /**
- * Serviço de Integração Gemini Forense do SIGCOI
+ * Serviço de Integração Gemini do SIGCOI
  * Comunica-se com o backend Express (/api/chat, /api/transcribe, /api/status)
  * protegendo chaves de API e garantindo diagnóstico em tempo real.
  */

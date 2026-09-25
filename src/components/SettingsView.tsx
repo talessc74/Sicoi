@@ -93,7 +93,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   const abacRolesMatrix: { role: UserRole; title: string; canViewLegal: boolean; canCurate: boolean; canSignPhases: boolean; canExport: boolean }[] = [
-    { role: 'curador', title: 'Curador Antropólogo Forense — acesso a todas as funções', canViewLegal: true, canCurate: true, canSignPhases: true, canExport: true },
+    { role: 'curador', title: 'Curador da COI-INC — acesso a todas as funções', canViewLegal: true, canCurate: true, canSignPhases: true, canExport: true },
     { role: 'administrador', title: 'Administrador do Sistema / DITEC', canViewLegal: true, canCurate: true, canSignPhases: true, canExport: true },
     { role: 'tecnico', title: 'Técnico de Laboratório', canViewLegal: false, canCurate: false, canSignPhases: true, canExport: false },
     { role: 'pesquisador', title: 'Pesquisador Externo (CEP)', canViewLegal: false, canCurate: false, canSignPhases: false, canExport: true },
@@ -128,7 +128,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4 text-xs">
           <div className="flex items-center gap-2 text-slate-900 dark:text-white font-bold pb-2 border-b border-slate-200 dark:border-slate-800">
             <Volume2 className="w-4 h-4 text-sky-600" />
-            <h3 className="text-sm">Ambiente Laboratorial & Acessibilidade Forense</h3>
+            <h3 className="text-sm">Ambiente Laboratorial & Acessibilidade</h3>
           </div>
 
           <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4">
@@ -188,7 +188,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4 text-xs">
           <div className="flex items-center gap-2 text-slate-900 dark:text-white font-bold pb-2 border-b border-slate-200 dark:border-slate-800">
             <Key className="w-4 h-4 text-emerald-600" />
-            <h3 className="text-sm">Criptografia & Integridade Forense (§7)</h3>
+            <h3 className="text-sm">Criptografia & Integridade dos Registros (§7)</h3>
           </div>
 
           <div className="space-y-1.5">

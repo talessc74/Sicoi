@@ -7,9 +7,12 @@ qualquer numeração de versão solta por aí como referência: a única versão
 que importa é o hash do commit em execução, mostrado no topo de toda tela da
 aplicação (ver "Acessar agora" abaixo).
 
-Sistema de custódia e gestão de coleções osteológicas forenses, desenvolvido
-para a INC/DITEC/PF. Ele conduz o fluxo operacional real de recebimento,
-limpeza e curadoria de remanescentes ósseos — passo a passo, por voz ou por
+Sistema de gestão e controle da Coleção Osteológica Identificada do Instituto
+Nacional de Criminalística (COI-INC/DITEC/PF) — biobanco e coleção de
+referência para pesquisa aplicada, capacitação e ensino em antropologia forense,
+instituída pela Portaria DITEC/PF nº 1415/2024. Não é um sistema de resolução
+de casos criminais: serve à gestão, ao controle e à rastreabilidade do acervo.
+Ele conduz o fluxo operacional real de recebimento, limpeza e curadoria de remanescentes ósseos — passo a passo, por voz ou por
 texto — a partir dos formulários oficiais em uso (Formulário A.1, Formulário
 A.2, POP-01), com cada assinatura de fase travada por hash criptográfico
 SHA-256 e uma trilha de auditoria completa e imutável de tudo o que foi
@@ -99,7 +102,7 @@ consulte o índice `.xdrs/_local/index.md` daquele repositório.
   Inventário Odontológico, Formulário de Patologias), que ainda não foram
   entregues. Até lá, o conteúdo dos formulários dessas fases é a melhor
   aproximação possível, não uma cópia fiel confirmada de um documento oficial.
-  Dentro da Fase 4, a busca de referência para comparação entre casos (um dos
+  Dentro da Fase 4, a busca de referência para comparação entre conjuntos (um dos
   dois agentes de apoio previstos em `_local-adr-policy-001`) é só a interface
   — o modal existe mas a busca em si ainda não está implementada.
 - **Pendências conhecidas, fora do escopo até agora:** login/senha real (o

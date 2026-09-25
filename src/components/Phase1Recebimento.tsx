@@ -203,7 +203,7 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
   const canSign = requiredFieldsFilled && hasBoxes && hasPhotos && canActAsTechnician;
 
   const signBlockers: string[] = [...missingFieldLabels];
-  if (!hasBoxes) signBlockers.push('nenhuma caixa vinculada ao caso');
+  if (!hasBoxes) signBlockers.push('nenhuma caixa vinculada ao conjunto');
   if (!hasPhotos) signBlockers.push('nenhuma foto anexada');
   if (!canActAsTechnician) signBlockers.push(`a pessoa ativa agora ("${currentUser.name}") tem o papel "${currentUser.role}" — Técnico ou Curador pode assinar a Fase 1. Troque a pessoa ativa no menu de perfil, no topo da tela.`);
 
@@ -361,7 +361,7 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
               <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-mono uppercase text-slate-400 font-semibold">
-                    Evidências Fotográficas ({collection.phase1.photos.length}):
+                    Registros Fotográficos ({collection.phase1.photos.length}):
                   </span>
                   <Camera className="w-3.5 h-3.5 text-slate-400" />
                 </div>

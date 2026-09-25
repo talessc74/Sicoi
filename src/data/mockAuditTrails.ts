@@ -6,7 +6,7 @@ export function getAuditTrailForCollection(collection: OsteologicalCollection): 
   }
 
   // Gera os eventos a partir dos dados reais do conjunto (criação, fases assinadas,
-  // reaberturas periciais e cadeia de custódia). Isto vale para QUALQUER conjunto —
+  // reaberturas técnicas e cadeia de custódia). Isto vale para QUALQUER conjunto —
   // inclusive os 3 de demonstração carregados via "Carregar dados de exemplo" em
   // Configurações, que têm signatures/custodyChain reais preenchidas com a mesma
   // história. Nunca decidir isto pelo NIC: um conjunto real criado do zero recebe
@@ -21,7 +21,7 @@ export function getAuditTrailForCollection(collection: OsteologicalCollection): 
       phaseNumber: 1,
       actionType: 'criacao_nic',
       actionTitle: `Registro e Abertura Formal de ${collection.nic}`,
-      description: `Autuação cadastral pericial do conjunto osteológico sob protocolo ${collection.legalOrigin.deliveryDocumentNumber || 'Ofício Inicial'}.`,
+      description: `Registro cadastral do conjunto osteológico sob protocolo ${collection.legalOrigin.deliveryDocumentNumber || 'Ofício Inicial'}.`,
       operatorId: 'usr-dyn-01',
       operatorName: collection.createdByTechnician || 'Técnico Responsável',
       operatorRole: 'tecnico',
@@ -62,7 +62,7 @@ export function getAuditTrailForCollection(collection: OsteologicalCollection): 
         timestamp: sig.reopenedAt,
         phaseNumber: sig.phaseNumber,
         actionType: 'reabertura_fase',
-        actionTitle: `Reabertura Pericial Justificada da Fase ${sig.phaseNumber}`,
+        actionTitle: `Reabertura Técnica Justificada da Fase ${sig.phaseNumber}`,
         description: `Fase ${sig.phaseNumber} destravada para revisão conforme autorização técnica.`,
         operatorId: 'usr-reopen',
         operatorName: sig.reopenedBy || 'Responsável Técnico',
@@ -73,7 +73,7 @@ export function getAuditTrailForCollection(collection: OsteologicalCollection): 
         newValueSnapshot: `Fase ${sig.phaseNumber}: Reaberto para Revisão`,
         sha256Hash: sig.sha256Hash.split('').reverse().join(''),
         verificationStatus: 'valido',
-        justification: sig.reopenJustification || 'Reabertura técnica justificada no processo pericial.'
+        justification: sig.reopenJustification || 'Reabertura técnica justificada.'
       });
     }
   });

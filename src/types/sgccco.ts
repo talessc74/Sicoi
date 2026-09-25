@@ -274,7 +274,7 @@ export interface Phase3Data {
   enteredQueueAt?: string;
 }
 
-// Grau de Certeza Biológica Forense (§8)
+// Grau de Certeza Biológica (§8)
 export type BiologicalConfidence = 'alto' | 'alta' | 'medio' | 'media' | 'baixo' | 'baixa' | 'inconclusivo' | 'inconclusiva';
 
 // Fase 4: Curadoria Científica, NMI e Perfil Biológico
@@ -638,7 +638,7 @@ export interface AuditEvent {
   ipOrTerminal?: string;
   previousValueSnapshot?: string;
   newValueSnapshot?: string;
-  sha256Hash: string; // Hash forense da operação
+  sha256Hash: string; // Hash SHA-256 da operação
   verificationStatus: 'valido' | 'alerta_inconsistencia';
   boxIds?: string[];
   justification?: string;

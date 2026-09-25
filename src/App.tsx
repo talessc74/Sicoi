@@ -207,7 +207,7 @@ export default function App() {
         preliminaryBoxes: [{
           id: `CX-${newNic}`,
           boxCode: `CX-${nextNum}`,
-          presumedIndividualLabel: 'Caixa do caso',
+          presumedIndividualLabel: 'Caixa do conjunto',
           currentLocation: 'Bancada de Recepção',
           qrCode: `SIGCOI://BOX/CX-${newNic}`
         }]
@@ -284,7 +284,7 @@ export default function App() {
     // Preserva o registro de assinatura original (quem assinou, quando, hash) em vez de
     // apagá-lo — a reabertura fica marcada nele mesmo (status + justificativa + quem/quando
     // reabriu), o que a Linha do Tempo de Auditoria já sabe transformar automaticamente em
-    // um evento "Reabertura Pericial Justificada" (ver getAuditTrailForCollection).
+    // um evento "Reabertura Técnica Justificada" (ver getAuditTrailForCollection).
     updated.signatures = updated.signatures.map((s) =>
       s.phaseNumber === phaseToReopen && s.status === 'locked'
         ? {
@@ -568,7 +568,7 @@ export default function App() {
           </>
         )}
 
-        {/* Grafo de Conhecimento Forense */}
+        {/* Grafo de Conhecimento */}
         {activeTab === 'grafo' && (
           <KnowledgeGraphViewer selectedNic={selectedNic} />
         )}
@@ -623,18 +623,18 @@ export default function App() {
         />
       )}
 
-      {/* Botão Flutuante de Acesso Rápido ao Perito IA Gemini */}
+      {/* Botão Flutuante de Acesso Rápido ao Assistente IA (Gemini) */}
       <button
         onClick={() => setIsGeminiChatOpen(true)}
         className="fixed bottom-6 right-6 z-40 px-4 py-3 rounded-2xl bg-gradient-to-tr from-sky-600 via-indigo-600 to-purple-600 text-white shadow-xl shadow-indigo-500/30 hover:scale-105 active:scale-95 transition-all flex items-center gap-2.5 font-semibold text-xs border border-white/20 group cursor-pointer"
-        title="Abrir Chat com Perito IA Gemini & Transcrição de Áudio"
+        title="Abrir Chat com o Assistente IA (Gemini) & Transcrição de Áudio"
       >
         <div className="relative flex h-3 w-3">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-300 opacity-75"></span>
           <span className="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
         </div>
         <Bot className="w-4 h-4 text-sky-200" />
-        <span className="font-sans">Perito IA</span>
+        <span className="font-sans">Assistente IA</span>
         <span className="hidden sm:inline text-[10px] font-mono px-1.5 py-0.5 bg-black/20 rounded-md">Gemini</span>
       </button>
 

@@ -122,7 +122,7 @@ export const INC_DITEC_PF_POPS: Record<PhaseNumber, PopDefinition> = {
         requiresPhoto: false,
         quickSuggestions: [
           'Equipe: Técnico João e Técnica Maria. Data de hoje, início às 09h15min.',
-          'Equipe composta por dois peritos. Hoje, 14h30min.'
+          'Equipe composta por dois técnicos. Hoje, 14h30min.'
         ],
         extractData: (input: string, context?: any) => {
           const data: Record<string, any> = {};
@@ -290,7 +290,7 @@ export const INC_DITEC_PF_POPS: Record<PhaseNumber, PopDefinition> = {
         requiresPhoto: false,
         quickSuggestions: [
           'Coletada falange distal, responsável Técnico João.',
-          'Não coletado, sem indicação de exame genético neste caso.'
+          'Não coletado, sem indicação de exame genético para este conjunto.'
         ],
         extractData: (input: string, context?: any) => {
           const lower = input.toLowerCase();
@@ -451,7 +451,7 @@ export const INC_DITEC_PF_POPS: Record<PhaseNumber, PopDefinition> = {
         requiresPhoto: false,
         quickSuggestions: [
           'Equipe: Técnico João e Técnica Maria. Data de hoje, início às 14h00min.',
-          'Equipe composta por dois peritos. Hoje, 09h30min.'
+          'Equipe composta por dois técnicos. Hoje, 09h30min.'
         ],
         extractData: (input: string, context?: any) => {
           const data: Record<string, any> = {};
@@ -705,7 +705,7 @@ export const INC_DITEC_PF_POPS: Record<PhaseNumber, PopDefinition> = {
         quickSuggestions: [
           'Fratura perimortem com biselamento na escama do osso parietal esquerdo por PAF.',
           'Calo ósseo consolidado (antemortem) no terço médio da fíbula direita.',
-          'Ausência de lesões traumáticas de relevância pericial ou fraturas perimortem.'
+          'Ausência de lesões traumáticas relevantes ou fraturas perimortem.'
         ],
         extractData: (input: string) => {
           return {
@@ -791,11 +791,11 @@ export interface AiConductorAgentConfig {
 
 export const DEFAULT_AI_AGENT_CONFIG: AiConductorAgentConfig = {
   enabled: false,
-  agentName: 'Agente Forense Virtual INC/DITEC/PF (IA)',
+  agentName: 'Assistente Virtual do Condutor COI-INC (IA)',
   modelIdentifier: 'models/gemini-3.8-flash',
   voicePersona: 'polite_forensic',
   streamingMode: false,
   autoSpeak: true,
-  systemPromptPreset: `Você é o Condutor Forense Oficial do SIGCOI, treinado nas diretrizes INC/DITEC/PF e Código de Processo Penal (Art. 158-A a 158-F). Sua missão é guiar o perito/técnico no laboratório através de perguntas rigorosas, precisas e objetivas para preencher a documentação da coleção osteológica sem distrações. Sempre confirme os números de lacre, integridade e termos periciais.`,
+  systemPromptPreset: `Você é o Condutor do POP do SIGCOI, sistema de gestão da Coleção Osteológica Identificada do INC (COI-INC/DITEC/PF), coleção de referência para pesquisa e ensino em antropologia forense instituída pela Portaria DITEC/PF nº 1415/2024. Sua missão é guiar o perito ou técnico no laboratório com perguntas precisas e objetivas para preencher a documentação da coleção osteológica sem distrações. Sempre confirme os números de lacre, a integridade das embalagens e a identificação das caixas.`,
   externalApiKeyConfigured: false
 };

@@ -278,7 +278,7 @@ export const Phase3Acondicionamento: React.FC<Phase3AcondicionamentoProps> = ({
                       </div>
                       <div>
                         <span className="font-semibold text-slate-900 dark:text-white block">
-                          Caixa do caso
+                          Caixa do conjunto
                         </span>
                         <span className="text-slate-400 font-mono text-[11px]">
                           {loc
