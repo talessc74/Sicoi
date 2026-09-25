@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { OsteologicalCollection, UserProfile, StorageLocation, CustodyMovement } from '../types/sgccco';
 import { calculateSha256, generateSignaturePayload } from '../services/auditService';
 import { getLatestPhaseSignature } from '../utils/signatures';
+import { canPerformRole } from '../utils/permissions';
 import { WAREHOUSE_STRUCTURE } from '../data/mockData';
 import { MapPin, QrCode, CheckCircle2, Clock, Box, ShieldCheck, ArrowRight } from 'lucide-react';
 
@@ -30,7 +31,7 @@ export const Phase3Acondicionamento: React.FC<Phase3AcondicionamentoProps> = ({
 
   const phaseSignature = getLatestPhaseSignature(collection.signatures, 3);
   const isLocked = phaseSignature?.status === 'locked';
-  const isTechnician = currentUser.role === 'tecnico';
+  const canActAsTechnician = canPerformRole(currentUser.role, 'tecnico');
 
   const boxes = collection.phase1.preliminaryBoxes;
   const allBoxesPlaced = boxes.length > 0 && boxes.every(b => 
@@ -157,7 +158,7 @@ export const Phase3Acondicionamento: React.FC<Phase3AcondicionamentoProps> = ({
             ) : (
               <button
                 onClick={() => setShowSignModal(true)}
-                disabled={!allBoxesPlaced || !isTechnician}
+                disabled={!allBoxesPlaced || !canActAsTechnician}
                 className="px-4 py-2 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-semibold hover:opacity-95 disabled:opacity-40 transition-all flex items-center gap-2 shadow-xs"
               >
                 <CheckCircle2 className="w-4 h-4" />

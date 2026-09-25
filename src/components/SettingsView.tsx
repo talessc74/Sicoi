@@ -93,7 +93,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   const abacRolesMatrix: { role: UserRole; title: string; canViewLegal: boolean; canCurate: boolean; canSignPhases: boolean; canExport: boolean }[] = [
-    { role: 'curador', title: 'Curador Antropólogo Forense', canViewLegal: true, canCurate: true, canSignPhases: true, canExport: true },
+    { role: 'curador', title: 'Curador Antropólogo Forense — acesso a todas as funções', canViewLegal: true, canCurate: true, canSignPhases: true, canExport: true },
     { role: 'administrador', title: 'Administrador do Sistema / DITEC', canViewLegal: true, canCurate: true, canSignPhases: true, canExport: true },
     { role: 'tecnico', title: 'Técnico de Laboratório', canViewLegal: false, canCurate: false, canSignPhases: true, canExport: false },
     { role: 'pesquisador', title: 'Pesquisador Externo (CEP)', canViewLegal: false, canCurate: false, canSignPhases: false, canExport: true },
@@ -455,7 +455,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               Matriz de Permissões ABAC por Papel Institucional (§13)
             </h3>
             <p className="text-slate-500 mt-0.5">
-              Definição estrita de privilégios para segregação de dados judiciais e cemiteriais.
+              O Curador pode executar as funções de todos os papéis; suas ações continuam registradas com o papel Curador.
             </p>
           </div>
           <button

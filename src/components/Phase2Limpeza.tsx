@@ -3,6 +3,7 @@ import { OsteologicalCollection, UserProfile, FieldWithAiSuggestion, CleaningIns
 import { PopConversationalConductor } from './PopConversationalConductor';
 import { calculateSha256, generateSignaturePayload } from '../services/auditService';
 import { getLatestPhaseSignature } from '../utils/signatures';
+import { canPerformRole } from '../utils/permissions';
 import { Droplet, Wind, Clock, CheckCircle2, ShieldCheck, Bot, FileText, Sparkles, Box, Save, AlertCircle } from 'lucide-react';
 
 const INSTRUMENT_OPTIONS: { value: CleaningInstrument; label: string }[] = [
@@ -38,7 +39,7 @@ export const Phase2Limpeza: React.FC<Phase2LimpezaProps> = ({ collection, curren
 
   const phaseSignature = getLatestPhaseSignature(collection.signatures, 2);
   const isLocked = phaseSignature?.status === 'locked';
-  const isTechnician = currentUser.role === 'tecnico';
+  const canActAsTechnician = canPerformRole(currentUser.role, 'tecnico');
 
   const p2 = collection.phase2;
   // O status de limpeza/secagem vive em phase2.boxDryingStatus (não em
@@ -155,10 +156,10 @@ export const Phase2Limpeza: React.FC<Phase2LimpezaProps> = ({ collection, curren
     onUpdateCollection(updated);
   };
 
-  const canSign = requiredFieldsFilled && allBoxesDry && isTechnician;
+  const canSign = requiredFieldsFilled && allBoxesDry && canActAsTechnician;
   const signBlockers: string[] = [...missingFieldLabels];
   if (!allBoxesDry) signBlockers.push('todas as caixas precisam estar com status "Seca"');
-  if (!isTechnician) signBlockers.push(`a pessoa ativa agora ("${currentUser.name}") tem o papel "${currentUser.role}" — só um Técnico pode assinar a Fase 2. Troque a pessoa ativa no menu de perfil, no topo da tela.`);
+  if (!canActAsTechnician) signBlockers.push(`a pessoa ativa agora ("${currentUser.name}") tem o papel "${currentUser.role}" — Técnico ou Curador pode assinar a Fase 2. Troque a pessoa ativa no menu de perfil, no topo da tela.`);
 
   return (
     <div className="space-y-6">
