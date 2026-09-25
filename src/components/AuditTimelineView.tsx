@@ -7,6 +7,7 @@ import {
   PhaseNumber
 } from '../types/sgccco';
 import { getAuditTrailForCollection } from '../data/mockAuditTrails';
+import { getLatestPhaseSignature } from '../utils/signatures';
 import {
   ShieldCheck,
   ShieldAlert,
@@ -34,6 +35,16 @@ import {
   AlertCircle,
   ExternalLink
 } from 'lucide-react';
+
+const PHASE_META: Record<PhaseNumber, { subtitle: string; signerRole: string }> = {
+  1: { subtitle: 'Recebimento & A.1', signerRole: 'Técnico' },
+  2: { subtitle: 'Limpeza & Secagem A.2', signerRole: 'Técnico' },
+  3: { subtitle: 'Acondic. Provisório', signerRole: 'Técnico' },
+  4: { subtitle: 'Curadoria & Perfil', signerRole: 'Curador' },
+  5: { subtitle: 'Patologias & Exames', signerRole: 'Curador / Técnico' },
+  6: { subtitle: 'Galpão Definitivo', signerRole: 'Dupla Custódia' },
+  7: { subtitle: 'Pesquisa & Grafo', signerRole: 'Admin / Livre' }
+};
 
 interface AuditTimelineViewProps {
   collections: OsteologicalCollection[];
@@ -75,6 +86,55 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
     if (!currentCollection) return [];
     return getAuditTrailForCollection(currentCollection);
   }, [currentCollection]);
+
+  // Completude de cada uma das 7 fases — base do Laudo de Auditoria. Funciona
+  // para QUALQUER conjunto, completo ou não: uma fase sem assinatura aparece
+  // como "Em Aberto" (ou "Bloqueada" se as fases anteriores não fecharam),
+  // nunca é omitida do relatório.
+  const phaseReport = useMemo(() => {
+    if (!currentCollection) return [];
+    const phases: PhaseNumber[] = [1, 2, 3, 4, 5, 6, 7];
+    return phases.map((num) => {
+      const sig = getLatestPhaseSignature(currentCollection.signatures, num);
+      const meta = PHASE_META[num];
+      let status: 'assinada' | 'reaberta' | 'em_aberto' | 'bloqueada';
+      if (sig?.status === 'locked') status = 'assinada';
+      else if (sig?.status === 'unlocked_for_revision') status = 'reaberta';
+      else if (num <= currentCollection.currentPhase) status = 'em_aberto';
+      else status = 'bloqueada';
+      return { num, meta, sig, status };
+    });
+  }, [currentCollection]);
+
+  // Situação física/administrativa atual do objeto — para responder "onde está
+  // e o que falta", não só "em que fase está".
+  const objectStatus = useMemo(() => {
+    if (!currentCollection) return null;
+    const allSigned = phaseReport.slice(0, 6).every((p) => p.status === 'assinada');
+    const { phase6, phase3 } = currentCollection;
+    let location = 'Ainda no laboratório — nenhuma localização física registrada.';
+    let locationKind: 'definitiva' | 'provisoria' | 'nenhuma' = 'nenhuma';
+    if (phase6.finalLocations && phase6.finalLocations.length > 0) {
+      const loc = phase6.finalLocations[0].location;
+      location = `${loc.facility} · ${loc.room} · ${loc.rack} · ${loc.shelf}${loc.boxSlot ? ' · ' + loc.boxSlot : ''} (definitiva)`;
+      locationKind = 'definitiva';
+    } else if (phase3.boxLocations && phase3.boxLocations.length > 0) {
+      const loc = phase3.boxLocations[0].location;
+      location = `${loc.facility} · ${loc.room} · ${loc.rack} · ${loc.shelf}${loc.boxSlot ? ' · ' + loc.boxSlot : ''} (provisória, Fase 3)`;
+      locationKind = 'provisoria';
+    }
+    const summaryLabel = allSigned
+      ? 'Concluído — custódia definitiva'
+      : `Em andamento — Fase ${currentCollection.currentPhase} (${PHASE_META[currentCollection.currentPhase].subtitle})`;
+    return {
+      summaryLabel,
+      location,
+      locationKind,
+      publicQrActive: Boolean(phase6.publicQrActive),
+      boxCount: currentCollection.phase1.preliminaryBoxes.length,
+      lastEvent: allEvents[allEvents.length - 1]
+    };
+  }, [currentCollection, phaseReport, allEvents]);
 
   if (!currentCollection) {
     return (
@@ -248,8 +308,137 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
     }
   };
 
+  const phaseStatusLabel = (status: 'assinada' | 'reaberta' | 'em_aberto' | 'bloqueada') => {
+    switch (status) {
+      case 'assinada':
+        return 'Assinada & Travada';
+      case 'reaberta':
+        return 'Reaberta para Revisão';
+      case 'em_aberto':
+        return 'Em Aberto';
+      default:
+        return 'Bloqueada';
+    }
+  };
+
+  // ===================== LAUDO DE AUDITORIA (somente impressão) =====================
+  // Documento estruturado e autocontido: situação do objeto, completude das 7
+  // fases (quem assinou, quando, com qual hash) e a trilha cronológica completa
+  // de "quem fez o quê". Fica oculto na tela e só aparece no papel/PDF — vale
+  // para qualquer NIC selecionado no seletor acima, completo ou não.
+  const printReport = currentCollection && objectStatus ? (
+    <div className="hidden print:block text-black p-8 text-[11px] leading-relaxed">
+      <div className="flex items-start justify-between border-b-2 border-black pb-3 mb-4">
+        <div>
+          <div className="text-[10px] font-mono uppercase tracking-widest">INC/DITEC/PF · SIGCOI</div>
+          <h1 className="text-lg font-bold mt-0.5">Laudo de Auditoria e Cadeia de Custódia</h1>
+          <div className="font-mono text-sm mt-0.5">{currentCollection.nic}</div>
+        </div>
+        <div className="text-right text-[10px] font-mono">
+          <div>Gerado em: {new Date().toLocaleString('pt-BR')}</div>
+          <div>Solicitado por: {currentUser.name} ({currentUser.role.toUpperCase()})</div>
+          <div>{allEvents.length} evento(s) na trilha · cadeia SHA-256</div>
+        </div>
+      </div>
+
+      {/* Situação do objeto */}
+      <h2 className="font-bold text-sm mb-1.5 mt-4">1. Situação Atual do Objeto</h2>
+      <table className="w-full border-collapse mb-4">
+        <tbody>
+          <tr>
+            <td className="border border-black px-2 py-1 font-semibold w-1/4">Status geral</td>
+            <td className="border border-black px-2 py-1">{objectStatus.summaryLabel}</td>
+          </tr>
+          <tr>
+            <td className="border border-black px-2 py-1 font-semibold">Localização física</td>
+            <td className="border border-black px-2 py-1">{objectStatus.location}</td>
+          </tr>
+          <tr>
+            <td className="border border-black px-2 py-1 font-semibold">Caixas no conjunto</td>
+            <td className="border border-black px-2 py-1">{objectStatus.boxCount}</td>
+          </tr>
+          <tr>
+            <td className="border border-black px-2 py-1 font-semibold">QR Code público</td>
+            <td className="border border-black px-2 py-1">{objectStatus.publicQrActive ? 'Ativo (consulta pública autorizada)' : 'Inativo'}</td>
+          </tr>
+          <tr>
+            <td className="border border-black px-2 py-1 font-semibold">Origem legal</td>
+            <td className="border border-black px-2 py-1">{currentCollection.legalOrigin.originInstitution || 'Não informado'}</td>
+          </tr>
+          <tr>
+            <td className="border border-black px-2 py-1 font-semibold">Aberto em</td>
+            <td className="border border-black px-2 py-1">{formatTimestamp(currentCollection.createdAt).dateStr} por {currentCollection.createdByTechnician}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      {/* Completude por fase */}
+      <h2 className="font-bold text-sm mb-1.5">2. Completude por Fase — Quem Assinou o Quê</h2>
+      <table className="w-full border-collapse mb-4">
+        <thead>
+          <tr>
+            <th className="border border-black px-2 py-1 text-left">Fase</th>
+            <th className="border border-black px-2 py-1 text-left">Status</th>
+            <th className="border border-black px-2 py-1 text-left">Responsável</th>
+            <th className="border border-black px-2 py-1 text-left">Papel</th>
+            <th className="border border-black px-2 py-1 text-left">Data/Hora</th>
+            <th className="border border-black px-2 py-1 text-left">Hash SHA-256</th>
+          </tr>
+        </thead>
+        <tbody>
+          {phaseReport.map((p) => (
+            <tr key={p.num}>
+              <td className="border border-black px-2 py-1 font-semibold">Fase {p.num} — {p.meta.subtitle}</td>
+              <td className="border border-black px-2 py-1">{phaseStatusLabel(p.status)}</td>
+              <td className="border border-black px-2 py-1">{p.sig?.signedByName || '—'}</td>
+              <td className="border border-black px-2 py-1">{p.sig?.signedByRole?.toUpperCase() || p.meta.signerRole}</td>
+              <td className="border border-black px-2 py-1 font-mono">{p.sig ? `${formatTimestamp(p.sig.signedAt).dateStr} ${formatTimestamp(p.sig.signedAt).timeStr}` : '—'}</td>
+              <td className="border border-black px-2 py-1 font-mono text-[9px] break-all">{p.sig ? `${p.sig.sha256Hash.substring(0, 24)}...` : '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {/* Trilha cronológica completa */}
+      <h2 className="font-bold text-sm mb-1.5">3. Trilha Cronológica Completa — Quem Fez o Quê</h2>
+      <table className="w-full border-collapse mb-4">
+        <thead>
+          <tr>
+            <th className="border border-black px-2 py-1 text-left">Data/Hora</th>
+            <th className="border border-black px-2 py-1 text-left">Fase</th>
+            <th className="border border-black px-2 py-1 text-left">Ação</th>
+            <th className="border border-black px-2 py-1 text-left">Operador</th>
+            <th className="border border-black px-2 py-1 text-left">Descrição</th>
+          </tr>
+        </thead>
+        <tbody>
+          {allEvents.map((ev) => {
+            const t = formatTimestamp(ev.timestamp);
+            return (
+              <tr key={ev.id}>
+                <td className="border border-black px-2 py-1 font-mono whitespace-nowrap">{t.dateStr} {t.timeStr}</td>
+                <td className="border border-black px-2 py-1">Fase {ev.phaseNumber}</td>
+                <td className="border border-black px-2 py-1">{ev.actionTitle}</td>
+                <td className="border border-black px-2 py-1">{ev.operatorName} ({ev.operatorRole.toUpperCase()})</td>
+                <td className="border border-black px-2 py-1">{ev.description}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+
+      <div className="mt-6 pt-3 border-t border-black text-[9.5px] font-mono">
+        Documento gerado automaticamente pelo SIGCOI a partir dos registros reais do conjunto {currentCollection.nic} — sem edição manual possível.
+        Cada evento e cada assinatura acima carrega seu próprio hash SHA-256, recalculado e conferido pelo servidor no momento do registro.
+        Este laudo cobre o conjunto no estado em que se encontra, completo ou não — fases sem assinatura aparecem como "Em Aberto"/"Bloqueada", nunca omitidas.
+      </div>
+    </div>
+  ) : null;
+
   return (
-    <div className="space-y-6">
+    <>
+    {printReport}
+    <div className="space-y-6 print:hidden">
       {/* Top Banner & Title Area */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-xs">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -851,5 +1040,6 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
         </div>
       )}
     </div>
+    </>
   );
 };
