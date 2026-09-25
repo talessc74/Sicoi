@@ -84,15 +84,15 @@ export async function createCollection(pool: Pool, collection: OsteologicalColle
 
 /**
  * Persiste um conjunto já existente. Antes de gravar, recalcula e confere o hash
- * de cada assinatura presente no payload — se o hash recebido não bate com o
- * recalculado a partir do payload canônico, a assinatura é rejeitada (o cliente
- * nunca decide sozinho que um hash é válido).
+ * de cada assinatura ativa presente no payload — se o hash recebido não bate
+ * com o recalculado a partir do payload canônico, a assinatura é rejeitada.
+ * Assinaturas reabertas conservam o hash do estado anterior para auditoria.
  */
 export async function saveCollection(pool: Pool, collection: OsteologicalCollection): Promise<void> {
   for (const sig of collection.signatures) {
     // Uma assinatura reaberta preserva o hash da versão anterior da fase.
     // Depois da revisão, esse hash não pode ser comparado ao estado atual.
-    if (sig.status !== 'locked') continue;
+    if (sig.status === 'unlocked_for_revision') continue;
     if (!signatureMatchesCurrentPhase(collection, sig)) {
       throw new Error(
         `Assinatura inválida para NIC ${collection.nic}, Fase ${sig.phaseNumber}: hash não confere com o payload canônico recalculado no servidor.`
