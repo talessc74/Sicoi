@@ -174,7 +174,7 @@ export function computeGraphForCollection(col: OsteologicalCollection): { nodes:
         sexEstimate: ind.biologicalProfile.sexEstimate.value,
         ageCategory: ind.biologicalProfile.ageCategory.value,
         statureCm: ind.biologicalProfile.statureCm.estimatedValue,
-        diagnosticElement: ind.mniDiagnosticElement
+        diagnosticElement: ind.nmiDiagnosticElement
       }));
       edges.push(edge(`e-${nic}-${indNodeId}`, nic, indNodeId, 'possui_individuo', {
         recordId: ind.id,

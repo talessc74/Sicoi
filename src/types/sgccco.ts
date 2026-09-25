@@ -277,7 +277,7 @@ export interface Phase3Data {
 // Grau de Certeza Biológica Forense (§8)
 export type BiologicalConfidence = 'alto' | 'alta' | 'medio' | 'media' | 'baixo' | 'baixa' | 'inconclusivo' | 'inconclusiva';
 
-// Fase 4: Curadoria Científica, MNI e Perfil Biológico
+// Fase 4: Curadoria Científica, NMI e Perfil Biológico
 export type CurationVersionStatus = 'rascunho' | 'revisao' | 'aprovada_curador' | 'aprovada';
 
 export interface IndividualHypothesis {
@@ -285,7 +285,7 @@ export interface IndividualHypothesis {
   code: string;
   nameOrLabel?: string;
   confidence: BiologicalConfidence;
-  mniDiagnosticElement?: string;
+  nmiDiagnosticElement?: string;
   status?: 'valido' | 'preliminar' | 'revisao' | string;
   associatedBoxId?: string;
   justification?: string;
@@ -609,7 +609,7 @@ export type AuditActionType =
   | 'limpeza_higienizacao'
   | 'secagem_concluida'
   | 'acondicionamento_provisorio'
-  | 'curadoria_mni'
+  | 'curadoria_nmi'
   | 'pareamento_anatomico'
   | 'perfil_biologico'
   | 'patologia_registrada'

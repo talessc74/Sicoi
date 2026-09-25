@@ -163,7 +163,7 @@ export const DocumentSearchViewer: React.FC<DocumentSearchViewerProps> = ({
 
   const popularKeywords = [
     'Paraloid B-72',
-    'MNI',
+    'NMI',
     'Phenice',
     'Suchey-Brooks',
     'DICOM',
@@ -214,7 +214,7 @@ export const DocumentSearchViewer: React.FC<DocumentSearchViewerProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Pesquisar texto específico dentro do documento normativo (ex: Paraloid B-72, Phenice, MNI, lacres, 72 horas)..."
+              placeholder="Pesquisar texto específico dentro do documento normativo (ex: Paraloid B-72, Phenice, NMI, lacres, 72 horas)..."
               className="w-full pl-10 pr-10 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-white placeholder-slate-400 text-sm focus:outline-hidden focus:ring-2 focus:ring-sky-500 focus:bg-white dark:focus:bg-slate-900 transition-all font-sans"
             />
             {searchQuery && (
@@ -263,7 +263,7 @@ export const DocumentSearchViewer: React.FC<DocumentSearchViewerProps> = ({
                 <option value="1">Fase 1 · Recebimento</option>
                 <option value="2">Fase 2 · Limpeza & Secagem</option>
                 <option value="3">Fase 3 · Acondicionamento Provisório</option>
-                <option value="4">Fase 4 · Curadoria & MNI</option>
+                <option value="4">Fase 4 · Curadoria & NMI</option>
                 <option value="5">Fase 5 · Patologias & DICOM</option>
                 <option value="6">Fase 6 · Galpão Definitivo</option>
                 <option value="7">Fase 7 · Pesquisa & ABAC</option>
@@ -282,7 +282,7 @@ export const DocumentSearchViewer: React.FC<DocumentSearchViewerProps> = ({
                 <option value="2">Capítulo II · Fase 1 Recebimento</option>
                 <option value="3">Capítulo III · Fase 2 Higienização</option>
                 <option value="4">Capítulo IV · Fase 3 Acondicionamento</option>
-                <option value="5">Capítulo V · Fase 4 Curadoria & MNI</option>
+                <option value="5">Capítulo V · Fase 4 Curadoria & NMI</option>
                 <option value="6">Capítulo VI · Fase 5 Patologias & Nanquim</option>
                 <option value="7">Capítulo VII · Fase 6 Galpão Definitivo</option>
                 <option value="8">Capítulo VIII · Fase 7 Pesquisa & ABAC</option>

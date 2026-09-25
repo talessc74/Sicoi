@@ -40,8 +40,8 @@ export const HelpView: React.FC<HelpViewProps> = ({
       answer: `Por mandamento da LGPD e Resolução DITEC 08/2026, os dados relativos a comarca, número de processo penal, cemitério, quadra, jazigo e declaração de óbito são restritos e visíveis APENAS aos perfis de Curador e Administrador. Eles são ocultados para Técnicos, Pesquisadores Externos e nunca constam em QR Codes públicos ou exportações científicas.`
     },
     {
-      question: 'Como é calculada a estimativa de MNI (Número Mínimo de Indivíduos)?',
-      answer: `O MNI é determinado pelo curador na Fase 4 com base em elementos diagnósticos irrefutáveis, prioritariamente a duplicação de estruturas ósseas homólogas (ex: dois terceiros molares inferiores esquerdos, duas patelas direitas), discrepâncias extremas de desenvolvimento etário ou dimorfismo sexual evidente.`
+      question: 'Como é calculada a estimativa de NMI (Número Mínimo de Indivíduos)?',
+      answer: `O NMI é determinado pelo curador na Fase 4 com base em elementos diagnósticos irrefutáveis, prioritariamente a duplicação de estruturas ósseas homólogas (ex: dois terceiros molares inferiores esquerdos, duas patelas direitas), discrepâncias extremas de desenvolvimento etário ou dimorfismo sexual evidente.`
     },
     {
       question: 'Qual é a técnica correta para marcação óssea permanente?',
@@ -55,7 +55,7 @@ export const HelpView: React.FC<HelpViewProps> = ({
 
   const glossaryTerms = [
     { term: 'NIC', desc: 'Número de Identificação do Conjunto (formato NIC-AAAA-XXXX). Identificador mestre único e imutável.' },
-    { term: 'MNI', desc: 'Número Mínimo de Indivíduos determinado cientificamente por duplicação anatômica ou maturação.' },
+    { term: 'NMI', desc: 'Número Mínimo de Indivíduos determinado cientificamente por duplicação anatômica ou maturação.' },
     { term: 'ABAC', desc: 'Attribute-Based Access Control. Controle de acesso baseado em atributos (papel, projeto, comitê de ética).' },
     { term: 'Paraloid B-72', desc: 'Copolímero de etil-metacrilato utilizado em conservação forense para criar base reversível de marcação.' },
     { term: 'DICOM', desc: 'Digital Imaging and Communications in Medicine. Padrão internacional para tomografias e radiografias.' },

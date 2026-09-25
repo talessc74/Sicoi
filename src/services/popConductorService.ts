@@ -663,7 +663,7 @@ export const INC_DITEC_PF_POPS: Record<PhaseNumber, PopDefinition> = {
     popCode: 'POP-INC-DITEC-PF-04',
     popTitle: 'Curadoria e Perfil Biológico',
     regulatoryRef: 'POP-INC-DITEC-PF-04 · Antropologia Forense',
-    introMessage: 'Iniciando o Condutor do POP-INC-DITEC-PF-04. Vamos conduzir o pareamento anatômico, consolidação do MNI final e estimativas antropológicas de sexo, idade e ancestralidade.',
+    introMessage: 'Iniciando o Condutor do POP-INC-DITEC-PF-04. Vamos conduzir o pareamento anatômico, consolidação do NMI final e estimativas antropológicas de sexo, idade e ancestralidade.',
     steps: [
       {
         stepNumber: 1,
@@ -677,11 +677,11 @@ export const INC_DITEC_PF_POPS: Record<PhaseNumber, PopDefinition> = {
           'Identificados 2 indivíduos: Indivíduo A (masculino robusto) e Indivíduo B (feminino).'
         ],
         extractData: (input: string) => {
-          let mni = 1;
-          if (input.includes('2') || input.toLowerCase().includes('dois')) mni = 2;
+          let nmi = 1;
+          if (input.includes('2') || input.toLowerCase().includes('dois')) nmi = 2;
           return {
-            data: { finalMni: mni, pairingNotes: input.trim() },
-            summaryText: `NMI Definitivo: ${mni} indivíduo(s)`,
+            data: { finalNmi: nmi, pairingNotes: input.trim() },
+            summaryText: `NMI Definitivo: ${nmi} indivíduo(s)`,
             isComplete: true
           };
         }
