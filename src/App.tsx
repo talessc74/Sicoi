@@ -32,6 +32,7 @@ import { WarehouseRackMap } from './components/WarehouseRackMap';
 import { PublicQRInspectionModal } from './components/PublicQRInspectionModal';
 import { AuditTimelineView } from './components/AuditTimelineView';
 import { GeminiForensicChatModal } from './components/GeminiForensicChatModal';
+import { NewCollectionModal } from './components/NewCollectionModal';
 import { Plus, ShieldCheck, Bot, Sparkles, Loader2, CheckCircle2 } from 'lucide-react';
 
 export default function App() {
@@ -182,10 +183,12 @@ export default function App() {
       });
   };
 
-  const handleCreateNewCollection = async () => {
+  // O NIC é digitado por quem cadastra (janela NewCollectionModal), não gerado em sequência.
+  const [showNewCollectionModal, setShowNewCollectionModal] = useState(false);
+  const handleCreateNewCollection = () => setShowNewCollectionModal(true);
+
+  const createCollectionWithNic = async (newNic: string, nextNum: string) => {
     if (!currentUser) return;
-    const nextNum = String(collections.length + 841).padStart(4, '0');
-    const newNic = `NIC-2026-${nextNum}`;
     const newCol: OsteologicalCollection = {
       id: `col-${Date.now()}`,
       nic: newNic,
@@ -269,6 +272,7 @@ export default function App() {
       setActivePhase(1);
       setActiveTab('fases');
       setSyncError(null);
+      setShowNewCollectionModal(false);
     } catch (err: any) {
       console.error('Falha ao criar conjunto:', err);
       setSyncError(err?.message || 'Não foi possível criar o conjunto no banco de dados.');
@@ -635,6 +639,14 @@ export default function App() {
         <span className="font-sans">Assistente IA</span>
         <span className="hidden sm:inline text-[10px] font-mono px-1.5 py-0.5 bg-black/20 rounded-md">Gemini</span>
       </button>
+
+      {showNewCollectionModal && (
+        <NewCollectionModal
+          existingNics={collections.map((c) => c.nic)}
+          onCancel={() => setShowNewCollectionModal(false)}
+          onConfirm={createCollectionWithNic}
+        />
+      )}
 
       {/* Modal do Chatbot Multi-Turn Gemini com Transcrição de Voz */}
       <GeminiForensicChatModal
