@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { NORMATIVE_DOCUMENT_SECTIONS, DocumentSection } from '../data/normativeDocument';
+import { USER_MANUALS } from '../data/userManuals';
 import {
   Search,
   BookOpen,
@@ -176,6 +177,39 @@ export const DocumentSearchViewer: React.FC<DocumentSearchViewerProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Manuais do Usuário (guias em HTML, com versão) */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs">
+        <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 font-mono text-xs font-semibold uppercase mb-3">
+          <FileText className="w-4 h-4" />
+          <span>Manuais do Usuário</span>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-3">
+          {USER_MANUALS.map(manual => (
+            <a
+              key={manual.id}
+              href={manual.path}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex flex-col gap-1.5 p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-sky-400 dark:hover:border-sky-600 bg-slate-50 dark:bg-slate-800/50 transition-colors"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-bold text-sm text-slate-900 dark:text-white">{manual.title}</span>
+                <span className="shrink-0 px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-300">
+                  {manual.version}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500">{manual.description}</p>
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-[10px] text-slate-400 font-mono">Atualizado em {manual.updatedAt}</span>
+                <span className="text-sky-600 dark:text-sky-400 text-xs font-semibold flex items-center gap-1 group-hover:underline">
+                  Abrir <ExternalLink className="w-3 h-3" />
+                </span>
+              </div>
+            </a>
+          ))}
+        </div>
+      </div>
+
       {/* Top Banner and Document Identity */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs">
         <div className="flex flex-wrap items-center justify-between gap-4">
