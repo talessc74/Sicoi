@@ -6,11 +6,9 @@ import {
   Box,
   Warehouse,
   ShieldCheck,
-  Search,
   ArrowRight,
   Plus,
   BookOpen,
-  Share2,
   Clock,
   CheckCircle2,
   AlertCircle
@@ -61,10 +59,10 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Hero Welcome Banner */}
-      <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-sky-950 text-white rounded-2xl p-6 sm:p-8 shadow-md border border-slate-700/60 relative overflow-hidden">
-        <div className="relative z-10 max-w-3xl space-y-3">
+      <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-sky-950 text-white rounded-2xl p-5 sm:p-6 shadow-md border border-slate-700/60 relative overflow-hidden">
+        <div className="relative z-10 max-w-3xl space-y-2.5">
           <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-sky-500/20 text-sky-300 border border-sky-400/30 text-xs font-mono">
             <ShieldCheck className="w-3.5 h-3.5 text-sky-400" />
             <span>INC/DITEC/PF · Coleção Osteológica Identificada (COI)</span>
@@ -74,12 +72,12 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             Sistema de Gestão da Coleção Osteológica Identificada (SIGCOI)
           </h1>
 
-          <p className="text-sm text-slate-300 leading-relaxed font-sans">
-            Bem-vindo(a), <strong>{currentUser.name}</strong> ({currentUser.role.toUpperCase()}). Controle rigoroso do ciclo de 7 fases, conformidade legal com cadeia de custódia imutável via hash SHA-256 e segregação de dados sensíveis.
+          <p className="text-xs sm:text-sm text-slate-300 font-sans whitespace-nowrap overflow-x-auto">
+            Bem-vindo(a), <strong>{currentUser.name}</strong> ({currentUser.role.toUpperCase()})
           </p>
 
           {/* Quick Action Buttons */}
-          <div className="pt-3 flex flex-wrap items-center gap-3 text-xs">
+          <div className="pt-1.5 flex flex-wrap items-center gap-3 text-xs">
             <button
               onClick={() => onNavigateToTab('fases')}
               className="px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold flex items-center gap-2 shadow-xs transition-colors"
@@ -199,30 +197,42 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           </button>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
-          {phaseCounts.map(({ phase, count }) => (
-            <div
-              key={phase}
-              onClick={() => {
-                onNavigateToPhase(phase);
-                onNavigateToTab('fases');
-              }}
-              className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 hover:border-sky-500 cursor-pointer transition-all space-y-1"
-            >
-              <div className="flex justify-between items-center">
-                <span className="text-[10px] font-mono font-bold text-slate-400 uppercase">
-                  Fase {phase}
-                </span>
-                <span className="w-2 h-2 rounded-full bg-sky-500" />
-              </div>
-              <div className="text-base font-bold font-mono text-slate-900 dark:text-white">
-                {count} {count === 1 ? 'NIC' : 'NICs'}
-              </div>
-              <div className="text-[10px] text-slate-500 truncate" title={phaseNames[phase]}>
-                {phaseNames[phase]}
-              </div>
-            </div>
-          ))}
+        <div className="overflow-x-auto pb-1">
+          <div className="grid grid-cols-7 gap-2.5 min-w-[900px]">
+            {phaseCounts.map(({ phase, count }) => {
+              // A Fase 7 é consulta de conjuntos já concluídos, não uma fila pendente.
+              const hasPending = count > 0 && phase < 7;
+              return (
+                <button
+                  type="button"
+                  key={phase}
+                  onClick={() => {
+                    onNavigateToPhase(phase);
+                    onNavigateToTab('fases');
+                  }}
+                  aria-label={`Fase ${phase}: ${count} ${count === 1 ? 'NIC' : 'NICs'} · ${phaseNames[phase]}`}
+                  className={`p-3 rounded-xl border text-left transition-colors space-y-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 ${
+                    hasPending
+                      ? 'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 hover:border-amber-500'
+                      : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 hover:border-slate-400'
+                  }`}
+                >
+                  <div className="flex justify-between items-center">
+                    <span className={`text-[10px] font-mono font-bold uppercase ${hasPending ? 'text-amber-800 dark:text-amber-300' : 'text-slate-400'}`}>
+                      Fase {phase}
+                    </span>
+                    <span className={`w-2 h-2 rounded-full ${hasPending ? 'bg-amber-500' : 'bg-slate-300 dark:bg-slate-600'}`} />
+                  </div>
+                  <div className={`text-base font-bold font-mono ${hasPending ? 'text-slate-900 dark:text-amber-100' : 'text-slate-500 dark:text-slate-400'}`}>
+                    {count} {count === 1 ? 'NIC' : 'NICs'}
+                  </div>
+                  <div className={`text-[10px] truncate ${hasPending ? 'text-slate-600 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'}`} title={phaseNames[phase]}>
+                    {phaseNames[phase]}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -262,6 +272,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-sans">
               {collections.map(col => {
                 const currentSigned = col.signatures.some(s => s.phaseNumber === col.currentPhase && s.status === 'locked');
+                const mniNotDetermined = col.phase4.individuals.length === 0;
                 const locationText = col.phase6.finalLocations[0]
                   ? `${col.phase6.finalLocations[0].location.facility} · ${col.phase6.finalLocations[0].location.rack}`
                   : col.phase3.boxLocations[0]
@@ -287,7 +298,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                       </span>
                     </td>
                     <td className="px-5 py-3.5 font-mono">
-                      {col.phase4.individuals.length > 0 ? (
+                      {!mniNotDetermined ? (
                         <>{col.phase4.individuals.length} {col.phase4.individuals.length === 1 ? 'indivíduo (MNI)' : 'indivíduos (MNI)'}</>
                       ) : (
                         // Sem curadoria concluída, o número de caixas não informa o MNI.
@@ -303,40 +314,49 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                       {locationText}
                     </td>
                     <td className="px-5 py-3.5">
-                      {currentSigned ? (
-                        <span className="inline-flex items-center gap-1 font-mono text-[11px] text-emerald-600 dark:text-emerald-400">
-                          <CheckCircle2 className="w-3.5 h-3.5" /> Assinada & Travada
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 font-mono text-[11px] text-amber-600 dark:text-amber-400">
-                          <AlertCircle className="w-3.5 h-3.5" /> Em edição técnica
-                        </span>
-                      )}
+                      <div className="flex flex-col items-start gap-1.5">
+                        {currentSigned ? (
+                          <span className="inline-flex items-center gap-1 font-mono text-[11px] text-emerald-600 dark:text-emerald-400">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> Assinada & Travada
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 font-mono text-[11px] text-amber-600 dark:text-amber-400">
+                            <AlertCircle className="w-3.5 h-3.5" /> Em edição técnica
+                          </span>
+                        )}
+                        {mniNotDetermined && (
+                          <span className="rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-amber-800 dark:text-amber-300">
+                            Pendente: MNI
+                          </span>
+                        )}
+                      </div>
                     </td>
-                    <td className="px-5 py-3.5 text-right space-x-1.5 whitespace-nowrap">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onSelectNic(col.nic);
-                          onNavigateToTab('auditoria');
-                        }}
-                        className="px-2.5 py-1 rounded-lg border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 font-mono text-xs font-semibold inline-flex items-center gap-1 transition-colors"
-                        title="Ver Linha do Tempo de Auditoria deste NIC"
-                      >
-                        <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                        <span>Auditoria</span>
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onSelectNic(col.nic);
-                          onNavigateToPhase(col.currentPhase);
-                          onNavigateToTab('fases');
-                        }}
-                        className="px-3 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 font-mono text-xs font-semibold text-slate-700 dark:text-slate-300 transition-colors"
-                      >
-                        Abrir →
-                      </button>
+                    <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSelectNic(col.nic);
+                            onNavigateToTab('auditoria');
+                          }}
+                          className="px-2.5 py-1 rounded-lg border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 font-mono text-xs font-semibold inline-flex items-center gap-1 transition-colors"
+                          title="Ver Linha do Tempo de Auditoria deste NIC"
+                        >
+                          <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                          <span>Auditoria</span>
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSelectNic(col.nic);
+                            onNavigateToPhase(col.currentPhase);
+                            onNavigateToTab('fases');
+                          }}
+                          className="px-3 py-1 rounded-lg bg-sky-600 hover:bg-sky-700 dark:bg-sky-500 dark:hover:bg-sky-400 font-mono text-xs font-semibold text-white dark:text-slate-950 transition-colors"
+                        >
+                          Abrir →
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
