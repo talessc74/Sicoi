@@ -25,6 +25,12 @@ export async function calculateSha256(content: string): Promise<string> {
   return `${hex}${hex}${hex}${hex}${hex}${hex}${hex}${hex}`.substring(0, 64);
 }
 
+export const SIGNATURE_PAYLOAD_PREFIX = 'SIGCOI-SIG-ALFA';
+
+// Prefixos usados antes da troca de nome/versão. Assinaturas já emitidas
+// dependem desses bytes exatos para que seu hash continue verificável.
+export const LEGACY_SIGNATURE_PAYLOAD_PREFIXES = ['SGCCCO-SIG-v3.2', 'SIGCOI-SIG-v3.2'] as const;
+
 export function generateSignaturePayload(data: {
   nic: string;
   phaseNumber: number;
@@ -32,8 +38,8 @@ export function generateSignaturePayload(data: {
   role: string;
   timestamp: string;
   dataSnapshotJson: string;
-}): string {
-  return `SIGCOI-SIG-ALFA|NIC:${data.nic}|PHASE:${data.phaseNumber}|BY:${data.signedBy}|ROLE:${data.role}|TIME:${data.timestamp}|SNAPSHOT:${data.dataSnapshotJson}`;
+}, prefix: string = SIGNATURE_PAYLOAD_PREFIX): string {
+  return `${prefix}|NIC:${data.nic}|PHASE:${data.phaseNumber}|BY:${data.signedBy}|ROLE:${data.role}|TIME:${data.timestamp}|SNAPSHOT:${data.dataSnapshotJson}`;
 }
 
 export function generateExportHeader(data: {
