@@ -8,6 +8,9 @@ import {
 } from '../types/sgccco';
 import { getAuditTrailForCollection } from '../data/mockAuditTrails';
 import { getLatestPhaseSignature } from '../utils/signatures';
+import { CollectionHistoryPanel } from './CollectionHistoryPanel';
+import { fetchCollectionHistory } from '../services/collectionsService';
+import { checkSignatureSnapshots } from '../utils/historyVerification';
 import {
   ShieldCheck,
   ShieldAlert,
@@ -74,6 +77,10 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
     verified: boolean;
     totalEvents: number;
     tamperedCount: number;
+    signaturesChecked: number;
+    signaturesWithoutCopy: number;
+    chainBrokenAtId: number | null;
+    error?: string;
     verifiedAt: string;
   } | null>(null);
 
@@ -220,17 +227,40 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
     setTimeout(() => setCopiedHash(null), 2500);
   };
 
-  const handleVerifyIntegrity = () => {
+  // Conferência real: (1) refaz a corrente de hashes do registro de alterações (no
+  // servidor) e (2) recalcula aqui, no navegador, o lacre de cada assinatura a partir
+  // da cópia guardada do conteúdo assinado.
+  const handleVerifyIntegrity = async () => {
+    if (!currentCollection) return;
     setIsVerifyingIntegrity(true);
-    setTimeout(() => {
-      setIsVerifyingIntegrity(false);
+    const verifiedAt = new Date().toLocaleTimeString('pt-BR');
+    try {
+      const history = await fetchCollectionHistory(currentCollection.nic);
+      const checks = await checkSignatureSnapshots(currentCollection.nic, history.signatures);
+      const mismatched = checks.filter((c) => c.status === 'nao_confere').length;
       setVerificationResult({
-        verified: true,
-        totalEvents: allEvents.length,
-        tamperedCount: 0,
-        verifiedAt: new Date().toLocaleTimeString('pt-BR')
+        verified: history.chain.ok && mismatched === 0,
+        totalEvents: history.changes.length,
+        tamperedCount: mismatched,
+        signaturesChecked: checks.filter((c) => c.status !== 'sem_copia').length,
+        signaturesWithoutCopy: checks.filter((c) => c.status === 'sem_copia').length,
+        chainBrokenAtId: history.chain.brokenAtId,
+        verifiedAt
       });
-    }, 800);
+    } catch (err: any) {
+      setVerificationResult({
+        verified: false,
+        totalEvents: 0,
+        tamperedCount: 0,
+        signaturesChecked: 0,
+        signaturesWithoutCopy: 0,
+        chainBrokenAtId: null,
+        error: err?.message || 'Não foi possível consultar o histórico no servidor.',
+        verifiedAt
+      });
+    } finally {
+      setIsVerifyingIntegrity(false);
+    }
   };
 
   const handlePrintAuditReport = () => {
@@ -506,17 +536,47 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
 
         {/* Verification Success / Status Callout */}
         {verificationResult && (
-          <div className="mt-4 p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-lg flex items-center justify-between text-xs text-emerald-900 dark:text-emerald-200">
+          <div
+            className={`mt-4 p-3 border rounded-lg flex items-center justify-between text-xs ${
+              verificationResult.verified
+                ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200'
+                : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200'
+            }`}
+          >
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              {verificationResult.verified ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              ) : (
+                <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+              )}
               <div>
-                <span className="font-semibold">Integridade Criptográfica Verificada: </span>
-                <span>Todos os {verificationResult.totalEvents} registros de auditoria conferem perfeitamente com os hashes SHA-256 e assinaturas de custódia. Nenhum bloco violado.</span>
+                {verificationResult.error ? (
+                  <span>
+                    <span className="font-semibold">Não foi possível conferir: </span>
+                    {verificationResult.error}
+                  </span>
+                ) : (
+                  <>
+                    <span className="font-semibold">
+                      {verificationResult.verified ? 'Integridade conferida: ' : 'Problema de integridade encontrado: '}
+                    </span>
+                    <span>
+                      {verificationResult.chainBrokenAtId === null
+                        ? `a corrente de ${verificationResult.totalEvents} entradas do registro de alterações está íntegra`
+                        : `o registro de alterações foi adulterado a partir da entrada #${verificationResult.chainBrokenAtId}`}
+                      {'; '}
+                      {verificationResult.tamperedCount === 0
+                        ? `${verificationResult.signaturesChecked} lacre(s) de assinatura recalculado(s) e conferido(s)`
+                        : `${verificationResult.tamperedCount} lacre(s) de assinatura não conferem com a cópia guardada`}
+                      {verificationResult.signaturesWithoutCopy > 0 &&
+                        `; ${verificationResult.signaturesWithoutCopy} assinatura(s) antiga(s) sem cópia do conteúdo, que não podem ser reconferidas`}
+                      .
+                    </span>
+                  </>
+                )}
               </div>
             </div>
-            <span className="font-mono text-[11px] text-emerald-700 dark:text-emerald-400 shrink-0 ml-2">
-              Conferido às {verificationResult.verifiedAt}
-            </span>
+            <span className="font-mono text-[11px] shrink-0 ml-2">Conferido às {verificationResult.verifiedAt}</span>
           </div>
         )}
 
@@ -548,6 +608,9 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Histórico completo: versões assinadas e registro de alterações (servidor) */}
+      <CollectionHistoryPanel key={currentCollection.nic} collection={currentCollection} />
 
       {/* Filter and Search Toolbar */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-xs space-y-3">
