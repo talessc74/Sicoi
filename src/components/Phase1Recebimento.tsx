@@ -13,6 +13,7 @@ import {
 import { PopConversationalConductor } from './PopConversationalConductor';
 import { calculateSha256, generateSignaturePayload } from '../services/auditService';
 import { getLatestPhaseSignature } from '../utils/signatures';
+import { canPerformRole } from '../utils/permissions';
 import { Shield, Lock, FileText, Camera, CheckCircle2, AlertCircle, Sparkles, Printer, Bot, Save } from 'lucide-react';
 
 interface Phase1RecebimentoProps {
@@ -87,7 +88,7 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
   const isLocked = phaseSignature?.status === 'locked';
 
   const canViewRestrictedLegal = currentUser.role === 'curador' || currentUser.role === 'administrador';
-  const isTechnician = currentUser.role === 'tecnico';
+  const canActAsTechnician = canPerformRole(currentUser.role, 'tecnico');
 
   const p1 = collection.phase1;
 
@@ -199,12 +200,12 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
   const requiredFieldsFilled = missingFieldLabels.length === 0;
   const hasBoxes = collection.phase1.preliminaryBoxes.length > 0;
   const hasPhotos = collection.phase1.photos.length > 0;
-  const canSign = requiredFieldsFilled && hasBoxes && hasPhotos && isTechnician;
+  const canSign = requiredFieldsFilled && hasBoxes && hasPhotos && canActAsTechnician;
 
   const signBlockers: string[] = [...missingFieldLabels];
   if (!hasBoxes) signBlockers.push('nenhuma caixa vinculada ao caso');
   if (!hasPhotos) signBlockers.push('nenhuma foto anexada');
-  if (!isTechnician) signBlockers.push(`a pessoa ativa agora ("${currentUser.name}") tem o papel "${currentUser.role}" — só um Técnico pode assinar a Fase 1. Troque a pessoa ativa no menu de perfil, no topo da tela.`);
+  if (!canActAsTechnician) signBlockers.push(`a pessoa ativa agora ("${currentUser.name}") tem o papel "${currentUser.role}" — Técnico ou Curador pode assinar a Fase 1. Troque a pessoa ativa no menu de perfil, no topo da tela.`);
 
   return (
     <div className="space-y-6">

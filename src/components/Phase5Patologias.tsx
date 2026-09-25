@@ -8,6 +8,7 @@ import {
 import { DicomViewer } from './DicomViewer';
 import { calculateSha256, generateSignaturePayload } from '../services/auditService';
 import { getLatestPhaseSignature } from '../utils/signatures';
+import { canPerformRole } from '../utils/permissions';
 import {
   Activity,
   Layers,
@@ -43,12 +44,15 @@ export const Phase5Patologias: React.FC<Phase5PatologiasProps> = ({
   const [uncatalogedJustification, setUncatalogedJustification] = useState('');
   const [showSignModal, setShowSignModal] = useState(false);
   const [signing, setSigning] = useState(false);
+  const [signatureTarget, setSignatureTarget] = useState<'curador' | 'tecnico'>('curador');
 
   const phaseSignature = getLatestPhaseSignature(collection.signatures, 5);
   const isLocked = phaseSignature?.status === 'locked';
 
   const isCurator = currentUser.role === 'curador';
-  const isTechnician = currentUser.role === 'tecnico';
+  const canActAsTechnician = canPerformRole(currentUser.role, 'tecnico');
+  const canSignScientific = isCurator && !collection.phase5.curatorScientificSign;
+  const canSignPhysical = canActAsTechnician && !collection.phase5.technicianPhysicalSign;
 
   const pathologies = collection.phase5.pathologies || [];
   const exams = collection.phase5.complementaryExams || collection.phase5.exams || [];
@@ -150,6 +154,8 @@ export const Phase5Patologias: React.FC<Phase5PatologiasProps> = ({
   const isChecklist100 = checklistChecked === checklistTotal;
 
   const handleSignPhase = async () => {
+    if ((signatureTarget === 'curador' && !canSignScientific) ||
+        (signatureTarget === 'tecnico' && !canSignPhysical)) return;
     setSigning(true);
     const timestamp = new Date().toISOString();
     const payload = generateSignaturePayload({
@@ -163,13 +169,13 @@ export const Phase5Patologias: React.FC<Phase5PatologiasProps> = ({
     const hash = await calculateSha256(payload);
 
     const updated = { ...collection };
-    if (isCurator) {
+    if (signatureTarget === 'curador') {
       updated.phase5.curatorScientificSign = {
         signedByName: currentUser.name,
         signedAt: timestamp,
         sha256Hash: hash
       };
-    } else if (isTechnician) {
+    } else {
       updated.phase5.technicianPhysicalSign = {
         signedByName: currentUser.name,
         signedAt: timestamp,
@@ -177,7 +183,7 @@ export const Phase5Patologias: React.FC<Phase5PatologiasProps> = ({
       };
     }
 
-    // Se ambas as assinaturas estão preenchidas (ou admin completa), trava a fase 5
+    // A fase só trava depois das duas confirmações, inclusive quando o Curador faz ambas.
     const hasCuratorSign = Boolean(updated.phase5.curatorScientificSign);
     const hasTechSign = Boolean(updated.phase5.technicianPhysicalSign);
 
@@ -230,8 +236,11 @@ export const Phase5Patologias: React.FC<Phase5PatologiasProps> = ({
               </div>
             ) : (
               <button
-                onClick={() => setShowSignModal(true)}
-                disabled={!isChecklist100}
+                onClick={() => {
+                  setSignatureTarget(canSignScientific ? 'curador' : 'tecnico');
+                  setShowSignModal(true);
+                }}
+                disabled={!isChecklist100 || (!canSignScientific && !canSignPhysical)}
                 className="px-4 py-2 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-semibold hover:opacity-95 disabled:opacity-40 transition-all flex items-center gap-2 shadow-xs"
                 title={!isChecklist100 ? 'O checklist determinístico deve estar 100% concluído para permitir a assinatura.' : ''}
               >
@@ -442,7 +451,7 @@ export const Phase5Patologias: React.FC<Phase5PatologiasProps> = ({
               </div>
             </div>
 
-            {!isLocked && isTechnician && (
+            {!isLocked && canActAsTechnician && (
               <button
                 onClick={() => handleUpdateMarking('Tinta nanquim preta sobre camada protetora de Paraloid B-72 a 20%', !marking.completed)}
                 className={`w-full py-2.5 rounded-xl font-medium transition-colors ${
@@ -477,7 +486,7 @@ export const Phase5Patologias: React.FC<Phase5PatologiasProps> = ({
               </div>
             </div>
 
-            {!isLocked && isTechnician && (
+            {!isLocked && canActAsTechnician && (
               <button
                 onClick={() => handleUpdatePackaging('Berços de espuma de polietileno expandido (Ethafoam) e envelopes de papel alcalino neutro', true)}
                 className="w-full py-2.5 rounded-xl bg-sky-600 text-white font-medium hover:bg-sky-500 transition-colors"
@@ -566,14 +575,14 @@ export const Phase5Patologias: React.FC<Phase5PatologiasProps> = ({
 
             <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1">
               <span className="font-bold text-slate-900 dark:text-white font-mono text-[11px] block">
-                Assinatura 2: Técnico (Física / Embalagem)
+                Assinatura 2: Técnico ou Curador (Física / Embalagem)
               </span>
               {collection.phase5.technicianPhysicalSign ? (
                 <div className="text-emerald-600 font-mono text-[11px]">
                   ✓ Assinado por {collection.phase5.technicianPhysicalSign.signedByName}
                 </div>
               ) : (
-                <span className="text-amber-600 font-mono text-[11px]">Aguardando assinatura do Técnico</span>
+                <span className="text-amber-600 font-mono text-[11px]">Aguardando confirmação física</span>
               )}
             </div>
           </div>
@@ -700,7 +709,26 @@ export const Phase5Patologias: React.FC<Phase5PatologiasProps> = ({
               Assinatura de Fechamento — Fase 5
             </h3>
             <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
-              Você está assinando como <strong>{currentUser.name} ({currentUser.role.toUpperCase()})</strong>. A Fase 5 requer assinatura conjunta do Curador e do Técnico para atestar tanto a exatidão científica quanto a integridade da marcação e embalagem física.
+              Você está assinando como <strong>{currentUser.name} ({currentUser.role.toUpperCase()})</strong>. A Fase 5 exige confirmação científica e confirmação física. O Curador pode realizar as duas, uma de cada vez.
+            </p>
+            {canSignScientific && canSignPhysical && (
+              <div className="space-y-2">
+                <label className="block font-semibold text-slate-700 dark:text-slate-300" htmlFor="phase5-signature-target">
+                  Qual responsabilidade deseja confirmar agora?
+                </label>
+                <select
+                  id="phase5-signature-target"
+                  value={signatureTarget}
+                  onChange={(event) => setSignatureTarget(event.target.value as 'curador' | 'tecnico')}
+                  className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+                >
+                  <option value="curador">Científica (Curador)</option>
+                  <option value="tecnico">Física e embalagem (Técnico ou Curador)</option>
+                </select>
+              </div>
+            )}
+            <p className="font-semibold text-slate-700 dark:text-slate-300">
+              Confirmação atual: {signatureTarget === 'curador' ? 'científica' : 'física e embalagem'}.
             </p>
             <div className="flex justify-end gap-2 pt-2">
               <button onClick={() => setShowSignModal(false)} className="px-4 py-2 rounded-lg border">
