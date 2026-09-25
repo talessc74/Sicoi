@@ -30,7 +30,7 @@ export const PublicQRInspectionModal: React.FC<PublicQRInspectionModalProps> = (
                 Consulta por Etiqueta QR Code (§11)
               </h3>
               <p className="text-xs text-slate-500 font-mono">
-                Padrão SIGCOI v3.2 · Hash Verificado
+                Padrão SIGCOI ALFA · Hash Verificado
               </p>
             </div>
           </div>

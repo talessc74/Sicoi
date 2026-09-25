@@ -1,6 +1,6 @@
 {
   "name": "SIGCOI — Sistema de Gestão da Coleção Osteológica Identificada",
-  "description": "Sistema operacional e científico para controle e custódia de coleções osteológicas em 7 fases de desenvolvimento (v3.2 INC/DITEC/PF).",
+  "description": "Sistema operacional e científico para controle e custódia de coleções osteológicas em 7 fases de desenvolvimento (versão Alfa, INC/DITEC/PF).",
   "requestFramePermissions": [
     "camera",
     "microphone"

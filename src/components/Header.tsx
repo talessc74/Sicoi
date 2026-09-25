@@ -126,7 +126,7 @@ export const Header: React.FC<HeaderProps> = ({
                 Coleções Osteológicas
               </span>
               <span className="text-[10px] text-slate-400 font-mono block -mt-0.5 whitespace-nowrap">
-                INC/DITEC/PF · v3.2
+                INC/DITEC/PF · ALFA
               </span>
             </div>
           </button>

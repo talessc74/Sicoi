@@ -6,6 +6,7 @@ import {
   ComplementaryExam
 } from '../types/sgccco';
 import { calculateSha256 } from '../services/auditService';
+import { useAppVersion } from '../hooks/useAppVersion';
 import {
   Search,
   Sparkles,
@@ -33,6 +34,7 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
   onUpdateAuthorizations,
   onUpdateCollections
 }) => {
+  const commitRef = useAppVersion();
   const [activeTab, setActiveTab] = useState<'busca' | 'autorizacoes' | 'emprestimos' | 'narrador'>('busca');
   
   // Natural language query & translated filter state (§15)
@@ -140,8 +142,8 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
     const timestamp = new Date().toISOString();
     const exportDataset = {
       reproducibilityHeader: {
-        system: 'SIGCOI v3.2 - INC/DITEC/PF',
-        databaseVersion: '2026.3-PROD',
+        system: 'SIGCOI ALFA - INC/DITEC/PF',
+        databaseVersion: commitRef ? `ALFA-commit-${commitRef}` : 'ALFA',
         exportedAt: timestamp,
         exportedBy: currentUser.name,
         userRole: currentUser.role,

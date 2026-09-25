@@ -906,7 +906,7 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
                 <span className="font-bold text-purple-700 dark:text-purple-300 block mb-1">
                   Arquitetura de Condução Desacoplada:
                 </span>
-                Atualmente, a conversa é conduzida pelo <strong>Motor Procedimental INC/DITEC/PF v3.2</strong> (determinístico, rigoroso e auditável). O sistema já está 100% estruturado para você plugar seu modelo de inteligência artificial (ex.: Gemini 3.8 Live API) sem precisar refazer a interface.
+                Atualmente, a conversa é conduzida pelo <strong>Motor Procedimental INC/DITEC/PF (versão Alfa)</strong> (determinístico, rigoroso e auditável). O sistema já está 100% estruturado para você plugar seu modelo de inteligência artificial (ex.: Gemini 3.8 Live API) sem precisar refazer a interface.
               </div>
 
               <div className="space-y-2">

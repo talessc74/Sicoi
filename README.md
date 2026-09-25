@@ -1,5 +1,12 @@
 # SIGCOI — Sistema de Gestão da Coleção Osteológica Identificada
 
+**Status: Alfa.** Em desenvolvimento ativo — funcional de ponta a ponta (ver
+"Estado atual" abaixo), mas ainda sem login/senha real e sem certificação
+campo a campo contra os apêndices oficiais do POP-02. Não use "v3.2" ou
+qualquer numeração de versão solta por aí como referência: a única versão
+que importa é o hash do commit em execução, mostrado no topo de toda tela da
+aplicação (ver "Acessar agora" abaixo).
+
 Sistema de custódia e gestão de coleções osteológicas forenses, desenvolvido
 para a INC/DITEC/PF. Ele conduz o fluxo operacional real de recebimento,
 limpeza e curadoria de remanescentes ósseos — passo a passo, por voz ou por

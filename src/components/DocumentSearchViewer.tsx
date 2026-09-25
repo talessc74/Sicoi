@@ -116,7 +116,7 @@ export const DocumentSearchViewer: React.FC<DocumentSearchViewerProps> = ({
   };
 
   const handleCopyCitation = (section: DocumentSection) => {
-    const citation = `[SIGCOI v3.2 - INC/DITEC/PF] ${section.sectionNumber} - ${section.title} (${section.regulatoryReference}):\n"${section.content}"`;
+    const citation = `[SIGCOI ALFA - INC/DITEC/PF] ${section.sectionNumber} - ${section.title} (${section.regulatoryReference}):\n"${section.content}"`;
     navigator.clipboard.writeText(citation);
     setCopiedId(section.id);
     setTimeout(() => setCopiedId(null), 2000);
@@ -131,7 +131,7 @@ export const DocumentSearchViewer: React.FC<DocumentSearchViewerProps> = ({
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `SIGCOI-Diretrizes-Normativas-v3.2.md`;
+    link.download = `SIGCOI-Diretrizes-Normativas-ALFA.md`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -182,7 +182,7 @@ export const DocumentSearchViewer: React.FC<DocumentSearchViewerProps> = ({
           <div>
             <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 font-mono text-xs font-semibold uppercase">
               <BookOpen className="w-4 h-4" />
-              <span>Diretrizes Oficiais & Manual Técnico Normativo (v3.2)</span>
+              <span>Diretrizes Oficiais & Manual Técnico Normativo (ALFA)</span>
             </div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-0.5">
               Protocolo Operacional Padrão SIGCOI / INC/DITEC/PF

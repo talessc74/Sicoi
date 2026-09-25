@@ -1,5 +1,5 @@
 /**
- * SIGCOI - Documento Normativo e Manual Técnico Oficial v3.2
+ * SIGCOI - Documento Normativo e Manual Técnico Oficial (ALFA)
  * Portaria INC/DITEC/PF - Diretrizes para Gestão e Custódia de Coleções Osteológicas Forenses
  */
 
@@ -89,7 +89,7 @@ O sistema registrará o conjunto na Fila de Curadoria Antropológica segundo cri
     sectionNumber: 'Art. 6º',
     title: 'Determinação do Número Mínimo de Indivíduos (MNI) e Métodos Diagnósticos',
     phaseApplicable: 4,
-    regulatoryReference: 'Protocolo Científico DITEC de Antropologia Forense v3.2',
+    regulatoryReference: 'Protocolo Científico DITEC de Antropologia Forense (ALFA)',
     keywords: ['mni', 'número mínimo de indivíduos', 'curadoria', 'pareamento ósseo', 'duplicação', 'dimorfismo', 'phenice', 'suchey-brooks'],
     content: `A curadoria científica será realizada exclusivamente por Curador Antropólogo ou perito oficial habilitado.
 O diagnóstico de MNI deve fundamentar-se em elementos anatômicos inequívocos, tais como: duplicação de estruturas homólogas (ex: dois terceiros molares inferiores esquerdos, duas patelas direitas), incompatibilidade biológica de desenvolvimento e maturação etária, ou acentuada discrepância métrica/morfológica de robustez.

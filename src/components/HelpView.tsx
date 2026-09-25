@@ -77,7 +77,7 @@ export const HelpView: React.FC<HelpViewProps> = ({
           <span>Central de Ajuda, Tutoriais & Dúvidas Frequentes</span>
         </div>
         <h2 className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-0.5">
-          Guia de Apoio Operacional SIGCOI (v3.2)
+          Guia de Apoio Operacional SIGCOI (ALFA)
         </h2>
         <p className="text-xs text-slate-500 mt-1">
           Orientações passo a passo sobre a operação pericial, respostas às dúvidas mais comuns e glossário terminológico.
