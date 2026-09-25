@@ -88,7 +88,7 @@ consulte o índice `.xdrs/_local/index.md` daquele repositório.
   como substituída, com quem reabriu, quando e por quê — e tudo isso aparece
   automaticamente na Linha do Tempo de Auditoria.
 - **No ar, mas não certificado contra o formulário oficial:** Fase 3
-  (Acondicionamento Provisório), Fase 4 (Curadoria — gestão de indivíduos/MNI
+  (Acondicionamento Provisório), Fase 4 (Curadoria — gestão de indivíduos/NMI
   com fusão e separação de hipóteses, inventário osteológico de 33 regiões
   anatômicas, odontograma FDI completo de 32 dentes, exigência de foto de
   montagem aprovada e assinatura restrita ao Curador), Fase 5 (Patologias e

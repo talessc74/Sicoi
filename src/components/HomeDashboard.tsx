@@ -52,7 +52,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     1: 'Recebimento & Triagem',
     2: 'Limpeza & Secagem',
     3: 'Acondicionamento Provisório',
-    4: 'Curadoria Científica & MNI',
+    4: 'Curadoria Científica & NMI',
     5: 'Patologias & Marcação',
     6: 'Galpão Definitivo & QR',
     7: 'Consulta & Pesquisa'
@@ -139,7 +139,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-xs text-slate-500 font-mono">Indivíduos (MNI)</span>
+            <span className="text-xs text-slate-500 font-mono">Indivíduos (NMI)</span>
             <div className="text-2xl font-bold font-mono text-slate-900 dark:text-white">
               {totalIndividuals} <span className="text-xs font-normal text-slate-400">segregados</span>
             </div>
@@ -262,7 +262,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               <tr>
                 <th className="px-5 py-3 font-semibold">NIC Oficial</th>
                 <th className="px-5 py-3 font-semibold">Fase Atual</th>
-                <th className="px-5 py-3 font-semibold">Indivíduos (MNI)</th>
+                <th className="px-5 py-3 font-semibold">Indivíduos (NMI)</th>
                 <th className="px-5 py-3 font-semibold">Caixas</th>
                 <th className="px-5 py-3 font-semibold">Localização Atual</th>
                 <th className="px-5 py-3 font-semibold">Status de Assinatura</th>
@@ -299,9 +299,9 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                     </td>
                     <td className="px-5 py-3.5 font-mono">
                       {!mniNotDetermined ? (
-                        <>{col.phase4.individuals.length} {col.phase4.individuals.length === 1 ? 'indivíduo (MNI)' : 'indivíduos (MNI)'}</>
+                        <>{col.phase4.individuals.length} {col.phase4.individuals.length === 1 ? 'indivíduo (NMI)' : 'indivíduos (NMI)'}</>
                       ) : (
-                        // Sem curadoria concluída, o número de caixas não informa o MNI.
+                        // Sem curadoria concluída, o número de caixas não informa o NMI.
                         <span className="text-slate-400" title="Fase 4 (Curadoria) ainda não realizada — nenhum indivíduo confirmado">
                           Não determinado
                         </span>
@@ -326,7 +326,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                         )}
                         {mniNotDetermined && (
                           <span className="rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-amber-800 dark:text-amber-300">
-                            Pendente: MNI
+                            Pendente: NMI
                           </span>
                         )}
                       </div>

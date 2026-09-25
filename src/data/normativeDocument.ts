@@ -87,12 +87,12 @@ O sistema registrará o conjunto na Fila de Curadoria Antropológica segundo cri
     chapterNumber: 5,
     chapterTitle: 'Capítulo V — Curadoria Científica, Pareamento e Perfil Biológico (Fase 4)',
     sectionNumber: 'Art. 6º',
-    title: 'Determinação do Número Mínimo de Indivíduos (MNI) e Métodos Diagnósticos',
+    title: 'Determinação do Número Mínimo de Indivíduos (NMI) e Métodos Diagnósticos',
     phaseApplicable: 4,
     regulatoryReference: 'Protocolo Científico DITEC de Antropologia Forense (ALFA)',
-    keywords: ['mni', 'número mínimo de indivíduos', 'curadoria', 'pareamento ósseo', 'duplicação', 'dimorfismo', 'phenice', 'suchey-brooks'],
+    keywords: ['nmi', 'mni', 'número mínimo de indivíduos', 'curadoria', 'pareamento ósseo', 'duplicação', 'dimorfismo', 'phenice', 'suchey-brooks'],
     content: `A curadoria científica será realizada exclusivamente por Curador Antropólogo ou perito oficial habilitado.
-O diagnóstico de MNI deve fundamentar-se em elementos anatômicos inequívocos, tais como: duplicação de estruturas homólogas (ex: dois terceiros molares inferiores esquerdos, duas patelas direitas), incompatibilidade biológica de desenvolvimento e maturação etária, ou acentuada discrepância métrica/morfológica de robustez.
+O diagnóstico de NMI deve fundamentar-se em elementos anatômicos inequívocos, tais como: duplicação de estruturas homólogas (ex: dois terceiros molares inferiores esquerdos, duas patelas direitas), incompatibilidade biológica de desenvolvimento e maturação etária, ou acentuada discrepância métrica/morfológica de robustez.
 Para cada indivíduo segregado (IND-01, IND-02), o curador aplicará métodos consolidados na literatura internacional:
 1. Estimativa de Sexo: Phenice (1969) para morfologia da bacia e Walker (2008) para caracteres craniométricos;
 2. Estimativa de Idade: Suchey-Brooks (1990) na sínfise púbica e Lovejoy (1985) na superfície auricular do ílio;

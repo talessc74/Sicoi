@@ -277,7 +277,7 @@ export interface Phase3Data {
 // Grau de Certeza Biológica Forense (§8)
 export type BiologicalConfidence = 'alto' | 'alta' | 'medio' | 'media' | 'baixo' | 'baixa' | 'inconclusivo' | 'inconclusiva';
 
-// Fase 4: Curadoria Científica, MNI e Perfil Biológico
+// Fase 4: Curadoria Científica, NMI e Perfil Biológico
 export type CurationVersionStatus = 'rascunho' | 'revisao' | 'aprovada_curador' | 'aprovada';
 
 export interface IndividualHypothesis {
