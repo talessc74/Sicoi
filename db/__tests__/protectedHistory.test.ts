@@ -288,7 +288,7 @@ describe('proteção no próprio banco (gatilhos)', () => {
     await expect(pool.query(`DELETE FROM collections WHERE nic = 'NIC-HIST-0030'`)).rejects.toThrow(/Histórico protegido/);
   });
 
-  it('a limpeza total do ambiente (dados de exemplo / testar do zero) continua funcionando', async () => {
+  it('a limpeza total (só pelos testes automatizados, sem rota HTTP) continua funcionando', async () => {
     await createSignedPhase1('NIC-HIST-0031');
     await wipeAllCollections(pool);
     const { rows } = await pool.query(`SELECT count(*)::int AS n FROM change_log`);

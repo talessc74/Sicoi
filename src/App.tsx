@@ -7,11 +7,10 @@ import {
   ResearchAuthorization
 } from './types/sgccco';
 import {
-  MOCK_COLLECTIONS,
   MOCK_RESEARCH_AUTHORIZATIONS
 } from './data/mockData';
 import { createEmptyPhase1Data, createEmptyPhase2Data } from './data/phaseDefaults';
-import { fetchCollections, createCollectionApi, saveCollectionApi, wipeAllCollectionsApi } from './services/collectionsService';
+import { fetchCollections, createCollectionApi, saveCollectionApi } from './services/collectionsService';
 import { fetchPeople, createPersonApi, deletePersonApi } from './services/peopleService';
 import { Header } from './components/Header';
 import { FirstPersonSetup } from './components/FirstPersonSetup';
@@ -61,7 +60,6 @@ export default function App() {
   // banco vazio por escolha (ninguém criou nada ainda, ou alguém limpou tudo pra
   // testar do zero) NÃO é uma falha e não deve travar a tela.
   const [initialLoadFailed, setInitialLoadFailed] = useState<boolean>(false);
-  const [isResettingData, setIsResettingData] = useState<boolean>(false);
 
   // Carrega os conjuntos do Postgres ao abrir o app. O banco é sempre a fonte de
   // verdade — um banco vazio é um estado válido (ninguém criou conjunto ainda),
@@ -120,43 +118,6 @@ export default function App() {
     } catch (err: any) {
       console.error('Falha ao remover pessoa:', err);
       setSyncError(err?.message || 'Não foi possível remover a pessoa.');
-    }
-  };
-
-  // Apaga todos os conjuntos do banco — para testar o app do zero. A UI (Settings)
-  // já pede confirmação antes de chamar isto.
-  const handleWipeAllData = async () => {
-    setIsResettingData(true);
-    try {
-      await wipeAllCollectionsApi();
-      setCollections([]);
-      setSelectedNic('');
-      setActiveTab('inicio');
-      setSyncError(null);
-    } catch (err: any) {
-      console.error('Falha ao limpar os dados:', err);
-      setSyncError(err?.message || 'Não foi possível limpar os dados.');
-    } finally {
-      setIsResettingData(false);
-    }
-  };
-
-  // Carrega os 3 conjuntos de demonstração sob demanda — nunca automaticamente.
-  const handleSeedExampleData = async () => {
-    setIsResettingData(true);
-    try {
-      const seeded: OsteologicalCollection[] = [];
-      for (const mock of MOCK_COLLECTIONS) {
-        seeded.push(await createCollectionApi(mock, currentUser?.id));
-      }
-      setCollections((prev) => [...seeded, ...prev]);
-      setSelectedNic(seeded[0]?.nic || '');
-      setSyncError(null);
-    } catch (err: any) {
-      console.error('Falha ao carregar dados de exemplo:', err);
-      setSyncError(err?.message || 'Não foi possível carregar os dados de exemplo.');
-    } finally {
-      setIsResettingData(false);
     }
   };
 
@@ -481,10 +442,6 @@ export default function App() {
             onDeletePerson={handleDeletePerson}
             laboratoryMode={laboratoryMode}
             onToggleLaboratoryMode={() => setLaboratoryMode(!laboratoryMode)}
-            collectionsCount={collections.length}
-            isResettingData={isResettingData}
-            onWipeAllData={handleWipeAllData}
-            onSeedExampleData={handleSeedExampleData}
           />
         )}
 
@@ -503,7 +460,7 @@ export default function App() {
         {activeTab === 'fases' && !currentCollection && (
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-10 text-center space-y-3">
             <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Nenhum conjunto osteológico cadastrado ainda.</p>
-            <p className="text-xs text-slate-500">Crie um novo conjunto (NIC) para começar, ou carregue os dados de exemplo em Configurações.</p>
+            <p className="text-xs text-slate-500">Crie um novo conjunto (NIC) para começar.</p>
             <button
               onClick={handleCreateNewCollection}
               className="px-4 py-2 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-semibold inline-flex items-center gap-1.5"

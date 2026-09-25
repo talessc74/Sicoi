@@ -45,9 +45,9 @@ export async function listCollections(pool: Pool): Promise<OsteologicalCollectio
 
 /**
  * Apaga todos os conjuntos e tudo que depende deles (formulários, fotos, assinaturas,
- * custódia, trilha de auditoria de voz) — via ON DELETE CASCADE das tabelas
- * relacionadas. Usado para permitir testar o app do zero, sem os dados de
- * demonstração. Irreversível; quem chama decide se pede confirmação antes.
+ * custódia, registro de alterações) — via ON DELETE CASCADE. Irreversível. Não tem
+ * rota HTTP nem botão no app (o histórico de um acervo real não pode ser apagado
+ * por quem acessa o site); existe para os testes automatizados.
  */
 export async function wipeAllCollections(pool: Pool): Promise<void> {
   const client = await pool.connect();

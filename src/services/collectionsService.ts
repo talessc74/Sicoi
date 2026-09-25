@@ -67,13 +67,3 @@ export async function fetchCollectionHistory(nic: string): Promise<CollectionHis
   const res = await fetch(`/api/collections/${encodeURIComponent(nic)}/history`);
   return parseJsonOrThrow(res, 'Erro ao carregar o histórico do conjunto');
 }
-
-/** Apaga todos os conjuntos do banco. Irreversível — a UI deve confirmar antes de chamar. */
-export async function wipeAllCollectionsApi(): Promise<void> {
-  const res = await fetch('/api/collections', {
-    method: 'DELETE',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ confirm: 'WIPE_ALL' })
-  });
-  await parseJsonOrThrow(res, 'Erro ao apagar os conjuntos');
-}

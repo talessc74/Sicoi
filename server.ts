@@ -6,7 +6,7 @@ import { execSync } from 'child_process';
 import { GoogleGenAI } from '@google/genai';
 import { getPool } from './db/pool';
 import { runMigrations } from './db/migrate';
-import { listCollections, getCollection, createCollection, saveCollection, wipeAllCollections, listChangeLog, verifyChangeLogChain, Actor } from './db/collectionsRepo';
+import { listCollections, getCollection, createCollection, saveCollection, listChangeLog, verifyChangeLogChain, Actor } from './db/collectionsRepo';
 import { HistoryViolationError } from './db/historyGuard';
 import { getGraph, getNodeWithEdges, findPath, searchNodes } from './db/graphRepo';
 import { listPeople, createPerson, deletePerson, getPerson } from './db/peopleRepo';
@@ -498,23 +498,6 @@ app.get('/api/collections/:nic/history', async (req: Request, res: Response) => 
   } catch (error: any) {
     console.error('Erro ao carregar histórico:', error);
     return res.status(500).json({ error: error?.message || 'Erro ao carregar histórico.' });
-  }
-});
-
-// Apaga todos os conjuntos — para testar o app do zero, sem os dados de
-// demonstração. Exige um token de confirmação explícito no corpo, para não
-// disparar numa chamada acidental (não há autenticação real ainda).
-app.delete('/api/collections', async (req: Request, res: Response) => {
-  try {
-    if (req.body?.confirm !== 'WIPE_ALL') {
-      return res.status(400).json({ error: 'Confirmação ausente. Envie { "confirm": "WIPE_ALL" } no corpo da requisição.' });
-    }
-    const pool = getPool();
-    await wipeAllCollections(pool);
-    return res.json({ ok: true });
-  } catch (error: any) {
-    console.error('Erro ao apagar todos os conjuntos:', error);
-    return res.status(500).json({ error: error?.message || 'Erro ao apagar os conjuntos.' });
   }
 });
 

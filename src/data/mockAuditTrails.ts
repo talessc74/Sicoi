@@ -7,8 +7,7 @@ export function getAuditTrailForCollection(collection: OsteologicalCollection): 
 
   // Gera os eventos a partir dos dados reais do conjunto (criação, fases assinadas,
   // reaberturas técnicas e cadeia de custódia). Isto vale para QUALQUER conjunto —
-  // inclusive os 3 de demonstração carregados via "Carregar dados de exemplo" em
-  // Configurações, que têm signatures/custodyChain reais preenchidas com a mesma
+  // inclusive os 3 de demonstração de mockData.ts (usados em testes), que têm signatures/custodyChain reais preenchidas com a mesma
   // história. Nunca decidir isto pelo NIC: um conjunto real criado do zero recebe
   // NICs sequenciais (NIC-2026-0841, -0842, ...) que colidem exatamente com os NICs
   // de demonstração — um projeto que apagou a base e começou do zero teria seu
