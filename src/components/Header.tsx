@@ -111,14 +111,14 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40 shadow-xs w-full max-w-full">
       {/* Top Main Navigation Bar */}
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-2 sm:gap-4 w-full">
+      <div className="max-w-[1920px] mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-2 sm:gap-4 w-full">
         {/* Brand / Logo */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <button
             onClick={() => onSelectTab('inicio')}
             className="text-left flex items-center gap-2 group focus:outline-hidden shrink-0"
           >
-            <span className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-mono font-bold px-2 py-1 rounded shadow-xs group-hover:bg-sky-600 transition-colors shrink-0">
+            <span className="bg-slate-900 text-yellow-400 text-xs font-mono font-bold px-2 py-1 rounded shadow-xs ring-1 ring-yellow-400/40 group-hover:bg-slate-800 transition-colors shrink-0">
               SIGCOI
             </span>
             <div className="hidden sm:block shrink-0">
@@ -262,8 +262,8 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
 
-          {/* Links adicionais diretos em telas ultra-largas (>= 2xl) */}
-          <div className="hidden 2xl:flex items-center gap-1">
+          {/* Links adicionais diretos só em telas bem largas (>= 1760px): entre 1536 e ~1750px eles não cabem e cortavam o menu à direita */}
+          <div className="hidden min-[1760px]:flex items-center gap-1">
             <button
               onClick={() => onSelectTab('configuracoes')}
               className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 ${
@@ -292,8 +292,8 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Right Tools & Role Switcher */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {/* Quick Search Shortcut em telas 2xl */}
-          <form onSubmit={handleQuickSearchSubmit} className="hidden 2xl:flex items-center relative w-40 shrink-0">
+          {/* Quick Search Shortcut em telas bem largas (>= 1760px) */}
+          <form onSubmit={handleQuickSearchSubmit} className="hidden min-[1760px]:flex items-center relative w-40 shrink-0">
             <input
               type="text"
               value={quickSearchInput}
@@ -308,7 +308,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={() => onSelectTab('documentos')}
             title="Pesquisar nos documentos e POPs"
-            className="2xl:hidden p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
+            className="min-[1760px]:hidden p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
           >
             <Search className="w-4 h-4" />
           </button>
