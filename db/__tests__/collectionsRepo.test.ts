@@ -52,9 +52,9 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await pool.query(
-    `DELETE FROM pop_step_audit; DELETE FROM custody_chain; DELETE FROM signatures;
+    `BEGIN; SET LOCAL sigcoi.allow_wipe = 'on'; DELETE FROM change_log; DELETE FROM pop_step_audit; DELETE FROM custody_chain; DELETE FROM signatures;
      DELETE FROM phase2_photos; DELETE FROM phase1_photos; DELETE FROM phase2_forms;
-     DELETE FROM phase1_forms; DELETE FROM collections;`
+     DELETE FROM phase1_forms; DELETE FROM collections; COMMIT;`
   );
 });
 

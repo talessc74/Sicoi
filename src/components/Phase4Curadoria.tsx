@@ -178,19 +178,20 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
   const handleSignPhase = async () => {
     setSigning(true);
     const timestamp = new Date().toISOString();
+    // O lacre é calculado sobre o estado FINAL da fase (já aprovada), que é o que
+    // fica gravado — antes era calculado antes de marcar "aprovada" e nunca conferia.
+    const finalPhase4 = { ...collection.phase4, curationVersionStatus: 'aprovada' as const, curatorAuthor: currentUser.name };
     const payload = generateSignaturePayload({
       nic: collection.nic,
       phaseNumber: 4,
       signedBy: currentUser.id,
       role: currentUser.role,
       timestamp,
-      dataSnapshotJson: JSON.stringify(collection.phase4)
+      dataSnapshotJson: JSON.stringify(finalPhase4)
     });
     const hash = await calculateSha256(payload);
 
-    const updated = { ...collection };
-    updated.phase4.curationVersionStatus = 'aprovada';
-    updated.phase4.curatorAuthor = currentUser.name;
+    const updated = { ...collection, phase4: finalPhase4 };
     updated.signatures = [
       ...updated.signatures.map((s) => (s.phaseNumber === 4 ? { ...s, status: 'unlocked_for_revision' as const } : s)),
       {

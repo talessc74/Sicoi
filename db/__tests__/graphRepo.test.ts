@@ -13,7 +13,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  await pool.query(`DELETE FROM graph_edges; DELETE FROM graph_nodes; DELETE FROM collections;`);
+  await pool.query(`BEGIN; SET LOCAL sigcoi.allow_wipe = 'on'; DELETE FROM graph_edges; DELETE FROM graph_nodes; DELETE FROM collections; COMMIT;`);
   await pool.query(`INSERT INTO collections (nic, created_by_technician) VALUES ('NIC-R-0001', 'Técnico')`);
 
   // Grafo fixo pequeno: A - B - C (mais um nó D isolado)

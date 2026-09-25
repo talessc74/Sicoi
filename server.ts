@@ -6,9 +6,19 @@ import { execSync } from 'child_process';
 import { GoogleGenAI } from '@google/genai';
 import { getPool } from './db/pool';
 import { runMigrations } from './db/migrate';
-import { listCollections, getCollection, createCollection, saveCollection, wipeAllCollections } from './db/collectionsRepo';
+import { listCollections, getCollection, createCollection, saveCollection, wipeAllCollections, listChangeLog, verifyChangeLogChain, Actor } from './db/collectionsRepo';
+import { HistoryViolationError } from './db/historyGuard';
 import { getGraph, getNodeWithEdges, findPath, searchNodes } from './db/graphRepo';
-import { listPeople, createPerson, deletePerson } from './db/peopleRepo';
+import { listPeople, createPerson, deletePerson, getPerson } from './db/peopleRepo';
+import type { Pool } from 'pg';
+
+// Quem está gravando: o navegador informa o id da pessoa ativa; nome e papel vêm do
+// cadastro no banco, não do navegador. Sem login ainda, o id em si é declarado.
+async function resolveActor(pool: Pool, actorId: unknown): Promise<Actor> {
+  if (typeof actorId !== 'string') return { id: null, name: null, role: null };
+  const person = await getPerson(pool, actorId);
+  return person ? { id: person.id, name: person.name, role: person.role } : { id: actorId, name: null, role: null };
+}
 
 dotenv.config();
 
@@ -441,7 +451,7 @@ app.post('/api/collections', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Corpo da requisição deve conter { collection } com um NIC válido.' });
     }
     const pool = getPool();
-    const persisted = await createCollection(pool, collection);
+    const persisted = await createCollection(pool, collection, await resolveActor(pool, req.body?.actorId));
     return res.status(201).json({ collection: persisted });
   } catch (error: any) {
     console.error('Erro ao criar conjunto:', error);
@@ -457,13 +467,37 @@ app.put('/api/collections/:nic', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'NIC do corpo da requisição não confere com o NIC da URL.' });
     }
     const pool = getPool();
-    await saveCollection(pool, collection);
-    return res.json({ collection });
+    const saved = await saveCollection(pool, collection, await resolveActor(pool, req.body?.actorId));
+    return res.json({ collection: saved });
   } catch (error: any) {
     console.error('Erro ao salvar conjunto:', error);
-    // Hash de assinatura inválido é erro do cliente (payload adulterado ou hash fraco), não do servidor
-    const isSignatureError = typeof error?.message === 'string' && error.message.includes('Assinatura inválida');
-    return res.status(isSignatureError ? 400 : 500).json({ error: error?.message || 'Erro ao salvar conjunto.' });
+    // Tentativa de mexer no histórico (ou hash de assinatura nova que não confere) é
+    // recusa do servidor, não falha dele.
+    if (error instanceof HistoryViolationError) {
+      return res.status(409).json({ error: error.message });
+    }
+    return res.status(500).json({ error: error?.message || 'Erro ao salvar conjunto.' });
+  }
+});
+
+// Histórico completo de um conjunto: assinaturas (com a cópia de cada versão
+// assinada) e registro de alterações, com a conferência da corrente de hashes.
+app.get('/api/collections/:nic/history', async (req: Request, res: Response) => {
+  try {
+    const pool = getPool();
+    const collection = await getCollection(pool, req.params.nic);
+    if (!collection) {
+      return res.status(404).json({ error: `Conjunto ${req.params.nic} não encontrado.` });
+    }
+    const changes = await listChangeLog(pool, req.params.nic);
+    return res.json({
+      signatures: collection.signatures,
+      changes,
+      chain: verifyChangeLogChain(changes, req.params.nic)
+    });
+  } catch (error: any) {
+    console.error('Erro ao carregar histórico:', error);
+    return res.status(500).json({ error: error?.message || 'Erro ao carregar histórico.' });
   }
 });
 

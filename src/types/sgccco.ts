@@ -25,6 +25,11 @@ export interface PhaseSignature {
   reopenJustification?: string;
   reopenedBy?: string;
   reopenedAt?: string;
+  // Cópia exata (JSON) do conteúdo da fase no momento da assinatura, sobre a qual o
+  // hash foi calculado. Gravada pelo servidor; permite comparar versões depois de uma
+  // reabertura e reconferir o lacre a qualquer momento. Assinaturas anteriores a
+  // esta versão do sistema não têm a cópia.
+  dataSnapshotJson?: string;
 }
 
 // Localização física hierárquica no acervo

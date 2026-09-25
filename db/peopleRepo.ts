@@ -41,6 +41,15 @@ export async function createPerson(
   return toUserProfile(rows[0]);
 }
 
+export async function getPerson(pool: Pool, id: string): Promise<UserProfile | null> {
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
+  const { rows } = await pool.query<PersonRow>(
+    'SELECT id, name, role, institution, registration_number FROM people WHERE id = $1',
+    [id]
+  );
+  return rows[0] ? toUserProfile(rows[0]) : null;
+}
+
 export async function deletePerson(pool: Pool, id: string): Promise<void> {
   await pool.query('DELETE FROM people WHERE id = $1', [id]);
 }

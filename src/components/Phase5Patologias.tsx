@@ -158,36 +158,35 @@ export const Phase5Patologias: React.FC<Phase5PatologiasProps> = ({
         (signatureTarget === 'tecnico' && !canSignPhysical)) return;
     setSigning(true);
     const timestamp = new Date().toISOString();
-    const payload = generateSignaturePayload({
-      nic: collection.nic,
-      phaseNumber: 5,
-      signedBy: currentUser.id,
-      role: currentUser.role,
-      timestamp,
-      dataSnapshotJson: JSON.stringify(collection.phase5)
-    });
-    const hash = await calculateSha256(payload);
+    const signPayload = (phase5Data: typeof collection.phase5) =>
+      generateSignaturePayload({
+        nic: collection.nic,
+        phaseNumber: 5,
+        signedBy: currentUser.id,
+        role: currentUser.role,
+        timestamp,
+        dataSnapshotJson: JSON.stringify(phase5Data)
+      });
+    // Hash da confirmação individual (curador ou técnico), sobre a fase antes dela.
+    const hash = await calculateSha256(signPayload(collection.phase5));
 
-    const updated = { ...collection };
-    if (signatureTarget === 'curador') {
-      updated.phase5.curatorScientificSign = {
-        signedByName: currentUser.name,
-        signedAt: timestamp,
-        sha256Hash: hash
-      };
-    } else {
-      updated.phase5.technicianPhysicalSign = {
-        signedByName: currentUser.name,
-        signedAt: timestamp,
-        sha256Hash: hash
-      };
-    }
+    const partialSign = { signedByName: currentUser.name, signedAt: timestamp, sha256Hash: hash };
+    const updated = {
+      ...collection,
+      phase5: {
+        ...collection.phase5,
+        ...(signatureTarget === 'curador' ? { curatorScientificSign: partialSign } : { technicianPhysicalSign: partialSign })
+      }
+    };
 
     // A fase só trava depois das duas confirmações, inclusive quando o Curador faz ambas.
     const hasCuratorSign = Boolean(updated.phase5.curatorScientificSign);
     const hasTechSign = Boolean(updated.phase5.technicianPhysicalSign);
 
     if (hasCuratorSign && hasTechSign) {
+      // O lacre da fase é calculado sobre o estado FINAL, já com as duas confirmações,
+      // que é o que fica gravado.
+      const phaseHash = await calculateSha256(signPayload(updated.phase5));
       updated.signatures = [
         ...updated.signatures.map((s) => (s.phaseNumber === 5 ? { ...s, status: 'unlocked_for_revision' as const } : s)),
         {
@@ -196,7 +195,7 @@ export const Phase5Patologias: React.FC<Phase5PatologiasProps> = ({
           signedByName: currentUser.name,
           signedByRole: currentUser.role,
           signedAt: timestamp,
-          sha256Hash: hash,
+          sha256Hash: phaseHash,
           status: 'locked'
         }
       ];

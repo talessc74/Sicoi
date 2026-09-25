@@ -147,7 +147,7 @@ export default function App() {
     try {
       const seeded: OsteologicalCollection[] = [];
       for (const mock of MOCK_COLLECTIONS) {
-        seeded.push(await createCollectionApi(mock));
+        seeded.push(await createCollectionApi(mock, currentUser?.id));
       }
       setCollections((prev) => [...seeded, ...prev]);
       setSelectedNic(seeded[0]?.nic || '');
@@ -162,6 +162,8 @@ export default function App() {
 
   const currentCollection = collections.find(c => c.nic === selectedNic) || collections[0];
 
+  const saveQueueRef = useRef<Record<string, Promise<unknown>>>({});
+
   const handleUpdateCollection = (updated: OsteologicalCollection) => {
     // Atualização otimista: a tela reflete a mudança na hora; se o servidor
     // rejeitar (ex.: hash de assinatura inválido), a mudança é revertida e o
@@ -170,7 +172,14 @@ export default function App() {
     setCollections(prev => prev.map(c => c.nic === updated.nic ? updated : c));
     setSyncError(null);
     setSaveStatus('saving');
-    saveCollectionApi(updated)
+    // Uma gravação por vez para cada conjunto, na ordem em que foram feitas: sem isso,
+    // duas gravações rápidas podiam chegar trocadas e a mais antiga sobrescrever a
+    // mais nova (e o servidor, que protege o histórico, recusaria a mais antiga).
+    const queued = (saveQueueRef.current[updated.nic] || Promise.resolve())
+      .catch(() => undefined)
+      .then(() => saveCollectionApi(updated, currentUser?.id));
+    saveQueueRef.current[updated.nic] = queued;
+    queued
       .then(() => {
         setSaveStatus('saved');
         setLastSavedAt(new Date().toISOString());
@@ -266,7 +275,7 @@ export default function App() {
     };
 
     try {
-      const created = await createCollectionApi(newCol);
+      const created = await createCollectionApi(newCol, currentUser.id);
       setCollections(prev => [created, ...prev]);
       setSelectedNic(newNic);
       setActivePhase(1);
