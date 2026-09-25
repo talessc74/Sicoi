@@ -224,8 +224,6 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
       cemeteryName: 'Cemitério Municipal da Saudade (Ala 4B)',
       cemeteryPlot: 'Quadra 12, Jazigo 84, Sepultura 02',
       deathDeclarationNumber: 'DO-2019-948102-SP',
-      legalProcessNumber: 'Processo Exumação Judicial nº 0041289-44.2026.8.26.0100',
-      courtDistrict: 'Vara de Registros Públicos e Sucessões de São Paulo',
       sensitiveNotes: 'Documento original de transferência cartorária anexado sob chave RSA-4096.'
     },
     phase1: {
@@ -672,9 +670,7 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
       cemeteryName: 'Cemitério Parque das Flores',
       cemeteryPlot: 'Setor C, Jazigo 301',
       deathDeclarationNumber: 'DO-2020-554109-RJ',
-      legalProcessNumber: 'Autos nº 0089102-11.2026.8.19.0001',
-      courtDistrict: 'Comarca da Capital do Rio de Janeiro',
-      sensitiveNotes: 'Acompanha termo judicial de guarda acadêmico-científica.'
+      sensitiveNotes: 'Acompanha termo de doação para fins acadêmico-científicos.'
     },
     phase1: {
       ...createEmptyPhase1Data(),
@@ -846,9 +842,7 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
       cemeteryName: 'Cemitério da Paz e Memória',
       cemeteryPlot: 'Quadra 07, Jazigo 190',
       deathDeclarationNumber: 'DO-2018-091244-DF',
-      legalProcessNumber: 'Processo de Exumação nº 0019284-90.2026.8.07.0001',
-      courtDistrict: 'Vara de Família e Sucessões de Brasília',
-      sensitiveNotes: 'Acondicionado sob sigilo judiciário nível 2.'
+      sensitiveNotes: 'Acondicionado sob sigilo nível 2.'
     },
     phase1: {
       ...createEmptyPhase1Data(),

@@ -654,12 +654,6 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
                     <span className="text-slate-500 block text-[11px]">Declaração de Óbito (D.O.):</span>
                     <span className="font-mono text-slate-900 dark:text-white font-bold">{collection.legalOrigin.deathDeclarationNumber || 'Não informado'}</span>
                   </div>
-                  <div>
-                    <span className="text-slate-500 block text-[11px]">Processo Legal / Comarca:</span>
-                    <span className="font-mono text-slate-900 dark:text-white">
-                      {collection.legalOrigin.legalProcessNumber} ({collection.legalOrigin.courtDistrict})
-                    </span>
-                  </div>
                 </div>
               ) : (
                 <div className="p-6 rounded-xl bg-slate-100 dark:bg-slate-950 border border-dashed border-slate-300 dark:border-slate-800 text-center text-xs text-slate-400 space-y-2">

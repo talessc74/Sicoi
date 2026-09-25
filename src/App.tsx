@@ -196,8 +196,6 @@ export default function App() {
       legalOrigin: {
         deliveryDocumentNumber: `GUIA-REMESSA-INC-DITEC-PF-2026/${nextNum}`,
         originInstitution: 'IML Regional Metropolitano',
-        legalProcessNumber: `PROC-2026-00${nextNum}`,
-        courtDistrict: '1ª Vara Criminal da Capital',
         cemeteryName: 'Cemitério Municipal São João',
         cemeteryPlot: `Quadra 12 - Jazigo ${nextNum}`,
         deathDeclarationNumber: `DO-2026-88${nextNum}`

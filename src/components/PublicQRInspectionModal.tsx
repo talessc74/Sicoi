@@ -48,7 +48,7 @@ export const PublicQRInspectionModal: React.FC<PublicQRInspectionModalProps> = (
           <div>
             <span className="font-bold">Garantia Criptográfica de Privacidade (§7):</span>
             <p className="mt-0.5 text-[11px] text-emerald-700 dark:text-emerald-300/90 leading-tight">
-              Dados de procedência (termo de doação, cemitério, declaração de óbito e processo de exumação) estão segregados e NUNCA constam no QR Code, na busca pública nem para IA.
+              Dados de procedência (termo de doação, cemitério e declaração de óbito) estão segregados e NUNCA constam no QR Code, na busca pública nem para IA.
             </p>
           </div>
         </div>

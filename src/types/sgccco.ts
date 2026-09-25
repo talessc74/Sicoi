@@ -55,8 +55,6 @@ export interface CustodyMovement {
 export interface LegalOriginData {
   deliveryDocumentNumber?: string;
   originInstitution?: string;
-  legalProcessNumber?: string;
-  courtDistrict?: string;
   cemeteryName?: string;
   cemeteryPlot?: string;
   deathDeclarationNumber?: string;

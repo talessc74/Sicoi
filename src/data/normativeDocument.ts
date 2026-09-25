@@ -37,9 +37,9 @@ Todos os procedimentos devem observar o princípio da dignidade da pessoa humana
     sectionNumber: 'Art. 2º',
     title: 'Segregação Mandatória de Dados Sensíveis e Origem Legal (§7)',
     phaseApplicable: 1,
-    regulatoryReference: 'Lei Federal 13.709/2018 (LGPD) e Resolução DITEC 08/2026',
+    regulatoryReference: 'Lei Federal 13.709/2018 (LGPD) e Portaria DITEC/PF nº 1415/2024, Anexo 3',
     keywords: ['segregação', 'dados sensíveis', 'cemitério', 'origem legal', 'sigilo', 'curador', 'abac'],
-    content: `Os dados relativos à procedência, à doação e ao registro civil dos remanescentes ósseos — incluindo termo de doação, processo de exumação e comarca, cemitério de exumação, quadra, jazigo e declaração de óbito — constituem informações de acesso estritamente restrito.
+    content: `Os dados relativos à procedência, à doação e ao registro civil dos remanescentes ósseos — incluindo termo de doação, cemitério de exumação, quadra, jazigo e declaração de óbito — constituem informações de acesso estritamente restrito.
 É terminantemente vedada a exibição desses dados em etiquetas externas de caixas, QR Codes de leitura pública, relatórios de pesquisa acadêmica ou telas acessíveis por operadores não curadores ou pesquisadores externos.
 A visualização desses registros é permitida exclusivamente aos perfis de Curador e Administrador devidamente autenticados. Fotografias e informações sobre os indivíduos da coleção não podem ser divulgadas fora do âmbito da pesquisa (Portaria DITEC/PF nº 1415/2024, Anexo 3).`
   },

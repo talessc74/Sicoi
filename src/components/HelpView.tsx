@@ -37,7 +37,7 @@ export const HelpView: React.FC<HelpViewProps> = ({
     },
     {
       question: 'Quem pode visualizar os dados de procedência (doação, cemitério e registro civil)?',
-      answer: `Por mandamento da LGPD e Resolução DITEC 08/2026, os dados de procedência — termo de doação, processo de exumação e comarca, cemitério, quadra, jazigo e declaração de óbito — são restritos e visíveis APENAS aos perfis de Curador e Administrador. Eles são ocultados para Técnicos e Pesquisadores Externos e nunca constam em QR Codes públicos ou exportações científicas. O termo de responsabilidade da COI-INC (Portaria DITEC/PF nº 1415/2024, Anexo 3) também veda divulgar fotografias ou informações sobre os indivíduos da coleção fora do âmbito da pesquisa.`
+      answer: `Por determinação da LGPD, os dados de procedência — termo de doação, cemitério, quadra, jazigo e declaração de óbito — são restritos e visíveis APENAS aos perfis de Curador e Administrador. Eles são ocultados para Técnicos e Pesquisadores Externos e nunca constam em QR Codes públicos ou exportações científicas. O termo de responsabilidade da COI-INC (Portaria DITEC/PF nº 1415/2024, Anexo 3) também veda divulgar fotografias ou informações sobre os indivíduos da coleção fora do âmbito da pesquisa.`
     },
     {
       question: 'Como é calculada a estimativa de NMI (Número Mínimo de Indivíduos)?',
