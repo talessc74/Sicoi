@@ -6,9 +6,19 @@ import { execSync } from 'child_process';
 import { GoogleGenAI } from '@google/genai';
 import { getPool } from './db/pool';
 import { runMigrations } from './db/migrate';
-import { listCollections, getCollection, createCollection, saveCollection, wipeAllCollections } from './db/collectionsRepo';
+import { listCollections, getCollection, createCollection, saveCollection, listChangeLog, verifyChangeLogChain, Actor } from './db/collectionsRepo';
+import { HistoryViolationError } from './db/historyGuard';
 import { getGraph, getNodeWithEdges, findPath, searchNodes } from './db/graphRepo';
-import { listPeople, createPerson, deletePerson } from './db/peopleRepo';
+import { listPeople, createPerson, deletePerson, getPerson } from './db/peopleRepo';
+import type { Pool } from 'pg';
+
+// Quem está gravando: o navegador informa o id da pessoa ativa; nome e papel vêm do
+// cadastro no banco, não do navegador. Sem login ainda, o id em si é declarado.
+async function resolveActor(pool: Pool, actorId: unknown): Promise<Actor> {
+  if (typeof actorId !== 'string') return { id: null, name: null, role: null };
+  const person = await getPerson(pool, actorId);
+  return person ? { id: person.id, name: person.name, role: person.role } : { id: actorId, name: null, role: null };
+}
 
 dotenv.config();
 
@@ -170,7 +180,7 @@ app.post('/api/chat', async (req: Request, res: Response) => {
     const {
       messages = [],
       model = 'gemini-3.1-flash-lite',
-      systemInstruction = 'Você é o Perito Forense e Curador Osteológico Virtual do SIGCOI (INC/DITEC/PF). Auxilie com precisão científica e técnica na análise de ossadas, cadeia de custódia, estimativa de sexo, idade, estatura, ancestralidade, traumatologia e patologias ósseas segundo os protocolos forenses oficiais.',
+      systemInstruction = 'Você é o assistente de curadoria do SIGCOI, sistema de gestão da Coleção Osteológica Identificada do INC (COI-INC/DITEC/PF) — biobanco e coleção de referência para pesquisa aplicada, capacitação e ensino em antropologia forense, instituída pela Portaria DITEC/PF nº 1415/2024, sem finalidade de resolução de casos criminais. Auxilie com precisão científica e técnica na análise de remanescentes ósseos, controle e rastreabilidade do acervo, estimativa de sexo, idade, estatura, ancestralidade, traumatologia e patologias ósseas segundo os protocolos científicos da coleção.',
     } = req.body;
 
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -269,7 +279,7 @@ app.post('/api/pop-step', async (req: Request, res: Response) => {
     }
 
     const ai = getGeminiClient();
-    const systemInstruction = `Você é o Condutor do POP-01 (COI-INC), conduzindo por voz o preenchimento de um formulário oficial de antropologia forense. Sua única tarefa é interpretar a fala do usuário dentro do contexto do passo atual e devolver o JSON estruturado pedido. Nunca invente valor que não foi falado. Nunca decida stepConfirmed=true se um campo obrigatório continua faltando.
+    const systemInstruction = `Você é o Condutor do POP-01 (COI-INC), conduzindo por voz o preenchimento de um formulário oficial de gestão da Coleção Osteológica Identificada do INC (COI-INC), coleção de referência para pesquisa e ensino. Sua única tarefa é interpretar a fala do usuário dentro do contexto do passo atual e devolver o JSON estruturado pedido. Nunca invente valor que não foi falado. Nunca decida stepConfirmed=true se um campo obrigatório continua faltando.
 
 Contexto do passo atual:
 ${stepContext}`;
@@ -353,7 +363,7 @@ app.post('/api/transcribe', async (req: Request, res: Response) => {
               },
             },
             {
-              text: 'Transcreva com máxima fidelidade todas as palavras ditadas neste áudio em português do Brasil. Preserve termos técnicos forenses, médicos e anatômicos. Retorne apenas o texto transcrito, sem introduções.',
+              text: 'Transcreva com máxima fidelidade todas as palavras ditadas neste áudio em português do Brasil. Preserve termos técnicos antropológicos, médicos e anatômicos. Retorne apenas o texto transcrito, sem introduções.',
             },
           ],
         },
@@ -378,7 +388,7 @@ app.post('/api/transcribe', async (req: Request, res: Response) => {
               },
             },
             {
-              text: 'Transcreva em português do Brasil todas as palavras faladas neste áudio pericial. Retorne apenas a transcrição direta.',
+              text: 'Transcreva em português do Brasil todas as palavras faladas neste áudio. Retorne apenas a transcrição direta.',
             },
           ],
         },
@@ -441,7 +451,7 @@ app.post('/api/collections', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Corpo da requisição deve conter { collection } com um NIC válido.' });
     }
     const pool = getPool();
-    const persisted = await createCollection(pool, collection);
+    const persisted = await createCollection(pool, collection, await resolveActor(pool, req.body?.actorId));
     return res.status(201).json({ collection: persisted });
   } catch (error: any) {
     console.error('Erro ao criar conjunto:', error);
@@ -457,30 +467,37 @@ app.put('/api/collections/:nic', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'NIC do corpo da requisição não confere com o NIC da URL.' });
     }
     const pool = getPool();
-    await saveCollection(pool, collection);
-    return res.json({ collection });
+    const saved = await saveCollection(pool, collection, await resolveActor(pool, req.body?.actorId));
+    return res.json({ collection: saved });
   } catch (error: any) {
     console.error('Erro ao salvar conjunto:', error);
-    // Hash de assinatura inválido é erro do cliente (payload adulterado ou hash fraco), não do servidor
-    const isSignatureError = typeof error?.message === 'string' && error.message.includes('Assinatura inválida');
-    return res.status(isSignatureError ? 400 : 500).json({ error: error?.message || 'Erro ao salvar conjunto.' });
+    // Tentativa de mexer no histórico (ou hash de assinatura nova que não confere) é
+    // recusa do servidor, não falha dele.
+    if (error instanceof HistoryViolationError) {
+      return res.status(409).json({ error: error.message });
+    }
+    return res.status(500).json({ error: error?.message || 'Erro ao salvar conjunto.' });
   }
 });
 
-// Apaga todos os conjuntos — para testar o app do zero, sem os dados de
-// demonstração. Exige um token de confirmação explícito no corpo, para não
-// disparar numa chamada acidental (não há autenticação real ainda).
-app.delete('/api/collections', async (req: Request, res: Response) => {
+// Histórico completo de um conjunto: assinaturas (com a cópia de cada versão
+// assinada) e registro de alterações, com a conferência da corrente de hashes.
+app.get('/api/collections/:nic/history', async (req: Request, res: Response) => {
   try {
-    if (req.body?.confirm !== 'WIPE_ALL') {
-      return res.status(400).json({ error: 'Confirmação ausente. Envie { "confirm": "WIPE_ALL" } no corpo da requisição.' });
-    }
     const pool = getPool();
-    await wipeAllCollections(pool);
-    return res.json({ ok: true });
+    const collection = await getCollection(pool, req.params.nic);
+    if (!collection) {
+      return res.status(404).json({ error: `Conjunto ${req.params.nic} não encontrado.` });
+    }
+    const changes = await listChangeLog(pool, req.params.nic);
+    return res.json({
+      signatures: collection.signatures,
+      changes,
+      chain: verifyChangeLogChain(changes, req.params.nic)
+    });
   } catch (error: any) {
-    console.error('Erro ao apagar todos os conjuntos:', error);
-    return res.status(500).json({ error: error?.message || 'Erro ao apagar os conjuntos.' });
+    console.error('Erro ao carregar histórico:', error);
+    return res.status(500).json({ error: error?.message || 'Erro ao carregar histórico.' });
   }
 });
 
@@ -523,7 +540,7 @@ app.delete('/api/people/:id', async (req: Request, res: Response) => {
   }
 });
 
-// --- Grafo de Conhecimento Forense (§16) — mirrors os verbos de consulta do Graphify ---
+// --- Grafo de Conhecimento (§16) — mirrors os verbos de consulta do Graphify ---
 
 // Grafo completo, ou escopado a um NIC (?nic=...)
 app.get('/api/graph', async (req: Request, res: Response) => {

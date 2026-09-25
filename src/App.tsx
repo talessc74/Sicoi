@@ -7,11 +7,10 @@ import {
   ResearchAuthorization
 } from './types/sgccco';
 import {
-  MOCK_COLLECTIONS,
   MOCK_RESEARCH_AUTHORIZATIONS
 } from './data/mockData';
 import { createEmptyPhase1Data, createEmptyPhase2Data } from './data/phaseDefaults';
-import { fetchCollections, createCollectionApi, saveCollectionApi, wipeAllCollectionsApi } from './services/collectionsService';
+import { fetchCollections, createCollectionApi, saveCollectionApi } from './services/collectionsService';
 import { fetchPeople, createPersonApi, deletePersonApi } from './services/peopleService';
 import { Header } from './components/Header';
 import { FirstPersonSetup } from './components/FirstPersonSetup';
@@ -32,6 +31,7 @@ import { WarehouseRackMap } from './components/WarehouseRackMap';
 import { PublicQRInspectionModal } from './components/PublicQRInspectionModal';
 import { AuditTimelineView } from './components/AuditTimelineView';
 import { GeminiForensicChatModal } from './components/GeminiForensicChatModal';
+import { NewCollectionModal } from './components/NewCollectionModal';
 import { Plus, ShieldCheck, Bot, Sparkles, Loader2, CheckCircle2 } from 'lucide-react';
 
 export default function App() {
@@ -60,7 +60,6 @@ export default function App() {
   // banco vazio por escolha (ninguém criou nada ainda, ou alguém limpou tudo pra
   // testar do zero) NÃO é uma falha e não deve travar a tela.
   const [initialLoadFailed, setInitialLoadFailed] = useState<boolean>(false);
-  const [isResettingData, setIsResettingData] = useState<boolean>(false);
 
   // Carrega os conjuntos do Postgres ao abrir o app. O banco é sempre a fonte de
   // verdade — um banco vazio é um estado válido (ninguém criou conjunto ainda),
@@ -122,44 +121,9 @@ export default function App() {
     }
   };
 
-  // Apaga todos os conjuntos do banco — para testar o app do zero. A UI (Settings)
-  // já pede confirmação antes de chamar isto.
-  const handleWipeAllData = async () => {
-    setIsResettingData(true);
-    try {
-      await wipeAllCollectionsApi();
-      setCollections([]);
-      setSelectedNic('');
-      setActiveTab('inicio');
-      setSyncError(null);
-    } catch (err: any) {
-      console.error('Falha ao limpar os dados:', err);
-      setSyncError(err?.message || 'Não foi possível limpar os dados.');
-    } finally {
-      setIsResettingData(false);
-    }
-  };
-
-  // Carrega os 3 conjuntos de demonstração sob demanda — nunca automaticamente.
-  const handleSeedExampleData = async () => {
-    setIsResettingData(true);
-    try {
-      const seeded: OsteologicalCollection[] = [];
-      for (const mock of MOCK_COLLECTIONS) {
-        seeded.push(await createCollectionApi(mock));
-      }
-      setCollections((prev) => [...seeded, ...prev]);
-      setSelectedNic(seeded[0]?.nic || '');
-      setSyncError(null);
-    } catch (err: any) {
-      console.error('Falha ao carregar dados de exemplo:', err);
-      setSyncError(err?.message || 'Não foi possível carregar os dados de exemplo.');
-    } finally {
-      setIsResettingData(false);
-    }
-  };
-
   const currentCollection = collections.find(c => c.nic === selectedNic) || collections[0];
+
+  const saveQueueRef = useRef<Record<string, Promise<unknown>>>({});
 
   const handleUpdateCollection = (updated: OsteologicalCollection) => {
     // Atualização otimista: a tela reflete a mudança na hora; se o servidor
@@ -169,7 +133,14 @@ export default function App() {
     setCollections(prev => prev.map(c => c.nic === updated.nic ? updated : c));
     setSyncError(null);
     setSaveStatus('saving');
-    saveCollectionApi(updated)
+    // Uma gravação por vez para cada conjunto, na ordem em que foram feitas: sem isso,
+    // duas gravações rápidas podiam chegar trocadas e a mais antiga sobrescrever a
+    // mais nova (e o servidor, que protege o histórico, recusaria a mais antiga).
+    const queued = (saveQueueRef.current[updated.nic] || Promise.resolve())
+      .catch(() => undefined)
+      .then(() => saveCollectionApi(updated, currentUser?.id));
+    saveQueueRef.current[updated.nic] = queued;
+    queued
       .then(() => {
         setSaveStatus('saved');
         setLastSavedAt(new Date().toISOString());
@@ -182,10 +153,12 @@ export default function App() {
       });
   };
 
-  const handleCreateNewCollection = async () => {
+  // O NIC é digitado por quem cadastra (janela NewCollectionModal), não gerado em sequência.
+  const [showNewCollectionModal, setShowNewCollectionModal] = useState(false);
+  const handleCreateNewCollection = () => setShowNewCollectionModal(true);
+
+  const createCollectionWithNic = async (newNic: string, nextNum: string) => {
     if (!currentUser) return;
-    const nextNum = String(collections.length + 841).padStart(4, '0');
-    const newNic = `NIC-2026-${nextNum}`;
     const newCol: OsteologicalCollection = {
       id: `col-${Date.now()}`,
       nic: newNic,
@@ -196,8 +169,6 @@ export default function App() {
       legalOrigin: {
         deliveryDocumentNumber: `GUIA-REMESSA-INC-DITEC-PF-2026/${nextNum}`,
         originInstitution: 'IML Regional Metropolitano',
-        legalProcessNumber: `PROC-2026-00${nextNum}`,
-        courtDistrict: '1ª Vara Criminal da Capital',
         cemeteryName: 'Cemitério Municipal São João',
         cemeteryPlot: `Quadra 12 - Jazigo ${nextNum}`,
         deathDeclarationNumber: `DO-2026-88${nextNum}`
@@ -207,7 +178,7 @@ export default function App() {
         preliminaryBoxes: [{
           id: `CX-${newNic}`,
           boxCode: `CX-${nextNum}`,
-          presumedIndividualLabel: 'Caixa do caso',
+          presumedIndividualLabel: 'Caixa do conjunto',
           currentLocation: 'Bancada de Recepção',
           qrCode: `SIGCOI://BOX/CX-${newNic}`
         }]
@@ -265,12 +236,13 @@ export default function App() {
     };
 
     try {
-      const created = await createCollectionApi(newCol);
+      const created = await createCollectionApi(newCol, currentUser.id);
       setCollections(prev => [created, ...prev]);
       setSelectedNic(newNic);
       setActivePhase(1);
       setActiveTab('fases');
       setSyncError(null);
+      setShowNewCollectionModal(false);
     } catch (err: any) {
       console.error('Falha ao criar conjunto:', err);
       setSyncError(err?.message || 'Não foi possível criar o conjunto no banco de dados.');
@@ -284,7 +256,7 @@ export default function App() {
     // Preserva o registro de assinatura original (quem assinou, quando, hash) em vez de
     // apagá-lo — a reabertura fica marcada nele mesmo (status + justificativa + quem/quando
     // reabriu), o que a Linha do Tempo de Auditoria já sabe transformar automaticamente em
-    // um evento "Reabertura Pericial Justificada" (ver getAuditTrailForCollection).
+    // um evento "Reabertura Técnica Justificada" (ver getAuditTrailForCollection).
     updated.signatures = updated.signatures.map((s) =>
       s.phaseNumber === phaseToReopen && s.status === 'locked'
         ? {
@@ -470,10 +442,6 @@ export default function App() {
             onDeletePerson={handleDeletePerson}
             laboratoryMode={laboratoryMode}
             onToggleLaboratoryMode={() => setLaboratoryMode(!laboratoryMode)}
-            collectionsCount={collections.length}
-            isResettingData={isResettingData}
-            onWipeAllData={handleWipeAllData}
-            onSeedExampleData={handleSeedExampleData}
           />
         )}
 
@@ -492,7 +460,7 @@ export default function App() {
         {activeTab === 'fases' && !currentCollection && (
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-10 text-center space-y-3">
             <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Nenhum conjunto osteológico cadastrado ainda.</p>
-            <p className="text-xs text-slate-500">Crie um novo conjunto (NIC) para começar, ou carregue os dados de exemplo em Configurações.</p>
+            <p className="text-xs text-slate-500">Crie um novo conjunto (NIC) para começar.</p>
             <button
               onClick={handleCreateNewCollection}
               className="px-4 py-2 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-semibold inline-flex items-center gap-1.5"
@@ -568,7 +536,7 @@ export default function App() {
           </>
         )}
 
-        {/* Grafo de Conhecimento Forense */}
+        {/* Grafo de Conhecimento */}
         {activeTab === 'grafo' && (
           <KnowledgeGraphViewer selectedNic={selectedNic} />
         )}
@@ -623,20 +591,28 @@ export default function App() {
         />
       )}
 
-      {/* Botão Flutuante de Acesso Rápido ao Perito IA Gemini */}
+      {/* Botão Flutuante de Acesso Rápido ao Assistente IA (Gemini) */}
       <button
         onClick={() => setIsGeminiChatOpen(true)}
         className="fixed bottom-6 right-6 z-40 px-4 py-3 rounded-2xl bg-gradient-to-tr from-sky-600 via-indigo-600 to-purple-600 text-white shadow-xl shadow-indigo-500/30 hover:scale-105 active:scale-95 transition-all flex items-center gap-2.5 font-semibold text-xs border border-white/20 group cursor-pointer"
-        title="Abrir Chat com Perito IA Gemini & Transcrição de Áudio"
+        title="Abrir Chat com o Assistente IA (Gemini) & Transcrição de Áudio"
       >
         <div className="relative flex h-3 w-3">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-300 opacity-75"></span>
           <span className="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
         </div>
         <Bot className="w-4 h-4 text-sky-200" />
-        <span className="font-sans">Perito IA</span>
+        <span className="font-sans">Assistente IA</span>
         <span className="hidden sm:inline text-[10px] font-mono px-1.5 py-0.5 bg-black/20 rounded-md">Gemini</span>
       </button>
+
+      {showNewCollectionModal && (
+        <NewCollectionModal
+          existingNics={collections.map((c) => c.nic)}
+          onCancel={() => setShowNewCollectionModal(false)}
+          onConfirm={createCollectionWithNic}
+        />
+      )}
 
       {/* Modal do Chatbot Multi-Turn Gemini com Transcrição de Voz */}
       <GeminiForensicChatModal

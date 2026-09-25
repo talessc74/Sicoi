@@ -178,19 +178,20 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
   const handleSignPhase = async () => {
     setSigning(true);
     const timestamp = new Date().toISOString();
+    // O lacre é calculado sobre o estado FINAL da fase (já aprovada), que é o que
+    // fica gravado — antes era calculado antes de marcar "aprovada" e nunca conferia.
+    const finalPhase4 = { ...collection.phase4, curationVersionStatus: 'aprovada' as const, curatorAuthor: currentUser.name };
     const payload = generateSignaturePayload({
       nic: collection.nic,
       phaseNumber: 4,
       signedBy: currentUser.id,
       role: currentUser.role,
       timestamp,
-      dataSnapshotJson: JSON.stringify(collection.phase4)
+      dataSnapshotJson: JSON.stringify(finalPhase4)
     });
     const hash = await calculateSha256(payload);
 
-    const updated = { ...collection };
-    updated.phase4.curationVersionStatus = 'aprovada';
-    updated.phase4.curatorAuthor = currentUser.name;
+    const updated = { ...collection, phase4: finalPhase4 };
     updated.signatures = [
       ...updated.signatures.map((s) => (s.phaseNumber === 4 ? { ...s, status: 'unlocked_for_revision' as const } : s)),
       {
@@ -636,7 +637,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
         </div>
       )}
 
-      {/* Conteúdo da Aba 3: Odontograma Forense */}
+      {/* Conteúdo da Aba 3: Odontograma */}
       {activeTab === 'odontograma' && currentInd && (
         <div className="space-y-4">
           <OdontogramViewer
@@ -728,7 +729,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
               </button>
             </div>
             <p className="text-slate-600 dark:text-slate-400">
-              O agente localiza literatura comparativa e casos anteriores no grafo. Ele <strong>nunca toma a decisão</strong>; cabe à curadora avaliar as referências:
+              O agente localiza literatura comparativa e conjuntos de referência no grafo. Ele <strong>nunca toma a decisão</strong>; cabe à curadora avaliar as referências:
             </p>
             <div className="space-y-2.5">
               {refSearchResults.map((ref, idx) => (
@@ -790,7 +791,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
               Assinatura Científica Curatorial — Fase 4
             </h3>
             <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
-              Eu, {currentUser.name}, na condição de Curadora Antropóloga Forense, assumo a responsabilidade científica pela estimativa do perfil biológico, inventário anatômico, odontograma e montagem fotográfica do conjunto {collection.nic}.
+              Eu, {currentUser.name}, na condição de curadora da COI-INC, assumo a responsabilidade científica pela estimativa do perfil biológico, inventário anatômico, odontograma e montagem fotográfica do conjunto {collection.nic}.
             </p>
             <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl font-mono text-[11px] space-y-1">
               <div>NIC: {collection.nic}</div>

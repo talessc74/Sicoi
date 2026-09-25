@@ -79,6 +79,7 @@ describe('POP-01 · Fase 1 (Formulário A.1) — trava de avanço por passo', ()
     const completo = step(phase1Steps, 5).extractData('Coletada falange distal, responsável Técnico João.', {} as any);
     expect(completo.isComplete).toBe(true);
     expect(completo.data.geneticoResponsavelColeta).toBe('Técnico João');
+    expect(completo.data.geneticoFalangeDescricao).toBe('falange distal');
   });
 
   it('Passo 8 (danos): "não houve danos" já fecha o passo sem exigir descrição', () => {
@@ -115,14 +116,14 @@ describe('POP-01 · Fase 1 (Formulário A.1) — trava de avanço por passo', ()
     });
 
     it('Passo 5 (exame genético): elemento já salvo no context, resposta de acompanhamento só com o responsável fecha o passo', () => {
-      const context = { phase1: { exameGenetico: { value: ['falange'] } } };
+      const context = { phase1: { exameGenetico: { value: ['falange'] }, geneticoFalangeDescricao: { value: 'falange distal' } } };
       const result = step(phase1Steps, 5).extractData('Responsável: Técnico João.', context as any);
       expect(result.isComplete).toBe(true);
       expect(result.data.geneticoResponsavelColeta).toBe('Técnico João');
     });
 
     it('Passo 6 (isotópica): material já salvo no context, resposta de acompanhamento só com o responsável fecha o passo', () => {
-      const context = { phase1: { analiseIsotopica: { value: ['cabelo'] } } };
+      const context = { phase1: { analiseIsotopica: { value: ['cabelo'] }, isotopicaCabeloDescricao: { value: 'mecha occipital' } } };
       const result = step(phase1Steps, 6).extractData('Responsável: Técnica Maria.', context as any);
       expect(result.isComplete).toBe(true);
     });
@@ -225,5 +226,74 @@ describe('POP-01 · Fase 2 (Formulário A.2 — Maceração e Secagem) — trava
       expect(result.summaryText).not.toContain('Ainda falta');
       expect(result.isComplete).toBe(false); // completo só quando a confirmação é true
     });
+  });
+});
+
+describe('POP-01 · Fase 1 — descrições obrigatórias das opções marcadas (passos 3 a 6)', () => {
+  it('Passo 3: descrição dita junto com a opção é capturada; opção sem descrição fica pendente', () => {
+    const result = step(phase1Steps, 3).extractData(
+      'Ossos, vestes e uma prótese dentária, descrita como coroa metálica no incisivo superior.',
+      {} as any
+    );
+    expect(result.data.tipoMaterial).toEqual(['ossos', 'proteses', 'vestes']);
+    expect(result.data.protesesDescricao).toBe('prótese dentária, descrita como coroa metálica no incisivo superior');
+    expect(result.data.vestesDescricao).toBeUndefined();
+    expect(result.isComplete).toBe(false);
+    expect(result.summaryText).toContain('Descreva agora: Vestes');
+  });
+
+  it('Passo 3: com a lista já gravada, a fala seguinte vira a descrição pendente, sem remarcar opções', () => {
+    const context = {
+      phase1: { tipoMaterial: { value: ['ossos', 'vestes'] }, vestesDescricao: { value: '' } }
+    };
+    const result = step(phase1Steps, 3).extractData('Camisa de algodão com botões de osso', context as any);
+    expect(result.data.tipoMaterial).toBeUndefined();
+    expect(result.data.vestesDescricao).toBe('Camisa de algodão com botões de osso');
+    expect(result.isComplete).toBe(true);
+  });
+
+  it('Passo 3: "Ossos e dentes" continua completo sem pedir descrição', () => {
+    const result = step(phase1Steps, 3).extractData('Ossos e dentes presentes.', {} as any);
+    expect(result.isComplete).toBe(true);
+  });
+
+  it('Passo 4: reconhece Mumificado, Adipocera e Outros, e exige a descrição de Outros', () => {
+    const result = step(phase1Steps, 4).extractData('Mumificado, com adipocera e outros.', {} as any);
+    expect(result.data.estadoPreservacao).toEqual(['mumificado', 'adipocera', 'outros']);
+    expect(result.isComplete).toBe(false);
+
+    const context = { phase1: { estadoPreservacao: { value: ['outros'] } } };
+    const seguinte = step(phase1Steps, 4).extractData('Raízes aderidas à cortical.', context as any);
+    expect(seguinte.data.estadoPreservacaoOutrosDescricao).toBe('Raízes aderidas à cortical');
+    expect(seguinte.isComplete).toBe(true);
+  });
+
+  it('Passo 5: 1ª costela e patela pedem descrição, uma de cada vez', () => {
+    const primeira = step(phase1Steps, 5).extractData('Coletadas costela e patela, responsável Técnico João.', {} as any);
+    expect(primeira.data.exameGenetico).toEqual(['primeira_costela', 'patela']);
+    expect(primeira.isComplete).toBe(false);
+    expect(primeira.summaryText).toContain('Descreva agora: 1ª costela');
+
+    const context = {
+      phase1: {
+        exameGenetico: { value: ['primeira_costela', 'patela'] },
+        geneticoResponsavelColeta: { value: 'Técnico João' }
+      }
+    };
+    const segunda = step(phase1Steps, 5).extractData('Extremidade esternal da primeira costela esquerda.', context as any);
+    expect(segunda.data.geneticoPrimeiraCostelaDescricao).toBe('Extremidade esternal da primeira costela esquerda');
+    expect(segunda.isComplete).toBe(false);
+  });
+
+  it('Passo 6: "não coletado" não exige descrição', () => {
+    const result = step(phase1Steps, 6).extractData('Não coletado.', {} as any);
+    expect(result.isComplete).toBe(true);
+  });
+
+  it('blockingCheck barra o avanço mesmo que a IA confirme o passo sem a descrição', () => {
+    const check = step(phase1Steps, 6).blockingCheck!;
+    const context = { phase1: { analiseIsotopica: { value: ['dente'] } } };
+    expect(check(context, {})).toEqual(['descrição de "Dente (análise isotópica)"']);
+    expect(check(context, { isotopicaDenteDescricao: 'Terceiro molar inferior direito' })).toEqual([]);
   });
 });

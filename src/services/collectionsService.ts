@@ -23,32 +23,47 @@ export async function fetchCollections(): Promise<OsteologicalCollection[]> {
   return data.collections;
 }
 
-export async function createCollectionApi(collection: OsteologicalCollection): Promise<OsteologicalCollection> {
+export async function createCollectionApi(collection: OsteologicalCollection, actorId?: string): Promise<OsteologicalCollection> {
   const res = await fetch('/api/collections', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ collection })
+    body: JSON.stringify({ collection, actorId })
   });
   const data = await parseJsonOrThrow(res, 'Erro ao criar conjunto');
   return data.collection;
 }
 
-export async function saveCollectionApi(collection: OsteologicalCollection): Promise<OsteologicalCollection> {
+// `actorId`: id da pessoa ativa, para o registro de alterações (nome e papel o
+// servidor busca no cadastro).
+export async function saveCollectionApi(collection: OsteologicalCollection, actorId?: string): Promise<OsteologicalCollection> {
   const res = await fetch(`/api/collections/${encodeURIComponent(collection.nic)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ collection })
+    body: JSON.stringify({ collection, actorId })
   });
   const data = await parseJsonOrThrow(res, 'Erro ao salvar conjunto');
   return data.collection;
 }
 
-/** Apaga todos os conjuntos do banco. Irreversível — a UI deve confirmar antes de chamar. */
-export async function wipeAllCollectionsApi(): Promise<void> {
-  const res = await fetch('/api/collections', {
-    method: 'DELETE',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ confirm: 'WIPE_ALL' })
-  });
-  await parseJsonOrThrow(res, 'Erro ao apagar os conjuntos');
+export interface CollectionHistory {
+  signatures: OsteologicalCollection['signatures'];
+  changes: {
+    id: number;
+    changedAt: string;
+    actorId: string | null;
+    actorName: string | null;
+    actorRole: string | null;
+    kind: 'criacao' | 'campo' | 'assinatura' | 'reabertura' | 'custodia';
+    phaseNumber: number | null;
+    path: string | null;
+    oldValue: unknown;
+    newValue: unknown;
+    note: string | null;
+  }[];
+  chain: { ok: boolean; brokenAtId: number | null };
+}
+
+export async function fetchCollectionHistory(nic: string): Promise<CollectionHistory> {
+  const res = await fetch(`/api/collections/${encodeURIComponent(nic)}/history`);
+  return parseJsonOrThrow(res, 'Erro ao carregar o histórico do conjunto');
 }

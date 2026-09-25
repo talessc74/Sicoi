@@ -109,7 +109,9 @@ export const Phase2Limpeza: React.FC<Phase2LimpezaProps> = ({ collection, curren
   if (p2.houveDanosMaceracao.value === undefined) missingFieldLabels.push('se houve dano na maceração');
   if (p2.houveDanosMaceracao.value === true && !Boolean(p2.descricaoDanosMaceracao.value)) missingFieldLabels.push('descrição do dano na maceração');
   if (!Boolean(p2.formaSecagem.value)) missingFieldLabels.push('forma de secagem');
-  if (!p2.dryingConfirmationAllBoxes) missingFieldLabels.push('confirmação de secagem de todas as caixas');
+  // A secagem completa não é mais uma caixa de marcar à parte: vem do status "Seca" de
+  // cada caixa (handleBoxStatus já grava dryingConfirmationAllBoxes), e o bloqueio
+  // correspondente é o allBoxesDry, logo abaixo.
   const requiredFieldsFilled = missingFieldLabels.length === 0;
 
   // O preenchimento já salva sozinho a cada campo (onUpdateCollection é chamado em todo
@@ -460,24 +462,6 @@ export const Phase2Limpeza: React.FC<Phase2LimpezaProps> = ({ collection, curren
                   ]}
                   onChange={(v) => setField('formaSecagem', { value: v, isAiSuggested: false })}
                 />
-                <div className="flex items-center gap-3 text-xs pt-1">
-                  <span className="text-slate-600 dark:text-slate-400 font-medium">Secagem completa (todas as caixas) *</span>
-                  <input
-                    type="checkbox"
-                    disabled={isLocked}
-                    checked={p2.dryingConfirmationAllBoxes}
-                    onChange={(e) =>
-                      onUpdateCollection({
-                        ...collection,
-                        phase2: {
-                          ...collection.phase2,
-                          dryingConfirmationAllBoxes: e.target.checked,
-                          ...(e.target.checked ? { dryingConfirmedAt: new Date().toISOString(), dryingConfirmedBy: currentUser.name } : {})
-                        }
-                      })
-                    }
-                  />
-                </div>
               </div>
             </div>
           </div>

@@ -25,6 +25,11 @@ export interface PhaseSignature {
   reopenJustification?: string;
   reopenedBy?: string;
   reopenedAt?: string;
+  // Cópia exata (JSON) do conteúdo da fase no momento da assinatura, sobre a qual o
+  // hash foi calculado. Gravada pelo servidor; permite comparar versões depois de uma
+  // reabertura e reconferir o lacre a qualquer momento. Assinaturas anteriores a
+  // esta versão do sistema não têm a cópia.
+  dataSnapshotJson?: string;
 }
 
 // Localização física hierárquica no acervo
@@ -55,8 +60,6 @@ export interface CustodyMovement {
 export interface LegalOriginData {
   deliveryDocumentNumber?: string;
   originInstitution?: string;
-  legalProcessNumber?: string;
-  courtDistrict?: string;
   cemeteryName?: string;
   cemeteryPlot?: string;
   deathDeclarationNumber?: string;
@@ -116,6 +119,8 @@ export type PreservationCharacteristic =
   | 'perda_cortical'
   | 'carbonizacao'
   | 'insetos_pupas'
+  | 'mumificado'
+  | 'adipocera'
   | 'outros';
 
 // Elemento de coleta para exame genético (campo 19), em ordem de prioridade do POP-01 §9.3.1
@@ -164,6 +169,11 @@ export interface Phase1Data {
   geneticoDenteHigidoDescricao: FieldWithAiSuggestion<string>;
   geneticoOssosTarsaisDescricao: FieldWithAiSuggestion<string>;
   geneticoOutrosDescricao: FieldWithAiSuggestion<string>;
+  // Opcionais: acrescentados depois (pedido de pesquisador, set/2026). Conjuntos já
+  // salvos não têm estes campos, e preenchê-los na carga mudaria o JSON sobre o qual
+  // as assinaturas antigas foram calculadas.
+  geneticoPrimeiraCostelaDescricao?: FieldWithAiSuggestion<string>;
+  geneticoPatelaDescricao?: FieldWithAiSuggestion<string>;
   geneticoObservacoesGerais: FieldWithAiSuggestion<string>;
   geneticoResponsavelColeta: FieldWithAiSuggestion<string>;
 
@@ -274,7 +284,7 @@ export interface Phase3Data {
   enteredQueueAt?: string;
 }
 
-// Grau de Certeza Biológica Forense (§8)
+// Grau de Certeza Biológica (§8)
 export type BiologicalConfidence = 'alto' | 'alta' | 'medio' | 'media' | 'baixo' | 'baixa' | 'inconclusivo' | 'inconclusiva';
 
 // Fase 4: Curadoria Científica, NMI e Perfil Biológico
@@ -638,7 +648,7 @@ export interface AuditEvent {
   ipOrTerminal?: string;
   previousValueSnapshot?: string;
   newValueSnapshot?: string;
-  sha256Hash: string; // Hash forense da operação
+  sha256Hash: string; // Hash SHA-256 da operação
   verificationStatus: 'valido' | 'alerta_inconsistencia';
   boxIds?: string[];
   justification?: string;

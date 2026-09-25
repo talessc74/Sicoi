@@ -187,7 +187,7 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="whitespace-nowrap">Auditoria</span>
           </button>
 
-          {/* Submenu: Ferramentas Forenses (Grafo, Mapa de Estantes, Consulta, Config, Ajuda) */}
+          {/* Submenu: Ferramentas (Grafo, Mapa de Estantes, Consulta, Config, Ajuda) */}
           <div className="relative shrink-0">
             <button
               onClick={() => setOperationalSubmenuOpen(!operationalSubmenuOpen)}
@@ -313,15 +313,15 @@ export const Header: React.FC<HeaderProps> = ({
             <Search className="w-4 h-4" />
           </button>
 
-          {/* Botão Perito IA Gemini */}
+          {/* Botão Assistente IA (Gemini) */}
           {onOpenGeminiChat && (
             <button
               onClick={onOpenGeminiChat}
-              title="Abrir Perito Forense IA Gemini"
+              title="Abrir o Assistente IA (Gemini)"
               className="flex items-center gap-1 sm:gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-sky-600 to-indigo-600 text-white hover:from-sky-500 hover:to-indigo-500 transition-all shadow-xs shadow-sky-500/20 whitespace-nowrap shrink-0"
             >
               <Activity className="w-3.5 h-3.5 shrink-0" />
-              <span className="whitespace-nowrap">Perito IA</span>
+              <span className="whitespace-nowrap">Assistente IA</span>
             </button>
           )}
 
@@ -514,7 +514,7 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
           >
             <Layers className="w-4 h-4 text-purple-600" />
-            <span>Grafo de Conhecimento Forense</span>
+            <span>Grafo de Conhecimento</span>
           </button>
 
           <button

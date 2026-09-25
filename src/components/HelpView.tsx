@@ -33,11 +33,11 @@ export const HelpView: React.FC<HelpViewProps> = ({
     },
     {
       question: 'É possível reabrir uma fase que já foi assinada e travada?',
-      answer: `Sim, mas exclusivamente através dos perfis de Curador ou Administrador. A reabertura exige o preenchimento de uma justificativa técnica formal (ex: nova evidência anatômica ou retificação metodológica). A reabertura remove o hash anterior e gera um novo evento na trilha de auditoria para garantir total transparência pericial.`
+      answer: `Sim, mas exclusivamente através dos perfis de Curador ou Administrador. A reabertura exige o preenchimento de uma justificativa técnica formal (ex: nova evidência anatômica ou retificação metodológica). A reabertura remove o hash anterior e gera um novo evento na trilha de auditoria para garantir total transparência.`
     },
     {
-      question: 'Quem pode visualizar os dados de processo judicial e cemitério?',
-      answer: `Por mandamento da LGPD e Resolução DITEC 08/2026, os dados relativos a comarca, número de processo penal, cemitério, quadra, jazigo e declaração de óbito são restritos e visíveis APENAS aos perfis de Curador e Administrador. Eles são ocultados para Técnicos, Pesquisadores Externos e nunca constam em QR Codes públicos ou exportações científicas.`
+      question: 'Quem pode visualizar os dados de procedência (doação, cemitério e registro civil)?',
+      answer: `Por determinação da LGPD, os dados de procedência — termo de doação, cemitério, quadra, jazigo e declaração de óbito — são restritos e visíveis APENAS aos perfis de Curador e Administrador. Eles são ocultados para Técnicos e Pesquisadores Externos e nunca constam em QR Codes públicos ou exportações científicas. O termo de responsabilidade da COI-INC (Portaria DITEC/PF nº 1415/2024, Anexo 3) também veda divulgar fotografias ou informações sobre os indivíduos da coleção fora do âmbito da pesquisa.`
     },
     {
       question: 'Como é calculada a estimativa de NMI (Número Mínimo de Indivíduos)?',
@@ -49,7 +49,7 @@ export const HelpView: React.FC<HelpViewProps> = ({
     },
     {
       question: 'Como um pesquisador externo obtém autorização de acesso aos dados?',
-      answer: `O pesquisador deve submeter parecer de aprovação emitido por Comitê de Ética em Pesquisa (CEP/CONEP) e processo SEI. O Administrador cadastra a autorização ABAC na Fase 7, delimitando os NICs específicos e as variáveis autorizadas para consulta e exportação com hash de reprodutibilidade.`
+      answer: `Pela Portaria DITEC/PF nº 1415/2024 (art. 5º), a solicitação é dirigida ao Diretor do INC/DITEC/PF com o formulário de acesso (Anexo 2), o termo de responsabilidade (Anexo 3) e um plano de trabalho; no caso de pesquisa, também com a aprovação do Comitê de Ética em Pesquisa de instituição de ensino superior. O acesso é supervisionado por um perito criminal federal (termo de supervisão, Anexo 1) e autorizado e controlado pelo curador. No SIGCOI, a autorização é cadastrada na Fase 7, delimitando os NICs e as variáveis liberados para consulta e exportação com hash de reprodutibilidade. Publicações devem citar a “Coleção Osteológica Identificada do Instituto Nacional de Criminalística - COI-INC/DITEC/PF”.`
     }
   ];
 
@@ -57,7 +57,7 @@ export const HelpView: React.FC<HelpViewProps> = ({
     { term: 'NIC', desc: 'Número de Identificação do Conjunto (formato NIC-AAAA-XXXX). Identificador mestre único e imutável.' },
     { term: 'NMI', desc: 'Número Mínimo de Indivíduos determinado cientificamente por duplicação anatômica ou maturação.' },
     { term: 'ABAC', desc: 'Attribute-Based Access Control. Controle de acesso baseado em atributos (papel, projeto, comitê de ética).' },
-    { term: 'Paraloid B-72', desc: 'Copolímero de etil-metacrilato utilizado em conservação forense para criar base reversível de marcação.' },
+    { term: 'Paraloid B-72', desc: 'Copolímero de etil-metacrilato utilizado na conservação de acervos osteológicos para criar base reversível de marcação.' },
     { term: 'DICOM', desc: 'Digital Imaging and Communications in Medicine. Padrão internacional para tomografias e radiografias.' },
     { term: 'SHA-256', desc: 'Função de hash criptográfica segura de 256 bits utilizada na assinatura e imutabilidade de cada fase.' }
   ];
@@ -80,7 +80,7 @@ export const HelpView: React.FC<HelpViewProps> = ({
           Guia de Apoio Operacional SIGCOI (ALFA)
         </h2>
         <p className="text-xs text-slate-500 mt-1">
-          Orientações passo a passo sobre a operação pericial, respostas às dúvidas mais comuns e glossário terminológico.
+          Orientações passo a passo sobre a gestão da coleção, respostas às dúvidas mais comuns e glossário terminológico.
         </p>
       </div>
 
@@ -96,7 +96,7 @@ export const HelpView: React.FC<HelpViewProps> = ({
             <div className="w-6 h-6 rounded-full bg-sky-600 text-white font-bold flex items-center justify-center font-mono">1</div>
             <h4 className="font-bold text-slate-900 dark:text-white">Seleção do Conjunto (NIC)</h4>
             <p className="text-slate-500 leading-relaxed">
-              Selecione o NIC na fita superior ou crie um novo lote forense através do botão "Novo Conjunto".
+              Selecione o NIC na fita superior ou crie um novo conjunto através do botão "Novo Conjunto".
             </p>
           </div>
 
@@ -185,7 +185,7 @@ export const HelpView: React.FC<HelpViewProps> = ({
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-3 text-xs">
             <h4 className="font-bold text-slate-900 dark:text-white font-mono flex items-center gap-1.5 pb-2 border-b border-slate-200 dark:border-slate-800">
               <FileText className="w-4 h-4 text-sky-600" />
-              Glossário Técnico Forense
+              Glossário Técnico
             </h4>
 
             <div className="space-y-2 font-sans">
@@ -206,7 +206,7 @@ export const HelpView: React.FC<HelpViewProps> = ({
             </h4>
 
             <p className="text-slate-500 leading-relaxed text-[11px]">
-              Dúvidas periciais ou necessidade de emissão de novas credenciais comitê de ética:
+              Dúvidas sobre a coleção ou sobre credenciais de acesso e comitê de ética:
             </p>
 
             <div className="space-y-2 font-mono text-[11px]">

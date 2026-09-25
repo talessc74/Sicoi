@@ -1,6 +1,7 @@
 /**
  * SIGCOI - Documento Normativo e Manual Técnico Oficial (ALFA)
- * Portaria INC/DITEC/PF - Diretrizes para Gestão e Custódia de Coleções Osteológicas Forenses
+ * Diretrizes de gestão da Coleção Osteológica Identificada do INC (COI-INC),
+ * instituída pela Portaria DITEC/PF nº 1415/2024 (ver docs/normativos/).
  */
 
 export interface DocumentSection {
@@ -23,10 +24,11 @@ export const NORMATIVE_DOCUMENT_SECTIONS: DocumentSection[] = [
     sectionNumber: 'Art. 1º',
     title: 'Finalidade e Âmbito de Aplicação',
     phaseApplicable: 'todas',
-    regulatoryReference: 'Portaria Conjunta INC/DITEC/PF nº 14/2026, Art. 1º',
-    keywords: ['finalidade', 'âmbito', 'senasp', 'ditec', 'osteologia forense', 'diretrizes'],
-    content: `O Sistema de Gestão da Coleção Osteológica Identificada (SIGCOI) tem por finalidade estabelecer as diretrizes técnicas, científicas e operacionais para a recepção, higienização, acondicionamento provisório, curadoria bioantropológica, catalogação de patologias, guarda definitiva em galpão e disponibilização para pesquisa de remanescentes ósseos humanos sob custódia do Estado.
-Todos os procedimentos devem observar o princípio da dignidade da pessoa humana, o respeito aos restos mortais e o rigor metodológico forense previsto na legislação processual penal brasileira.`
+    regulatoryReference: 'Portaria DITEC/PF nº 1415/2024, Art. 1º',
+    keywords: ['finalidade', 'âmbito', 'coi-inc', 'biobanco', 'portaria 1415', 'ditec', 'antropologia forense', 'pesquisa', 'ensino', 'diretrizes'],
+    content: `O Sistema de Gestão da Coleção Osteológica Identificada (SIGCOI) tem por finalidade estabelecer as diretrizes técnicas, científicas e operacionais para a recepção, higienização, acondicionamento provisório, curadoria bioantropológica, catalogação de patologias, guarda definitiva em galpão e disponibilização para pesquisa de remanescentes ósseos humanos da Coleção Osteológica Identificada do Instituto Nacional de Criminalística (COI-INC).
+A COI-INC é um biobanco de remanescentes humanos brasileiros, com inserção orientada pela representatividade das cinco regiões do país, e tem a finalidade de ser uma coleção osteológica de referência para a construção de conhecimento da antropologia forense nacional. Destina-se especificamente a apoiar: (I) pesquisas aplicadas em antropologia forense e áreas correlatas; (II) ações de capacitação e ensino; e (III) cooperação interinstitucional, estágios e intercâmbios com instituições de perícia oficial, de ensino e de pesquisa (Portaria DITEC/PF nº 1415/2024, art. 1º, §§1º e 2º).
+Todos os procedimentos devem observar o princípio da dignidade da pessoa humana, o respeito aos restos mortais e o rigor metodológico científico.`
   },
   {
     id: 'sec-2-segregacao-dados',
@@ -35,11 +37,11 @@ Todos os procedimentos devem observar o princípio da dignidade da pessoa humana
     sectionNumber: 'Art. 2º',
     title: 'Segregação Mandatória de Dados Sensíveis e Origem Legal (§7)',
     phaseApplicable: 1,
-    regulatoryReference: 'Lei Federal 13.709/2018 (LGPD) e Resolução DITEC 08/2026',
+    regulatoryReference: 'Lei Federal 13.709/2018 (LGPD) e Portaria DITEC/PF nº 1415/2024, Anexo 3',
     keywords: ['segregação', 'dados sensíveis', 'cemitério', 'origem legal', 'sigilo', 'curador', 'abac'],
-    content: `Os dados relativos à procedência judicial, cemiterial e de registro civil dos remanescentes ósseos — incluindo número de processo penal, comarca judiciária, cemitério de exumação, quadra, jazigo e declaração de óbito — constituem informações de acesso estritamente restrito.
+    content: `Os dados relativos à procedência, à doação e ao registro civil dos remanescentes ósseos — incluindo termo de doação, cemitério de exumação, quadra, jazigo e declaração de óbito — constituem informações de acesso estritamente restrito.
 É terminantemente vedada a exibição desses dados em etiquetas externas de caixas, QR Codes de leitura pública, relatórios de pesquisa acadêmica ou telas acessíveis por operadores não curadores ou pesquisadores externos.
-A visualização desses registros é permitida exclusivamente aos perfis de Curador e Administrador devidamente autenticados.`
+A visualização desses registros é permitida exclusivamente aos perfis de Curador e Administrador devidamente autenticados. Fotografias e informações sobre os indivíduos da coleção não podem ser divulgadas fora do âmbito da pesquisa (Portaria DITEC/PF nº 1415/2024, Anexo 3).`
   },
   {
     id: 'sec-3-recebimento-triagem',
@@ -48,10 +50,11 @@ A visualização desses registros é permitida exclusivamente aos perfis de Cura
     sectionNumber: 'Art. 3º',
     title: 'Protocolo de Recepção, Verificação de Lacres e Atribuição do NIC',
     phaseApplicable: 1,
-    regulatoryReference: 'POP-OSTEO-01 (Recebimento Forense)',
-    keywords: ['recebimento', 'triagem', 'lacre', 'nic', 'número de identificação', 'sacos forenses', 'caixas preliminares'],
-    content: `Ao ingressar no laboratório, cada lote de remanescentes ósseos receberá de imediato um Número de Identificação do Conjunto (NIC) no formato padronizado "NIC-AAAA-XXXX", que permanecerá imutável por todo o ciclo de custódia.
-O técnico receptor deverá conferir a integridade física do invólucro externo, registrar a numeração dos lacres invioláveis e efetuar registro fotográfico em alta resolução do saco lacrado e de sua abertura com escala métrica forense.
+    regulatoryReference: 'POP-OSTEO-01 (Recebimento)',
+    keywords: ['recebimento', 'triagem', 'lacre', 'nic', 'número de identificação', 'sacos lacrados', 'termo de doação', 'caixas preliminares'],
+    content: `Ao ingressar no laboratório, cada lote de remanescentes ósseos receberá de imediato um Número de Identificação do Conjunto (NIC) no formato padronizado "NIC-AAAA-XXXX", que permanecerá imutável por todo o ciclo de vida do conjunto na coleção.
+O técnico receptor deverá conferir a integridade física do invólucro externo, registrar a numeração dos lacres invioláveis e efetuar registro fotográfico em alta resolução do saco lacrado e de sua abertura com escala métrica.
+Na inclusão de cada conjunto, o curador verifica a regularidade do termo de doação (Portaria DITEC/PF nº 1415/2024, art. 4º, IX).
 Os ossos serão distribuídos em caixas preliminares ventiladas, recebendo etiqueta com código provisório e código QR preliminar.`
   },
   {
@@ -80,7 +83,7 @@ A transição para a Fase 3 exige atestado formal de secura completa pelo técni
     keywords: ['acondicionamento provisório', 'estante de laboratório', 'endereçamento', 'sala b-10', 'leitura qr', 'fila de curadoria'],
     content: `As caixas contendo material limpo e seco serão alocadas na Sala de Armazenamento Provisório do Laboratório Central, em estantes identificadas por prateleira e vão.
 O operador deverá obrigatoriamente escanear o QR Code afixado na prateleira para confirmar a localização física no sistema.
-O sistema registrará o conjunto na Fila de Curadoria Antropológica segundo critérios objetivos de antiguidade de entrada, urgência pericial ou relevância de investigação criminal.`
+O sistema registrará o conjunto na Fila de Curadoria Antropológica segundo critérios objetivos de ordem de entrada, prioridades de pesquisa e ensino da COI-INC e necessidades de conservação do material.`
   },
   {
     id: 'sec-6-curadoria-nmi-perfil',
@@ -91,14 +94,14 @@ O sistema registrará o conjunto na Fila de Curadoria Antropológica segundo cri
     phaseApplicable: 4,
     regulatoryReference: 'Protocolo Científico DITEC de Antropologia Forense (ALFA)',
     keywords: ['nmi', 'número mínimo de indivíduos', 'curadoria', 'pareamento ósseo', 'duplicação', 'dimorfismo', 'phenice', 'suchey-brooks'],
-    content: `A curadoria científica será realizada exclusivamente por Curador Antropólogo ou perito oficial habilitado.
+    content: `A curadoria científica — limpeza, documentação, exames antropológicos e catalogação dos esqueletos — é coordenada pelo curador da COI-INC, perito criminal federal designado pelo Diretor do INC (Portaria DITEC/PF nº 1415/2024, art. 4º). A inserção de esqueletos e de dados de catalogação é efetivada por peritos criminais federais (art. 1º, §3º).
 O diagnóstico de NMI deve fundamentar-se em elementos anatômicos inequívocos, tais como: duplicação de estruturas homólogas (ex: dois terceiros molares inferiores esquerdos, duas patelas direitas), incompatibilidade biológica de desenvolvimento e maturação etária, ou acentuada discrepância métrica/morfológica de robustez.
 Para cada indivíduo segregado (IND-01, IND-02), o curador aplicará métodos consolidados na literatura internacional:
 1. Estimativa de Sexo: Phenice (1969) para morfologia da bacia e Walker (2008) para caracteres craniométricos;
 2. Estimativa de Idade: Suchey-Brooks (1990) na sínfise púbica e Lovejoy (1985) na superfície auricular do ílio;
 3. Estimativa de Estatura: Trotter & Gleser (1952) para ossos longos (fêmur e tíbia) com indicação expressa da margem de erro;
 4. Afinidade Populacional: Hefner (2009) para análise morfológica de caracteres macromorfoscópicos;
-5. Odontograma Forense: Notação dentária FDI (quadrantes 1 a 4) com status hígido, cárie, perda ante/post mortem e tratamentos restauradores.`
+5. Odontograma: Notação dentária FDI (quadrantes 1 a 4) com status hígido, cárie, perda ante/post mortem e tratamentos restauradores.`
   },
   {
     id: 'sec-7-patologias-dicom-marcacao',
@@ -136,11 +139,12 @@ Por razões de integridade e segurança física, nenhuma decisão automatizada p
     sectionNumber: 'Art. 9º',
     title: 'Controle de Acesso Baseado em Atributos (ABAC) e Termos de Empréstimo',
     phaseApplicable: 7,
-    regulatoryReference: 'Resolução DITEC 12/2026 e Normas CONEP / Comitê de Ética',
+    regulatoryReference: 'Portaria DITEC/PF nº 1415/2024, arts. 2º, 4º e 5º; Normas CONEP / Comitê de Ética',
     keywords: ['abac', 'pesquisa', 'comitê de ética', 'cep', 'autorização', 'empréstimo', 'exportação reprodutível', 'hash sha-256'],
     content: `O acesso aos dados do acervo por pesquisadores vinculados a universidades e centros científicos submete-se ao modelo de Controle de Acesso Baseado em Atributos (ABAC).
-O pesquisador deve apresentar parecer de aprovação emitido por Comitê de Ética em Pesquisa (CEP/CONEP) e processo SEI institucional.
-O Administrador do SIGCOI delimitará o escopo da autorização, vinculando os NICs específicos e as variáveis anatômicas autorizadas.
+A solicitação de acesso é dirigida ao Diretor do INC/DITEC/PF, acompanhada do formulário de acesso (Anexo 2), do termo de responsabilidade (Anexo 3) e de plano de trabalho com as instituições envolvidas, os equipamentos e instrumentos necessários e o período da pesquisa ou estudo/estágio; no caso de pesquisas, é necessária a aprovação do Comitê de Ética em Pesquisa de instituição de ensino superior (Portaria DITEC/PF nº 1415/2024, art. 5º).
+Todo acesso, independentemente da finalidade, é supervisionado por um perito criminal federal, formalizado por termo de supervisão (Anexo 1), e os usuários do acervo são autorizados e controlados pelo curador (arts. 2º e 4º). No SIGCOI, o escopo da autorização é registrado vinculando os NICs específicos e as variáveis anatômicas autorizadas.
+Todas as publicações e trabalhos apresentados em congressos que utilizarem a coleção devem citá-la como "Coleção Osteológica Identificada do Instituto Nacional de Criminalística - COI-INC/DITEC/PF" (art. 5º, §4º).
 Qualquer exportação de dados analíticos gerará um cabeçalho de reprodutibilidade científica contendo versão do banco de dados, data/hora ISO 8601, parâmetros do filtro e hash SHA-256 dos dados exportados, garantindo a rastreabilidade em publicações científicas.
 Saídas temporárias de peças para análises externas destrutivas (ex: datação radiocarbônica, isótopos estáveis ou DNA antigo) exigem termo formal de empréstimo com prazo determinado de retorno e vistoria prévia e posterior.`
   },

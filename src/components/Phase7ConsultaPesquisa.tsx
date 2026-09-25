@@ -258,7 +258,7 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
           <div>
             <span className="font-bold text-sm block">Escopo de Pesquisa Delimitado por ABAC (§13):</span>
             <p className="mt-0.5 leading-relaxed">
-              Você está autenticado sob o projeto de pesquisa <strong>"{activeUserAuth?.title || 'Bioantropologia Forense'}"</strong>. Sua consulta está restrita aos conjuntos expressamente autorizados pelo Administrador.
+              Você está autenticado sob o projeto de pesquisa <strong>"{activeUserAuth?.title || 'Antropologia Forense'}"</strong>. Sua consulta está restrita aos conjuntos expressamente autorizados pelo Administrador.
             </p>
           </div>
         </div>

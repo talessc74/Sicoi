@@ -6,7 +6,6 @@ import {
   Shield,
   Key,
   Lock,
-  Database,
   Moon,
   Sun,
   Eye,
@@ -35,10 +34,6 @@ interface SettingsViewProps {
   onDeletePerson: (id: string) => Promise<void>;
   laboratoryMode: boolean;
   onToggleLaboratoryMode: () => void;
-  collectionsCount: number;
-  isResettingData: boolean;
-  onWipeAllData: () => Promise<void>;
-  onSeedExampleData: () => Promise<void>;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
@@ -48,14 +43,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onCreatePerson,
   onDeletePerson,
   laboratoryMode,
-  onToggleLaboratoryMode,
-  collectionsCount,
-  isResettingData,
-  onWipeAllData,
-  onSeedExampleData
+  onToggleLaboratoryMode
 }) => {
-  const [showWipeConfirm, setShowWipeConfirm] = useState(false);
-  const [wipeConfirmText, setWipeConfirmText] = useState('');
   const [cryptographicSalt, setCryptographicSalt] = useState('INC-DITEC-PF-2026-PROD-V3');
   const [autoDryingHours, setAutoDryingHours] = useState(48);
   const [requireDualSignOnPhase5, setRequireDualSignOnPhase5] = useState(true);
@@ -93,7 +82,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   const abacRolesMatrix: { role: UserRole; title: string; canViewLegal: boolean; canCurate: boolean; canSignPhases: boolean; canExport: boolean }[] = [
-    { role: 'curador', title: 'Curador Antropólogo Forense — acesso a todas as funções', canViewLegal: true, canCurate: true, canSignPhases: true, canExport: true },
+    { role: 'curador', title: 'Curador da COI-INC — acesso a todas as funções', canViewLegal: true, canCurate: true, canSignPhases: true, canExport: true },
     { role: 'administrador', title: 'Administrador do Sistema / DITEC', canViewLegal: true, canCurate: true, canSignPhases: true, canExport: true },
     { role: 'tecnico', title: 'Técnico de Laboratório', canViewLegal: false, canCurate: false, canSignPhases: true, canExport: false },
     { role: 'pesquisador', title: 'Pesquisador Externo (CEP)', canViewLegal: false, canCurate: false, canSignPhases: false, canExport: true },
@@ -128,7 +117,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4 text-xs">
           <div className="flex items-center gap-2 text-slate-900 dark:text-white font-bold pb-2 border-b border-slate-200 dark:border-slate-800">
             <Volume2 className="w-4 h-4 text-sky-600" />
-            <h3 className="text-sm">Ambiente Laboratorial & Acessibilidade Forense</h3>
+            <h3 className="text-sm">Ambiente Laboratorial & Acessibilidade</h3>
           </div>
 
           <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4">
@@ -188,7 +177,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4 text-xs">
           <div className="flex items-center gap-2 text-slate-900 dark:text-white font-bold pb-2 border-b border-slate-200 dark:border-slate-800">
             <Key className="w-4 h-4 text-emerald-600" />
-            <h3 className="text-sm">Criptografia & Integridade Forense (§7)</h3>
+            <h3 className="text-sm">Criptografia & Integridade dos Registros (§7)</h3>
           </div>
 
           <div className="space-y-1.5">
@@ -223,82 +212,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
         </div>
       </div>
-
-      {/* Zona de Dados — testar do zero ou carregar exemplos */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-rose-200 dark:border-rose-900 p-5 shadow-xs space-y-4 text-xs">
-        <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-bold pb-2 border-b border-rose-100 dark:border-rose-900/60">
-          <Database className="w-4 h-4" />
-          <h3 className="text-sm">Zona de Dados</h3>
-        </div>
-        <p className="text-slate-500 leading-relaxed">
-          Hoje há <strong className="text-slate-700 dark:text-slate-300">{collectionsCount}</strong> conjunto(s) osteológico(s) no banco.
-          Para testar o fluxo do zero, sem os dados sintéticos de demonstração, limpe tudo abaixo. É irreversível.
-        </p>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            onClick={onSeedExampleData}
-            disabled={isResettingData}
-            className="px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
-          >
-            {isResettingData ? 'Aguarde...' : 'Carregar dados de exemplo'}
-          </button>
-
-          <button
-            onClick={() => setShowWipeConfirm(true)}
-            disabled={isResettingData || collectionsCount === 0}
-            className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold disabled:opacity-40 transition-colors flex items-center gap-1.5"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            <span>Limpar tudo (recomeçar do zero)</span>
-          </button>
-        </div>
-      </div>
-
-      {showWipeConfirm && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
-              <AlertTriangle className="w-5 h-5" />
-              <h3 className="font-bold text-base">Apagar todos os dados?</h3>
-            </div>
-            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-              Isso apaga <strong>todos os {collectionsCount} conjunto(s)</strong>, formulários, fotos, assinaturas e trilha de
-              custódia do banco. Não tem como desfazer. Para confirmar, digite <strong className="font-mono">APAGAR</strong> abaixo.
-            </p>
-            <input
-              type="text"
-              value={wipeConfirmText}
-              onChange={(e) => setWipeConfirmText(e.target.value)}
-              placeholder="Digite APAGAR"
-              className="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-mono"
-            />
-            <div className="flex justify-end gap-2 text-xs">
-              <button
-                onClick={() => {
-                  setShowWipeConfirm(false);
-                  setWipeConfirmText('');
-                }}
-                className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={async () => {
-                  await onWipeAllData();
-                  setShowWipeConfirm(false);
-                  setWipeConfirmText('');
-                }}
-                disabled={wipeConfirmText !== 'APAGAR' || isResettingData}
-                className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-medium disabled:opacity-40 flex items-center gap-1.5"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>Apagar tudo</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Pessoas cadastradas — cadastro real, sem login/senha ainda */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden text-xs">

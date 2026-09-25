@@ -164,6 +164,7 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
           `Passo ${currentStep.stepNumber} de ${popDef.steps.length} — ${currentStep.stepTitle}`,
           `Pergunta do condutor: ${currentStep.conductorPrompt}`,
           currentStep.regulatoryNotice ? `Norma aplicável: ${currentStep.regulatoryNotice}` : '',
+          currentStep.aiFieldHints || '',
           `Leitura preliminar de um motor de regras simples sobre esta mesma fala (pode confirmar ou corrigir): ${summaryText || 'nada reconhecido'}.`,
           `Campos que o motor de regras já extraiu nesta fala: ${JSON.stringify(extractedPayload)}.`
         ]
@@ -188,6 +189,18 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
 
     if (!aiDecided) {
       narrationTags = ['Motor determinístico (regras locais)'];
+    }
+
+    // Descrições obrigatórias (Fase 1, passos 3 a 6): conferidas sobre o que já estava
+    // gravado + o que foi extraído agora, venha da regra ou da IA. Se faltar alguma, o
+    // passo não avança, mesmo que a IA tenha confirmado.
+    if (currentStep?.blockingCheck) {
+      const stillMissing = currentStep.blockingCheck(collection, extractedPayload);
+      if (stillMissing.length > 0) {
+        if (isComplete) narrationText = '';
+        isComplete = false;
+        summaryText = `Ainda falta: ${stillMissing.join('; ')}. Descreva agora: ${stillMissing[0].replace(/^descrição de /, '')}.`;
+      }
     }
 
     // Aplica as extrações ao conjunto — sempre, esteja o passo completo ou não,
@@ -254,6 +267,8 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
     }, 600);
   };
 
+  const PHASE1_OPTIONAL_FIELDS = ['geneticoPrimeiraCostelaDescricao', 'geneticoPatelaDescricao'];
+
   // Categorias do checklist fotográfico da Fase 1, cada uma vinculada ao campo booleano/tri-state
   // do Formulário A.1 que a extração pode acionar por voz.
   const PHASE1_PHOTO_TRIGGERS: { field: string; category: string; truthy: (v: any) => boolean }[] = [
@@ -275,7 +290,8 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
       const p1 = { ...updated.phase1 };
       for (const [key, value] of Object.entries(extractedData)) {
         if (value === undefined) continue;
-        if (key in p1) {
+        // Campos opcionais do A.1 (ausentes em conjuntos antigos) também aceitam extração.
+        if (key in p1 || PHASE1_OPTIONAL_FIELDS.includes(key)) {
           (p1 as any)[key] = { value, isAiSuggested: true };
         }
       }
@@ -378,7 +394,7 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
     const photoId = `photo-pop-${phaseNumber}-${Date.now()}`;
     const url = 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=800&auto=format&fit=crop&q=80';
     const hash = await calculateSha256(`${url}|${category}|${collection.nic}|${currentUser.id}`);
-    const caption = `Registro pericial do ${popDef.popCode} - Passo ${step}`;
+    const caption = `Registro fotográfico do ${popDef.popCode} - Passo ${step}`;
     const newPhoto = {
       id: photoId,
       category,
@@ -393,7 +409,7 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
     const photoMessage: ConductorChatMessage = {
       id: `msg-photo-${Date.now()}`,
       sender: 'user',
-      text: `[Fotografia Forense Registrada]: ${caption}`,
+      text: `[Fotografia Registrada]: ${caption}`,
       timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
       photoAttached: newPhoto
     };
@@ -491,7 +507,7 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
     setMessages(prev => [...prev, {
       id: `msg-photo-${Date.now()}`,
       sender: 'user',
-      text: `[Fotografia Forense Registrada]: ${caption}`,
+      text: `[Fotografia Registrada]: ${caption}`,
       timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
       photoAttached: newPhoto
     }]);
@@ -660,7 +676,7 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
               {/* Message Header */}
               <div className="flex items-center justify-between gap-3 mb-1 text-[11px] opacity-80">
                 <span className="font-semibold font-mono">
-                  {msg.sender === 'user' ? currentUser.name : msg.sender === 'system' ? 'Sistema' : 'Condutor Forense INC/DITEC/PF'}
+                  {msg.sender === 'user' ? currentUser.name : msg.sender === 'system' ? 'Sistema' : 'Condutor do POP · COI-INC'}
                 </span>
                 <div className="flex items-center gap-1.5">
                   {msg.isVoiceInput && (
@@ -840,7 +856,7 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
             <button
               onClick={() => handleCapturePhoto()}
               className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 transition-colors"
-              title="Capturar foto pericial"
+              title="Capturar foto de registro"
             >
               <Camera className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
             </button>

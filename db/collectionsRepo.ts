@@ -8,14 +8,33 @@
  * derivadas do mesmo save, para consulta e auditoria estruturada das Fases 1-2 —
  * nunca são a única cópia do dado.
  *
- * Nunca confiar cegamente em hash vindo do cliente: quem assina (sha256Hash em
- * signatures) é sempre recalculado/conferido aqui antes de persistir.
+ * Nunca confiar cegamente no que vem do cliente: assinaturas novas têm o hash
+ * conferido aqui; assinaturas, custódia e registro de alterações já gravados são
+ * protegidos (ver historyGuard.ts e a migração 007).
  */
 import type { Pool, PoolClient } from 'pg';
 import type { OsteologicalCollection, Phase1Data, Phase2Data } from '../src/types/sgccco';
-import { signatureMatchesCurrentPhase } from './signatureValidation';
 import { syncGraphForCollection } from './graphSync';
+import {
+  ChangeEntry,
+  changeEntryHash,
+  checkCustodyChain,
+  checkLockedPhases,
+  custodyEventsToEntries,
+  diffCollections,
+  mergeSignatures,
+  signatureEventsToEntries
+} from './historyGuard';
 import crypto from 'crypto';
+
+/** Quem está gravando (pessoa ativa no app). Sem login ainda: é declarado pelo navegador. */
+export interface Actor {
+  id: string | null;
+  name: string | null;
+  role: string | null;
+}
+
+const UNKNOWN_ACTOR: Actor = { id: null, name: null, role: null };
 
 export async function listCollections(pool: Pool): Promise<OsteologicalCollection[]> {
   const { rows } = await pool.query<{ full_state: OsteologicalCollection }>(
@@ -26,12 +45,25 @@ export async function listCollections(pool: Pool): Promise<OsteologicalCollectio
 
 /**
  * Apaga todos os conjuntos e tudo que depende deles (formulários, fotos, assinaturas,
- * custódia, trilha de auditoria de voz) — via ON DELETE CASCADE das tabelas
- * relacionadas. Usado para permitir testar o app do zero, sem os dados de
- * demonstração. Irreversível; quem chama decide se pede confirmação antes.
+ * custódia, registro de alterações) — via ON DELETE CASCADE. Irreversível. Não tem
+ * rota HTTP nem botão no app (o histórico de um acervo real não pode ser apagado
+ * por quem acessa o site); existe para os testes automatizados.
  */
 export async function wipeAllCollections(pool: Pool): Promise<void> {
-  await pool.query('DELETE FROM collections');
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    // Única exceção aos gatilhos de histórico protegido (migração 007), válida só
+    // dentro desta transação.
+    await client.query(`SET LOCAL sigcoi.allow_wipe = 'on'`);
+    await client.query('DELETE FROM collections');
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 export async function getCollection(pool: Pool, nic: string): Promise<OsteologicalCollection | null> {
@@ -49,7 +81,11 @@ export async function getCollection(pool: Pool, nic: string): Promise<Osteologic
  * ou um retry de rede) sem mascarar uma colisão real de NIC como sucesso silencioso
  * de uma criação distinta — quem chama sempre recebe de volta o estado atual do NIC.
  */
-export async function createCollection(pool: Pool, collection: OsteologicalCollection): Promise<OsteologicalCollection> {
+export async function createCollection(
+  pool: Pool,
+  collection: OsteologicalCollection,
+  actor: Actor = UNKNOWN_ACTOR
+): Promise<OsteologicalCollection> {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -68,6 +104,10 @@ export async function createCollection(pool: Pool, collection: OsteologicalColle
     );
     if (rowCount && rowCount > 0) {
       await syncDerivedTables(client, collection);
+      await appendChangeLog(client, collection.nic, actor, [
+        { kind: 'criacao', note: `Conjunto ${collection.nic} cadastrado` },
+        ...custodyEventsToEntries(collection.custodyChain || [])
+      ]);
     }
     await client.query('COMMIT');
   } catch (err) {
@@ -83,41 +123,143 @@ export async function createCollection(pool: Pool, collection: OsteologicalColle
 }
 
 /**
- * Persiste um conjunto já existente. Antes de gravar, recalcula e confere o hash
- * de cada assinatura ativa presente no payload — se o hash recebido não bate
- * com o recalculado a partir do payload canônico, a assinatura é rejeitada.
- * Assinaturas reabertas conservam o hash do estado anterior para auditoria.
+ * Persiste um conjunto já existente, com o histórico protegido:
+ * - assinaturas já gravadas vêm do banco (só aceitam reabertura com justificativa)
+ *   e não têm o hash reconferido contra os dados atuais;
+ * - assinaturas novas têm o hash conferido e a cópia do conteúdo guardada;
+ * - fase assinada e travada não muda sem reabertura;
+ * - custódia gravada não some nem muda;
+ * - cada diferença vira uma entrada no registro de alterações.
+ * Devolve o conjunto como ficou gravado.
  */
-export async function saveCollection(pool: Pool, collection: OsteologicalCollection): Promise<void> {
-  for (const sig of collection.signatures) {
-    // Uma assinatura reaberta preserva o hash da versão anterior da fase.
-    // Depois da revisão, esse hash não pode ser comparado ao estado atual.
-    if (sig.status === 'unlocked_for_revision') continue;
-    if (!signatureMatchesCurrentPhase(collection, sig)) {
-      throw new Error(
-        `Assinatura inválida para NIC ${collection.nic}, Fase ${sig.phaseNumber}: hash não confere com o payload canônico recalculado no servidor.`
-      );
-    }
-  }
-
+export async function saveCollection(
+  pool: Pool,
+  collection: OsteologicalCollection,
+  actor: Actor = UNKNOWN_ACTOR
+): Promise<OsteologicalCollection> {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const { rowCount } = await client.query(
-      `UPDATE collections SET current_phase = $2, legal_origin = $3, full_state = $4 WHERE nic = $1`,
-      [collection.nic, collection.currentPhase, JSON.stringify(collection.legalOrigin), JSON.stringify(collection)]
+    const { rows } = await client.query<{ full_state: OsteologicalCollection }>(
+      'SELECT full_state FROM collections WHERE nic = $1 FOR UPDATE',
+      [collection.nic]
     );
-    if (rowCount === 0) {
+    const previous = rows[0]?.full_state;
+    if (!previous) {
       throw new Error(`Conjunto ${collection.nic} não encontrado para atualização.`);
     }
-    await syncDerivedTables(client, collection);
+
+    const { signatures, events } = mergeSignatures(previous, collection);
+    const newCustody = checkCustodyChain(previous, collection);
+    const next: OsteologicalCollection = { ...collection, signatures };
+    checkLockedPhases(signatures, next);
+
+    await client.query(
+      `UPDATE collections SET current_phase = $2, legal_origin = $3, full_state = $4 WHERE nic = $1`,
+      [next.nic, next.currentPhase, JSON.stringify(next.legalOrigin), JSON.stringify(next)]
+    );
+    await syncDerivedTables(client, next);
+    await appendChangeLog(client, next.nic, actor, [
+      ...diffCollections(previous, next),
+      ...signatureEventsToEntries(events),
+      ...custodyEventsToEntries(newCustody)
+    ]);
     await client.query('COMMIT');
+    return next;
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
   } finally {
     client.release();
   }
+}
+
+/** Grava entradas no registro de alterações, encadeando o hash de cada uma na anterior. */
+async function appendChangeLog(client: PoolClient, nic: string, actor: Actor, entries: ChangeEntry[]): Promise<void> {
+  if (entries.length === 0) return;
+  const { rows } = await client.query<{ entry_hash: string }>(
+    'SELECT entry_hash FROM change_log WHERE nic = $1 ORDER BY id DESC LIMIT 1',
+    [nic]
+  );
+  let prevHash = rows[0]?.entry_hash ?? 'GENESIS';
+  const changedAt = new Date().toISOString();
+  for (const entry of entries) {
+    const row = { nic, changedAt, actorId: actor.id, actorName: actor.name, actorRole: actor.role, ...entry };
+    const entryHash = changeEntryHash(prevHash, row);
+    await client.query(
+      `INSERT INTO change_log (nic, changed_at, actor_id, actor_name, actor_role, kind, phase_number, path, old_value, new_value, note, prev_hash, entry_hash)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+      [
+        nic,
+        changedAt,
+        actor.id,
+        actor.name,
+        actor.role,
+        entry.kind,
+        entry.phaseNumber ?? null,
+        entry.path ?? null,
+        JSON.stringify(entry.oldValue ?? null),
+        JSON.stringify(entry.newValue ?? null),
+        entry.note ?? null,
+        prevHash,
+        entryHash
+      ]
+    );
+    prevHash = entryHash;
+  }
+}
+
+export interface ChangeLogRow {
+  id: number;
+  changedAt: string;
+  actorId: string | null;
+  actorName: string | null;
+  actorRole: string | null;
+  kind: ChangeEntry['kind'];
+  phaseNumber: number | null;
+  path: string | null;
+  oldValue: unknown;
+  newValue: unknown;
+  note: string | null;
+  prevHash: string;
+  entryHash: string;
+}
+
+export async function listChangeLog(pool: Pool, nic: string): Promise<ChangeLogRow[]> {
+  const { rows } = await pool.query(
+    `SELECT id, changed_at, actor_id, actor_name, actor_role, kind, phase_number, path, old_value, new_value, note, prev_hash, entry_hash
+       FROM change_log WHERE nic = $1 ORDER BY id ASC`,
+    [nic]
+  );
+  return rows.map((r: any) => ({
+    id: Number(r.id),
+    changedAt: new Date(r.changed_at).toISOString(),
+    actorId: r.actor_id,
+    actorName: r.actor_name,
+    actorRole: r.actor_role,
+    kind: r.kind,
+    phaseNumber: r.phase_number,
+    path: r.path,
+    oldValue: r.old_value,
+    newValue: r.new_value,
+    note: r.note,
+    prevHash: r.prev_hash,
+    entryHash: r.entry_hash
+  }));
+}
+
+/**
+ * Refaz a corrente de hashes do registro de alterações de um conjunto. Se alguém
+ * editar ou apagar uma entrada direto no banco, a corrente quebra a partir dela.
+ */
+export function verifyChangeLogChain(entries: ChangeLogRow[], nic: string): { ok: boolean; brokenAtId: number | null } {
+  let prevHash = 'GENESIS';
+  for (const e of entries) {
+    const expected = changeEntryHash(prevHash, { nic, ...e });
+    if (e.prevHash !== prevHash || e.entryHash !== expected) return { ok: false, brokenAtId: e.id };
+    prevHash = e.entryHash;
+  }
+  return { ok: true, brokenAtId: null };
 }
 
 async function syncDerivedTables(client: PoolClient, collection: OsteologicalCollection): Promise<void> {
@@ -149,13 +291,13 @@ async function upsertPhase1Form(client: PoolClient, nic: string, p1: Phase1Data)
        estado_preservacao, estado_preservacao_outros_descricao, observacoes_gerais_preservacao,
        exame_genetico, genetico_falange_descricao, genetico_dente_higido_descricao,
        genetico_ossos_tarsais_descricao, genetico_outros_descricao, genetico_observacoes_gerais,
-       genetico_responsavel_coleta,
+       genetico_responsavel_coleta, genetico_primeira_costela_descricao, genetico_patela_descricao,
        analise_isotopica, isotopica_cabelo_descricao, isotopica_unha_descricao,
        isotopica_dente_descricao, isotopica_observacoes, isotopica_responsavel_coleta,
        cor_saco_lavagem, tipo_limpeza, houve_danos, descricao_danos, field_metadata, updated_at
      ) VALUES (
        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,
-       $26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36, now()
+       $26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38, now()
      )
      ON CONFLICT (nic) DO UPDATE SET
        equipe_envolvida_limpeza = EXCLUDED.equipe_envolvida_limpeza,
@@ -182,6 +324,8 @@ async function upsertPhase1Form(client: PoolClient, nic: string, p1: Phase1Data)
        genetico_outros_descricao = EXCLUDED.genetico_outros_descricao,
        genetico_observacoes_gerais = EXCLUDED.genetico_observacoes_gerais,
        genetico_responsavel_coleta = EXCLUDED.genetico_responsavel_coleta,
+       genetico_primeira_costela_descricao = EXCLUDED.genetico_primeira_costela_descricao,
+       genetico_patela_descricao = EXCLUDED.genetico_patela_descricao,
        analise_isotopica = EXCLUDED.analise_isotopica,
        isotopica_cabelo_descricao = EXCLUDED.isotopica_cabelo_descricao,
        isotopica_unha_descricao = EXCLUDED.isotopica_unha_descricao,
@@ -220,6 +364,9 @@ async function upsertPhase1Form(client: PoolClient, nic: string, p1: Phase1Data)
       val(p1.geneticoOutrosDescricao, 'geneticoOutrosDescricao'),
       val(p1.geneticoObservacoesGerais, 'geneticoObservacoesGerais'),
       val(p1.geneticoResponsavelColeta, 'geneticoResponsavelColeta'),
+      // Campos opcionais (conjuntos antigos não os têm).
+      p1.geneticoPrimeiraCostelaDescricao ? val(p1.geneticoPrimeiraCostelaDescricao, 'geneticoPrimeiraCostelaDescricao') : null,
+      p1.geneticoPatelaDescricao ? val(p1.geneticoPatelaDescricao, 'geneticoPatelaDescricao') : null,
       val(p1.analiseIsotopica, 'analiseIsotopica') || [],
       val(p1.isotopicaCabeloDescricao, 'isotopicaCabeloDescricao'),
       val(p1.isotopicaUnhaDescricao, 'isotopicaUnhaDescricao'),
@@ -310,14 +457,20 @@ async function syncSignatures(
   nic: string,
   signatures: OsteologicalCollection['signatures']
 ): Promise<void> {
-  // Append-only por natureza (nunca apaga uma assinatura anterior) — mas o array em
-  // full_state também nunca remove entradas (ver handleSignPhase em Phase1/2), então
-  // resincronizar por delete+insert aqui não perde histórico algum.
-  await client.query(`DELETE FROM signatures WHERE nic = $1`, [nic]);
+  // Só inserção: uma assinatura já gravada nunca é apagada; a única mudança é
+  // passar a "substituída" com o registro da reabertura (gatilho da migração 007).
   for (const sig of signatures) {
     await client.query(
-      `INSERT INTO signatures (nic, phase_number, signed_by, signed_by_name, signed_by_role, signed_at, sha256_hash, status, reopen_justification)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      `INSERT INTO signatures (nic, phase_number, signed_by, signed_by_name, signed_by_role, signed_at, sha256_hash, status,
+                               reopen_justification, data_snapshot, reopened_by, reopened_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+       ON CONFLICT (nic, phase_number, signed_at, sha256_hash) DO UPDATE SET
+         status = EXCLUDED.status,
+         reopen_justification = COALESCE(signatures.reopen_justification, EXCLUDED.reopen_justification),
+         reopened_by = COALESCE(signatures.reopened_by, EXCLUDED.reopened_by),
+         reopened_at = COALESCE(signatures.reopened_at, EXCLUDED.reopened_at)
+       WHERE signatures.status IS DISTINCT FROM EXCLUDED.status
+          OR (signatures.reopen_justification IS NULL AND EXCLUDED.reopen_justification IS NOT NULL)`,
       [
         nic,
         sig.phaseNumber,
@@ -327,7 +480,10 @@ async function syncSignatures(
         sig.signedAt,
         sig.sha256Hash,
         sig.status === 'locked' ? 'locked' : 'superseded',
-        sig.reopenJustification || null
+        sig.reopenJustification || null,
+        sig.dataSnapshotJson || null,
+        sig.reopenedBy || null,
+        sig.reopenedAt || null
       ]
     );
   }
@@ -338,7 +494,7 @@ async function syncCustodyChain(
   nic: string,
   custodyChain: OsteologicalCollection['custodyChain']
 ): Promise<void> {
-  await client.query(`DELETE FROM custody_chain WHERE nic = $1`, [nic]);
+  // Só inserção (gatilho da migração 007): registros já gravados ficam como estão.
   for (const event of custodyChain) {
     await client.query(
       `INSERT INTO custody_chain (id, nic, "timestamp", source_location, target_location, carrier_person, receiver_person, carrier_signature_hash, receiver_signature_hash, purpose, status, box_ids)

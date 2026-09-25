@@ -42,7 +42,7 @@ export const GeminiForensicChatModal: React.FC<GeminiForensicChatModalProps> = (
       {
         id: 'msg-init',
         role: 'assistant',
-        content: `Olá, ${currentUser.name}! Sou o Assistente Forense com IA integrado ao SIGCOI. Posso apoiar na interpretação de parâmetros osteológicos (estimativa de sexo, idade pelo método Suchey-Brooks, NMI, tafonomia), conferência de lacres conforme a Cadeia de Custódia (CPP Art. 158) e transcrição de notas periciais por voz. Em que posso auxiliá-lo?`,
+        content: `Olá, ${currentUser.name}! Sou o Assistente com IA do SIGCOI, de apoio à curadoria, à pesquisa e ao ensino na COI-INC. Posso apoiar na interpretação de parâmetros osteológicos (estimativa de sexo, idade pelo método Suchey-Brooks, NMI, tafonomia), rastreabilidade das caixas e do acervo e transcrição de anotações de laboratório por voz. Em que posso ajudar?`,
         timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
         modelUsed: 'gemini-3.5-flash',
       },
@@ -83,8 +83,8 @@ export const GeminiForensicChatModal: React.FC<GeminiForensicChatModalProps> = (
   if (!isOpen) return null;
 
   const roleInstructions: Record<'perito' | 'custodia' | 'antropologo', string> = {
-    perito: `Você é o Perito Médico-Legista e Antropologista Forense Oficial do SIGCOI (versão Alfa, INC/DITEC/PF). Responda com linguagem científica técnica, considerando a coleção ${activeCollection?.nic || 'Geral'}. Forneça diretrizes osteométricas precisas, estimativas antropológicas (sexo, idade, ancestralidade, estatura), diagnóstico diferencial de lesões peri-mortem vs pós-mortem, e cálculos de NMI (Número Mínimo de Indivíduos).`,
-    custodia: `Você é o Encarregado da Cadeia de Custódia Oficial do SIGCOI (conforme Art. 158-A a 158-F do CPP). Seu foco é rigor absoluto na integridade física dos lacres, protocolo de recebimento, termos de descarte biológico, rastreabilidade dos invólucros e legalidade processual penal.`,
+    perito: `Você é o assistente de Antropologia Forense do SIGCOI (versão Alfa), sistema de gestão da Coleção Osteológica Identificada do Instituto Nacional de Criminalística (COI-INC/DITEC/PF). A COI-INC é um biobanco e coleção osteológica de referência, instituída pela Portaria DITEC/PF nº 1415/2024, destinada à pesquisa aplicada, à capacitação e ao ensino em antropologia forense e áreas correlatas — não é usada para a resolução de casos criminais. Responda com linguagem científica técnica, considerando o conjunto ${activeCollection?.nic || 'Geral'}. Forneça diretrizes osteométricas precisas, estimativas antropológicas (sexo, idade, ancestralidade, estatura), diagnóstico diferencial de lesões peri-mortem vs pós-mortem para fins de registro e pesquisa, e cálculos de NMI (Número Mínimo de Indivíduos).`,
+    custodia: `Você apoia o controle e a rastreabilidade do acervo da COI-INC (Portaria DITEC/PF nº 1415/2024). Seu foco é a integridade física dos lacres e das embalagens, o protocolo de recebimento, a regularidade dos termos de doação, os termos de descarte biológico, a rastreabilidade das caixas e a localização física de cada conjunto no ossário.`,
     antropologo: `Você é o Curador Especialista em Antropologia Física e Conservação Curatorial. Seu foco é na higienização sem degradação do colágeno ósseo, acondicionamento em caixas de polipropileno corrugado, secagem controlada e preservação das características métricas e morfológicas para pesquisa.`,
   };
 
@@ -223,7 +223,7 @@ export const GeminiForensicChatModal: React.FC<GeminiForensicChatModalProps> = (
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/70 backdrop-blur-sm animate-fadeIn">
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-4xl h-[90vh] flex flex-col shadow-2xl overflow-hidden">
-        {/* Cabeçalho do Chat Forense */}
+        {/* Cabeçalho do Chat */}
         <div className="p-4 sm:px-6 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-sky-500/20">
@@ -232,7 +232,7 @@ export const GeminiForensicChatModal: React.FC<GeminiForensicChatModalProps> = (
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                  Perito Virtual IA · SIGCOI
+                  Assistente IA · SIGCOI
                 </h3>
                 <span className="flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 font-semibold">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -263,7 +263,7 @@ export const GeminiForensicChatModal: React.FC<GeminiForensicChatModalProps> = (
           </div>
         </div>
 
-        {/* Barra de Controles: Papel do Perito e Seleção de Modelo */}
+        {/* Barra de Controles: Papel do Assistente e Seleção de Modelo */}
         <div className="p-3 border-b border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-800/40 flex flex-wrap items-center justify-between gap-3 text-xs">
           {/* Seletor de Modelo Gemini */}
           <div className="flex items-center gap-2">
@@ -290,7 +290,7 @@ export const GeminiForensicChatModal: React.FC<GeminiForensicChatModalProps> = (
                     ? 'bg-purple-600 text-white shadow-xs'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
-                title="gemini-3.1-pro-preview: Raciocínio forense aprofundado"
+                title="gemini-3.1-pro-preview: Raciocínio científico aprofundado"
               >
                 gemini-3.1-pro-preview
               </button>
@@ -319,8 +319,8 @@ export const GeminiForensicChatModal: React.FC<GeminiForensicChatModalProps> = (
               onChange={(e) => setSelectedRole(e.target.value as any)}
               className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1 text-slate-800 dark:text-slate-200 text-xs font-semibold focus:outline-hidden"
             >
-              <option value="perito">Perito Médico-Legista Oficial</option>
-              <option value="custodia">Custódia & Legalidade (Art. 158 CPP)</option>
+              <option value="perito">Antropologia Forense & Pesquisa</option>
+              <option value="custodia">Controle & Rastreabilidade do Acervo</option>
               <option value="antropologo">Curadoria & Conservação Física</option>
             </select>
           </div>
@@ -427,12 +427,12 @@ export const GeminiForensicChatModal: React.FC<GeminiForensicChatModalProps> = (
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Sugestões Rápidas de Consulta Forense */}
+        {/* Sugestões Rápidas de Consulta */}
         <div className="px-4 py-2 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center gap-2 overflow-x-auto text-[11px] no-scrollbar">
           <span className="text-slate-400 font-mono shrink-0">Consultas Rápidas:</span>
           {[
             'Como calcular o NMI na presença de 3 fêmures direitos e 2 crânios?',
-            'Protocolo de recebimento e lacres conforme Art. 158-B CPP',
+            'Protocolo de recebimento e conferência de lacres de um novo conjunto',
             'Método Suchey-Brooks para sínfise púbica (fases 1 a 6)',
             'Diferença tafonômica entre fratura ante-mortem e pós-mortem',
           ].map((promptText, idx) => (
@@ -483,7 +483,7 @@ export const GeminiForensicChatModal: React.FC<GeminiForensicChatModalProps> = (
                   ? 'Gravando seu áudio... fale agora...'
                   : transcribing
                   ? 'Transcrevendo com gemini-3.5-transcribe...'
-                  : 'Digite sua dúvida pericial ou clique no microfone para transcrever áudio...'
+                  : 'Digite sua dúvida ou clique no microfone para transcrever áudio...'
               }
               disabled={isLoading || transcribing}
               className="flex-1 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3 text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-sky-500/40 transition-all"

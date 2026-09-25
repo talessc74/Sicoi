@@ -8,6 +8,9 @@ import {
 } from '../types/sgccco';
 import { getAuditTrailForCollection } from '../data/mockAuditTrails';
 import { getLatestPhaseSignature } from '../utils/signatures';
+import { CollectionHistoryPanel } from './CollectionHistoryPanel';
+import { fetchCollectionHistory } from '../services/collectionsService';
+import { checkSignatureSnapshots } from '../utils/historyVerification';
 import {
   ShieldCheck,
   ShieldAlert,
@@ -74,6 +77,10 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
     verified: boolean;
     totalEvents: number;
     tamperedCount: number;
+    signaturesChecked: number;
+    signaturesWithoutCopy: number;
+    chainBrokenAtId: number | null;
+    error?: string;
     verifiedAt: string;
   } | null>(null);
 
@@ -220,17 +227,40 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
     setTimeout(() => setCopiedHash(null), 2500);
   };
 
-  const handleVerifyIntegrity = () => {
+  // Conferência real: (1) refaz a corrente de hashes do registro de alterações (no
+  // servidor) e (2) recalcula aqui, no navegador, o lacre de cada assinatura a partir
+  // da cópia guardada do conteúdo assinado.
+  const handleVerifyIntegrity = async () => {
+    if (!currentCollection) return;
     setIsVerifyingIntegrity(true);
-    setTimeout(() => {
-      setIsVerifyingIntegrity(false);
+    const verifiedAt = new Date().toLocaleTimeString('pt-BR');
+    try {
+      const history = await fetchCollectionHistory(currentCollection.nic);
+      const checks = await checkSignatureSnapshots(currentCollection.nic, history.signatures);
+      const mismatched = checks.filter((c) => c.status === 'nao_confere').length;
       setVerificationResult({
-        verified: true,
-        totalEvents: allEvents.length,
-        tamperedCount: 0,
-        verifiedAt: new Date().toLocaleTimeString('pt-BR')
+        verified: history.chain.ok && mismatched === 0,
+        totalEvents: history.changes.length,
+        tamperedCount: mismatched,
+        signaturesChecked: checks.filter((c) => c.status !== 'sem_copia').length,
+        signaturesWithoutCopy: checks.filter((c) => c.status === 'sem_copia').length,
+        chainBrokenAtId: history.chain.brokenAtId,
+        verifiedAt
       });
-    }, 800);
+    } catch (err: any) {
+      setVerificationResult({
+        verified: false,
+        totalEvents: 0,
+        tamperedCount: 0,
+        signaturesChecked: 0,
+        signaturesWithoutCopy: 0,
+        chainBrokenAtId: null,
+        error: err?.message || 'Não foi possível consultar o histórico no servidor.',
+        verifiedAt
+      });
+    } finally {
+      setIsVerifyingIntegrity(false);
+    }
   };
 
   const handlePrintAuditReport = () => {
@@ -459,7 +489,7 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
               </span>
             </h1>
             <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-3xl">
-              Registro histórico cronológico completo de todas as alterações, assinaturas, movimentações físicas de caixas e reaberturas periciais. Cada evento é assinado com payload canônico e hash criptográfico SHA-256.
+              Registro histórico cronológico completo de todas as alterações, assinaturas, movimentações físicas de caixas e reaberturas técnicas. Cada evento é assinado com payload canônico e hash criptográfico SHA-256.
             </p>
           </div>
 
@@ -486,7 +516,7 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
               onClick={handleVerifyIntegrity}
               disabled={isVerifyingIntegrity}
               className="px-3 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-xs font-semibold flex items-center gap-1.5 hover:bg-emerald-100 transition-colors shadow-2xs"
-              title="Recalcular e validar a integridade de todos os hashes forenses registrados"
+              title="Recalcular e validar a integridade de todos os hashes registrados"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isVerifyingIntegrity ? 'animate-spin' : ''}`} />
               <span>{isVerifyingIntegrity ? 'Verificando...' : 'Validar Cadeia Criptográfica'}</span>
@@ -506,17 +536,47 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
 
         {/* Verification Success / Status Callout */}
         {verificationResult && (
-          <div className="mt-4 p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-lg flex items-center justify-between text-xs text-emerald-900 dark:text-emerald-200">
+          <div
+            className={`mt-4 p-3 border rounded-lg flex items-center justify-between text-xs ${
+              verificationResult.verified
+                ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200'
+                : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200'
+            }`}
+          >
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              {verificationResult.verified ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              ) : (
+                <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+              )}
               <div>
-                <span className="font-semibold">Integridade Criptográfica Verificada: </span>
-                <span>Todos os {verificationResult.totalEvents} registros de auditoria conferem perfeitamente com os hashes SHA-256 e assinaturas de custódia. Nenhum bloco violado.</span>
+                {verificationResult.error ? (
+                  <span>
+                    <span className="font-semibold">Não foi possível conferir: </span>
+                    {verificationResult.error}
+                  </span>
+                ) : (
+                  <>
+                    <span className="font-semibold">
+                      {verificationResult.verified ? 'Integridade conferida: ' : 'Problema de integridade encontrado: '}
+                    </span>
+                    <span>
+                      {verificationResult.chainBrokenAtId === null
+                        ? `a corrente de ${verificationResult.totalEvents} entradas do registro de alterações está íntegra`
+                        : `o registro de alterações foi adulterado a partir da entrada #${verificationResult.chainBrokenAtId}`}
+                      {'; '}
+                      {verificationResult.tamperedCount === 0
+                        ? `${verificationResult.signaturesChecked} lacre(s) de assinatura recalculado(s) e conferido(s)`
+                        : `${verificationResult.tamperedCount} lacre(s) de assinatura não conferem com a cópia guardada`}
+                      {verificationResult.signaturesWithoutCopy > 0 &&
+                        `; ${verificationResult.signaturesWithoutCopy} assinatura(s) antiga(s) sem cópia do conteúdo, que não podem ser reconferidas`}
+                      .
+                    </span>
+                  </>
+                )}
               </div>
             </div>
-            <span className="font-mono text-[11px] text-emerald-700 dark:text-emerald-400 shrink-0 ml-2">
-              Conferido às {verificationResult.verifiedAt}
-            </span>
+            <span className="font-mono text-[11px] shrink-0 ml-2">Conferido às {verificationResult.verifiedAt}</span>
           </div>
         )}
 
@@ -541,13 +601,16 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
             </span>
           </div>
           <div className="bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-lg border border-slate-200/60 dark:border-slate-700/60">
-            <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Reaberturas Periciais</span>
+            <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Reaberturas Técnicas</span>
             <span className="font-mono font-bold text-base text-amber-700 dark:text-amber-400">
               {allEvents.filter(e => e.actionType === 'reabertura_fase').length} eventos justificados
             </span>
           </div>
         </div>
       </div>
+
+      {/* Histórico completo: versões assinadas e registro de alterações (servidor) */}
+      <CollectionHistoryPanel key={currentCollection.nic} collection={currentCollection} />
 
       {/* Filter and Search Toolbar */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-xs space-y-3">
@@ -681,7 +744,7 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
             }`}
           >
             <AlertTriangle className="w-3 h-3" />
-            <span>Reaberturas Periciais ({allEvents.filter(e => e.actionType === 'reabertura_fase').length})</span>
+            <span>Reaberturas Técnicas ({allEvents.filter(e => e.actionType === 'reabertura_fase').length})</span>
           </button>
 
           {(searchQuery || selectedPhaseFilter !== 'all' || selectedActionFilter !== 'all' || selectedOperatorFilter !== 'all' || onlySpecialEvents !== 'all') && (
@@ -803,7 +866,7 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
                         <button
                           onClick={() => setInspectingEvent(event)}
                           className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors ml-1"
-                          title="Inspecionar metadados brutos e assinatura forense"
+                          title="Inspecionar metadados brutos e assinatura digital"
                         >
                           <Eye className="w-4 h-4" />
                         </button>
@@ -820,7 +883,7 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
                       <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-950/40 border-l-4 border-amber-500 rounded-r-lg text-xs space-y-1">
                         <span className="font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1">
                           <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
-                          Justificativa Técnica Pericial Obrigatória (POP-INC-DITEC-PF-04/REV):
+                          Justificativa Técnica Obrigatória (POP-INC-DITEC-PF-04/REV):
                         </span>
                         <p className="text-amber-800 dark:text-amber-300 italic font-mono text-[11px]">
                           "{event.justification}"
@@ -950,7 +1013,7 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-5 h-5 text-emerald-600" />
                 <h3 className="font-bold text-base text-slate-900 dark:text-white">
-                  Certificado Forense de Operação · Auditoria
+                  Certificado de Operação · Auditoria
                 </h3>
               </div>
               <button
@@ -982,7 +1045,7 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
               </div>
 
               <div>
-                <span className="text-slate-500 font-semibold block mb-1">Ação Pericial Registrada</span>
+                <span className="text-slate-500 font-semibold block mb-1">Ação Registrada</span>
                 <p className="font-bold text-sm text-slate-900 dark:text-white">
                   {inspectingEvent.actionTitle}
                 </p>
@@ -1012,10 +1075,10 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
               <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850 flex items-center justify-between">
                 <div>
                   <span className="font-semibold text-slate-700 dark:text-slate-300 block">
-                    Conformidade com a Portaria INC/DITEC/PF nº 084/2026
+                    Rastreabilidade do acervo da COI-INC
                   </span>
                   <span className="text-slate-500 text-[11px]">
-                    Atende integralmente às exigências de cadeia de custódia (Art. 158-A a 158-F do CPP).
+                    Registro íntegro e verificável da gestão do acervo (Portaria DITEC/PF nº 1415/2024).
                   </span>
                 </div>
                 <button
