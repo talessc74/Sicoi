@@ -98,6 +98,39 @@ describe('collectionsRepo', () => {
     expect(reloaded?.phase1.equipeEnvolvidaLimpeza.value).toBe('Equipe Alfa');
   });
 
+  it('grava as descrições de 1ª costela e patela da coleta genética em phase1_forms', async () => {
+    const col = baseCollection('NIC-REPO-0010');
+    await createCollection(pool, col);
+
+    col.phase1.exameGenetico = { value: ['primeira_costela', 'patela'], isAiSuggested: false };
+    col.phase1.geneticoPrimeiraCostelaDescricao = { value: 'Fragmento esternal da 1ª costela esquerda', isAiSuggested: false };
+    col.phase1.geneticoPatelaDescricao = { value: 'Patela direita íntegra', isAiSuggested: false };
+    await saveCollection(pool, col);
+
+    const { rows } = await pool.query(
+      'SELECT genetico_primeira_costela_descricao, genetico_patela_descricao FROM phase1_forms WHERE nic = $1',
+      ['NIC-REPO-0010']
+    );
+    expect(rows[0].genetico_primeira_costela_descricao).toBe('Fragmento esternal da 1ª costela esquerda');
+    expect(rows[0].genetico_patela_descricao).toBe('Patela direita íntegra');
+  });
+
+  it('salva conjuntos antigos, que não têm as descrições de 1ª costela e patela', async () => {
+    const col = baseCollection('NIC-REPO-0011');
+    delete (col.phase1 as any).geneticoPrimeiraCostelaDescricao;
+    delete (col.phase1 as any).geneticoPatelaDescricao;
+    await createCollection(pool, col);
+    col.phase1.equipeEnvolvidaLimpeza = { value: 'Equipe Beta', isAiSuggested: false };
+    await saveCollection(pool, col);
+
+    const { rows } = await pool.query(
+      'SELECT equipe_envolvida_limpeza, genetico_patela_descricao FROM phase1_forms WHERE nic = $1',
+      ['NIC-REPO-0011']
+    );
+    expect(rows[0].equipe_envolvida_limpeza).toBe('Equipe Beta');
+    expect(rows[0].genetico_patela_descricao).toBeNull();
+  });
+
   it('rejeita uma assinatura cujo hash não confere com o payload recalculado no servidor', async () => {
     const col = baseCollection('NIC-REPO-0005');
     await createCollection(pool, col);

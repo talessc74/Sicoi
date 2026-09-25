@@ -114,6 +114,8 @@ export type PreservationCharacteristic =
   | 'perda_cortical'
   | 'carbonizacao'
   | 'insetos_pupas'
+  | 'mumificado'
+  | 'adipocera'
   | 'outros';
 
 // Elemento de coleta para exame genético (campo 19), em ordem de prioridade do POP-01 §9.3.1
@@ -162,6 +164,11 @@ export interface Phase1Data {
   geneticoDenteHigidoDescricao: FieldWithAiSuggestion<string>;
   geneticoOssosTarsaisDescricao: FieldWithAiSuggestion<string>;
   geneticoOutrosDescricao: FieldWithAiSuggestion<string>;
+  // Opcionais: acrescentados depois (pedido de pesquisador, set/2026). Conjuntos já
+  // salvos não têm estes campos, e preenchê-los na carga mudaria o JSON sobre o qual
+  // as assinaturas antigas foram calculadas.
+  geneticoPrimeiraCostelaDescricao?: FieldWithAiSuggestion<string>;
+  geneticoPatelaDescricao?: FieldWithAiSuggestion<string>;
   geneticoObservacoesGerais: FieldWithAiSuggestion<string>;
   geneticoResponsavelColeta: FieldWithAiSuggestion<string>;
 

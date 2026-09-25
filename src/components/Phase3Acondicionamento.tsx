@@ -4,7 +4,7 @@ import { calculateSha256, generateSignaturePayload } from '../services/auditServ
 import { getLatestPhaseSignature } from '../utils/signatures';
 import { canPerformRole } from '../utils/permissions';
 import { WAREHOUSE_STRUCTURE } from '../data/mockData';
-import { MapPin, QrCode, CheckCircle2, Clock, Box, ShieldCheck, ArrowRight } from 'lucide-react';
+import { MapPin, QrCode, CheckCircle2, Clock, Box, ShieldCheck, ArrowRight, Pencil, X } from 'lucide-react';
 
 interface Phase3AcondicionamentoProps {
   collection: OsteologicalCollection;
@@ -22,9 +22,13 @@ export const Phase3Acondicionamento: React.FC<Phase3AcondicionamentoProps> = ({
   onSelectCollectionToCurate
 }) => {
   const [selectedBoxId, setSelectedBoxId] = useState(collection.phase1.preliminaryBoxes[0]?.id || '');
+  const [facilityInput, setFacilityInput] = useState('Laboratório Central');
+  const [roomInput, setRoomInput] = useState('Sala B-10');
   const [rackSelect, setRackSelect] = useState('Estante 04');
   const [shelfSelect, setShelfSelect] = useState('Prateleira 02');
   const [slotSelect, setSlotSelect] = useState('Vão 01');
+  // Caixa cujo local está sendo corrigido (null = alocação nova).
+  const [editingBoxId, setEditingBoxId] = useState<string | null>(null);
   const [showSignModal, setShowSignModal] = useState(false);
   const [signing, setSigning] = useState(false);
   const [simulatedScanSuccess, setSimulatedScanSuccess] = useState(false);
@@ -38,19 +42,39 @@ export const Phase3Acondicionamento: React.FC<Phase3AcondicionamentoProps> = ({
     collection.phase3.boxLocations.some(bl => bl.boxId === b.id)
   );
 
+  const formatLocation = (loc: StorageLocation) =>
+    [loc.facility, loc.room, loc.rack, loc.shelf, loc.boxSlot].filter(Boolean).join(' · ');
+
+  const locationFieldsFilled = [facilityInput, roomInput, rackSelect, shelfSelect].every((v) => v.trim());
+
+  // Carrega o local atual da caixa no formulário, para corrigi-lo.
+  const handleStartEdit = (boxId: string) => {
+    const current = collection.phase3.boxLocations.find((bl) => bl.boxId === boxId);
+    setSelectedBoxId(boxId);
+    setEditingBoxId(boxId);
+    if (current) {
+      setFacilityInput(current.location.facility);
+      setRoomInput(current.location.room);
+      setRackSelect(current.location.rack);
+      setShelfSelect(current.location.shelf);
+      setSlotSelect(current.location.boxSlot || '');
+    }
+  };
+
   const handlePlaceBox = async () => {
-    if (!selectedBoxId) return;
+    if (!selectedBoxId || !locationFieldsFilled) return;
 
     const newLocation: StorageLocation = {
-      facility: 'Laboratório Central',
-      room: 'Sala B-10',
-      rack: rackSelect,
-      shelf: shelfSelect,
-      boxSlot: slotSelect
+      facility: facilityInput.trim(),
+      room: roomInput.trim(),
+      rack: rackSelect.trim(),
+      shelf: shelfSelect.trim(),
+      boxSlot: slotSelect.trim()
     };
+    const previous = collection.phase3.boxLocations.find((bl) => bl.boxId === selectedBoxId);
 
-    const updated = { ...collection };
-    // Remove previous if any
+    const updated = { ...collection, phase3: { ...collection.phase3 } };
+    // Um local por caixa: a nova leitura substitui a anterior (correção de local).
     updated.phase3.boxLocations = [
       ...updated.phase3.boxLocations.filter(bl => bl.boxId !== selectedBoxId),
       {
@@ -71,8 +95,8 @@ export const Phase3Acondicionamento: React.FC<Phase3AcondicionamentoProps> = ({
     const custodyMovement: CustodyMovement = {
       id: `cst-${Date.now()}`,
       timestamp: new Date().toISOString(),
-      sourceLocation: 'Bancada de Secagem',
-      targetLocation: `Sala B-10 · ${rackSelect} · ${shelfSelect}`,
+      sourceLocation: previous ? formatLocation(previous.location) : 'Bancada de Secagem',
+      targetLocation: formatLocation(newLocation),
       carrierPerson: currentUser.name,
       receiverPerson: currentUser.name,
       carrierSignatureHash: movementHash,
@@ -83,6 +107,7 @@ export const Phase3Acondicionamento: React.FC<Phase3AcondicionamentoProps> = ({
     };
     updated.custodyChain = [...updated.custodyChain, custodyMovement];
 
+    setEditingBoxId(null);
     setSimulatedScanSuccess(true);
     setTimeout(() => setSimulatedScanSuccess(false), 2500);
 
@@ -181,14 +206,35 @@ export const Phase3Acondicionamento: React.FC<Phase3AcondicionamentoProps> = ({
 
             {!isLocked && (
               <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-4 mb-4 text-xs">
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                {editingBoxId && (
+                  <div className="p-2.5 rounded-lg bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 text-sky-800 dark:text-sky-300 flex items-center justify-between gap-2">
+                    <span>
+                      Corrigindo o local da caixa{' '}
+                      <strong className="font-mono">{boxes.find((b) => b.id === editingBoxId)?.boxCode}</strong>. O local anterior
+                      continua registrado na cadeia de custódia.
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setEditingBoxId(null)}
+                      className="p-1 rounded hover:bg-sky-100 dark:hover:bg-sky-900 shrink-0"
+                      title="Cancelar correção"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                       Caixa a Guardar:
                     </label>
                     <select
                       value={selectedBoxId}
-                      onChange={(e) => setSelectedBoxId(e.target.value)}
+                      onChange={(e) => {
+                        setSelectedBoxId(e.target.value);
+                        setEditingBoxId(null);
+                      }}
                       className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-mono text-xs"
                     >
                       {boxes.map(b => (
@@ -197,60 +243,34 @@ export const Phase3Acondicionamento: React.FC<Phase3AcondicionamentoProps> = ({
                     </select>
                   </div>
 
-                  <div>
-                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      Estante:
-                    </label>
-                    <select
-                      value={rackSelect}
-                      onChange={(e) => setRackSelect(e.target.value)}
-                      className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-mono text-xs"
-                    >
-                      <option value="Estante 01">Estante 01</option>
-                      <option value="Estante 02">Estante 02</option>
-                      <option value="Estante 04">Estante 04</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      Prateleira:
-                    </label>
-                    <select
-                      value={shelfSelect}
-                      onChange={(e) => setShelfSelect(e.target.value)}
-                      className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-mono text-xs"
-                    >
-                      <option value="Prateleira 01">Prateleira 01</option>
-                      <option value="Prateleira 02">Prateleira 02</option>
-                      <option value="Prateleira 03">Prateleira 03</option>
-                      <option value="Prateleira 04">Prateleira 04</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      Vão / Slot:
-                    </label>
-                    <input
-                      type="text"
-                      value={slotSelect}
-                      onChange={(e) => setSlotSelect(e.target.value)}
-                      className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-mono text-xs"
-                    />
-                  </div>
+                  <LocationInput label="Local *" value={facilityInput} onChange={setFacilityInput} />
+                  <LocationInput label="Sala *" value={roomInput} onChange={setRoomInput} />
+                  <LocationInput
+                    label="Estante *"
+                    value={rackSelect}
+                    onChange={setRackSelect}
+                    suggestions={['Estante 01', 'Estante 02', 'Estante 03', 'Estante 04']}
+                  />
+                  <LocationInput
+                    label="Prateleira *"
+                    value={shelfSelect}
+                    onChange={setShelfSelect}
+                    suggestions={['Prateleira 01', 'Prateleira 02', 'Prateleira 03', 'Prateleira 04']}
+                  />
+                  <LocationInput label="Vão / Slot:" value={slotSelect} onChange={setSlotSelect} />
                 </div>
 
-                <div className="flex justify-between items-center pt-2">
+                <div className="flex justify-between items-center pt-2 gap-3">
                   <span className="text-slate-500 text-[11px]">
                     Lê o QR da caixa e o QR da prateleira para vincular a custódia.
                   </span>
                   <button
                     onClick={handlePlaceBox}
-                    className="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-medium flex items-center gap-1.5 transition-colors"
+                    disabled={!selectedBoxId || !locationFieldsFilled}
+                    className="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white font-medium flex items-center gap-1.5 transition-colors shrink-0"
                   >
                     <QrCode className="w-3.5 h-3.5" />
-                    <span>Confirmar Leitura e Guardar</span>
+                    <span>{editingBoxId ? 'Salvar Novo Local' : 'Confirmar Leitura e Guardar'}</span>
                   </button>
                 </div>
 
@@ -261,6 +281,12 @@ export const Phase3Acondicionamento: React.FC<Phase3AcondicionamentoProps> = ({
                   </div>
                 )}
               </div>
+            )}
+
+            {isLocked && (
+              <p className="mb-3 text-[11px] text-slate-500">
+                Fase assinada: para corrigir um local, reabra a Fase 3 (Curador ou Administrador, com justificativa) na barra de fases.
+              </p>
             )}
 
             {/* Lista das caixas e suas posições */}
@@ -281,20 +307,30 @@ export const Phase3Acondicionamento: React.FC<Phase3AcondicionamentoProps> = ({
                           Caixa do conjunto
                         </span>
                         <span className="text-slate-400 font-mono text-[11px]">
-                          {loc
-                            ? `Posição: ${loc.location.room} · ${loc.location.rack} · ${loc.location.shelf} (${loc.location.boxSlot || 'Vão'})`
-                            : 'Aguardando alocação na estante'}
+                          {loc ? `Posição: ${formatLocation(loc.location)}` : 'Aguardando alocação na estante'}
                         </span>
                       </div>
                     </div>
 
-                    <span className={`px-2.5 py-1 rounded-full font-mono text-[11px] font-semibold ${
-                      loc
-                        ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300'
-                        : 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300'
-                    }`}>
-                      {loc ? 'Alocada na Estante' : 'Pendente de Leitura'}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {loc && !isLocked && (
+                        <button
+                          type="button"
+                          onClick={() => handleStartEdit(box.id)}
+                          className="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium text-[11px] flex items-center gap-1"
+                        >
+                          <Pencil className="w-3 h-3" />
+                          <span>Editar local</span>
+                        </button>
+                      )}
+                      <span className={`px-2.5 py-1 rounded-full font-mono text-[11px] font-semibold ${
+                        loc
+                          ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300'
+                          : 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300'
+                      }`}>
+                        {loc ? 'Alocada na Estante' : 'Pendente de Leitura'}
+                      </span>
+                    </div>
                   </div>
                 );
               })}
@@ -362,7 +398,7 @@ export const Phase3Acondicionamento: React.FC<Phase3AcondicionamentoProps> = ({
               Assinatura Técnica de Acondicionamento — Fase 3
             </h3>
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
-              Ao assinar, você confirma que todas as caixas de {collection.nic} estão fisicamente acomodadas em suas respectivas estantes e prateleiras da Sala B-10, liberando o conjunto para a fila de Curadoria da Fase 4.
+              Ao assinar, você confirma que todas as caixas de {collection.nic} estão fisicamente acomodadas nos locais registrados, liberando o conjunto para a fila de Curadoria da Fase 4.
             </p>
 
             <div className="flex justify-end gap-2 text-xs">
@@ -383,6 +419,34 @@ export const Phase3Acondicionamento: React.FC<Phase3AcondicionamentoProps> = ({
             </div>
           </div>
         </div>
+      )}
+    </div>
+  );
+};
+
+const LocationInput: React.FC<{
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  suggestions?: string[];
+}> = ({ label, value, onChange, suggestions }) => {
+  const listId = suggestions ? `sugestoes-${label.replace(/\W+/g, '-').toLowerCase()}` : undefined;
+  return (
+    <div>
+      <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">{label}</label>
+      <input
+        type="text"
+        value={value}
+        list={listId}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-mono text-xs"
+      />
+      {suggestions && (
+        <datalist id={listId}>
+          {suggestions.map((s) => (
+            <option key={s} value={s} />
+          ))}
+        </datalist>
       )}
     </div>
   );

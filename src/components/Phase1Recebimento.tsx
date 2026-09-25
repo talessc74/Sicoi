@@ -8,7 +8,8 @@ import {
   GeneticSampleElement,
   IsotopicSampleMaterial,
   CleaningType,
-  Phase1PhotoCategory
+  Phase1PhotoCategory,
+  Phase1Data
 } from '../types/sgccco';
 import { PopConversationalConductor } from './PopConversationalConductor';
 import { calculateSha256, generateSignaturePayload } from '../services/auditService';
@@ -47,6 +48,8 @@ const PRESERVATION_OPTIONS: { value: PreservationCharacteristic; label: string }
   { value: 'perda_cortical', label: 'Perda de cortical' },
   { value: 'carbonizacao', label: 'Carbonização' },
   { value: 'insetos_pupas', label: 'Insetos/Pupas' },
+  { value: 'mumificado', label: 'Mumificado' },
+  { value: 'adipocera', label: 'Adipocera' },
   { value: 'outros', label: 'Outros' }
 ];
 
@@ -66,6 +69,39 @@ const ISOTOPIC_OPTIONS: { value: IsotopicSampleMaterial; label: string }[] = [
   { value: 'dente', label: 'Dente' },
   { value: 'nao_coletado', label: 'Não coletado' }
 ];
+
+// Campos de texto do Phase1Data (descrições condicionais).
+type Phase1DescriptionKey = {
+  [K in keyof Phase1Data]-?: NonNullable<Phase1Data[K]> extends FieldWithAiSuggestion<string> ? K : never;
+}[keyof Phase1Data];
+
+// Opções que, quando marcadas, abrem uma caixa de descrição própria e obrigatória.
+const MATERIAL_DESCRIPTION_FIELDS: Partial<Record<MaterialType, Phase1DescriptionKey>> = {
+  cabelo: 'cabeloDescricao',
+  proteses: 'protesesDescricao',
+  vestes: 'vestesDescricao',
+  pertences: 'pertencesDescricao',
+  tecidos_moles: 'tecidosMolesDescricao'
+};
+
+const PRESERVATION_DESCRIPTION_FIELDS: Partial<Record<PreservationCharacteristic, Phase1DescriptionKey>> = {
+  outros: 'estadoPreservacaoOutrosDescricao'
+};
+
+const GENETIC_DESCRIPTION_FIELDS: Partial<Record<GeneticSampleElement, Phase1DescriptionKey>> = {
+  falange: 'geneticoFalangeDescricao',
+  ossos_tarsais: 'geneticoOssosTarsaisDescricao',
+  dente_higido: 'geneticoDenteHigidoDescricao',
+  primeira_costela: 'geneticoPrimeiraCostelaDescricao',
+  patela: 'geneticoPatelaDescricao',
+  outros: 'geneticoOutrosDescricao'
+};
+
+const ISOTOPIC_DESCRIPTION_FIELDS: Partial<Record<IsotopicSampleMaterial, Phase1DescriptionKey>> = {
+  cabelo: 'isotopicaCabeloDescricao',
+  unha: 'isotopicaUnhaDescricao',
+  dente: 'isotopicaDenteDescricao'
+};
 
 function toggleInArray<T>(arr: T[] | undefined, value: T): T[] {
   const current = arr || [];
@@ -95,6 +131,28 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
   const setField = <K extends keyof typeof p1>(key: K, value: FieldWithAiSuggestion<any>) => {
     const updated = { ...collection, phase1: { ...collection.phase1, [key]: value } };
     onUpdateCollection(updated);
+  };
+
+  const descriptionValue = (key: Phase1DescriptionKey): string => p1[key]?.value || '';
+
+  // Marca/desmarca uma opção de lista. Ao desmarcar, apaga também a descrição dela,
+  // na mesma atualização (duas chamadas de setField seguidas se sobrescreveriam, já
+  // que cada uma parte do mesmo `collection` do fechamento).
+  const toggleOption = <T extends string>(
+    listKey: 'tipoMaterial' | 'estadoPreservacao' | 'exameGenetico' | 'analiseIsotopica',
+    value: T,
+    descriptionFields: Partial<Record<T, Phase1DescriptionKey>>
+  ) => {
+    const current = ((p1[listKey].value as T[] | undefined) || []);
+    const removing = current.includes(value);
+    const patch: Partial<Phase1Data> = {
+      [listKey]: { value: toggleInArray(current, value), isAiSuggested: false }
+    };
+    const descKey = descriptionFields[value];
+    if (removing && descKey && descriptionValue(descKey)) {
+      (patch as any)[descKey] = { value: '', isAiSuggested: false };
+    }
+    onUpdateCollection({ ...collection, phase1: { ...collection.phase1, ...patch } });
   };
 
   // Anexa a foto e marca o campo do checklist correspondente numa única atualização.
@@ -187,11 +245,29 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
   if (p1.foto3RemanescentesMateriais.value === undefined) missingFieldLabels.push('foto dos materiais associados (ou "não se aplica")');
   if (p1.foto4_1RemanescentesIsolados.value !== true) missingFieldLabels.push('foto dos remanescentes isolados');
   if (p1.foto4_2MateriaisIsolados.value === undefined) missingFieldLabels.push('foto dos materiais associados isolados (ou "não se aplica")');
+  // Cada opção marcada que tem caixa de descrição exige a descrição preenchida.
+  const pushMissingDescriptions = <T extends string>(
+    selected: T[] | undefined,
+    options: { value: T; label: string }[],
+    descriptionFields: Partial<Record<T, Phase1DescriptionKey>>,
+    sectionLabel: string
+  ) => {
+    for (const option of options) {
+      const key = descriptionFields[option.value];
+      if (key && selected?.includes(option.value) && !descriptionValue(key).trim()) {
+        missingFieldLabels.push(`descrição de "${option.label}" (${sectionLabel})`);
+      }
+    }
+  };
   if ((p1.tipoMaterial.value?.length || 0) === 0) missingFieldLabels.push('tipo de material');
+  pushMissingDescriptions(p1.tipoMaterial.value, MATERIAL_TYPE_OPTIONS, MATERIAL_DESCRIPTION_FIELDS, 'tipo de material');
   if ((p1.estadoPreservacao.value?.length || 0) === 0) missingFieldLabels.push('estado de preservação');
+  pushMissingDescriptions(p1.estadoPreservacao.value, PRESERVATION_OPTIONS, PRESERVATION_DESCRIPTION_FIELDS, 'estado de preservação');
   if ((p1.exameGenetico.value?.length || 0) === 0) missingFieldLabels.push('exame genético');
+  pushMissingDescriptions(p1.exameGenetico.value, GENETIC_OPTIONS, GENETIC_DESCRIPTION_FIELDS, 'exame genético');
   if (!Boolean(p1.geneticoResponsavelColeta.value)) missingFieldLabels.push('responsável pela coleta genética');
   if ((p1.analiseIsotopica.value?.length || 0) === 0) missingFieldLabels.push('análise isotópica');
+  pushMissingDescriptions(p1.analiseIsotopica.value, ISOTOPIC_OPTIONS, ISOTOPIC_DESCRIPTION_FIELDS, 'análise isotópica');
   if (!Boolean(p1.isotopicaResponsavelColeta.value)) missingFieldLabels.push('responsável pela coleta isotópica');
   if (!Boolean(p1.corSacoLavagem.value)) missingFieldLabels.push('cor do saco de lavagem');
   if (!Boolean(p1.tipoLimpeza.value)) missingFieldLabels.push('tipo de limpeza');
@@ -268,25 +344,6 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
             )}
           </div>
         </div>
-
-        {/* Antes essa lista só aparecia no modo Condutor (painel "Espelho do Formulário"),
-            deixada de fora do modo Formulário Manual — que é o que a maioria usa. Resultado:
-            o botão "Revisar & Assinar" ficava cinza sem explicação nenhuma visível, só um
-            title (que exige passar o mouse por cima e não funciona em toque). Movida pra
-            cá, no banner do topo, aparece nos dois modos. */}
-        {!isLocked && signBlockers.length > 0 && (
-          <div className="mt-4 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300">
-            <div className="flex items-center gap-1.5 font-semibold mb-1.5">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>Ainda falta o seguinte para poder concluir e assinar a Fase 1:</span>
-            </div>
-            <ul className="list-disc list-inside space-y-0.5">
-              {signBlockers.map((blocker, idx) => (
-                <li key={idx}>{blocker}</li>
-              ))}
-            </ul>
-          </div>
-        )}
       </div>
 
       {/* Seletor de Modo de Interação: Condutor por Voz vs Formulário A.1 Manual */}
@@ -511,7 +568,15 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
                   options={MATERIAL_TYPE_OPTIONS}
                   selected={p1.tipoMaterial.value || []}
                   disabled={isLocked}
-                  onToggle={(v) => setField('tipoMaterial', { value: toggleInArray(p1.tipoMaterial.value, v), isAiSuggested: false })}
+                  onToggle={(v) => toggleOption('tipoMaterial', v, MATERIAL_DESCRIPTION_FIELDS)}
+                />
+                <OptionDescriptions
+                  options={MATERIAL_TYPE_OPTIONS}
+                  selected={p1.tipoMaterial.value || []}
+                  descriptionFields={MATERIAL_DESCRIPTION_FIELDS}
+                  disabled={isLocked}
+                  getValue={descriptionValue}
+                  onChange={(key, v) => setField(key, { value: v, isAiSuggested: false })}
                 />
               </FormSection>
 
@@ -521,7 +586,15 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
                   options={PRESERVATION_OPTIONS}
                   selected={p1.estadoPreservacao.value || []}
                   disabled={isLocked}
-                  onToggle={(v) => setField('estadoPreservacao', { value: toggleInArray(p1.estadoPreservacao.value, v), isAiSuggested: false })}
+                  onToggle={(v) => toggleOption('estadoPreservacao', v, PRESERVATION_DESCRIPTION_FIELDS)}
+                />
+                <OptionDescriptions
+                  options={PRESERVATION_OPTIONS}
+                  selected={p1.estadoPreservacao.value || []}
+                  descriptionFields={PRESERVATION_DESCRIPTION_FIELDS}
+                  disabled={isLocked}
+                  getValue={descriptionValue}
+                  onChange={(key, v) => setField(key, { value: v, isAiSuggested: false })}
                 />
               </FormSection>
 
@@ -531,7 +604,15 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
                   options={GENETIC_OPTIONS}
                   selected={p1.exameGenetico.value || []}
                   disabled={isLocked}
-                  onToggle={(v) => setField('exameGenetico', { value: toggleInArray(p1.exameGenetico.value, v), isAiSuggested: false })}
+                  onToggle={(v) => toggleOption('exameGenetico', v, GENETIC_DESCRIPTION_FIELDS)}
+                />
+                <OptionDescriptions
+                  options={GENETIC_OPTIONS}
+                  selected={p1.exameGenetico.value || []}
+                  descriptionFields={GENETIC_DESCRIPTION_FIELDS}
+                  disabled={isLocked}
+                  getValue={descriptionValue}
+                  onChange={(key, v) => setField(key, { value: v, isAiSuggested: false })}
                 />
                 <TextInput
                   label="Responsável pela coleta *"
@@ -547,7 +628,15 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
                   options={ISOTOPIC_OPTIONS}
                   selected={p1.analiseIsotopica.value || []}
                   disabled={isLocked}
-                  onToggle={(v) => setField('analiseIsotopica', { value: toggleInArray(p1.analiseIsotopica.value, v), isAiSuggested: false })}
+                  onToggle={(v) => toggleOption('analiseIsotopica', v, ISOTOPIC_DESCRIPTION_FIELDS)}
+                />
+                <OptionDescriptions
+                  options={ISOTOPIC_OPTIONS}
+                  selected={p1.analiseIsotopica.value || []}
+                  descriptionFields={ISOTOPIC_DESCRIPTION_FIELDS}
+                  disabled={isLocked}
+                  getValue={descriptionValue}
+                  onChange={(key, v) => setField(key, { value: v, isAiSuggested: false })}
                 />
                 <TextInput
                   label="Responsável pela coleta *"
@@ -614,10 +703,20 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
                 )}
               </FormSection>
 
-              {!hasPhotos && (
-                <div className="p-4 rounded-xl border border-dashed border-amber-300 dark:border-amber-800/60 bg-amber-50/40 dark:bg-amber-950/20 text-xs text-amber-800 dark:text-amber-300 flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>A assinatura da Fase 1 exige ao menos 1 fotografia do checklist.</span>
+              {/* Pendências para assinar: ficam no fim do formulário, onde a pessoa chega
+                  depois de preencher (antes ficavam no topo da tela). No modo Condutor, a
+                  mesma lista aparece embaixo do botão "Concluir e Assinar". */}
+              {!isLocked && signBlockers.length > 0 && (
+                <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300">
+                  <div className="flex items-center gap-1.5 font-semibold mb-1.5">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>Ainda falta o seguinte para poder concluir e assinar a Fase 1:</span>
+                  </div>
+                  <ul className="list-disc list-inside space-y-0.5">
+                    {signBlockers.map((blocker, idx) => (
+                      <li key={idx}>{blocker}</li>
+                    ))}
+                  </ul>
                 </div>
               )}
             </div>
@@ -826,6 +925,41 @@ const MultiChip: React.FC<{
     })}
   </div>
 );
+
+function OptionDescriptions<T extends string>({
+  options,
+  selected,
+  descriptionFields,
+  disabled,
+  getValue,
+  onChange
+}: {
+  options: { value: T; label: string }[];
+  selected: T[];
+  descriptionFields: Partial<Record<T, Phase1DescriptionKey>>;
+  disabled?: boolean;
+  getValue: (key: Phase1DescriptionKey) => string;
+  onChange: (key: Phase1DescriptionKey, value: string) => void;
+}) {
+  const withDescription = options.filter((o) => selected.includes(o.value) && descriptionFields[o.value]);
+  if (withDescription.length === 0) return null;
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+      {withDescription.map((o) => {
+        const key = descriptionFields[o.value]!;
+        return (
+          <TextInput
+            key={o.value}
+            label={`Descrição — ${o.label} *`}
+            disabled={disabled}
+            value={getValue(key)}
+            onChange={(v) => onChange(key, v)}
+          />
+        );
+      })}
+    </div>
+  );
+}
 
 const PhotoChecklistRow: React.FC<{ label: string; done: boolean; disabled?: boolean; onCapture: () => void }> = ({
   label,

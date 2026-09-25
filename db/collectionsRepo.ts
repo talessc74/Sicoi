@@ -149,13 +149,13 @@ async function upsertPhase1Form(client: PoolClient, nic: string, p1: Phase1Data)
        estado_preservacao, estado_preservacao_outros_descricao, observacoes_gerais_preservacao,
        exame_genetico, genetico_falange_descricao, genetico_dente_higido_descricao,
        genetico_ossos_tarsais_descricao, genetico_outros_descricao, genetico_observacoes_gerais,
-       genetico_responsavel_coleta,
+       genetico_responsavel_coleta, genetico_primeira_costela_descricao, genetico_patela_descricao,
        analise_isotopica, isotopica_cabelo_descricao, isotopica_unha_descricao,
        isotopica_dente_descricao, isotopica_observacoes, isotopica_responsavel_coleta,
        cor_saco_lavagem, tipo_limpeza, houve_danos, descricao_danos, field_metadata, updated_at
      ) VALUES (
        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,
-       $26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36, now()
+       $26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38, now()
      )
      ON CONFLICT (nic) DO UPDATE SET
        equipe_envolvida_limpeza = EXCLUDED.equipe_envolvida_limpeza,
@@ -182,6 +182,8 @@ async function upsertPhase1Form(client: PoolClient, nic: string, p1: Phase1Data)
        genetico_outros_descricao = EXCLUDED.genetico_outros_descricao,
        genetico_observacoes_gerais = EXCLUDED.genetico_observacoes_gerais,
        genetico_responsavel_coleta = EXCLUDED.genetico_responsavel_coleta,
+       genetico_primeira_costela_descricao = EXCLUDED.genetico_primeira_costela_descricao,
+       genetico_patela_descricao = EXCLUDED.genetico_patela_descricao,
        analise_isotopica = EXCLUDED.analise_isotopica,
        isotopica_cabelo_descricao = EXCLUDED.isotopica_cabelo_descricao,
        isotopica_unha_descricao = EXCLUDED.isotopica_unha_descricao,
@@ -220,6 +222,9 @@ async function upsertPhase1Form(client: PoolClient, nic: string, p1: Phase1Data)
       val(p1.geneticoOutrosDescricao, 'geneticoOutrosDescricao'),
       val(p1.geneticoObservacoesGerais, 'geneticoObservacoesGerais'),
       val(p1.geneticoResponsavelColeta, 'geneticoResponsavelColeta'),
+      // Campos opcionais (conjuntos antigos não os têm).
+      p1.geneticoPrimeiraCostelaDescricao ? val(p1.geneticoPrimeiraCostelaDescricao, 'geneticoPrimeiraCostelaDescricao') : null,
+      p1.geneticoPatelaDescricao ? val(p1.geneticoPatelaDescricao, 'geneticoPatelaDescricao') : null,
       val(p1.analiseIsotopica, 'analiseIsotopica') || [],
       val(p1.isotopicaCabeloDescricao, 'isotopicaCabeloDescricao'),
       val(p1.isotopicaUnhaDescricao, 'isotopicaUnhaDescricao'),
