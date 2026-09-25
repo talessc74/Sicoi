@@ -21,6 +21,9 @@ import {
   LEGACY_SIGNATURE_PAYLOAD_PREFIXES,
   SIGNATURE_PAYLOAD_PREFIX
 } from '../src/services/auditService';
+import { canonicalJson, diffValues, sameContent } from '../src/utils/historyDiff';
+
+export { canonicalJson };
 
 export class HistoryViolationError extends Error {
   constructor(message: string) {
@@ -31,19 +34,6 @@ export class HistoryViolationError extends Error {
 
 const SIGNABLE_PHASES = [1, 2, 3, 4, 5, 6] as const;
 const ACCEPTED_PREFIXES = [SIGNATURE_PAYLOAD_PREFIX, ...LEGACY_SIGNATURE_PAYLOAD_PREFIXES];
-
-/** JSON com as chaves em ordem alfabética: compara conteúdo sem depender da ordem. */
-export function canonicalJson(value: unknown): string {
-  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null';
-  if (Array.isArray(value)) return `[${value.map((v) => canonicalJson(v === undefined ? null : v)).join(',')}]`;
-  const entries = Object.keys(value as Record<string, unknown>)
-    .filter((k) => (value as Record<string, unknown>)[k] !== undefined)
-    .sort()
-    .map((k) => `${JSON.stringify(k)}:${canonicalJson((value as Record<string, unknown>)[k])}`);
-  return `{${entries.join(',')}}`;
-}
-
-const sameContent = (a: unknown, b: unknown) => canonicalJson(a) === canonicalJson(b);
 
 export function signatureKey(sig: Pick<PhaseSignature, 'phaseNumber' | 'signedAt' | 'sha256Hash'>): string {
   return `${sig.phaseNumber}|${sig.signedAt}|${sig.sha256Hash}`;
@@ -212,72 +202,33 @@ export interface ChangeEntry {
   note?: string | null;
 }
 
-const isFieldWithSuggestion = (v: any) =>
-  v !== null && typeof v === 'object' && !Array.isArray(v) && 'value' in v && ('isAiSuggested' in v || 'transcriptSnippet' in v);
-
-const isPlainObject = (v: any) => v !== null && typeof v === 'object' && !Array.isArray(v);
-
-/**
- * Achata um valor em folhas "caminho → valor". Campos de formulário com sugestão
- * de IA ({ value, isAiSuggested }) viram uma folha só (o valor); listas de objetos
- * com `id` são indexadas pelo id, para inclusão/remoção de um item não parecer
- * mudança de todos os seguintes.
- */
-function flatten(value: unknown, path: string, out: Map<string, { value: unknown; aiSuggested?: boolean }>): void {
-  if (isFieldWithSuggestion(value)) {
-    out.set(path, { value: (value as any).value ?? null, aiSuggested: (value as any).isAiSuggested === true });
-    return;
-  }
-  if (Array.isArray(value)) {
-    if (value.length > 0 && value.every((item) => isPlainObject(item) && typeof item.id === 'string')) {
-      for (const item of value as any[]) flatten(item, `${path}[${item.id}]`, out);
-      return;
-    }
-    if (value.some((item) => isPlainObject(item) || Array.isArray(item))) {
-      value.forEach((item, idx) => flatten(item, `${path}[${idx}]`, out));
-      return;
-    }
-    out.set(path, { value });
-    return;
-  }
-  if (isPlainObject(value)) {
-    const keys = Object.keys(value as object);
-    if (keys.length === 0) {
-      out.set(path, { value: {} });
-      return;
-    }
-    for (const key of keys) flatten((value as any)[key], path ? `${path}.${key}` : key, out);
-    return;
-  }
-  out.set(path, { value: value === undefined ? null : value });
-}
-
 // Assinaturas e custódia viram eventos próprios; não entram como "campo".
-const EXCLUDED_TOP_LEVEL = new Set(['signatures', 'custodyChain']);
+const EXCLUDED_TOP_LEVEL = ['signatures', 'custodyChain'];
 
 export function diffCollections(previous: OsteologicalCollection, next: OsteologicalCollection): ChangeEntry[] {
-  const before = new Map<string, { value: unknown; aiSuggested?: boolean }>();
-  const after = new Map<string, { value: unknown; aiSuggested?: boolean }>();
-  for (const key of Object.keys(previous)) if (!EXCLUDED_TOP_LEVEL.has(key)) flatten((previous as any)[key], key, before);
-  for (const key of Object.keys(next)) if (!EXCLUDED_TOP_LEVEL.has(key)) flatten((next as any)[key], key, after);
-
-  const entries: ChangeEntry[] = [];
-  const paths = new Set([...before.keys(), ...after.keys()]);
-  for (const path of paths) {
-    const b = before.get(path);
-    const a = after.get(path);
-    if (b && a && sameContent(b.value, a.value)) continue;
-    const phaseMatch = path.match(/^phase(\d)\b/);
-    entries.push({
-      kind: 'campo',
+  return diffValues(previous, next, '', EXCLUDED_TOP_LEVEL).map((d) => {
+    const phaseMatch = d.path.match(/^phase(\d)\b/);
+    // Procedência (cemitério, jazigo, declaração de óbito) é restrita a Curador e
+    // Administrador (§7): o registro guarda que mudou, quem e quando — não os valores.
+    if (d.path.startsWith('legalOrigin')) {
+      return {
+        kind: 'campo' as const,
+        phaseNumber: null,
+        path: d.path,
+        oldValue: null,
+        newValue: null,
+        note: 'dado restrito de procedência alterado (valores não registrados no histórico)'
+      };
+    }
+    return {
+      kind: 'campo' as const,
       phaseNumber: phaseMatch ? Number(phaseMatch[1]) : null,
-      path,
-      oldValue: b ? b.value : null,
-      newValue: a ? a.value : null,
-      note: a?.aiSuggested ? 'preenchido pelo condutor/IA' : null
-    });
-  }
-  return entries.sort((x, y) => (x.path || '').localeCompare(y.path || ''));
+      path: d.path,
+      oldValue: d.before,
+      newValue: d.after,
+      note: d.aiSuggested ? 'preenchido pelo condutor/IA' : null
+    };
+  });
 }
 
 export function signatureEventsToEntries(events: SignatureEvent[]): ChangeEntry[] {
@@ -287,7 +238,7 @@ export function signatureEventsToEntries(events: SignatureEvent[]): ChangeEntry[
           kind,
           phaseNumber: signature.phaseNumber,
           newValue: { sha256Hash: signature.sha256Hash, signedAt: signature.signedAt },
-          note: `Fase ${signature.phaseNumber} assinada por ${signature.signedByName} (${signature.signedByRole})`
+          note: `Fase ${signature.phaseNumber} assinada por ${signature.signedByName}`
         }
       : {
           kind,

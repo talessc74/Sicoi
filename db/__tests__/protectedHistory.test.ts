@@ -236,6 +236,17 @@ describe('registro de alterações', () => {
     ]);
   });
 
+  it('dados restritos de procedência: registra que mudou e quem, sem gravar os valores', async () => {
+    const col = baseCollection('NIC-HIST-0023');
+    await createCollection(pool, col, TECNICO);
+    await saveCollection(pool, { ...col, legalOrigin: { cemeteryName: 'Cemitério X' } }, CURADOR);
+    const entry = (await listChangeLog(pool, 'NIC-HIST-0023')).find((e) => e.path === 'legalOrigin.cemeteryName')!;
+    expect(entry.actorName).toBe('Curador Bruno');
+    expect(entry.oldValue).toBeNull();
+    expect(entry.newValue).toBeNull();
+    expect(JSON.stringify(await listChangeLog(pool, 'NIC-HIST-0023'))).not.toContain('Cemitério X');
+  });
+
   it('registra assinatura e reabertura como eventos', async () => {
     const reloaded = await createSignedPhase1('NIC-HIST-0021');
     await saveCollection(
