@@ -9,10 +9,10 @@ sobrescrevem `_core` quando os dois se sobrepõem.
 
 ## Content
 
-### EDRs — Engineering Decisions (1 documento)
+### EDRs — Engineering Decisions (2 documentos)
 
 Manutenção dos Manuais do Usuário (`public/manuais/`) sincronizada com
-mudanças no site.
+mudanças no site. CORS restrito a origens conhecidas.
 
 ### ADRs — Architectural Decisions (2 documentos)
 

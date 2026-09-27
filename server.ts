@@ -52,12 +52,27 @@ const app = express();
 const PORT = 3000;
 const isProduction = process.env.NODE_ENV === 'production';
 
-// CORS para evitar qualquer bloqueio entre o iframe do AI Studio e a aplicação
-app.use((_req: Request, res: Response, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+// CORS restrito (achado da Galera de Segurança, set/2026 — ver
+// _local-edr-policy-102): o '*' de antes vinha de quando este app rodava
+// embutido num iframe do AI Studio, num domínio diferente. Hoje o Express serve o
+// front-end (dist/) e a API no mesmo domínio (ver app.use(express.static(...)) mais
+// abaixo) — uma requisição do próprio site nunca precisa de cabeçalho CORS, porque
+// não é cross-origin. Só ecoa Access-Control-Allow-Origin para origens conhecidas:
+// APP_URL (produção, se configurado) e localhost/127.0.0.1 em qualquer porta (dev).
+// Sem isso, um site de terceiros não consegue mais ler a resposta destas rotas a
+// partir do navegador de quem estiver com o SIGCOI aberto.
+const allowedOrigins = new Set([process.env.APP_URL].filter((v): v is string => Boolean(v)));
+const localOriginPattern = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
+
+app.use((req: Request, res: Response, next) => {
+  const origin = req.headers.origin;
+  if (origin && (allowedOrigins.has(origin) || (!isProduction && localOriginPattern.test(origin)))) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  if (_req.method === 'OPTIONS') {
+  if (req.method === 'OPTIONS') {
     return res.sendStatus(204);
   }
   next();
