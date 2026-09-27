@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { UserProfile, UserRole } from '../types/sgccco';
+import { OsteologicalCollection, UserProfile, UserRole } from '../types/sgccco';
+import { AdminDangerZone } from './AdminDangerZone';
 import {
   Settings,
   Volume2,
@@ -34,6 +35,8 @@ interface SettingsViewProps {
   onDeletePerson: (id: string) => Promise<void>;
   laboratoryMode: boolean;
   onToggleLaboratoryMode: () => void;
+  collections: OsteologicalCollection[];
+  onRefreshCollections: () => Promise<void>;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
@@ -43,7 +46,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onCreatePerson,
   onDeletePerson,
   laboratoryMode,
-  onToggleLaboratoryMode
+  onToggleLaboratoryMode,
+  collections,
+  onRefreshCollections
 }) => {
   const [cryptographicSalt, setCryptographicSalt] = useState('INC-DITEC-PF-2026-PROD-V3');
   const [autoDryingHours, setAutoDryingHours] = useState(48);
@@ -436,6 +441,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </table>
         </div>
       </div>
+
+      {/* Zona de Risco — só visível para quem está com o papel Administrador ativo.
+          O servidor reconfere isto de novo a cada chamada (ver requireAdmin em
+          server.ts); esta condição é só para não mostrar botões que seriam recusados. */}
+      {currentUser.role === 'administrador' && (
+        <AdminDangerZone currentUser={currentUser} collections={collections} onRefreshCollections={onRefreshCollections} />
+      )}
     </div>
   );
 };

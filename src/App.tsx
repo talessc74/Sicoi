@@ -279,6 +279,14 @@ export default function App() {
     setActiveTab('documentos');
   };
 
+  // Recarrega a lista de conjuntos do banco — usado pela Zona de Risco (Configurações)
+  // depois de qualquer exclusão/restauração, já que essas ações mudam o que
+  // GET /api/collections devolve (conjuntos excluídos somem da lista).
+  const handleRefreshCollections = async () => {
+    const loaded = await fetchCollections();
+    setCollections(loaded);
+  };
+
   if (isLoadingCollections) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950 text-slate-500 dark:text-slate-400 text-sm font-mono">
@@ -442,6 +450,8 @@ export default function App() {
             onDeletePerson={handleDeletePerson}
             laboratoryMode={laboratoryMode}
             onToggleLaboratoryMode={() => setLaboratoryMode(!laboratoryMode)}
+            collections={collections}
+            onRefreshCollections={handleRefreshCollections}
           />
         )}
 

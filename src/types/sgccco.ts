@@ -203,6 +203,14 @@ export interface PreliminaryBox {
   presumedIndividualLabel: string;
   currentLocation: string;
   qrCode: string;
+  // Exclusão administrativa reversível (§ Zona de Risco, Configurações): a caixa nunca
+  // é removida da lista, só marcada — some das telas ativas, mas "Restaurar" limpa estes
+  // quatro campos e ela volta exatamente como estava. Editar isto numa Fase 1 já
+  // assinada passa pela mesma reabertura protegida de qualquer outro campo (historyGuard).
+  deletedAt?: string;
+  deletedBy?: string;
+  deletedByName?: string;
+  deletedReason?: string;
 }
 
 // Status de limpeza/secagem por caixa — pertence à Fase 2 (Maceração e Secagem), não à
