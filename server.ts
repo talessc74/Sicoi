@@ -8,6 +8,16 @@ import { getPool } from './db/pool';
 import { runMigrations } from './db/migrate';
 import { listCollections, getCollection, createCollection, saveCollection, listChangeLog, verifyChangeLogChain, Actor } from './db/collectionsRepo';
 import { HistoryViolationError } from './db/historyGuard';
+import {
+  listAdminActions,
+  listDeletedCollections,
+  softDeleteCollection,
+  restoreCollection,
+  softDeleteAllCollections,
+  restoreAllCollections,
+  adminDeleteBox,
+  adminRestoreBox
+} from './db/adminRepo';
 import { getGraph, getNodeWithEdges, findPath, searchNodes } from './db/graphRepo';
 import { listPeople, createPerson, deletePerson, getPerson } from './db/peopleRepo';
 import type { Pool } from 'pg';
@@ -18,6 +28,19 @@ async function resolveActor(pool: Pool, actorId: unknown): Promise<Actor> {
   if (typeof actorId !== 'string') return { id: null, name: null, role: null };
   const person = await getPerson(pool, actorId);
   return person ? { id: person.id, name: person.name, role: person.role } : { id: actorId, name: null, role: null };
+}
+
+// Ações da Zona de Risco (excluir/restaurar caixa, conjunto ou tudo) exigem o papel
+// Administrador conferido aqui — no servidor, a partir do cadastro no banco — nunca
+// só confiando no papel que a tela do navegador diz que o usuário tem.
+async function requireAdmin(pool: Pool, actorId: unknown): Promise<Actor> {
+  const actor = await resolveActor(pool, actorId);
+  if (actor.role !== 'administrador') {
+    const err = new Error('Esta ação exige o papel Administrador.');
+    (err as any).statusCode = 403;
+    throw err;
+  }
+  return actor;
 }
 
 dotenv.config();
@@ -498,6 +521,116 @@ app.get('/api/collections/:nic/history', async (req: Request, res: Response) => 
   } catch (error: any) {
     console.error('Erro ao carregar histórico:', error);
     return res.status(500).json({ error: error?.message || 'Erro ao carregar histórico.' });
+  }
+});
+
+// --- Zona de Risco do Administrador: exclusão reversível (§ Configurações) ---
+// Toda rota abaixo confere o papel Administrador no servidor (requireAdmin) e grava
+// em admin_actions quem fez o quê — ver db/adminRepo.ts para as garantias.
+
+function handleAdminError(res: Response, error: any, fallbackMessage: string) {
+  const status = error?.statusCode || (error instanceof HistoryViolationError ? 409 : 500);
+  return res.status(status).json({ error: error?.message || fallbackMessage });
+}
+
+// Itens excluídos e o log de ações — para a lista "Restaurar" e a trilha da Zona de Risco.
+app.get('/api/admin/deleted-collections', async (req: Request, res: Response) => {
+  try {
+    const pool = getPool();
+    await requireAdmin(pool, req.query.actorId);
+    return res.json({ collections: await listDeletedCollections(pool) });
+  } catch (error: any) {
+    console.error('Erro ao listar conjuntos excluídos:', error);
+    return handleAdminError(res, error, 'Erro ao listar conjuntos excluídos.');
+  }
+});
+
+app.get('/api/admin/actions', async (req: Request, res: Response) => {
+  try {
+    const pool = getPool();
+    await requireAdmin(pool, req.query.actorId);
+    return res.json({ actions: await listAdminActions(pool) });
+  } catch (error: any) {
+    console.error('Erro ao listar ações administrativas:', error);
+    return handleAdminError(res, error, 'Erro ao listar ações administrativas.');
+  }
+});
+
+app.post('/api/admin/collections/:nic/delete', async (req: Request, res: Response) => {
+  try {
+    const pool = getPool();
+    const actor = await requireAdmin(pool, req.body?.actorId);
+    const reason = String(req.body?.reason || '').trim();
+    if (!reason) return res.status(400).json({ error: 'Justificativa obrigatória para excluir um conjunto.' });
+    await softDeleteCollection(pool, req.params.nic, actor, reason);
+    return res.status(204).send();
+  } catch (error: any) {
+    console.error('Erro ao excluir conjunto:', error);
+    return handleAdminError(res, error, 'Erro ao excluir conjunto.');
+  }
+});
+
+app.post('/api/admin/collections/:nic/restore', async (req: Request, res: Response) => {
+  try {
+    const pool = getPool();
+    const actor = await requireAdmin(pool, req.body?.actorId);
+    await restoreCollection(pool, req.params.nic, actor);
+    return res.status(204).send();
+  } catch (error: any) {
+    console.error('Erro ao restaurar conjunto:', error);
+    return handleAdminError(res, error, 'Erro ao restaurar conjunto.');
+  }
+});
+
+app.post('/api/admin/collections/delete-all', async (req: Request, res: Response) => {
+  try {
+    const pool = getPool();
+    const actor = await requireAdmin(pool, req.body?.actorId);
+    const reason = String(req.body?.reason || '').trim();
+    if (!reason) return res.status(400).json({ error: 'Justificativa obrigatória para excluir todos os dados.' });
+    const affectedCount = await softDeleteAllCollections(pool, actor, reason);
+    return res.json({ affectedCount });
+  } catch (error: any) {
+    console.error('Erro ao excluir todos os conjuntos:', error);
+    return handleAdminError(res, error, 'Erro ao excluir todos os conjuntos.');
+  }
+});
+
+app.post('/api/admin/collections/restore-all', async (req: Request, res: Response) => {
+  try {
+    const pool = getPool();
+    const actor = await requireAdmin(pool, req.body?.actorId);
+    const affectedCount = await restoreAllCollections(pool, actor);
+    return res.json({ affectedCount });
+  } catch (error: any) {
+    console.error('Erro ao restaurar todos os conjuntos:', error);
+    return handleAdminError(res, error, 'Erro ao restaurar todos os conjuntos.');
+  }
+});
+
+app.post('/api/admin/collections/:nic/boxes/:boxId/delete', async (req: Request, res: Response) => {
+  try {
+    const pool = getPool();
+    const actor = await requireAdmin(pool, req.body?.actorId);
+    const reason = String(req.body?.reason || '').trim();
+    if (!reason) return res.status(400).json({ error: 'Justificativa obrigatória para excluir uma caixa.' });
+    const collection = await adminDeleteBox(pool, req.params.nic, req.params.boxId, actor, reason);
+    return res.json({ collection });
+  } catch (error: any) {
+    console.error('Erro ao excluir caixa:', error);
+    return handleAdminError(res, error, 'Erro ao excluir caixa.');
+  }
+});
+
+app.post('/api/admin/collections/:nic/boxes/:boxId/restore', async (req: Request, res: Response) => {
+  try {
+    const pool = getPool();
+    const actor = await requireAdmin(pool, req.body?.actorId);
+    const collection = await adminRestoreBox(pool, req.params.nic, req.params.boxId, actor);
+    return res.json({ collection });
+  } catch (error: any) {
+    console.error('Erro ao restaurar caixa:', error);
+    return handleAdminError(res, error, 'Erro ao restaurar caixa.');
   }
 });
 

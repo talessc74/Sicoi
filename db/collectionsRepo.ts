@@ -22,6 +22,7 @@ import {
   checkLockedPhases,
   custodyEventsToEntries,
   diffCollections,
+  HistoryViolationError,
   mergeSignatures,
   signatureEventsToEntries
 } from './historyGuard';
@@ -36,9 +37,12 @@ export interface Actor {
 
 const UNKNOWN_ACTOR: Actor = { id: null, name: null, role: null };
 
+// Exclui os conjuntos marcados como excluídos (deleted_at) pela Zona de Risco do
+// Administrador (db/adminRepo.ts) — a exclusão ali é reversível, nada é apagado de
+// verdade; só some desta lista até alguém restaurar.
 export async function listCollections(pool: Pool): Promise<OsteologicalCollection[]> {
   const { rows } = await pool.query<{ full_state: OsteologicalCollection }>(
-    'SELECT full_state FROM collections ORDER BY created_at DESC'
+    'SELECT full_state FROM collections WHERE deleted_at IS NULL ORDER BY created_at DESC'
   );
   return rows.map((r) => r.full_state);
 }
@@ -140,13 +144,18 @@ export async function saveCollection(
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const { rows } = await client.query<{ full_state: OsteologicalCollection }>(
-      'SELECT full_state FROM collections WHERE nic = $1 FOR UPDATE',
+    const { rows } = await client.query<{ full_state: OsteologicalCollection; deleted_at: string | null }>(
+      'SELECT full_state, deleted_at FROM collections WHERE nic = $1 FOR UPDATE',
       [collection.nic]
     );
     const previous = rows[0]?.full_state;
     if (!previous) {
       throw new Error(`Conjunto ${collection.nic} não encontrado para atualização.`);
+    }
+    if (rows[0].deleted_at) {
+      throw new HistoryViolationError(
+        `Conjunto ${collection.nic} está excluído — restaure-o na Zona de Risco (Configurações) antes de editar.`
+      );
     }
 
     const { signatures, events } = mergeSignatures(previous, collection);
