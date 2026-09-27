@@ -14,9 +14,10 @@ sobrescrevem `_core` quando os dois se sobrepõem.
 Manutenção dos Manuais do Usuário (`public/manuais/`) sincronizada com
 mudanças no site.
 
-### ADRs — Architectural Decisions (0 documentos)
+### ADRs — Architectural Decisions (1 documento)
 
-Nenhuma ainda.
+Histórico protegido de conjuntos: servidor como fonte de verdade,
+assinaturas travadas, registro de alterações encadeado por hash.
 
 ### BDRs — Business Decisions (0 documentos)
 
