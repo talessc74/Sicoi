@@ -3,7 +3,10 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     environment: 'node',
-    include: ['**/__tests__/**/*.test.ts'],
+    // Testes de componente usam '@vitest-environment jsdom' no topo do arquivo
+    // (por arquivo, não globalmente) — os demais continuam em 'node', mais rápidos.
+    setupFiles: ['./vitest.setup.ts'],
+    include: ['**/__tests__/**/*.test.ts', '**/__tests__/**/*.test.tsx'],
     exclude: ['node_modules', 'dist', 'dist-server'],
     testTimeout: 15000,
     // Os testes de db/ compartilham um único banco Postgres de teste (sgcccco_test).
