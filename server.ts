@@ -31,7 +31,10 @@ import {
   requestPasswordReset,
   listPendingPasswordResetRequests,
   resolvePendingPasswordResetRequests,
-  changeOwnPassword
+  changeOwnPassword,
+  isLoginLocked,
+  recordFailedLogin,
+  clearLoginAttempts
 } from './db/authRepo';
 import type { Pool } from 'pg';
 
@@ -115,29 +118,10 @@ app.use(
   })
 );
 
-// Freio simples de força bruta no login: N tentativas falhas seguidas por
-// matrícula trava por um tempo. Em memória — reseta se o servidor reiniciar;
-// suficiente para a Fase 1, um limitador persistente fica para depois.
-const LOGIN_MAX_ATTEMPTS = 5;
-const LOGIN_LOCKOUT_MS = 15 * 60 * 1000;
-const loginAttempts = new Map<string, { count: number; lockedUntil: number }>();
-
-function isLoginLocked(registrationNumber: string): boolean {
-  const entry = loginAttempts.get(registrationNumber);
-  return Boolean(entry && entry.lockedUntil > Date.now());
-}
-function recordFailedLogin(registrationNumber: string): void {
-  const entry = loginAttempts.get(registrationNumber) || { count: 0, lockedUntil: 0 };
-  entry.count += 1;
-  if (entry.count >= LOGIN_MAX_ATTEMPTS) {
-    entry.lockedUntil = Date.now() + LOGIN_LOCKOUT_MS;
-    entry.count = 0;
-  }
-  loginAttempts.set(registrationNumber, entry);
-}
-function clearLoginAttempts(registrationNumber: string): void {
-  loginAttempts.delete(registrationNumber);
-}
+// Freio de força bruta no login: N tentativas falhas seguidas pela mesma
+// matrícula trava por um tempo. Persistente em Postgres (db/authRepo.ts) —
+// sobrevive a reinício do servidor e só existe para matrícula que corresponde
+// a uma pessoa real, então não cresce sem limite com matrículas inventadas.
 
 // Rota protegida "de verdade": exige sessão válida — nunca um actorId que o
 // corpo da requisição declara. Anexa a pessoa autenticada em req.currentPerson.
@@ -795,15 +779,16 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
     if (!registrationNumber || !password) {
       return res.status(400).json({ error: 'Matrícula e senha são obrigatórias.' });
     }
-    if (isLoginLocked(registrationNumber)) {
+    const pool = getPool();
+    if (await isLoginLocked(pool, registrationNumber)) {
       return res.status(429).json({ error: 'Muitas tentativas de login. Aguarde alguns minutos e tente novamente.' });
     }
-    const person = await verifyLogin(getPool(), registrationNumber, password);
+    const person = await verifyLogin(pool, registrationNumber, password);
     if (!person) {
-      recordFailedLogin(registrationNumber);
+      await recordFailedLogin(pool, registrationNumber);
       return res.status(401).json({ error: 'Matrícula ou senha inválida.' });
     }
-    clearLoginAttempts(registrationNumber);
+    await clearLoginAttempts(pool, registrationNumber);
     return startSession(req, res, person);
   } catch (error: any) {
     console.error('Erro no login:', error);

@@ -25,6 +25,8 @@ const DEFAULT_TOKEN_TTL_HOURS = 72;
 // Chave arbitrária (só precisa ser estável e exclusiva deste uso) para a trava
 // consultiva do bootstrap do primeiro Administrador.
 const BOOTSTRAP_ADVISORY_LOCK_KEY = 8825001;
+const LOGIN_MAX_ATTEMPTS = 5;
+const LOGIN_LOCKOUT_MINUTES = 15;
 
 interface PersonAuthRow {
   id: string;
@@ -68,6 +70,71 @@ export async function verifyLogin(pool: Pool, registrationNumber: string, plainP
   if (!row || !row.password_hash) return null;
   const matches = await bcrypt.compare(plainPassword, row.password_hash);
   return matches ? toUserProfile(row) : null;
+}
+
+/**
+ * Freio de força bruta no login, persistente em Postgres (substitui o Map em
+ * memória da Fase 1 — sobrevivia só até o próximo reinício e crescia sem
+ * limite com matrículas inventadas). Só grava linha para matrícula que
+ * corresponde a uma pessoa real: sem conta, não há o que travar, e o tamanho
+ * da tabela fica limitado ao número de pessoas cadastradas, nunca ao número
+ * de tentativas de um atacante.
+ */
+export async function isLoginLocked(pool: Pool, registrationNumber: string): Promise<boolean> {
+  const { rows } = await pool.query<{ locked_until: string | null }>(
+    `SELECT la.locked_until FROM login_attempts la
+     JOIN people p ON p.id = la.person_id
+     WHERE p.registration_number = $1`,
+    [registrationNumber]
+  );
+  const lockedUntil = rows[0]?.locked_until;
+  return Boolean(lockedUntil && new Date(lockedUntil).getTime() > Date.now());
+}
+
+export async function recordFailedLogin(pool: Pool, registrationNumber: string): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: peopleRows } = await client.query<{ id: string }>(
+      'SELECT id FROM people WHERE registration_number = $1',
+      [registrationNumber]
+    );
+    const person = peopleRows[0];
+    if (!person) {
+      await client.query('ROLLBACK');
+      return;
+    }
+    const { rows } = await client.query<{ failed_count: number; locked_until: string | null }>(
+      'SELECT failed_count, locked_until FROM login_attempts WHERE person_id = $1 FOR UPDATE',
+      [person.id]
+    );
+    const current = rows[0];
+    // Uma trava expirada conta como zerada — a próxima tentativa falha começa a
+    // contagem de novo, em vez de continuar de onde travou.
+    const lockExpired = Boolean(current?.locked_until && new Date(current.locked_until).getTime() <= Date.now());
+    const previousCount = lockExpired ? 0 : (current?.failed_count || 0);
+    const nextCount = previousCount + 1;
+    const shouldLock = nextCount >= LOGIN_MAX_ATTEMPTS;
+    await client.query(
+      `INSERT INTO login_attempts (person_id, failed_count, locked_until, updated_at)
+       VALUES ($1, $2, $3, now())
+       ON CONFLICT (person_id) DO UPDATE SET failed_count = $2, locked_until = $3, updated_at = now()`,
+      [person.id, shouldLock ? 0 : nextCount, shouldLock ? new Date(Date.now() + LOGIN_LOCKOUT_MINUTES * 60 * 1000) : null]
+    );
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+export async function clearLoginAttempts(pool: Pool, registrationNumber: string): Promise<void> {
+  await pool.query(
+    'DELETE FROM login_attempts WHERE person_id = (SELECT id FROM people WHERE registration_number = $1)',
+    [registrationNumber]
+  );
 }
 
 export async function getPersonWithAuthStatus(pool: Pool, id: string): Promise<(UserProfile & { hasPassword: boolean }) | null> {

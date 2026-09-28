@@ -12,7 +12,10 @@ import {
   requestPasswordReset,
   listPendingPasswordResetRequests,
   resolvePendingPasswordResetRequests,
-  changeOwnPassword
+  changeOwnPassword,
+  isLoginLocked,
+  recordFailedLogin,
+  clearLoginAttempts
 } from '../authRepo';
 
 const TEST_DATABASE_URL =
@@ -31,6 +34,7 @@ afterAll(async () => {
 beforeEach(async () => {
   await pool.query('DELETE FROM password_setup_tokens');
   await pool.query('DELETE FROM password_reset_requests');
+  await pool.query('DELETE FROM login_attempts');
   await pool.query('DELETE FROM people');
 });
 
@@ -226,5 +230,60 @@ describe('authRepo', () => {
     await expect(
       changeOwnPassword(pool, '00000000-0000-0000-0000-000000000000', 'qualquer', 'senha-nova-456')
     ).rejects.toThrow('Pessoa não encontrada.');
+  });
+
+  it('isLoginLocked começa false para matrícula sem histórico de tentativas', async () => {
+    await createPerson(pool, { name: 'Sem Tentativas', role: 'tecnico', institution: 'INC', registrationNumber: '800' });
+    expect(await isLoginLocked(pool, '800')).toBe(false);
+  });
+
+  it('isLoginLocked devolve false para matrícula inexistente (nada a travar)', async () => {
+    expect(await isLoginLocked(pool, 'nao-existe')).toBe(false);
+  });
+
+  it('recordFailedLogin para matrícula inexistente não grava nada (evita crescimento sem limite)', async () => {
+    await recordFailedLogin(pool, 'nao-existe');
+    const { rows } = await pool.query('SELECT * FROM login_attempts');
+    expect(rows).toHaveLength(0);
+  });
+
+  it('trava depois de 5 tentativas falhas seguidas, e libera antes disso', async () => {
+    await createPerson(pool, { name: 'Alvo do Ataque', role: 'tecnico', institution: 'INC', registrationNumber: '801' });
+
+    for (let i = 0; i < 4; i++) {
+      await recordFailedLogin(pool, '801');
+      expect(await isLoginLocked(pool, '801')).toBe(false);
+    }
+    await recordFailedLogin(pool, '801');
+    expect(await isLoginLocked(pool, '801')).toBe(true);
+  });
+
+  it('clearLoginAttempts libera a matrícula e zera a contagem', async () => {
+    await createPerson(pool, { name: 'Login Certo Depois', role: 'tecnico', institution: 'INC', registrationNumber: '802' });
+
+    await recordFailedLogin(pool, '802');
+    await recordFailedLogin(pool, '802');
+    await clearLoginAttempts(pool, '802');
+
+    const { rows } = await pool.query('SELECT * FROM login_attempts');
+    expect(rows).toHaveLength(0);
+    expect(await isLoginLocked(pool, '802')).toBe(false);
+  });
+
+  it('depois de travar, uma nova tentativa falha começa a contagem de novo (não trava de novo na hora)', async () => {
+    const person = await createPerson(pool, { name: 'Trava Expirada', role: 'tecnico', institution: 'INC', registrationNumber: '803' });
+    for (let i = 0; i < 5; i++) {
+      await recordFailedLogin(pool, '803');
+    }
+    expect(await isLoginLocked(pool, '803')).toBe(true);
+
+    // Simula a trava já ter expirado (sem esperar 15 minutos de verdade).
+    await pool.query('UPDATE login_attempts SET locked_until = now() - interval \'1 minute\' WHERE person_id = $1', [person.id]);
+    expect(await isLoginLocked(pool, '803')).toBe(false);
+
+    await recordFailedLogin(pool, '803');
+    const { rows } = await pool.query('SELECT failed_count, locked_until FROM login_attempts WHERE person_id = $1', [person.id]);
+    expect(rows[0].failed_count).toBe(1);
+    expect(rows[0].locked_until).toBeNull();
   });
 });
