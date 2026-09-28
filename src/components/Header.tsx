@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { UserProfile, UserRole } from '../types/sgccco';
 import { useAppVersion } from '../hooks/useAppVersion';
+import { getRoleTheme } from '../utils/roleTheme';
 import {
   Home,
   BookOpen,
@@ -10,7 +11,6 @@ import {
   Layers,
   MapPin,
   QrCode,
-  User,
   UserPlus,
   Volume2,
   Menu,
@@ -108,8 +108,16 @@ export const Header: React.FC<HeaderProps> = ({
 
   const isOperationalActive = ['fases', 'auditoria', 'grafo', 'estantes', 'pesquisa'].includes(activeTab);
 
+  // Identidade visual do papel ativo (§ Zona de UX) — só na faixa do topo e no
+  // selo do menu de perfil, nunca em botões ou bordas de formulário.
+  const activeRoleTheme = getRoleTheme(currentUser.role);
+  const ActiveRoleIcon = activeRoleTheme.icon;
+
   return (
     <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40 shadow-xs w-full max-w-full">
+      {/* Faixa de identidade do papel ativo — 3px, só um indicador visual */}
+      <div className={`h-[3px] w-full ${activeRoleTheme.bar}`} title={`Papel ativo: ${activeRoleTheme.label}`} />
+
       {/* Top Main Navigation Bar */}
       <div className="max-w-[1920px] mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-2 sm:gap-4 w-full">
         {/* Brand / Logo */}
@@ -353,9 +361,10 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="relative shrink-0">
             <button
               onClick={() => setRoleMenuOpen(!roleMenuOpen)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:opacity-95 transition-all shadow-xs whitespace-nowrap shrink-0"
+              title={`Papel ativo: ${activeRoleTheme.label}`}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all shadow-xs whitespace-nowrap shrink-0 ${activeRoleTheme.badgeBg} ${activeRoleTheme.badgeBorder} ${activeRoleTheme.badgeText} hover:opacity-90`}
             >
-              <User className="w-3.5 h-3.5 shrink-0" />
+              <ActiveRoleIcon className="w-3.5 h-3.5 shrink-0" />
               <span className="truncate max-w-[80px] sm:max-w-[110px] xl:max-w-none">{currentUser.name.split(' ')[0]}</span>
             </button>
 
@@ -366,7 +375,10 @@ export const Header: React.FC<HeaderProps> = ({
                   <p className="text-slate-500 dark:text-slate-400 mt-0.5">{currentUser.institution}</p>
                 </div>
                 <div className="space-y-1">
-                  {people.map((usr) => (
+                  {people.map((usr) => {
+                    const theme = getRoleTheme(usr.role);
+                    const RoleIcon = theme.icon;
+                    return (
                     <button
                       key={usr.id}
                       onClick={() => {
@@ -381,13 +393,15 @@ export const Header: React.FC<HeaderProps> = ({
                     >
                       <div className="flex items-center justify-between">
                         <span className="font-medium text-slate-800 dark:text-slate-200">{usr.name}</span>
-                        <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-slate-200/60 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300">
+                        <span className={`flex items-center gap-1 text-[10px] uppercase font-mono px-1.5 py-0.5 rounded border ${theme.badgeBg} ${theme.badgeBorder} ${theme.badgeText}`}>
+                          <RoleIcon className="w-2.5 h-2.5" />
                           {usr.role}
                         </span>
                       </div>
                       <span className="text-[11px] text-slate-400 mt-0.5 truncate">{getRoleLabel(usr.role)}</span>
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 <div className="mt-1 pt-1 border-t border-slate-100 dark:border-slate-800">

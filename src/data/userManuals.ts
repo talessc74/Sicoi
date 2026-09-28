@@ -21,9 +21,9 @@ export const USER_MANUALS: UserManual[] = [
     id: 'manual-completo',
     title: 'Manual SIGCOI — Guia completo',
     description: 'Visão geral, perfis de acesso, as 7 fases, assinatura & hash, ferramentas, condutor por voz, glossário e FAQ.',
-    version: 'v4',
-    path: '/manuais/manual-sigcoi-completo-v4.html',
-    updatedAt: '2026-09-27',
+    version: 'v5',
+    path: '/manuais/manual-sigcoi-completo-v5.html',
+    updatedAt: '2026-09-28',
   },
   {
     id: 'manual-fases-4-a-7',

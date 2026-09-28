@@ -14,12 +14,13 @@ sobrescrevem `_core` quando os dois se sobrepõem.
 Manutenção dos Manuais do Usuário (`public/manuais/`) sincronizada com
 mudanças no site. CORS restrito a origens conhecidas.
 
-### ADRs — Architectural Decisions (2 documentos)
+### ADRs — Architectural Decisions (3 documentos)
 
 Histórico protegido de conjuntos: servidor como fonte de verdade,
 assinaturas travadas, registro de alterações encadeado por hash.
 Exclusão administrativa reversível (Zona de Risco): soft delete +
-trilha própria + papel reconferido no servidor.
+trilha própria + papel reconferido no servidor. Identidade visual por
+papel: cor + ícone fixos, só no indicador de identidade.
 
 ### BDRs — Business Decisions (0 documentos)
 

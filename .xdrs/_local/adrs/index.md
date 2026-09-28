@@ -15,6 +15,7 @@ Decisões de arquitetura e técnicas deste projeto, criadas por deliberação AR
 ## Application
 
 - [_local-adr-policy-101](application/101-historico-protegido-de-conjuntos.md) - Histórico protegido de conjuntos: servidor como fonte de verdade, assinaturas travadas, registro de alterações encadeado por hash
+- [_local-adr-policy-102](application/102-identidade-visual-por-papel.md) - Identidade visual por papel: cor + ícone fixos, só no indicador de identidade, nunca reaproveitando cor de status
 
 ## Controls
 
