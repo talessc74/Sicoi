@@ -53,11 +53,26 @@ sessão criada no login — nunca de um campo que o cliente envia.**
 
 ### Details
 
-- **Fase 1 (esta policy) é aditiva**: as rotas antigas
-  (`resolveActor`/`requireAdmin`, baseadas em `actorId`) continuam
-  existindo sem alteração. Migrar cada rota existente para exigir sessão
-  é a Fase 2, deliberadamente separada para manter o diff desta fase
-  revisável.
+- **Fase 1 foi aditiva**: as rotas antigas (`resolveActor`/`requireAdmin`,
+  baseadas em `actorId`) continuaram existindo sem alteração, para manter
+  o diff revisável. **Fase 2 (concluída)** removeu esse modelo por
+  completo: `resolveActor`/`requireAdmin` foram apagados; toda rota que
+  grava dados (`POST`/`PUT /api/collections`, todo `/api/admin/*`) agora
+  passa por `requireAuth` (e `requireSessionRole('administrador')` nas
+  rotas administrativas), derivando o ator de `req.currentPerson` — nunca
+  de `req.body.actorId`/`req.query.actorId`. Os serviços do front-end
+  (`collectionsService.ts`, `adminService.ts`) e `AdminDangerZone.tsx`
+  pararam de enviar `actorId`.
+- **Risco de implantação, deliberado**: a partir da Fase 2, ninguém
+  consegue mais criar/salvar conjunto ou usar a Zona de Risco sem sessão
+  autenticada — e hoje nenhuma das ~30 pessoas cadastradas em produção
+  tem senha definida, e não existe tela de login (isso é a Fase 3). Esta
+  branch **não deve ir para produção antes da Fase 3** (telas de
+  login/logout e "definir senha") estar pronta, sob pena de travar o
+  sistema inteiro para toda a equipe.
+- `GET /api/people` permanece público nesta fase (fora do escopo — ver
+  Fase 3, que substitui a lista de pessoas por login digitado e deve
+  reavaliar essa rota).
 - Senha (escolhida por humano, baixa entropia) usa bcrypt — hash
   não-determinístico, salgado, caro de força-bruta. Token de definição de
   senha (gerado pelo sistema, alta entropia) usa SHA-256 — determinístico
@@ -80,7 +95,7 @@ sessão criada no login — nunca de um campo que o cliente envia.**
 - Testes: `db/__tests__/authRepo.test.ts`
 - Policy relacionada: `_local-adr-policy-201` (a Zona de Risco é
   exatamente o tipo de ação que mais precisava desta prova de identidade)
-- Fases seguintes (não cobertas aqui): Fase 2 — migrar rotas existentes
-  de `actorId` para sessão; Fase 3 — telas de login/logout reais e
-  "definir senha", removendo o troca-de-perfil de um clique; Fase 5 —
-  CSRF, rate-limit persistente, ajuste fino de expiração de sessão.
+- Fases seguintes (não cobertas aqui): Fase 3 — telas de login/logout
+  reais e "definir senha", removendo o troca-de-perfil de um clique
+  (pré-requisito para implantar esta branch em produção); Fase 5 — CSRF,
+  rate-limit persistente, ajuste fino de expiração de sessão.

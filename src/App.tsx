@@ -138,7 +138,7 @@ export default function App() {
     // mais nova (e o servidor, que protege o histórico, recusaria a mais antiga).
     const queued = (saveQueueRef.current[updated.nic] || Promise.resolve())
       .catch(() => undefined)
-      .then(() => saveCollectionApi(updated, currentUser?.id));
+      .then(() => saveCollectionApi(updated));
     saveQueueRef.current[updated.nic] = queued;
     queued
       .then(() => {
@@ -236,7 +236,7 @@ export default function App() {
     };
 
     try {
-      const created = await createCollectionApi(newCol, currentUser.id);
+      const created = await createCollectionApi(newCol);
       setCollections(prev => [created, ...prev]);
       setSelectedNic(newNic);
       setActivePhase(1);
