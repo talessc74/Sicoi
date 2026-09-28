@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { OsteologicalCollection, UserProfile, UserRole } from '../types/sgccco';
 import { AdminDangerZone } from './AdminDangerZone';
+import { getRoleTheme } from '../utils/roleTheme';
 import {
   Settings,
   Volume2,
@@ -293,12 +294,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           {people.length === 0 && (
             <p className="p-5 text-slate-400">Nenhuma pessoa cadastrada.</p>
           )}
-          {people.map((person) => (
+          {people.map((person) => {
+            const theme = getRoleTheme(person.role);
+            const RoleIcon = theme.icon;
+            return (
             <div key={person.id} className="p-4 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-slate-800 dark:text-slate-200">{person.name}</span>
-                  <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-slate-200/60 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300">
+                  <span className={`flex items-center gap-1 text-[10px] uppercase font-mono px-1.5 py-0.5 rounded border ${theme.badgeBg} ${theme.badgeBorder} ${theme.badgeText}`}>
+                    <RoleIcon className="w-2.5 h-2.5" />
                     {person.role}
                   </span>
                   {currentUser.id === person.id && (
@@ -327,7 +332,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 </button>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
