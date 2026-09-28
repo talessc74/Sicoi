@@ -36,9 +36,9 @@ export const USER_MANUALS: UserManual[] = [
   {
     id: 'manual-administrador-contas',
     title: 'Manual SIGCOI — Administrador · Gestão de Contas',
-    description: 'Passo a passo do login real: cadastrar pessoa, gerar link de acesso, atender pedidos de "esqueci a senha" e remover acesso.',
-    version: 'v2',
-    path: '/manuais/manual-administrador-contas-v2.html',
+    description: 'Passo a passo do login real: cadastrar pessoa, gerar link de acesso, atender pedidos de "esqueci a senha", trocar a própria senha e remover acesso.',
+    version: 'v3',
+    path: '/manuais/manual-administrador-contas-v3.html',
     updatedAt: '2026-09-28',
   },
 ];

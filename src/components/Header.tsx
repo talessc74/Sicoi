@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { UserProfile, UserRole } from '../types/sgccco';
 import { useAppVersion } from '../hooks/useAppVersion';
 import { getRoleTheme } from '../utils/roleTheme';
+import { ChangePasswordModal } from './ChangePasswordModal';
 import {
   Home,
   BookOpen,
@@ -17,7 +18,8 @@ import {
   Search,
   ChevronDown,
   ShieldCheck,
-  LogOut
+  LogOut,
+  KeyRound
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -44,6 +46,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenGeminiChat
 }) => {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [quickSearchInput, setQuickSearchInput] = useState('');
   const [operationalSubmenuOpen, setOperationalSubmenuOpen] = useState(false);
@@ -345,6 +348,16 @@ export const Header: React.FC<HeaderProps> = ({
                 <button
                   onClick={() => {
                     setUserMenuOpen(false);
+                    setShowChangePassword(true);
+                  }}
+                  className="w-full flex items-center gap-1.5 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 font-medium"
+                >
+                  <KeyRound className="w-3.5 h-3.5" />
+                  Trocar minha senha
+                </button>
+                <button
+                  onClick={() => {
+                    setUserMenuOpen(false);
                     onLogout();
                   }}
                   className="w-full flex items-center gap-1.5 px-3 py-2 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 font-medium"
@@ -355,6 +368,8 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             )}
           </div>
+
+          {showChangePassword && <ChangePasswordModal onClose={() => setShowChangePassword(false)} />}
 
           {/* Mobile Hamburger Toggle */}
           <button

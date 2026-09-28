@@ -11,7 +11,8 @@ import {
   createFirstAdmin,
   requestPasswordReset,
   listPendingPasswordResetRequests,
-  resolvePendingPasswordResetRequests
+  resolvePendingPasswordResetRequests,
+  changeOwnPassword
 } from '../authRepo';
 
 const TEST_DATABASE_URL =
@@ -199,5 +200,31 @@ describe('authRepo', () => {
     await resolvePendingPasswordResetRequests(pool, person.id, 'Admin Teste');
     await expect(resolvePendingPasswordResetRequests(pool, person.id, 'Admin Teste')).resolves.not.toThrow();
     expect(await listPendingPasswordResetRequests(pool)).toEqual([]);
+  });
+
+  it('changeOwnPassword troca a senha quando a senha atual está correta', async () => {
+    const person = await createPerson(pool, { name: 'Troca Senha', role: 'tecnico', institution: 'INC', registrationNumber: '700' });
+    const passwordHash = await hashPassword('senha-antiga-123');
+    await pool.query('UPDATE people SET password_hash = $1 WHERE id = $2', [passwordHash, person.id]);
+
+    await changeOwnPassword(pool, person.id, 'senha-antiga-123', 'senha-nova-456');
+
+    expect(await verifyLogin(pool, '700', 'senha-antiga-123')).toBeNull();
+    expect(await verifyLogin(pool, '700', 'senha-nova-456')).toEqual(person);
+  });
+
+  it('changeOwnPassword rejeita quando a senha atual está errada, sem trocar nada', async () => {
+    const person = await createPerson(pool, { name: 'Senha Errada', role: 'tecnico', institution: 'INC', registrationNumber: '701' });
+    const passwordHash = await hashPassword('senha-antiga-123');
+    await pool.query('UPDATE people SET password_hash = $1 WHERE id = $2', [passwordHash, person.id]);
+
+    await expect(changeOwnPassword(pool, person.id, 'senha-errada', 'senha-nova-456')).rejects.toThrow('Senha atual incorreta.');
+    expect(await verifyLogin(pool, '701', 'senha-antiga-123')).toEqual(person);
+  });
+
+  it('changeOwnPassword rejeita para pessoa inexistente', async () => {
+    await expect(
+      changeOwnPassword(pool, '00000000-0000-0000-0000-000000000000', 'qualquer', 'senha-nova-456')
+    ).rejects.toThrow('Pessoa não encontrada.');
   });
 });

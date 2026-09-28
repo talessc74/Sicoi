@@ -80,6 +80,28 @@ export async function getPersonWithAuthStatus(pool: Pool, id: string): Promise<(
 }
 
 /**
+ * Troca a própria senha de quem já está logado — exige a senha atual (não
+ * basta a sessão) exatamente para o caso em que alguém deixou a sessão aberta
+ * num computador compartilhado: sem saber a senha atual, não muda nada.
+ */
+export async function changeOwnPassword(pool: Pool, personId: string, currentPassword: string, newPassword: string): Promise<void> {
+  const { rows } = await pool.query<PersonAuthRow>(
+    'SELECT id, name, role, institution, registration_number, password_hash FROM people WHERE id = $1',
+    [personId]
+  );
+  const row = rows[0];
+  if (!row || !row.password_hash) {
+    throw new Error('Pessoa não encontrada.');
+  }
+  const matches = await bcrypt.compare(currentPassword, row.password_hash);
+  if (!matches) {
+    throw new Error('Senha atual incorreta.');
+  }
+  const newHash = await hashPassword(newPassword);
+  await pool.query('UPDATE people SET password_hash = $1 WHERE id = $2', [newHash, personId]);
+}
+
+/**
  * Gera um link de "definir senha" para uma pessoa — só o Administrador que
  * chama isto (conferido pela rota, não aqui). Devolve o token em texto puro
  * UMA VEZ; a partir daqui, só o hash dele existe no banco. Entregar esse

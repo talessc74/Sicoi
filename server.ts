@@ -30,7 +30,8 @@ import {
   createFirstAdmin,
   requestPasswordReset,
   listPendingPasswordResetRequests,
-  resolvePendingPasswordResetRequests
+  resolvePendingPasswordResetRequests,
+  changeOwnPassword
 } from './db/authRepo';
 import type { Pool } from 'pg';
 
@@ -830,6 +831,28 @@ app.get('/api/auth/me', async (req: Request, res: Response) => {
     return res.status(401).json({ error: 'Sessão inválida.' });
   }
   return res.json({ person });
+});
+
+// Quem já está logado troca a própria senha — exige a senha atual (não basta
+// a sessão), justamente para o caso de sessão aberta num computador
+// compartilhado.
+app.post('/api/auth/change-password', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const currentPassword = String(req.body?.currentPassword || '');
+    const newPassword = String(req.body?.newPassword || '');
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Senha atual e nova senha são obrigatórias.' });
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: 'A nova senha deve ter pelo menos 8 caracteres.' });
+    }
+    const personId = (req as any).currentPerson.id;
+    await changeOwnPassword(getPool(), personId, currentPassword, newPassword);
+    return res.status(204).send();
+  } catch (error: any) {
+    console.error('Erro ao trocar a própria senha:', error);
+    return res.status(400).json({ error: error?.message || 'Erro ao trocar a senha.' });
+  }
 });
 
 // Só o Administrador (via sessão autenticada) gera links de "definir senha".

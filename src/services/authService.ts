@@ -107,3 +107,13 @@ export async function fetchPendingPasswordResetRequestsApi(): Promise<PendingPas
   const result = await parseJsonOrThrow(res, 'Erro ao listar pedidos de redefinição de senha');
   return result.requests;
 }
+
+// Quem já está logado troca a própria senha — exige a senha atual, não só a sessão.
+export async function changePasswordApi(currentPassword: string, newPassword: string): Promise<void> {
+  const res = await fetch('/api/auth/change-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ currentPassword, newPassword })
+  });
+  await parseJsonOrThrow(res, 'Erro ao trocar a senha');
+}
