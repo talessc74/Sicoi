@@ -3,6 +3,7 @@
  * Substitui o estado local em memória (mockData) como fonte de verdade do App.
  */
 import { OsteologicalCollection } from '../types/sgccco';
+import { csrfHeaders } from './csrf';
 
 async function parseJsonOrThrow(res: Response, fallbackMessage: string) {
   let data: any = null;
@@ -28,7 +29,7 @@ export async function fetchCollections(): Promise<OsteologicalCollection[]> {
 export async function createCollectionApi(collection: OsteologicalCollection): Promise<OsteologicalCollection> {
   const res = await fetch('/api/collections', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
     body: JSON.stringify({ collection })
   });
   const data = await parseJsonOrThrow(res, 'Erro ao criar conjunto');
@@ -38,7 +39,7 @@ export async function createCollectionApi(collection: OsteologicalCollection): P
 export async function saveCollectionApi(collection: OsteologicalCollection): Promise<OsteologicalCollection> {
   const res = await fetch(`/api/collections/${encodeURIComponent(collection.nic)}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
     body: JSON.stringify({ collection })
   });
   const data = await parseJsonOrThrow(res, 'Erro ao salvar conjunto');

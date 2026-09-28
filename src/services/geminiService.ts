@@ -3,6 +3,7 @@
  * Comunica-se com o backend Express (/api/chat, /api/transcribe, /api/status)
  * protegendo chaves de API e garantindo diagnóstico em tempo real.
  */
+import { csrfHeaders } from './csrf';
 
 export interface ChatMessage {
   id: string;
@@ -43,7 +44,7 @@ export async function sendChatMessage(
   try {
     const res = await fetch('/api/chat', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
       body: JSON.stringify({
         messages,
         model,
@@ -81,7 +82,7 @@ export async function transcribeAudioBlob(blob: Blob): Promise<string> {
         const base64Audio = reader.result as string;
         const res = await fetch('/api/transcribe', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
           body: JSON.stringify({
             audioBase64: base64Audio,
             mimeType: blob.type || 'audio/webm',
@@ -124,7 +125,7 @@ export interface PopStepAiResult {
 export async function sendPopStepMessage(transcript: string, stepContext: string): Promise<PopStepAiResult> {
   const res = await fetch('/api/pop-step', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
     body: JSON.stringify({ transcript, stepContext })
   });
 

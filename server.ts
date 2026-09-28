@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { execSync } from 'child_process';
+import crypto from 'crypto';
 import session from 'express-session';
 import pgSessionFactory from 'connect-pg-simple';
 import { GoogleGenAI } from '@google/genai';
@@ -43,6 +44,11 @@ import type { Pool } from 'pg';
 declare module 'express-session' {
   interface SessionData {
     personId?: string;
+    // Token de sincronização anti-CSRF (padrão double-submit): gerado quando a
+    // sessão é criada, devolvido ao cliente uma vez, e conferido contra o
+    // cabeçalho X-CSRF-Token em toda requisição que muda estado com sessão
+    // autenticada. Ver csrfProtection, abaixo.
+    csrfToken?: string;
   }
 }
 
@@ -117,6 +123,38 @@ app.use(
     }
   })
 );
+
+// Garante que a sessão tem um token anti-CSRF, gerando um se ainda não tiver
+// (sessão nova, ou sessão de antes desta proteção existir).
+function ensureCsrfToken(req: Request): string {
+  if (!req.session.csrfToken) {
+    req.session.csrfToken = crypto.randomBytes(32).toString('hex');
+  }
+  return req.session.csrfToken;
+}
+
+// Proteção anti-CSRF (padrão double-submit token): toda requisição que muda
+// estado (POST/PUT/DELETE/PATCH) COM sessão autenticada precisa devolver, no
+// cabeçalho X-CSRF-Token, o mesmo valor que só quem já leu a resposta de
+// login/bootstrap/"quem sou eu" tem — um site de terceiros não consegue ler
+// essa resposta (bloqueado por CORS), então não consegue forjar o cabeçalho.
+// Rotas sem sessão (login, bootstrap do 1º admin, esqueci a senha, definir
+// senha) não passam por aqui: cada uma já prova quem pode agir por senha ou
+// por token de uso único — não há cookie de sessão alheia para um CSRF
+// explorar nelas.
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+function csrfProtection(req: Request, res: Response, next: NextFunction): void {
+  if (SAFE_METHODS.has(req.method) || !req.session.personId) {
+    return next();
+  }
+  const headerToken = req.headers['x-csrf-token'];
+  if (typeof headerToken !== 'string' || !req.session.csrfToken || headerToken !== req.session.csrfToken) {
+    res.status(403).json({ error: 'Token CSRF ausente ou inválido. Recarregue a página e tente de novo.' });
+    return;
+  }
+  next();
+}
+app.use(csrfProtection);
 
 // Freio de força bruta no login: N tentativas falhas seguidas pela mesma
 // matrícula trava por um tempo. Persistente em Postgres (db/authRepo.ts) —
@@ -735,7 +773,8 @@ function startSession(req: Request, res: Response, person: Awaited<ReturnType<ty
       return res.status(500).json({ error: 'Erro ao criar sessão de login.' });
     }
     req.session.personId = person!.id;
-    return res.status(statusCode).json({ person });
+    const csrfToken = ensureCsrfToken(req);
+    return res.status(statusCode).json({ person, csrfToken });
   });
 }
 
@@ -815,7 +854,11 @@ app.get('/api/auth/me', async (req: Request, res: Response) => {
     req.session.personId = undefined;
     return res.status(401).json({ error: 'Sessão inválida.' });
   }
-  return res.json({ person });
+  // Recarregar a página não passa pelo login de novo — quem já está logado
+  // (sessão restaurada pelo cookie) também precisa do token anti-CSRF para
+  // continuar fazendo ações que mudam estado.
+  const csrfToken = ensureCsrfToken(req);
+  return res.json({ person, csrfToken });
 });
 
 // Quem já está logado troca a própria senha — exige a senha atual (não basta

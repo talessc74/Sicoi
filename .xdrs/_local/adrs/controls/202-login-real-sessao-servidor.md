@@ -1,7 +1,7 @@
 ---
 name: _local-adr-policy-202-login-real-sessao-servidor
 description: "Ser alguém" no sistema é provar matrícula + senha e receber uma sessão assinada pelo servidor (cookie httpOnly) — nunca o navegador declarando um actorId, nem um seletor de perfil de um clique. Use antes de adicionar qualquer rota ou tela nova que precise saber quem está agindo, ou antes de mudar o fluxo de cadastro/gestão de contas.
-apply-to: db/authRepo.ts, db/peopleRepo.ts, server.ts (middleware de sessão, requireAuth/requireSessionRole, rotas /api/auth/* e /api/people), db/migrations/009_auth.sql, src/services/authService.ts, src/components/LoginScreen.tsx, src/components/BootstrapAdminSetup.tsx, src/components/SetPasswordScreen.tsx, src/components/Header.tsx, src/components/SettingsView.tsx
+apply-to: db/authRepo.ts, db/peopleRepo.ts, server.ts (middleware de sessão, csrfProtection, requireAuth/requireSessionRole, rotas /api/auth/* e /api/people), db/migrations/009_auth.sql, db/migrations/010_password_reset_requests.sql, db/migrations/011_login_attempts.sql, src/services/authService.ts, src/services/csrf.ts, src/services/collectionsService.ts, src/services/adminService.ts, src/services/peopleService.ts, src/services/geminiService.ts, src/components/LoginScreen.tsx, src/components/BootstrapAdminSetup.tsx, src/components/SetPasswordScreen.tsx, src/components/ForgotPasswordScreen.tsx, src/components/ChangePasswordModal.tsx, src/components/Header.tsx, src/components/SettingsView.tsx
 valid-from: 2026-09-28
 ---
 
@@ -42,8 +42,9 @@ sessão criada no login — nunca de um campo que o cliente envia.**
    rolling) guarda só o `personId`. Nome e papel são buscados no banco a
    cada requisição — nunca confiados do cookie ou do cliente.
 4. `POST /api/auth/login` confere matrícula + senha (bcrypt.compare) e
-   cria a sessão; um freio simples em memória trava 5 tentativas falhas
-   seguidas da mesma matrícula por 15 minutos. `POST /api/auth/logout`
+   cria a sessão; um freio persistente em Postgres (`login_attempts`)
+   trava 5 tentativas falhas seguidas da mesma matrícula por 15 minutos.
+   `POST /api/auth/logout`
    destrói a sessão. `GET /api/auth/me` devolve quem está logado a partir
    da sessão. `POST /api/auth/setup-links` (só Administrador autenticado)
    gera o link de definição de senha; `POST /api/auth/setup-password`
@@ -114,6 +115,35 @@ sessão criada no login — nunca de um campo que o cliente envia.**
   a considerar em caso de suspeita de acesso indevido (avisar a pessoa
   para também fechar sessões abertas, ou remover e recriar a conta em
   casos mais sérios).
+- **Freio de força bruta, corrigido (mesmo dia)**: era um `Map` em
+  memória em `server.ts` — resetava a cada reinício do servidor e
+  crescia sem limite (uma entrada por matrícula tentada, real ou
+  inventada). Passou para a tabela `login_attempts`
+  (migração `011_login_attempts.sql`, funções em `authRepo.ts`):
+  persiste entre reinícios, e só existe linha para matrícula que
+  corresponde a uma pessoa real — sem conta, não há o que travar, e o
+  tamanho da tabela fica limitado ao número de pessoas cadastradas.
+  Os testes novos pegaram um bug real na primeira versão da lógica de
+  "reiniciar contagem depois da trava expirar" (estava invertida, a
+  trava nunca disparava) — corrigido antes de comitar.
+- **CSRF, corrigido (mesmo dia)**: toda rota que muda estado com sessão
+  autenticada (`POST`/`PUT`/`DELETE` — conjuntos, Zona de Risco,
+  cadastro de pessoas, gerar link, trocar senha, chat/transcrição/passo
+  do condutor por voz) agora exige o padrão *double-submit token*:
+  `req.session.csrfToken` é gerado na criação da sessão (login,
+  bootstrap do 1º Administrador) e devolvido no corpo da resposta uma
+  vez; toda chamada mutante precisa devolvê-lo no cabeçalho
+  `X-CSRF-Token` (`csrfProtection` em `server.ts`) — um site de
+  terceiros não consegue ler essa resposta (bloqueado por CORS) para
+  forjar o cabeçalho. Rotas sem sessão (login, bootstrap, esqueci a
+  senha, definir senha) ficam de fora: cada uma já prova quem pode agir
+  por senha ou por token de uso único, sem depender do cookie de sessão
+  de outra pessoa. `GET /api/auth/me` também devolve o token, para
+  quem recarrega a página sem passar pelo login de novo. Front-end:
+  `src/services/csrf.ts` guarda o token em memória (nunca em
+  localStorage/cookie legível por JS de outro site) e todo serviço que
+  faz uma chamada mutante (`collectionsService.ts`, `adminService.ts`,
+  `peopleService.ts`, `authService.ts`, `geminiService.ts`) o anexa.
 - Senha (escolhida por humano, baixa entropia) usa bcrypt — hash
   não-determinístico, salgado, caro de força-bruta. Token de definição de
   senha (gerado pelo sistema, alta entropia) usa SHA-256 — determinístico
@@ -153,7 +183,6 @@ sessão criada no login — nunca de um campo que o cliente envia.**
   acesso" atualizada)
 - Policy relacionada: `_local-adr-policy-201` (a Zona de Risco é
   exatamente o tipo de ação que mais precisava desta prova de identidade)
-- Pendência seguinte (não coberta aqui): Fase 5 — CSRF, rate-limit
-  persistente entre reinícios do servidor, ajuste fino de expiração de
+- Pendência seguinte (não coberta aqui): ajuste fino de expiração de
   sessão, encerrar sessões abertas em outros dispositivos ao trocar a
-  senha.
+  senha ou redefinir por link.

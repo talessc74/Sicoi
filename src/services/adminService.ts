@@ -6,6 +6,7 @@
  * Ver _local-adr-policy-202.
  */
 import { OsteologicalCollection } from '../types/sgccco';
+import { csrfHeaders } from './csrf';
 
 async function parseJsonOrThrow(res: Response, fallbackMessage: string) {
   let data: any = null;
@@ -56,7 +57,7 @@ export async function fetchAdminActions(): Promise<AdminActionRow[]> {
 async function postAdmin(path: string, body: Record<string, unknown>, fallbackMessage: string) {
   const res = await fetch(path, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
     body: JSON.stringify(body)
   });
   return parseJsonOrThrow(res, fallbackMessage);

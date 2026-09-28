@@ -4,6 +4,7 @@
  * pelo cliente — só o servidor sabe, pelo cookie de sessão.
  */
 import { UserProfile } from '../types/sgccco';
+import { setCsrfToken, csrfHeaders } from './csrf';
 
 async function parseJsonOrThrow(res: Response, fallbackMessage: string) {
   let data: any = null;
@@ -35,6 +36,7 @@ export async function bootstrapAdminApi(data: {
     body: JSON.stringify(data)
   });
   const result = await parseJsonOrThrow(res, 'Erro ao criar o primeiro Administrador');
+  setCsrfToken(result.csrfToken);
   return result.person;
 }
 
@@ -45,11 +47,17 @@ export async function loginApi(registrationNumber: string, password: string): Pr
     body: JSON.stringify({ registrationNumber, password })
   });
   const result = await parseJsonOrThrow(res, 'Erro ao entrar');
+  setCsrfToken(result.csrfToken);
   return result.person;
 }
 
 export async function logoutApi(): Promise<void> {
-  await fetch('/api/auth/logout', { method: 'POST' });
+  try {
+    await fetch('/api/auth/logout', { method: 'POST', headers: csrfHeaders() });
+  } finally {
+    // O token desta sessão não vale mais depois do logout, sessão nova ou não.
+    setCsrfToken(null);
+  }
 }
 
 /** Devolve a pessoa logada a partir da sessão, ou `null` se não houver sessão válida. */
@@ -57,6 +65,7 @@ export async function fetchCurrentUser(): Promise<UserProfile | null> {
   const res = await fetch('/api/auth/me');
   if (res.status === 401) return null;
   const result = await parseJsonOrThrow(res, 'Erro ao verificar sessão');
+  setCsrfToken(result.csrfToken);
   return result.person;
 }
 
@@ -64,7 +73,7 @@ export async function fetchCurrentUser(): Promise<UserProfile | null> {
 export async function generateSetupLinkApi(personId: string): Promise<{ token: string; expiresAt: string }> {
   const res = await fetch('/api/auth/setup-links', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
     body: JSON.stringify({ personId })
   });
   return parseJsonOrThrow(res, 'Erro ao gerar link de definição de senha');
@@ -112,7 +121,7 @@ export async function fetchPendingPasswordResetRequestsApi(): Promise<PendingPas
 export async function changePasswordApi(currentPassword: string, newPassword: string): Promise<void> {
   const res = await fetch('/api/auth/change-password', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
     body: JSON.stringify({ currentPassword, newPassword })
   });
   await parseJsonOrThrow(res, 'Erro ao trocar a senha');

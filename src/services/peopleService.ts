@@ -5,6 +5,7 @@
  * separadamente, pelo link gerado em authService.generateSetupLinkApi.
  */
 import { UserProfile } from '../types/sgccco';
+import { csrfHeaders } from './csrf';
 
 async function parseJsonOrThrow(res: Response, fallbackMessage: string) {
   let data: any = null;
@@ -33,7 +34,7 @@ export async function createPersonApi(person: {
 }): Promise<UserProfile> {
   const res = await fetch('/api/people', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
     body: JSON.stringify(person)
   });
   const data = await parseJsonOrThrow(res, 'Erro ao cadastrar pessoa');
@@ -41,6 +42,6 @@ export async function createPersonApi(person: {
 }
 
 export async function deletePersonApi(id: string): Promise<void> {
-  const res = await fetch(`/api/people/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  const res = await fetch(`/api/people/${encodeURIComponent(id)}`, { method: 'DELETE', headers: csrfHeaders() });
   await parseJsonOrThrow(res, 'Erro ao remover pessoa');
 }
