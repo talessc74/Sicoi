@@ -69,21 +69,22 @@ export const ROLE_THEME: Record<UserRole, RoleTheme> = {
   administrador: {
     label: 'Administrador',
     icon: ShieldCheck,
-    // Preto/branco puro (2ª tentativa) não funcionou: é a MESMA cor que os botões
-    // padrão do site já usam (ex.: "Salvar Preferências" é bg-slate-900/dark:bg-white).
-    // Sem matiz próprio, o selo parece "sem cor nenhuma aplicada", não "o papel mais
-    // sério". Índigo bem escuro resolve as duas coisas: continua o mais escuro dos
-    // cinco, mas tem cor de verdade — não se confunde com o cinza neutro do site.
-    bar: 'bg-indigo-950 dark:bg-indigo-300',
-    solidBg: 'bg-indigo-950',
+    // Duas tentativas anteriores falharam pelo mesmo motivo: preto/branco puro é a
+    // cor dos botões padrão do site; índigo tão escuro que ficou preto de novo aos
+    // olhos — tom muito escuro não registra como "cor", registra como "neutro",
+    // não importa o matiz por baixo. Teal sólido, num valor médio (não extremo de
+    // escuridão), resolve: lê como cor de verdade a olho nu, e ainda é distinto de
+    // emerald (status "assinado") por ser mais azulado/petróleo, não verde puro.
+    bar: 'bg-teal-700 dark:bg-teal-400',
+    solidBg: 'bg-teal-700',
     solidIcon: 'text-white',
-    // Único papel com selo SÓLIDO (preenchido), não pastel — reforça "extremo de
-    // destaque" sem cair no preto/branco puro que se confunde com o botão padrão.
-    badgeBg: 'bg-indigo-950 dark:bg-indigo-200',
-    badgeBorder: 'border-indigo-950 dark:border-indigo-200',
-    badgeText: 'text-white dark:text-indigo-950',
-    onDark: 'text-indigo-200',
-    borderOnDark: 'border-t-indigo-300'
+    // Único papel com selo SÓLIDO (preenchido), não pastel — mantém o Administrador
+    // visualmente mais "pesado" que os outros quatro, sem depender de ser escuro.
+    badgeBg: 'bg-teal-700 dark:bg-teal-500',
+    badgeBorder: 'border-teal-700 dark:border-teal-500',
+    badgeText: 'text-white',
+    onDark: 'text-teal-300',
+    borderOnDark: 'border-t-teal-400'
   },
   pesquisador: {
     label: 'Pesquisador',
