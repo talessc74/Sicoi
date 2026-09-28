@@ -69,18 +69,21 @@ export const ROLE_THEME: Record<UserRole, RoleTheme> = {
   administrador: {
     label: 'Administrador',
     icon: ShieldCheck,
-    bar: 'bg-slate-800 dark:bg-slate-300',
-    // Único papel com selo SÓLIDO, não pastel — os outros quatro usam fundo claro +
-    // texto colorido, o que faz o Administrador (que devia ser o extremo de mais
-    // destaque) se confundir com qualquer chip neutro do resto do site. Invertido
-    // de propósito: preto sólido no claro, branco sólido no escuro.
-    badgeBg: 'bg-slate-900 dark:bg-white',
-    badgeBorder: 'border-slate-900 dark:border-white',
-    badgeText: 'text-white dark:text-slate-900',
-    solidBg: 'bg-slate-800',
+    // Preto/branco puro (2ª tentativa) não funcionou: é a MESMA cor que os botões
+    // padrão do site já usam (ex.: "Salvar Preferências" é bg-slate-900/dark:bg-white).
+    // Sem matiz próprio, o selo parece "sem cor nenhuma aplicada", não "o papel mais
+    // sério". Índigo bem escuro resolve as duas coisas: continua o mais escuro dos
+    // cinco, mas tem cor de verdade — não se confunde com o cinza neutro do site.
+    bar: 'bg-indigo-950 dark:bg-indigo-300',
+    solidBg: 'bg-indigo-950',
     solidIcon: 'text-white',
-    onDark: 'text-white',
-    borderOnDark: 'border-t-white'
+    // Único papel com selo SÓLIDO (preenchido), não pastel — reforça "extremo de
+    // destaque" sem cair no preto/branco puro que se confunde com o botão padrão.
+    badgeBg: 'bg-indigo-950 dark:bg-indigo-200',
+    badgeBorder: 'border-indigo-950 dark:border-indigo-200',
+    badgeText: 'text-white dark:text-indigo-950',
+    onDark: 'text-indigo-200',
+    borderOnDark: 'border-t-indigo-300'
   },
   pesquisador: {
     label: 'Pesquisador',
