@@ -70,9 +70,13 @@ export const ROLE_THEME: Record<UserRole, RoleTheme> = {
     label: 'Administrador',
     icon: ShieldCheck,
     bar: 'bg-slate-800 dark:bg-slate-300',
-    badgeBg: 'bg-slate-100 dark:bg-slate-800',
-    badgeBorder: 'border-slate-300 dark:border-slate-600',
-    badgeText: 'text-slate-800 dark:text-slate-200',
+    // Único papel com selo SÓLIDO, não pastel — os outros quatro usam fundo claro +
+    // texto colorido, o que faz o Administrador (que devia ser o extremo de mais
+    // destaque) se confundir com qualquer chip neutro do resto do site. Invertido
+    // de propósito: preto sólido no claro, branco sólido no escuro.
+    badgeBg: 'bg-slate-900 dark:bg-white',
+    badgeBorder: 'border-slate-900 dark:border-white',
+    badgeText: 'text-white dark:text-slate-900',
     solidBg: 'bg-slate-800',
     solidIcon: 'text-white',
     onDark: 'text-white',
