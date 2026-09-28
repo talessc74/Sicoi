@@ -116,7 +116,7 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40 shadow-xs w-full max-w-full">
       {/* Faixa de identidade do papel ativo — 3px, só um indicador visual */}
-      <div className={`h-[3px] w-full ${activeRoleTheme.bar}`} title={`Papel ativo: ${activeRoleTheme.label}`} />
+      <div className={`h-[7px] w-full ${activeRoleTheme.bar}`} title={`Papel ativo: ${activeRoleTheme.label}`} />
 
       {/* Top Main Navigation Bar */}
       <div className="max-w-[1920px] mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-2 sm:gap-4 w-full">
@@ -570,6 +570,10 @@ export const Header: React.FC<HeaderProps> = ({
           <span className="font-bold text-white">commit {commitRef}</span>
         </div>
       )}
+
+      {/* Segunda faixa de identidade, embaixo do cabeçalho — o topo e o rodapé do
+          cabeçalho ficam emoldurados pela cor do papel ativo, não só uma linha isolada. */}
+      <div className={`h-[3px] w-full ${activeRoleTheme.bar}`} />
     </header>
   );
 };

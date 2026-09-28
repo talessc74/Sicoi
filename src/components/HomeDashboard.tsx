@@ -1,5 +1,6 @@
 import React from 'react';
 import { OsteologicalCollection, UserProfile } from '../types/sgccco';
+import { getRoleTheme } from '../utils/roleTheme';
 import {
   FolderOpen,
   Users,
@@ -58,10 +59,13 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     7: 'Consulta & Pesquisa'
   };
 
+  const roleTheme = getRoleTheme(currentUser.role);
+  const RoleIcon = roleTheme.icon;
+
   return (
     <div className="space-y-5">
-      {/* Hero Welcome Banner */}
-      <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-sky-950 text-white rounded-2xl p-5 sm:p-6 shadow-md border border-slate-700/60 relative overflow-hidden">
+      {/* Hero Welcome Banner — borda superior na cor do papel ativo (§ identidade visual) */}
+      <div className={`bg-gradient-to-br from-slate-900 via-slate-800 to-sky-950 text-white rounded-2xl p-5 sm:p-6 shadow-md border border-slate-700/60 border-t-4 relative overflow-hidden ${roleTheme.borderOnDark}`}>
         <div className="relative z-10 max-w-3xl space-y-2.5">
           <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-sky-500/20 text-sky-300 border border-sky-400/30 text-xs font-mono">
             <ShieldCheck className="w-3.5 h-3.5 text-sky-400" />
@@ -72,8 +76,12 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             Sistema de Gestão da Coleção Osteológica Identificada (SIGCOI)
           </h1>
 
-          <p className="text-xs sm:text-sm text-slate-300 font-sans whitespace-nowrap overflow-x-auto">
-            Bem-vindo(a), <strong>{currentUser.name}</strong> ({currentUser.role.toUpperCase()})
+          <p className="text-xs sm:text-sm text-slate-300 font-sans whitespace-nowrap overflow-x-auto flex items-center gap-1.5">
+            <span>Bem-vindo(a), <strong>{currentUser.name}</strong></span>
+            <span className={`inline-flex items-center gap-1 font-semibold ${roleTheme.onDark}`}>
+              <RoleIcon className="w-3.5 h-3.5" />
+              ({roleTheme.label.toUpperCase()})
+            </span>
           </p>
 
           {/* Quick Action Buttons */}

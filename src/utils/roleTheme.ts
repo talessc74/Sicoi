@@ -29,6 +29,16 @@ export interface RoleTheme {
   /** Círculo sólido pequeno (ex.: lista de pessoas em Configurações). */
   solidBg: string;
   solidIcon: string;
+  /**
+   * Texto sobre fundo escuro fixo (o card de boas-vindas do Início é sempre
+   * escuro, independente do tema claro/escuro do site). O invariante aqui não
+   * é a mesma cor do selo — é o mesmo lugar na escala de destaque: Administrador
+   * continua no extremo de mais destaque (branco), Estudante no de menos
+   * destaque (apagado), só que invertido porque o fundo também inverteu.
+   */
+  onDark: string;
+  /** Borda de 4px sobre o mesmo fundo escuro fixo — mesma lógica do onDark. */
+  borderOnDark: string;
 }
 
 export const ROLE_THEME: Record<UserRole, RoleTheme> = {
@@ -40,7 +50,9 @@ export const ROLE_THEME: Record<UserRole, RoleTheme> = {
     badgeBorder: 'border-blue-200 dark:border-blue-800',
     badgeText: 'text-blue-700 dark:text-blue-300',
     solidBg: 'bg-blue-600',
-    solidIcon: 'text-white'
+    solidIcon: 'text-white',
+    onDark: 'text-blue-300',
+    borderOnDark: 'border-t-blue-500'
   },
   curador: {
     label: 'Curador',
@@ -50,7 +62,9 @@ export const ROLE_THEME: Record<UserRole, RoleTheme> = {
     badgeBorder: 'border-purple-200 dark:border-purple-800',
     badgeText: 'text-purple-800 dark:text-purple-300',
     solidBg: 'bg-purple-800',
-    solidIcon: 'text-white'
+    solidIcon: 'text-white',
+    onDark: 'text-purple-300',
+    borderOnDark: 'border-t-purple-500'
   },
   administrador: {
     label: 'Administrador',
@@ -60,7 +74,9 @@ export const ROLE_THEME: Record<UserRole, RoleTheme> = {
     badgeBorder: 'border-slate-300 dark:border-slate-600',
     badgeText: 'text-slate-800 dark:text-slate-200',
     solidBg: 'bg-slate-800',
-    solidIcon: 'text-white'
+    solidIcon: 'text-white',
+    onDark: 'text-white',
+    borderOnDark: 'border-t-white'
   },
   pesquisador: {
     label: 'Pesquisador',
@@ -70,7 +86,9 @@ export const ROLE_THEME: Record<UserRole, RoleTheme> = {
     badgeBorder: 'border-pink-200 dark:border-pink-800',
     badgeText: 'text-pink-700 dark:text-pink-300',
     solidBg: 'bg-pink-600',
-    solidIcon: 'text-white'
+    solidIcon: 'text-white',
+    onDark: 'text-pink-300',
+    borderOnDark: 'border-t-pink-500'
   },
   estudante: {
     label: 'Estudante',
@@ -80,7 +98,9 @@ export const ROLE_THEME: Record<UserRole, RoleTheme> = {
     badgeBorder: 'border-slate-200 dark:border-slate-700',
     badgeText: 'text-slate-500 dark:text-slate-400',
     solidBg: 'bg-slate-300 dark:bg-slate-600',
-    solidIcon: 'text-slate-700 dark:text-white'
+    solidIcon: 'text-slate-700 dark:text-white',
+    onDark: 'text-slate-500',
+    borderOnDark: 'border-t-slate-600'
   }
 };
 
