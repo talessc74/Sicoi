@@ -8,7 +8,10 @@ import {
   getPersonWithAuthStatus,
   createPasswordSetupToken,
   consumePasswordSetupToken,
-  createFirstAdmin
+  createFirstAdmin,
+  requestPasswordReset,
+  listPendingPasswordResetRequests,
+  resolvePendingPasswordResetRequests
 } from '../authRepo';
 
 const TEST_DATABASE_URL =
@@ -26,6 +29,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await pool.query('DELETE FROM password_setup_tokens');
+  await pool.query('DELETE FROM password_reset_requests');
   await pool.query('DELETE FROM people');
 });
 
@@ -145,5 +149,55 @@ describe('authRepo', () => {
     await expect(
       createFirstAdmin(pool, { name: 'Segunda Tentativa', institution: 'INC', registrationNumber: '502', password: 'senha-bootstrap-123' })
     ).rejects.toThrow('Já existe gente cadastrada — o bootstrap só funciona com o sistema vazio.');
+  });
+
+  it('requestPasswordReset não lança erro para matrícula inexistente, e não cria pedido', async () => {
+    await expect(requestPasswordReset(pool, 'não-existe')).resolves.not.toThrow();
+    expect(await listPendingPasswordResetRequests(pool)).toEqual([]);
+  });
+
+  it('requestPasswordReset cria um pedido pendente para uma matrícula existente', async () => {
+    const person = await createPerson(pool, { name: 'Esqueceu a Senha', role: 'tecnico', institution: 'INC', registrationNumber: '600' });
+
+    await requestPasswordReset(pool, '600');
+
+    const pending = await listPendingPasswordResetRequests(pool);
+    expect(pending).toHaveLength(1);
+    expect(pending[0]).toMatchObject({
+      personId: person.id,
+      personName: 'Esqueceu a Senha',
+      registrationNumber: '600'
+    });
+  });
+
+  it('requestPasswordReset não duplica pedido se já existir um pendente para a mesma pessoa', async () => {
+    await createPerson(pool, { name: 'Pediu Duas Vezes', role: 'tecnico', institution: 'INC', registrationNumber: '601' });
+
+    await requestPasswordReset(pool, '601');
+    await requestPasswordReset(pool, '601');
+
+    expect(await listPendingPasswordResetRequests(pool)).toHaveLength(1);
+  });
+
+  it('listPendingPasswordResetRequests devolve os pedidos em ordem de chegada, sem os já resolvidos', async () => {
+    const first = await createPerson(pool, { name: 'Primeiro', role: 'tecnico', institution: 'INC', registrationNumber: '602' });
+    const second = await createPerson(pool, { name: 'Segundo', role: 'tecnico', institution: 'INC', registrationNumber: '603' });
+
+    await requestPasswordReset(pool, '602');
+    await requestPasswordReset(pool, '603');
+    await resolvePendingPasswordResetRequests(pool, first.id, 'Admin Teste');
+
+    const pending = await listPendingPasswordResetRequests(pool);
+    expect(pending).toHaveLength(1);
+    expect(pending[0].personId).toBe(second.id);
+  });
+
+  it('resolvePendingPasswordResetRequests é idempotente (resolver de novo não lança erro)', async () => {
+    const person = await createPerson(pool, { name: 'Resolvido', role: 'tecnico', institution: 'INC', registrationNumber: '604' });
+    await requestPasswordReset(pool, '604');
+
+    await resolvePendingPasswordResetRequests(pool, person.id, 'Admin Teste');
+    await expect(resolvePendingPasswordResetRequests(pool, person.id, 'Admin Teste')).resolves.not.toThrow();
+    expect(await listPendingPasswordResetRequests(pool)).toEqual([]);
   });
 });

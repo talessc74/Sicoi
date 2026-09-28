@@ -140,6 +140,66 @@ export async function createFirstAdmin(
 }
 
 /**
+ * "Esqueci a senha" (complemento à Fase 3): sem e-mail/SMS configurado, o
+ * pedido não se resolve solitário — só fica visível para o Administrador
+ * resolver gerando o link de acesso normal. Devolve sempre (sem lançar erro)
+ * mesmo se a matrícula não existir, para não revelar quais matrículas estão
+ * cadastradas — mesmo cuidado de `verifyLogin`.
+ */
+export async function requestPasswordReset(pool: Pool, registrationNumber: string): Promise<void> {
+  const { rows } = await pool.query<{ id: string }>('SELECT id FROM people WHERE registration_number = $1', [registrationNumber]);
+  const person = rows[0];
+  if (!person) return;
+  const { rows: pending } = await pool.query(
+    'SELECT id FROM password_reset_requests WHERE person_id = $1 AND resolved_at IS NULL',
+    [person.id]
+  );
+  if (pending.length > 0) return; // já existe um pedido em aberto — não duplica
+  await pool.query('INSERT INTO password_reset_requests (person_id) VALUES ($1)', [person.id]);
+}
+
+export interface PendingPasswordResetRequest {
+  id: string;
+  personId: string;
+  personName: string;
+  registrationNumber: string;
+  requestedAt: string;
+}
+
+// Só para o painel do Administrador (Configurações) — a rota reconfere a sessão.
+export async function listPendingPasswordResetRequests(pool: Pool): Promise<PendingPasswordResetRequest[]> {
+  const { rows } = await pool.query<{
+    id: string;
+    person_id: string;
+    person_name: string;
+    registration_number: string;
+    requested_at: string;
+  }>(
+    `SELECT r.id, r.person_id, p.name AS person_name, p.registration_number, r.requested_at
+     FROM password_reset_requests r
+     JOIN people p ON p.id = r.person_id
+     WHERE r.resolved_at IS NULL
+     ORDER BY r.requested_at ASC`
+  );
+  return rows.map((r) => ({
+    id: r.id,
+    personId: r.person_id,
+    personName: r.person_name,
+    registrationNumber: r.registration_number,
+    requestedAt: r.requested_at
+  }));
+}
+
+// Chamado depois de gerar um novo link de acesso para a pessoa — o pedido que
+// motivou o link deixa de aparecer como pendente no painel do Administrador.
+export async function resolvePendingPasswordResetRequests(pool: Pool, personId: string, resolvedBy: string | null): Promise<void> {
+  await pool.query(
+    'UPDATE password_reset_requests SET resolved_at = now(), resolved_by = $2 WHERE person_id = $1 AND resolved_at IS NULL',
+    [personId, resolvedBy]
+  );
+}
+
+/**
  * Consome um token de "definir senha": grava a nova senha (com hash) e marca
  * o token como usado, numa única transação — um token só funciona uma vez.
  */

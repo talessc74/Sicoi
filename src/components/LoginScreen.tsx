@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { UserProfile } from '../types/sgccco';
 import { loginApi } from '../services/authService';
+import { ForgotPasswordScreen } from './ForgotPasswordScreen';
 import { LogIn, Loader2, ShieldCheck } from 'lucide-react';
 
 interface LoginScreenProps {
@@ -17,8 +18,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoggedIn }) => {
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   const isValid = registrationNumber.trim() && password;
+
+  if (showForgotPassword) {
+    return <ForgotPasswordScreen onBack={() => setShowForgotPassword(false)} />;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,9 +97,17 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoggedIn }) => {
           Entrar
         </button>
 
+        <button
+          type="button"
+          onClick={() => setShowForgotPassword(true)}
+          className="w-full text-center text-xs text-sky-600 dark:text-sky-400 hover:underline font-medium"
+        >
+          Esqueci minha senha
+        </button>
+
         <p className="text-[11px] text-slate-400 leading-relaxed">
-          Ainda não tem senha, ou esqueceu? Fale com o Administrador do sistema — ele
-          gera um link individual de definição de senha em Configurações.
+          Ainda não tem senha? Fale com o Administrador do sistema — ele gera um
+          link individual de definição de senha em Configurações.
         </p>
       </form>
     </div>

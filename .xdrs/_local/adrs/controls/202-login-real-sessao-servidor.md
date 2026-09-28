@@ -75,19 +75,29 @@ sessão criada no login — nunca de um campo que o cliente envia.**
   bootstrap do primeiro Administrador. `SettingsView.tsx` ganha "Gerar
   link de acesso" por pessoa (mostra o link uma única vez, com botão
   copiar), documentado passo a passo em
-  `public/manuais/manual-administrador-contas-v1.html`.
+  `public/manuais/manual-administrador-contas-v2.html`.
+- **"Esqueci a senha" (concluído)**: `ForgotPasswordScreen.tsx`, alcançada
+  por um link na `LoginScreen.tsx`. Sem e-mail/SMS configurado no sistema,
+  não redefine nada por conta própria — só registra um pedido
+  (`password_reset_requests`, migração `010_password_reset_requests.sql`)
+  visível ao Administrador em `SettingsView.tsx` ("Pedidos de Redefinição
+  de Senha"). `POST /api/auth/forgot-password` é pública e nunca revela se
+  a matrícula existe (mesmo cuidado do login); não duplica pedido já
+  pendente para a mesma pessoa. Gerar o link de acesso pela fila ou pela
+  lista de pessoas resolve o pedido automaticamente
+  (`resolvePendingPasswordResetRequests`).
 - **Sem risco de implantação pendente**: com a Fase 3 pronta, esta branch
   já é segura para produção — o primeiro deploy encontrará o banco vazio
   (ou as ~30 pessoas já cadastradas, sem senha) e pedirá o cadastro do
   primeiro Administrador antes de liberar o resto do sistema; a partir
   daí, cada pessoa existente recebe seu link de definição de senha por
   fora do sistema.
-- **Limitação conhecida**: ainda não existe uma tela de "esqueci minha
-  senha" nem de "trocar minha própria senha" para quem já está logado —
-  toda troca de senha depende do Administrador gerar um novo link. Gerar
-  um link novo não encerra sessões já abertas com a senha antiga; isso é
-  documentado no manual do Administrador como uma limitação a considerar
-  em caso de suspeita de acesso indevido.
+- **Limitação conhecida**: ainda não existe "trocar minha própria senha"
+  para quem já está logado — toda troca de senha (inclusive a que vem de
+  um pedido de "esqueci a senha") depende do Administrador gerar um novo
+  link. Gerar um link novo não encerra sessões já abertas com a senha
+  antiga; isso é documentado no manual do Administrador como uma
+  limitação a considerar em caso de suspeita de acesso indevido.
 - Senha (escolhida por humano, baixa entropia) usa bcrypt — hash
   não-determinístico, salgado, caro de força-bruta. Token de definição de
   senha (gerado pelo sistema, alta entropia) usa SHA-256 — determinístico
@@ -96,26 +106,32 @@ sessão criada no login — nunca de um campo que o cliente envia.**
 - `SESSION_SECRET` segue a mesma regra de `DATABASE_URL`: sem valor
   default em produção — o servidor falha ao subir se não estiver
   configurada.
-- Cobertura: `db/__tests__/authRepo.test.ts` (15 testes, incluindo
-  `createFirstAdmin`) e `db/__tests__/peopleRepo.test.ts` (`countPeople`)
-  no backend; `LoginScreen.test.tsx`, `BootstrapAdminSetup.test.tsx` e
-  `SetPasswordScreen.test.tsx` no front-end. As rotas HTTP em si foram
-  validadas manualmente de ponta a ponta (bootstrap → cadastrar pessoa →
-  gerar link → definir senha → login → checar permissão por papel →
-  logout) em vez de teste de integração HTTP automatizado — mesma lacuna
-  já registrada para as rotas de admin em `_local-adr-policy-201`.
+- Cobertura: `db/__tests__/authRepo.test.ts` (18 testes, incluindo
+  `createFirstAdmin` e o ciclo de `requestPasswordReset`) e
+  `db/__tests__/peopleRepo.test.ts` (`countPeople`) no backend;
+  `LoginScreen.test.tsx`, `BootstrapAdminSetup.test.tsx`,
+  `SetPasswordScreen.test.tsx` e `ForgotPasswordScreen.test.tsx` no
+  front-end. As rotas HTTP em si foram validadas manualmente de ponta a
+  ponta (bootstrap → cadastrar pessoa → esqueci a senha → fila do
+  Administrador → gerar link → definir senha → login → checar permissão
+  por papel → logout) em vez de teste de integração HTTP automatizado —
+  mesma lacuna já registrada para as rotas de admin em
+  `_local-adr-policy-201`.
 
 ## References
 
-- Arquivos: `db/migrations/009_auth.sql`, `db/authRepo.ts`, `server.ts`,
-  `src/services/authService.ts`, `src/components/LoginScreen.tsx`,
-  `src/components/BootstrapAdminSetup.tsx`,
-  `src/components/SetPasswordScreen.tsx`
+- Arquivos: `db/migrations/009_auth.sql`,
+  `db/migrations/010_password_reset_requests.sql`, `db/authRepo.ts`,
+  `server.ts`, `src/services/authService.ts`,
+  `src/components/LoginScreen.tsx`, `src/components/BootstrapAdminSetup.tsx`,
+  `src/components/SetPasswordScreen.tsx`,
+  `src/components/ForgotPasswordScreen.tsx`
 - Testes: `db/__tests__/authRepo.test.ts`, `db/__tests__/peopleRepo.test.ts`,
-  `src/components/__tests__/{LoginScreen,BootstrapAdminSetup,SetPasswordScreen}.test.tsx`
-- Manual do usuário: `public/manuais/manual-administrador-contas-v1.html`
-  (gestão de contas) e `public/manuais/manual-sigcoi-completo-v6.html`
-  (seção "Perfis de acesso" atualizada)
+  `src/components/__tests__/{LoginScreen,BootstrapAdminSetup,SetPasswordScreen,ForgotPasswordScreen}.test.tsx`
+- Manual do usuário: `public/manuais/manual-administrador-contas-v2.html`
+  (gestão de contas, com o passo a passo da fila de "esqueci a senha") e
+  `public/manuais/manual-sigcoi-completo-v6.html` (seção "Perfis de
+  acesso" atualizada)
 - Policy relacionada: `_local-adr-policy-201` (a Zona de Risco é
   exatamente o tipo de ação que mais precisava desta prova de identidade)
 - Pendência seguinte (não coberta aqui): Fase 5 — CSRF, rate-limit

@@ -27,7 +27,10 @@ import {
   getPersonWithAuthStatus,
   createPasswordSetupToken,
   consumePasswordSetupToken,
-  createFirstAdmin
+  createFirstAdmin,
+  requestPasswordReset,
+  listPendingPasswordResetRequests,
+  resolvePendingPasswordResetRequests
 } from './db/authRepo';
 import type { Pool } from 'pg';
 
@@ -830,12 +833,15 @@ app.get('/api/auth/me', async (req: Request, res: Response) => {
 });
 
 // Só o Administrador (via sessão autenticada) gera links de "definir senha".
+// Também resolve qualquer pedido de "esqueci a senha" pendente para a mesma
+// pessoa — gerar o link é exatamente o jeito de atender esse pedido.
 app.post('/api/auth/setup-links', requireAuth, requireSessionRole('administrador'), async (req: Request, res: Response) => {
   try {
     const personId = String(req.body?.personId || '').trim();
     if (!personId) return res.status(400).json({ error: 'personId é obrigatório.' });
     const createdBy = (req as any).currentPerson?.name || null;
     const result = await createPasswordSetupToken(getPool(), personId, createdBy);
+    await resolvePendingPasswordResetRequests(getPool(), personId, createdBy);
     return res.json(result);
   } catch (error: any) {
     console.error('Erro ao gerar link de definição de senha:', error);
@@ -859,6 +865,36 @@ app.post('/api/auth/setup-password', async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Erro ao definir senha:', error);
     return res.status(400).json({ error: error?.message || 'Erro ao definir senha.' });
+  }
+});
+
+// "Esqueci a senha": pública, sem revelar se a matrícula existe (mesmo cuidado
+// do login) — sem e-mail/SMS configurado, o pedido só fica visível para o
+// Administrador resolver (ver GET /api/auth/password-reset-requests).
+app.post('/api/auth/forgot-password', async (req: Request, res: Response) => {
+  try {
+    const registrationNumber = String(req.body?.registrationNumber || '').trim();
+    if (!registrationNumber) {
+      return res.status(400).json({ error: 'Matrícula é obrigatória.' });
+    }
+    await requestPasswordReset(getPool(), registrationNumber);
+    return res.json({
+      message: 'Se essa matrícula estiver cadastrada, o Administrador foi avisado e vai gerar um novo link de acesso.'
+    });
+  } catch (error: any) {
+    console.error('Erro ao registrar pedido de redefinição de senha:', error);
+    return res.status(500).json({ error: 'Erro ao registrar o pedido. Tente novamente.' });
+  }
+});
+
+// Só o Administrador vê a fila de pedidos de "esqueci a senha" pendentes.
+app.get('/api/auth/password-reset-requests', requireAuth, requireSessionRole('administrador'), async (_req: Request, res: Response) => {
+  try {
+    const requests = await listPendingPasswordResetRequests(getPool());
+    return res.json({ requests });
+  } catch (error: any) {
+    console.error('Erro ao listar pedidos de redefinição de senha:', error);
+    return res.status(500).json({ error: 'Erro ao listar pedidos de redefinição de senha.' });
   }
 });
 

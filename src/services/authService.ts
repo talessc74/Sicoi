@@ -80,3 +80,30 @@ export async function setupPasswordApi(token: string, newPassword: string): Prom
   const result = await parseJsonOrThrow(res, 'Erro ao definir senha');
   return result.person;
 }
+
+// "Esqueci a senha" — pública, deliberadamente sem dizer se a matrícula existe
+// (mesmo cuidado do login). Sem e-mail/SMS configurado, o pedido só fica
+// visível para o Administrador resolver em Configurações.
+export async function forgotPasswordApi(registrationNumber: string): Promise<{ message: string }> {
+  const res = await fetch('/api/auth/forgot-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ registrationNumber })
+  });
+  return parseJsonOrThrow(res, 'Erro ao registrar o pedido de redefinição de senha');
+}
+
+export interface PendingPasswordResetRequest {
+  id: string;
+  personId: string;
+  personName: string;
+  registrationNumber: string;
+  requestedAt: string;
+}
+
+// Só o Administrador autenticado pode chamar isto — o servidor reconfere.
+export async function fetchPendingPasswordResetRequestsApi(): Promise<PendingPasswordResetRequest[]> {
+  const res = await fetch('/api/auth/password-reset-requests');
+  const result = await parseJsonOrThrow(res, 'Erro ao listar pedidos de redefinição de senha');
+  return result.requests;
+}

@@ -60,4 +60,14 @@ describe('LoginScreen', () => {
     expect(await screen.findByText('Matrícula ou senha inválida.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /entrar/i })).toBeEnabled();
   });
+
+  it('clicar em "Esqueci minha senha" mostra a tela de recuperação em vez do login', async () => {
+    const user = userEvent.setup();
+    render(<LoginScreen onLoggedIn={vi.fn()} />);
+
+    await user.click(screen.getByRole('button', { name: /esqueci minha senha/i }));
+
+    expect(screen.getByRole('heading', { name: /esqueci minha senha/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^entrar$/i })).not.toBeInTheDocument();
+  });
 });
