@@ -922,12 +922,14 @@ app.get('/api/auth/password-reset-requests', requireAuth, requireSessionRole('ad
 });
 
 // --- Cadastro de pessoas (papéis de acesso) ---
-// Login real, Fase 3 (_local-adr-policy-202): listar exige qualquer sessão
-// autenticada; cadastrar e remover exigem sessão de Administrador. A única
-// exceção é o bootstrap do primeiro Administrador (POST /api/auth/bootstrap-admin,
+// Login real, Fase 3 (_local-adr-policy-202): listar, cadastrar e remover
+// exigem sessão de Administrador — o nome, papel, instituição e matrícula
+// (o identificador de login) de cada pessoa não é informação que qualquer
+// pessoa logada precise ver, só quem gerencia contas. A única exceção é o
+// bootstrap do primeiro Administrador (POST /api/auth/bootstrap-admin,
 // acima), que só funciona uma vez, com o sistema vazio.
 
-app.get('/api/people', requireAuth, async (_req: Request, res: Response) => {
+app.get('/api/people', requireAdminSession, async (_req: Request, res: Response) => {
   try {
     const pool = getPool();
     const people = await listPeople(pool);

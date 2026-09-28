@@ -76,8 +76,16 @@ export default function App() {
   // sempre a fonte de verdade (um banco vazio de conjuntos é um estado válido, não
   // é mais semeado com dados de exemplo). Usado tanto na conferência inicial de
   // sessão quanto imediatamente depois de um login bem-sucedido.
-  const loadAppData = async () => {
-    const [loadedCollections, loadedPeople] = await Promise.all([fetchCollections(), fetchPeople()]);
+  //
+  // A lista de pessoas (nome, papel, instituição e matrícula de todo mundo) só é
+  // buscada para quem está logado como Administrador — o servidor recusa (403)
+  // pedidos de qualquer outro papel, e não há razão para um Técnico ou Estudante
+  // ver a matrícula (o identificador de login) de todas as outras pessoas.
+  const loadAppData = async (role: UserRole) => {
+    const [loadedCollections, loadedPeople] = await Promise.all([
+      fetchCollections(),
+      role === 'administrador' ? fetchPeople() : Promise.resolve([])
+    ]);
     setCollections(loadedCollections);
     setSelectedNic(loadedCollections[0]?.nic || '');
     setActivePhase(loadedCollections[0]?.currentPhase || 1);
@@ -88,7 +96,7 @@ export default function App() {
     setCurrentUser(person);
     setIsLoadingCollections(true);
     try {
-      await loadAppData();
+      await loadAppData(person.role);
       setSyncError(null);
     } catch (err: any) {
       console.error('Falha ao carregar dados após login:', err);
@@ -136,7 +144,7 @@ export default function App() {
           return;
         }
         setCurrentUser(me);
-        await loadAppData();
+        await loadAppData(me.role);
       } catch (err: any) {
         console.error('Falha ao carregar dados iniciais do banco:', err);
         setSyncError(err?.message || 'Não foi possível conectar ao banco de dados.');

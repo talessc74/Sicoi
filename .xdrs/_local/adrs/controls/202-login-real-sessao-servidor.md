@@ -70,12 +70,20 @@ sessão criada no login — nunca de um campo que o cliente envia.**
   `SetPasswordScreen.tsx` (tela pública alcançada por `?token=...`, sem
   depender de sessão) substituem por completo o antigo troca-de-perfil de
   um clique em `Header.tsx`/`SettingsView.tsx`. `GET/POST/DELETE
-  /api/people` passam a exigir sessão (`GET` para qualquer papel logado;
-  `POST`/`DELETE` só Administrador) — a única exceção continua sendo o
-  bootstrap do primeiro Administrador. `SettingsView.tsx` ganha "Gerar
-  link de acesso" por pessoa (mostra o link uma única vez, com botão
-  copiar), documentado passo a passo em
-  `public/manuais/manual-administrador-contas-v3.html`.
+  /api/people` exigem sessão de Administrador (`requireAdminSession`) — a
+  única exceção continua sendo o bootstrap do primeiro Administrador.
+  **Correção pós-revisão (mesmo dia)**: `GET /api/people` tinha ficado só
+  com `requireAuth` (qualquer papel logado), não `requireAdminSession` —
+  nome, papel, instituição e matrícula (o identificador de login) de
+  todo mundo ficava visível para qualquer pessoa autenticada, inclusive
+  Estudante e Pesquisador, quando só o Administrador usa essa lista.
+  Corrigido para `requireAdminSession` como as outras duas; `App.tsx` só
+  busca `/api/people` quando `currentUser.role === 'administrador'`
+  (evita um 403 previsível para os demais papéis), e `SettingsView.tsx`
+  esconde o painel "Pessoas Cadastradas" inteiro fora desse papel, não só
+  os botões de ação. `SettingsView.tsx` ganha "Gerar link de acesso" por
+  pessoa (mostra o link uma única vez, com botão copiar), documentado
+  passo a passo em `public/manuais/manual-administrador-contas-v3.html`.
 - **"Esqueci a senha" (concluído)**: `ForgotPasswordScreen.tsx`, alcançada
   por um link na `LoginScreen.tsx`. Sem e-mail/SMS configurado no sistema,
   não redefine nada por conta própria — só registra um pedido

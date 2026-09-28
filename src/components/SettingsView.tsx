@@ -315,7 +315,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       )}
 
-      {/* Pessoas cadastradas — login real (matrícula + senha), ver _local-adr-policy-202 */}
+      {/* Pessoas cadastradas — só o Administrador vê ou gerencia (login real,
+          ver _local-adr-policy-202): nome, papel, instituição e matrícula de
+          quem tem acesso não é informação que qualquer pessoa logada precise
+          ver, só quem gerencia contas. O servidor já recusa (403) esse dado
+          para qualquer outro papel — isto só evita renderizar uma lista que
+          chegaria vazia de qualquer forma. */}
+      {isAdmin && (
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden text-xs">
         <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex flex-wrap justify-between items-center gap-3">
           <div>
@@ -325,21 +331,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </h3>
             <p className="text-slate-500 mt-0.5">
               Quem tem acesso ao sistema, por papel. Cada pessoa entra com matrícula e senha própria.
-              {!isAdmin && ' Só o Administrador pode cadastrar, remover ou gerar link de acesso.'}
             </p>
           </div>
-          {isAdmin && (
-            <button
-              onClick={() => setShowAddPersonForm((v) => !v)}
-              className="px-3.5 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold flex items-center gap-1.5 transition-colors"
-            >
-              <UserPlus className="w-3.5 h-3.5" />
-              Cadastrar pessoa
-            </button>
-          )}
+          <button
+            onClick={() => setShowAddPersonForm((v) => !v)}
+            className="px-3.5 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold flex items-center gap-1.5 transition-colors"
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            Cadastrar pessoa
+          </button>
         </div>
 
-        {isAdmin && showAddPersonForm && (
+        {showAddPersonForm && (
           <div className="p-5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 grid grid-cols-1 sm:grid-cols-2 gap-3">
             <input
               type="text"
@@ -475,6 +478,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           })}
         </div>
       </div>
+      )}
 
       {personPendingDeletion && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
