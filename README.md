@@ -22,7 +22,11 @@ indivíduos, patologias, localização física, responsáveis e datas.
 
 ## Acessar agora
 
-**Aplicação em produção:** <https://sgcccco.onrender.com>
+**Aplicação em produção:** <https://sgcccco-k50m.onrender.com>
+
+(O Render acrescenta um sufixo ao nome do serviço quando o nome simples já
+está em uso por outra conta — a URL real é sempre a que aparece no painel
+do Render, não necessariamente `sgcccco.onrender.com`.)
 
 O deploy é automático a partir da branch `main` deste repositório (via Render
 Blueprint — ver `render.yaml`). O indicador de versão fixo no topo de

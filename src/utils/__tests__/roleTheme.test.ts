@@ -31,4 +31,19 @@ describe('roleTheme', () => {
       expect(theme.label).toBeTruthy();
     }
   });
+
+  it('cada tema tem as variantes para fundo escuro fixo (card de boas-vindas) preenchidas', () => {
+    for (const role of ALL_ROLES) {
+      const theme = ROLE_THEME[role];
+      expect(theme.onDark).toBeTruthy();
+      expect(theme.borderOnDark).toBeTruthy();
+    }
+  });
+
+  it('nenhum papel reaproveita o onDark ou o borderOnDark de outro', () => {
+    const onDark = ALL_ROLES.map((role) => ROLE_THEME[role].onDark);
+    const borderOnDark = ALL_ROLES.map((role) => ROLE_THEME[role].borderOnDark);
+    expect(new Set(onDark).size).toBe(onDark.length);
+    expect(new Set(borderOnDark).size).toBe(borderOnDark.length);
+  });
 });
