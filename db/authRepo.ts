@@ -1,0 +1,135 @@
+/**
+ * Login real — Fase 1 (§ Segurança, pedido do Tales, set/2026).
+ *
+ * Substitui o modelo em que "ser alguém" no sistema era só o navegador
+ * declarar um UUID (a lacuna que a auditoria de segurança encontrou:
+ * qualquer pessoa com acesso à API podia se passar por Administrador
+ * sabendo o UUID de alguém que fosse). A partir de agora, a identidade de
+ * quem está agindo vem da sessão autenticada no servidor — nunca de um
+ * campo que o cliente manda.
+ *
+ * Duas regras de segurança seguidas à risca aqui:
+ * - Senha nunca é gravada em texto puro — só o hash bcrypt.
+ * - Token de "definir senha" nunca é gravado em texto puro — só o hash
+ *   SHA-256 dele (determinístico, para permitir a busca por igualdade; o
+ *   token em si tem entropia alta o bastante para isso ser seguro, ao
+ *   contrário de uma senha escolhida por humano).
+ */
+import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
+import type { Pool } from 'pg';
+import type { UserProfile } from '../src/types/sgccco';
+
+const BCRYPT_COST = 12;
+const DEFAULT_TOKEN_TTL_HOURS = 72;
+
+interface PersonAuthRow {
+  id: string;
+  name: string;
+  role: string;
+  institution: string;
+  registration_number: string;
+  password_hash: string | null;
+}
+
+function toUserProfile(row: PersonAuthRow): UserProfile {
+  return {
+    id: row.id,
+    name: row.name,
+    role: row.role as UserProfile['role'],
+    institution: row.institution,
+    registrationNumber: row.registration_number
+  };
+}
+
+function sha256Hex(value: string): string {
+  return crypto.createHash('sha256').update(value, 'utf-8').digest('hex');
+}
+
+export async function hashPassword(plainPassword: string): Promise<string> {
+  return bcrypt.hash(plainPassword, BCRYPT_COST);
+}
+
+/**
+ * Confere matrícula + senha. Devolve o perfil em caso de sucesso, `null` em
+ * qualquer caso de falha (matrícula inexistente, sem senha definida ainda,
+ * ou senha errada) — deliberadamente sem distinguir esses casos na resposta,
+ * para não revelar a quem está tentando logar se a matrícula existe.
+ */
+export async function verifyLogin(pool: Pool, registrationNumber: string, plainPassword: string): Promise<UserProfile | null> {
+  const { rows } = await pool.query<PersonAuthRow>(
+    'SELECT id, name, role, institution, registration_number, password_hash FROM people WHERE registration_number = $1',
+    [registrationNumber]
+  );
+  const row = rows[0];
+  if (!row || !row.password_hash) return null;
+  const matches = await bcrypt.compare(plainPassword, row.password_hash);
+  return matches ? toUserProfile(row) : null;
+}
+
+export async function getPersonWithAuthStatus(pool: Pool, id: string): Promise<(UserProfile & { hasPassword: boolean }) | null> {
+  const { rows } = await pool.query<PersonAuthRow>(
+    'SELECT id, name, role, institution, registration_number, password_hash FROM people WHERE id = $1',
+    [id]
+  );
+  if (!rows[0]) return null;
+  return { ...toUserProfile(rows[0]), hasPassword: rows[0].password_hash !== null };
+}
+
+/**
+ * Gera um link de "definir senha" para uma pessoa — só o Administrador que
+ * chama isto (conferido pela rota, não aqui). Devolve o token em texto puro
+ * UMA VEZ; a partir daqui, só o hash dele existe no banco. Entregar esse
+ * token por fora do sistema (WhatsApp, e-mail) é responsabilidade de quem
+ * gera o link.
+ */
+export async function createPasswordSetupToken(
+  pool: Pool,
+  personId: string,
+  createdBy: string | null,
+  ttlHours: number = DEFAULT_TOKEN_TTL_HOURS
+): Promise<{ token: string; expiresAt: string }> {
+  const token = crypto.randomBytes(32).toString('hex');
+  const tokenHash = sha256Hex(token);
+  const expiresAt = new Date(Date.now() + ttlHours * 60 * 60 * 1000);
+  await pool.query(
+    'INSERT INTO password_setup_tokens (person_id, token_hash, created_by, expires_at) VALUES ($1, $2, $3, $4)',
+    [personId, tokenHash, createdBy, expiresAt]
+  );
+  return { token, expiresAt: expiresAt.toISOString() };
+}
+
+/**
+ * Consome um token de "definir senha": grava a nova senha (com hash) e marca
+ * o token como usado, numa única transação — um token só funciona uma vez.
+ */
+export async function consumePasswordSetupToken(pool: Pool, token: string, newPassword: string): Promise<UserProfile> {
+  const tokenHash = sha256Hex(token);
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query<{ id: string; person_id: string }>(
+      `SELECT id, person_id FROM password_setup_tokens
+       WHERE token_hash = $1 AND used_at IS NULL AND expires_at > now()
+       FOR UPDATE`,
+      [tokenHash]
+    );
+    if (!rows[0]) {
+      throw new Error('Link inválido, expirado ou já utilizado.');
+    }
+    const passwordHash = await hashPassword(newPassword);
+    const updated = await client.query<PersonAuthRow>(
+      `UPDATE people SET password_hash = $1 WHERE id = $2
+       RETURNING id, name, role, institution, registration_number, password_hash`,
+      [passwordHash, rows[0].person_id]
+    );
+    await client.query('UPDATE password_setup_tokens SET used_at = now() WHERE id = $1', [rows[0].id]);
+    await client.query('COMMIT');
+    return toUserProfile(updated.rows[0]);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}

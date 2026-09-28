@@ -1,8 +1,10 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { execSync } from 'child_process';
+import session from 'express-session';
+import pgSessionFactory from 'connect-pg-simple';
 import { GoogleGenAI } from '@google/genai';
 import { getPool } from './db/pool';
 import { runMigrations } from './db/migrate';
@@ -20,7 +22,16 @@ import {
 } from './db/adminRepo';
 import { getGraph, getNodeWithEdges, findPath, searchNodes } from './db/graphRepo';
 import { listPeople, createPerson, deletePerson, getPerson } from './db/peopleRepo';
+import { verifyLogin, getPersonWithAuthStatus, createPasswordSetupToken, consumePasswordSetupToken } from './db/authRepo';
 import type { Pool } from 'pg';
+
+// Sessão de login guarda só o id da pessoa autenticada — tudo o mais (nome,
+// papel) é buscado no banco a cada requisição, nunca confiado do cookie.
+declare module 'express-session' {
+  interface SessionData {
+    personId?: string;
+  }
+}
 
 // Quem está gravando: o navegador informa o id da pessoa ativa; nome e papel vêm do
 // cadastro no banco, não do navegador. Sem login ainda, o id em si é declarado.
@@ -81,6 +92,83 @@ app.use((req: Request, res: Response, next) => {
 // Permitir payloads de áudio e dados até 40MB
 app.use(express.json({ limit: '40mb' }));
 app.use(express.urlencoded({ extended: true, limit: '40mb' }));
+
+// Login real (Fase 1 — § Segurança). SESSION_SECRET nunca tem default de
+// produção, mesmo princípio de DATABASE_URL: falha alto no boot, em vez de
+// silenciosamente assinar sessões com um segredo previsível.
+const sessionSecret = process.env.SESSION_SECRET;
+if (isProduction && !sessionSecret) {
+  throw new Error('SESSION_SECRET não configurada. Defina no ambiente antes de subir em produção.');
+}
+const PgSessionStore = pgSessionFactory(session);
+app.use(
+  session({
+    store: new PgSessionStore({ pool: getPool(), tableName: 'session', createTableIfMissing: false }),
+    secret: sessionSecret || 'dev-only-session-secret-nao-usar-em-producao',
+    resave: false,
+    saveUninitialized: false,
+    rolling: true,
+    cookie: {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'lax',
+      maxAge: 12 * 60 * 60 * 1000 // 12h, renovado a cada requisição (rolling)
+    }
+  })
+);
+
+// Freio simples de força bruta no login: N tentativas falhas seguidas por
+// matrícula trava por um tempo. Em memória — reseta se o servidor reiniciar;
+// suficiente para a Fase 1, um limitador persistente fica para depois.
+const LOGIN_MAX_ATTEMPTS = 5;
+const LOGIN_LOCKOUT_MS = 15 * 60 * 1000;
+const loginAttempts = new Map<string, { count: number; lockedUntil: number }>();
+
+function isLoginLocked(registrationNumber: string): boolean {
+  const entry = loginAttempts.get(registrationNumber);
+  return Boolean(entry && entry.lockedUntil > Date.now());
+}
+function recordFailedLogin(registrationNumber: string): void {
+  const entry = loginAttempts.get(registrationNumber) || { count: 0, lockedUntil: 0 };
+  entry.count += 1;
+  if (entry.count >= LOGIN_MAX_ATTEMPTS) {
+    entry.lockedUntil = Date.now() + LOGIN_LOCKOUT_MS;
+    entry.count = 0;
+  }
+  loginAttempts.set(registrationNumber, entry);
+}
+function clearLoginAttempts(registrationNumber: string): void {
+  loginAttempts.delete(registrationNumber);
+}
+
+// Rota protegida "de verdade": exige sessão válida — nunca um actorId que o
+// corpo da requisição declara. Anexa a pessoa autenticada em req.currentPerson.
+async function requireAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
+  const personId = req.session.personId;
+  if (!personId) {
+    res.status(401).json({ error: 'Sessão expirada ou inexistente. Faça login novamente.' });
+    return;
+  }
+  const person = await getPersonWithAuthStatus(getPool(), personId);
+  if (!person) {
+    req.session.personId = undefined;
+    res.status(401).json({ error: 'Sessão inválida. Faça login novamente.' });
+    return;
+  }
+  (req as any).currentPerson = person;
+  next();
+}
+
+function requireSessionRole(role: string) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const person = (req as any).currentPerson;
+    if (!person || person.role !== role) {
+      res.status(403).json({ error: `Esta ação exige o papel ${role}.` });
+      return;
+    }
+    next();
+  };
+}
 
 // Obter chave de API limpa e atualizada a cada requisição
 function getCleanApiKey(): string {
@@ -646,6 +734,93 @@ app.post('/api/admin/collections/:nic/boxes/:boxId/restore', async (req: Request
   } catch (error: any) {
     console.error('Erro ao restaurar caixa:', error);
     return handleAdminError(res, error, 'Erro ao restaurar caixa.');
+  }
+});
+
+// --- Login real (Fase 1 — sessão no servidor é a única fonte de identidade) ---
+
+app.post('/api/auth/login', async (req: Request, res: Response) => {
+  try {
+    const registrationNumber = String(req.body?.registrationNumber || '').trim();
+    const password = String(req.body?.password || '');
+    if (!registrationNumber || !password) {
+      return res.status(400).json({ error: 'Matrícula e senha são obrigatórias.' });
+    }
+    if (isLoginLocked(registrationNumber)) {
+      return res.status(429).json({ error: 'Muitas tentativas de login. Aguarde alguns minutos e tente novamente.' });
+    }
+    const person = await verifyLogin(getPool(), registrationNumber, password);
+    if (!person) {
+      recordFailedLogin(registrationNumber);
+      return res.status(401).json({ error: 'Matrícula ou senha inválida.' });
+    }
+    clearLoginAttempts(registrationNumber);
+    req.session.regenerate((err) => {
+      if (err) {
+        console.error('Erro ao criar sessão de login:', err);
+        return res.status(500).json({ error: 'Erro ao criar sessão de login.' });
+      }
+      req.session.personId = person.id;
+      return res.json({ person });
+    });
+  } catch (error: any) {
+    console.error('Erro no login:', error);
+    return res.status(500).json({ error: 'Erro interno no login.' });
+  }
+});
+
+app.post('/api/auth/logout', (req: Request, res: Response) => {
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('Erro ao encerrar sessão:', err);
+      return res.status(500).json({ error: 'Erro ao encerrar sessão.' });
+    }
+    res.clearCookie('connect.sid');
+    return res.status(204).send();
+  });
+});
+
+app.get('/api/auth/me', async (req: Request, res: Response) => {
+  const personId = req.session.personId;
+  if (!personId) return res.status(401).json({ error: 'Não autenticado.' });
+  const person = await getPersonWithAuthStatus(getPool(), personId);
+  if (!person) {
+    req.session.personId = undefined;
+    return res.status(401).json({ error: 'Sessão inválida.' });
+  }
+  return res.json({ person });
+});
+
+// Só o Administrador (via sessão autenticada) gera links de "definir senha".
+app.post('/api/auth/setup-links', requireAuth, requireSessionRole('administrador'), async (req: Request, res: Response) => {
+  try {
+    const personId = String(req.body?.personId || '').trim();
+    if (!personId) return res.status(400).json({ error: 'personId é obrigatório.' });
+    const createdBy = (req as any).currentPerson?.name || null;
+    const result = await createPasswordSetupToken(getPool(), personId, createdBy);
+    return res.json(result);
+  } catch (error: any) {
+    console.error('Erro ao gerar link de definição de senha:', error);
+    return res.status(500).json({ error: error?.message || 'Erro ao gerar link de definição de senha.' });
+  }
+});
+
+// Pública (o token é a própria autenticação): quem recebeu o link, por fora do sistema, define a senha.
+app.post('/api/auth/setup-password', async (req: Request, res: Response) => {
+  try {
+    const token = String(req.body?.token || '').trim();
+    const newPassword = String(req.body?.newPassword || '');
+    if (!token || !newPassword) {
+      return res.status(400).json({ error: 'Token e nova senha são obrigatórios.' });
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: 'A senha deve ter pelo menos 8 caracteres.' });
+    }
+    const person = await consumePasswordSetupToken(getPool(), token, newPassword);
+    return res.json({ person });
+  } catch (error: any) {
+    console.error('Erro ao definir senha:', error);
+    return res.status(400).json({ error: error?.message || 'Erro ao definir senha.' });
   }
 });
 
