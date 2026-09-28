@@ -21,8 +21,14 @@ import {
   adminRestoreBox
 } from './db/adminRepo';
 import { getGraph, getNodeWithEdges, findPath, searchNodes } from './db/graphRepo';
-import { listPeople, createPerson, deletePerson } from './db/peopleRepo';
-import { verifyLogin, getPersonWithAuthStatus, createPasswordSetupToken, consumePasswordSetupToken } from './db/authRepo';
+import { listPeople, createPerson, deletePerson, countPeople } from './db/peopleRepo';
+import {
+  verifyLogin,
+  getPersonWithAuthStatus,
+  createPasswordSetupToken,
+  consumePasswordSetupToken,
+  createFirstAdmin
+} from './db/authRepo';
 import type { Pool } from 'pg';
 
 // Sessão de login guarda só o id da pessoa autenticada — tudo o mais (nome,
@@ -731,6 +737,53 @@ app.post('/api/admin/collections/:nic/boxes/:boxId/restore', requireAdminSession
 
 // --- Login real (Fase 1 — sessão no servidor é a única fonte de identidade) ---
 
+// Cria a sessão de login (regenerando o id de sessão contra fixation) e responde
+// com a pessoa autenticada. Usado pelo login normal e pelo bootstrap do primeiro
+// Administrador — os dois terminam do mesmo jeito: uma sessão válida.
+function startSession(req: Request, res: Response, person: Awaited<ReturnType<typeof verifyLogin>>, statusCode = 200) {
+  req.session.regenerate((err) => {
+    if (err) {
+      console.error('Erro ao criar sessão de login:', err);
+      return res.status(500).json({ error: 'Erro ao criar sessão de login.' });
+    }
+    req.session.personId = person!.id;
+    return res.status(statusCode).json({ person });
+  });
+}
+
+// Bootstrap do primeiro Administrador (Fase 3): só funciona com o sistema vazio —
+// depois que existe pelo menos uma pessoa, some (409) e todo cadastro passa a ser
+// feito por um Administrador autenticado em POST /api/people.
+app.get('/api/auth/bootstrap-status', async (_req: Request, res: Response) => {
+  try {
+    const total = await countPeople(getPool());
+    return res.json({ needsBootstrap: total === 0 });
+  } catch (error: any) {
+    console.error('Erro ao conferir status de bootstrap:', error);
+    return res.status(500).json({ error: 'Erro ao conferir status de bootstrap.' });
+  }
+});
+
+app.post('/api/auth/bootstrap-admin', async (req: Request, res: Response) => {
+  try {
+    const name = String(req.body?.name || '').trim();
+    const institution = String(req.body?.institution || '').trim();
+    const registrationNumber = String(req.body?.registrationNumber || '').trim();
+    const password = String(req.body?.password || '');
+    if (!name || !institution || !registrationNumber || !password) {
+      return res.status(400).json({ error: 'Nome, instituição, matrícula e senha são obrigatórios.' });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'A senha deve ter pelo menos 8 caracteres.' });
+    }
+    const person = await createFirstAdmin(getPool(), { name, institution, registrationNumber, password });
+    return startSession(req, res, person, 201);
+  } catch (error: any) {
+    console.error('Erro no bootstrap do primeiro Administrador:', error);
+    return res.status(409).json({ error: error?.message || 'Erro no bootstrap do primeiro Administrador.' });
+  }
+});
+
 app.post('/api/auth/login', async (req: Request, res: Response) => {
   try {
     const registrationNumber = String(req.body?.registrationNumber || '').trim();
@@ -747,14 +800,7 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Matrícula ou senha inválida.' });
     }
     clearLoginAttempts(registrationNumber);
-    req.session.regenerate((err) => {
-      if (err) {
-        console.error('Erro ao criar sessão de login:', err);
-        return res.status(500).json({ error: 'Erro ao criar sessão de login.' });
-      }
-      req.session.personId = person.id;
-      return res.json({ person });
-    });
+    return startSession(req, res, person);
   } catch (error: any) {
     console.error('Erro no login:', error);
     return res.status(500).json({ error: 'Erro interno no login.' });
@@ -816,9 +862,13 @@ app.post('/api/auth/setup-password', async (req: Request, res: Response) => {
   }
 });
 
-// --- Cadastro de pessoas (papéis de acesso, sem login/senha ainda) ---
+// --- Cadastro de pessoas (papéis de acesso) ---
+// Login real, Fase 3 (_local-adr-policy-202): listar exige qualquer sessão
+// autenticada; cadastrar e remover exigem sessão de Administrador. A única
+// exceção é o bootstrap do primeiro Administrador (POST /api/auth/bootstrap-admin,
+// acima), que só funciona uma vez, com o sistema vazio.
 
-app.get('/api/people', async (_req: Request, res: Response) => {
+app.get('/api/people', requireAuth, async (_req: Request, res: Response) => {
   try {
     const pool = getPool();
     const people = await listPeople(pool);
@@ -829,7 +879,7 @@ app.get('/api/people', async (_req: Request, res: Response) => {
   }
 });
 
-app.post('/api/people', async (req: Request, res: Response) => {
+app.post('/api/people', requireAdminSession, async (req: Request, res: Response) => {
   try {
     const { name, role, institution, registrationNumber } = req.body || {};
     if (!name || !role || !institution || !registrationNumber) {
@@ -844,7 +894,7 @@ app.post('/api/people', async (req: Request, res: Response) => {
   }
 });
 
-app.delete('/api/people/:id', async (req: Request, res: Response) => {
+app.delete('/api/people/:id', requireAdminSession, async (req: Request, res: Response) => {
   try {
     const pool = getPool();
     await deletePerson(pool, req.params.id);

@@ -1,7 +1,7 @@
 ---
 name: _local-adr-policy-202-login-real-sessao-servidor
-description: A partir de agora, "ser alguém" no sistema é provar matrícula + senha e receber uma sessão assinada pelo servidor (cookie httpOnly) — nunca o navegador declarando um actorId. Use antes de adicionar qualquer rota nova que precise saber quem está agindo, ou antes de migrar uma rota existente do modelo antigo (Fase 2).
-apply-to: db/authRepo.ts, server.ts (middleware de sessão, requireAuth/requireSessionRole, rotas /api/auth/*), db/migrations/009_auth.sql
+description: "Ser alguém" no sistema é provar matrícula + senha e receber uma sessão assinada pelo servidor (cookie httpOnly) — nunca o navegador declarando um actorId, nem um seletor de perfil de um clique. Use antes de adicionar qualquer rota ou tela nova que precise saber quem está agindo, ou antes de mudar o fluxo de cadastro/gestão de contas.
+apply-to: db/authRepo.ts, db/peopleRepo.ts, server.ts (middleware de sessão, requireAuth/requireSessionRole, rotas /api/auth/* e /api/people), db/migrations/009_auth.sql, src/services/authService.ts, src/components/LoginScreen.tsx, src/components/BootstrapAdminSetup.tsx, src/components/SetPasswordScreen.tsx, src/components/Header.tsx, src/components/SettingsView.tsx
 valid-from: 2026-09-28
 ---
 
@@ -63,16 +63,31 @@ sessão criada no login — nunca de um campo que o cliente envia.**
   de `req.body.actorId`/`req.query.actorId`. Os serviços do front-end
   (`collectionsService.ts`, `adminService.ts`) e `AdminDangerZone.tsx`
   pararam de enviar `actorId`.
-- **Risco de implantação, deliberado**: a partir da Fase 2, ninguém
-  consegue mais criar/salvar conjunto ou usar a Zona de Risco sem sessão
-  autenticada — e hoje nenhuma das ~30 pessoas cadastradas em produção
-  tem senha definida, e não existe tela de login (isso é a Fase 3). Esta
-  branch **não deve ir para produção antes da Fase 3** (telas de
-  login/logout e "definir senha") estar pronta, sob pena de travar o
-  sistema inteiro para toda a equipe.
-- `GET /api/people` permanece público nesta fase (fora do escopo — ver
-  Fase 3, que substitui a lista de pessoas por login digitado e deve
-  reavaliar essa rota).
+- **Fase 3 (concluída)**: `LoginScreen.tsx` (matrícula + senha),
+  `BootstrapAdminSetup.tsx` (cadastro do 1º Administrador, só quando o
+  banco está vazio — `POST /api/auth/bootstrap-admin`, protegido por trava
+  consultiva no Postgres contra duas execuções simultâneas) e
+  `SetPasswordScreen.tsx` (tela pública alcançada por `?token=...`, sem
+  depender de sessão) substituem por completo o antigo troca-de-perfil de
+  um clique em `Header.tsx`/`SettingsView.tsx`. `GET/POST/DELETE
+  /api/people` passam a exigir sessão (`GET` para qualquer papel logado;
+  `POST`/`DELETE` só Administrador) — a única exceção continua sendo o
+  bootstrap do primeiro Administrador. `SettingsView.tsx` ganha "Gerar
+  link de acesso" por pessoa (mostra o link uma única vez, com botão
+  copiar), documentado passo a passo em
+  `public/manuais/manual-administrador-contas-v1.html`.
+- **Sem risco de implantação pendente**: com a Fase 3 pronta, esta branch
+  já é segura para produção — o primeiro deploy encontrará o banco vazio
+  (ou as ~30 pessoas já cadastradas, sem senha) e pedirá o cadastro do
+  primeiro Administrador antes de liberar o resto do sistema; a partir
+  daí, cada pessoa existente recebe seu link de definição de senha por
+  fora do sistema.
+- **Limitação conhecida**: ainda não existe uma tela de "esqueci minha
+  senha" nem de "trocar minha própria senha" para quem já está logado —
+  toda troca de senha depende do Administrador gerar um novo link. Gerar
+  um link novo não encerra sessões já abertas com a senha antiga; isso é
+  documentado no manual do Administrador como uma limitação a considerar
+  em caso de suspeita de acesso indevido.
 - Senha (escolhida por humano, baixa entropia) usa bcrypt — hash
   não-determinístico, salgado, caro de força-bruta. Token de definição de
   senha (gerado pelo sistema, alta entropia) usa SHA-256 — determinístico
@@ -81,21 +96,28 @@ sessão criada no login — nunca de um campo que o cliente envia.**
 - `SESSION_SECRET` segue a mesma regra de `DATABASE_URL`: sem valor
   default em produção — o servidor falha ao subir se não estiver
   configurada.
-- Cobertura: `db/__tests__/authRepo.test.ts` (13 testes) — login correto
-  e incorreto, matrícula sem senha ainda, matrícula inexistente, ciclo
-  completo de token de definição de senha (sucesso, token inexistente,
-  já usado, expirado). As rotas HTTP em si foram validadas manualmente
-  (login → /me → setup-links → logout → /me) em vez de teste de
-  integração automatizado — mesma lacuna já registrada para as rotas de
-  admin em `_local-adr-policy-201`.
+- Cobertura: `db/__tests__/authRepo.test.ts` (15 testes, incluindo
+  `createFirstAdmin`) e `db/__tests__/peopleRepo.test.ts` (`countPeople`)
+  no backend; `LoginScreen.test.tsx`, `BootstrapAdminSetup.test.tsx` e
+  `SetPasswordScreen.test.tsx` no front-end. As rotas HTTP em si foram
+  validadas manualmente de ponta a ponta (bootstrap → cadastrar pessoa →
+  gerar link → definir senha → login → checar permissão por papel →
+  logout) em vez de teste de integração HTTP automatizado — mesma lacuna
+  já registrada para as rotas de admin em `_local-adr-policy-201`.
 
 ## References
 
-- Arquivos: `db/migrations/009_auth.sql`, `db/authRepo.ts`, `server.ts`
-- Testes: `db/__tests__/authRepo.test.ts`
+- Arquivos: `db/migrations/009_auth.sql`, `db/authRepo.ts`, `server.ts`,
+  `src/services/authService.ts`, `src/components/LoginScreen.tsx`,
+  `src/components/BootstrapAdminSetup.tsx`,
+  `src/components/SetPasswordScreen.tsx`
+- Testes: `db/__tests__/authRepo.test.ts`, `db/__tests__/peopleRepo.test.ts`,
+  `src/components/__tests__/{LoginScreen,BootstrapAdminSetup,SetPasswordScreen}.test.tsx`
+- Manual do usuário: `public/manuais/manual-administrador-contas-v1.html`
+  (gestão de contas) e `public/manuais/manual-sigcoi-completo-v6.html`
+  (seção "Perfis de acesso" atualizada)
 - Policy relacionada: `_local-adr-policy-201` (a Zona de Risco é
   exatamente o tipo de ação que mais precisava desta prova de identidade)
-- Fases seguintes (não cobertas aqui): Fase 3 — telas de login/logout
-  reais e "definir senha", removendo o troca-de-perfil de um clique
-  (pré-requisito para implantar esta branch em produção); Fase 5 — CSRF,
-  rate-limit persistente, ajuste fino de expiração de sessão.
+- Pendência seguinte (não coberta aqui): Fase 5 — CSRF, rate-limit
+  persistente entre reinícios do servidor, ajuste fino de expiração de
+  sessão, tela de troca de senha para quem já está logado.

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { OsteologicalCollection, UserProfile, UserRole } from '../types/sgccco';
 import { AdminDangerZone } from './AdminDangerZone';
 import { getRoleTheme } from '../utils/roleTheme';
+import { generateSetupLinkApi } from '../services/authService';
 import {
   Settings,
   Volume2,
@@ -17,7 +18,10 @@ import {
   Trash2,
   AlertTriangle,
   Users,
-  UserPlus
+  UserPlus,
+  Link2,
+  Copy,
+  Loader2
 } from 'lucide-react';
 
 const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
@@ -30,7 +34,6 @@ const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
 
 interface SettingsViewProps {
   currentUser: UserProfile;
-  onUserChange: (user: UserProfile) => void;
   people: UserProfile[];
   onCreatePerson: (person: { name: string; role: UserRole; institution: string; registrationNumber: string }) => Promise<void>;
   onDeletePerson: (id: string) => Promise<void>;
@@ -42,7 +45,6 @@ interface SettingsViewProps {
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
   currentUser,
-  onUserChange,
   people,
   onCreatePerson,
   onDeletePerson,
@@ -62,6 +64,41 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [newPersonRegistration, setNewPersonRegistration] = useState('');
   const [isCreatingPerson, setIsCreatingPerson] = useState(false);
   const [personPendingDeletion, setPersonPendingDeletion] = useState<UserProfile | null>(null);
+  const isAdmin = currentUser.role === 'administrador';
+
+  // Link de definição de senha gerado por último — mostrado uma única vez (o
+  // token só existe em texto puro nesta resposta; depois só o hash fica no banco).
+  const [generatingLinkForId, setGeneratingLinkForId] = useState<string | null>(null);
+  const [generatedLink, setGeneratedLink] = useState<{ personId: string; url: string; expiresAt: string } | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
+  const [copyFeedback, setCopyFeedback] = useState(false);
+
+  const handleGenerateSetupLink = async (person: UserProfile) => {
+    setGeneratingLinkForId(person.id);
+    setLinkError(null);
+    setCopyFeedback(false);
+    try {
+      const { token, expiresAt } = await generateSetupLinkApi(person.id);
+      const url = `${window.location.origin}${window.location.pathname}?token=${token}`;
+      setGeneratedLink({ personId: person.id, url, expiresAt });
+    } catch (err: any) {
+      setLinkError(err?.message || 'Não foi possível gerar o link.');
+    } finally {
+      setGeneratingLinkForId(null);
+    }
+  };
+
+  const handleCopyLink = async () => {
+    if (!generatedLink) return;
+    try {
+      await navigator.clipboard.writeText(generatedLink.url);
+      setCopyFeedback(true);
+      setTimeout(() => setCopyFeedback(false), 2000);
+    } catch {
+      // clipboard pode falhar (ex.: permissão do navegador) — o link continua
+      // visível na tela para copiar manualmente.
+    }
+  };
 
   const handleCreatePersonSubmit = async () => {
     if (!newPersonName.trim() || !newPersonInstitution.trim() || !newPersonRegistration.trim()) return;
@@ -219,7 +256,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       </div>
 
-      {/* Pessoas cadastradas — cadastro real, sem login/senha ainda */}
+      {/* Pessoas cadastradas — login real (matrícula + senha), ver _local-adr-policy-202 */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden text-xs">
         <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex flex-wrap justify-between items-center gap-3">
           <div>
@@ -228,19 +265,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               Pessoas Cadastradas ({people.length})
             </h3>
             <p className="text-slate-500 mt-0.5">
-              Quem pode ser selecionado como responsável ativo (assinaturas, cadeia de custódia). Sem login/senha ainda.
+              Quem tem acesso ao sistema, por papel. Cada pessoa entra com matrícula e senha própria.
+              {!isAdmin && ' Só o Administrador pode cadastrar, remover ou gerar link de acesso.'}
             </p>
           </div>
-          <button
-            onClick={() => setShowAddPersonForm((v) => !v)}
-            className="px-3.5 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold flex items-center gap-1.5 transition-colors"
-          >
-            <UserPlus className="w-3.5 h-3.5" />
-            Cadastrar pessoa
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => setShowAddPersonForm((v) => !v)}
+              className="px-3.5 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold flex items-center gap-1.5 transition-colors"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              Cadastrar pessoa
+            </button>
+          )}
         </div>
 
-        {showAddPersonForm && (
+        {isAdmin && showAddPersonForm && (
           <div className="p-5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 grid grid-cols-1 sm:grid-cols-2 gap-3">
             <input
               type="text"
@@ -290,6 +330,39 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
         )}
 
+        {isAdmin && linkError && (
+          <div className="mx-5 mt-4 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 font-mono">
+            {linkError}
+          </div>
+        )}
+
+        {isAdmin && generatedLink && (
+          <div className="m-5 p-4 rounded-xl bg-sky-50 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-900 space-y-2">
+            <p className="font-semibold text-sky-800 dark:text-sky-300 flex items-center gap-1.5">
+              <Link2 className="w-3.5 h-3.5" />
+              Link de definição de senha — envie por fora do sistema (WhatsApp, e-mail)
+            </p>
+            <p className="text-slate-500">
+              Só aparece agora, uma única vez. Vale até {new Date(generatedLink.expiresAt).toLocaleString('pt-BR')} ou até ser usado.
+            </p>
+            <div className="flex items-center gap-2">
+              <input
+                readOnly
+                value={generatedLink.url}
+                onFocus={(e) => e.target.select()}
+                className="flex-1 p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-mono text-[11px]"
+              />
+              <button
+                onClick={handleCopyLink}
+                className="px-2.5 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold flex items-center gap-1.5 shrink-0"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                {copyFeedback ? 'Copiado!' : 'Copiar'}
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="divide-y divide-slate-100 dark:divide-slate-800">
           {people.length === 0 && (
             <p className="p-5 text-slate-400">Nenhuma pessoa cadastrada.</p>
@@ -308,29 +381,36 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   </span>
                   {currentUser.id === person.id && (
                     <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-300">
-                      ativo
+                      você
                     </span>
                   )}
                 </div>
                 <p className="text-slate-400 mt-0.5">{person.institution} · {person.registrationNumber}</p>
               </div>
-              <div className="flex items-center gap-2">
-                {currentUser.id !== person.id && (
+              {isAdmin && (
+                <div className="flex items-center gap-2">
                   <button
-                    onClick={() => onUserChange(person)}
-                    className="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                    onClick={() => handleGenerateSetupLink(person)}
+                    disabled={generatingLinkForId === person.id}
+                    className="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-1.5 disabled:opacity-40"
+                    title="Gerar link de uso único para esta pessoa definir (ou redefinir) a senha"
                   >
-                    Tornar ativo
+                    {generatingLinkForId === person.id ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Link2 className="w-3.5 h-3.5" />
+                    )}
+                    Gerar link de acesso
                   </button>
-                )}
-                <button
-                  onClick={() => setPersonPendingDeletion(person)}
-                  className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40"
-                  title="Remover pessoa"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
+                  <button
+                    onClick={() => setPersonPendingDeletion(person)}
+                    className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                    title="Remover pessoa"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
             </div>
             );
           })}

@@ -22,6 +22,9 @@ import type { UserProfile } from '../src/types/sgccco';
 
 const BCRYPT_COST = 12;
 const DEFAULT_TOKEN_TTL_HOURS = 72;
+// Chave arbitrária (só precisa ser estável e exclusiva deste uso) para a trava
+// consultiva do bootstrap do primeiro Administrador.
+const BOOTSTRAP_ADVISORY_LOCK_KEY = 8825001;
 
 interface PersonAuthRow {
   id: string;
@@ -97,6 +100,43 @@ export async function createPasswordSetupToken(
     [personId, tokenHash, createdBy, expiresAt]
   );
   return { token, expiresAt: expiresAt.toISOString() };
+}
+
+/**
+ * Bootstrap do primeiro Administrador (login real, Fase 3): a única forma de criar
+ * uma pessoa sem sessão — e só funciona uma vez, enquanto a tabela `people` estiver
+ * vazia. A partir daí, toda pessoa nova é cadastrada por um Administrador já
+ * autenticado (POST /api/people) e recebe a senha pelo fluxo normal de token.
+ */
+export async function createFirstAdmin(
+  pool: Pool,
+  person: { name: string; institution: string; registrationNumber: string; password: string }
+): Promise<UserProfile> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    // Trava consultiva (não há linha nenhuma para travar numa tabela vazia): garante
+    // que duas requisições de bootstrap simultâneas não criem dois primeiros admins.
+    await client.query('SELECT pg_advisory_xact_lock($1)', [BOOTSTRAP_ADVISORY_LOCK_KEY]);
+    const { rows: existing } = await client.query('SELECT 1 FROM people LIMIT 1');
+    if (existing.length > 0) {
+      throw new Error('Já existe gente cadastrada — o bootstrap só funciona com o sistema vazio.');
+    }
+    const passwordHash = await hashPassword(person.password);
+    const { rows } = await client.query<PersonAuthRow>(
+      `INSERT INTO people (name, role, institution, registration_number, password_hash)
+       VALUES ($1, 'administrador', $2, $3, $4)
+       RETURNING id, name, role, institution, registration_number, password_hash`,
+      [person.name, person.institution, person.registrationNumber, passwordHash]
+    );
+    await client.query('COMMIT');
+    return toUserProfile(rows[0]);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 /**

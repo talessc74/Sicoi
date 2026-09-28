@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { Pool } from 'pg';
 import { runMigrations } from '../migrate';
-import { listPeople, createPerson, getPerson, deletePerson } from '../peopleRepo';
+import { listPeople, createPerson, getPerson, deletePerson, countPeople } from '../peopleRepo';
 
 const TEST_DATABASE_URL =
   process.env.TEST_DATABASE_URL || 'postgresql://sgcccco_app:sgcccco_dev_local@localhost:5432/sgcccco_test';
@@ -73,5 +73,16 @@ describe('peopleRepo', () => {
 
   it('remover um id inexistente não lança erro (idempotente)', async () => {
     await expect(deletePerson(pool, '00000000-0000-0000-0000-000000000000')).resolves.not.toThrow();
+  });
+
+  it('countPeople devolve 0 numa tabela vazia', async () => {
+    expect(await countPeople(pool)).toBe(0);
+  });
+
+  it('countPeople conta as pessoas cadastradas', async () => {
+    await createPerson(pool, { name: 'Primeira', role: 'tecnico', institution: 'INC', registrationNumber: '1' });
+    await createPerson(pool, { name: 'Segunda', role: 'curador', institution: 'INC', registrationNumber: '2' });
+
+    expect(await countPeople(pool)).toBe(2);
   });
 });

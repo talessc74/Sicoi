@@ -1,8 +1,9 @@
 # SIGCOI — Sistema de Gestão da Coleção Osteológica Identificada
 
 **Status: Alfa.** Em desenvolvimento ativo — funcional de ponta a ponta (ver
-"Estado atual" abaixo), mas ainda sem login/senha real e sem certificação
-campo a campo contra os apêndices oficiais do POP-02. Não use "v3.2" ou
+"Estado atual" abaixo), com login real (matrícula + senha) desde a Fase 3
+de `_local-adr-policy-202`, mas ainda sem certificação campo a campo contra
+os apêndices oficiais do POP-02. Não use "v3.2" ou
 qualquer numeração de versão solta por aí como referência: a única versão
 que importa é o hash do commit em execução, mostrado no topo de toda tela da
 aplicação (ver "Acessar agora" abaixo).
@@ -34,9 +35,12 @@ qualquer tela da aplicação mostra o hash do commit em execução, para
 conferir a qualquer momento que o que está no ar corresponde exatamente ao
 código deste repositório.
 
-Não há login/senha ainda (ver "Pendências conhecidas" abaixo) — ao abrir o
-sistema pela primeira vez, ele pede o cadastro da primeira pessoa (nome,
-papel, instituição, matrícula) para identificar quem está operando.
+Login real: matrícula + senha, com sessão no servidor (cookie httpOnly) — ao
+abrir o sistema pela primeira vez com o banco totalmente vazio, ele pede o
+cadastro do primeiro Administrador (com senha já definida ali). Depois
+disso, toda pessoa nova é cadastrada por um Administrador logado, que gera
+um link de uso único para cada pessoa definir a própria senha. Ver o manual
+"Administrador — Gestão de Contas" na aba Documentos do próprio sistema.
 
 ## Fontes normativas
 
@@ -109,9 +113,10 @@ consulte o índice `.xdrs/_local/index.md` daquele repositório.
   Dentro da Fase 4, a busca de referência para comparação entre conjuntos (um dos
   dois agentes de apoio previstos em `_local-adr-policy-001`) é só a interface
   — o modal existe mas a busca em si ainda não está implementada.
-- **Pendências conhecidas, fora do escopo até agora:** login/senha real (o
-  cadastro de pessoas identifica quem está operando, mas não autentica),
-  CORS restrito (hoje `*`), validação de entrada mais rígida no backend.
+- **Pendências conhecidas, fora do escopo até agora:** validação de entrada
+  mais rígida no backend, CSRF nas rotas que alteram estado, rate-limit de
+  login persistente entre reinícios do servidor (hoje é em memória — ver
+  `_local-adr-policy-202`).
 
 ## Rodando localmente
 
@@ -140,7 +145,8 @@ server.ts              servidor Express — API + serve o build em produção
 db/                     pool, migrações versionadas, camadas de acesso a dados
   migrations/*.sql       schema versionado, aplicado automaticamente no boot
   collectionsRepo.ts      persistência do conjunto (full_state + tabelas derivadas)
-  peopleRepo.ts            cadastro de pessoas (sem login/senha — só identificação)
+  peopleRepo.ts            cadastro de pessoas (papéis de acesso)
+  authRepo.ts              login real: hash de senha, sessão, token de definição de senha
   graphSync.ts            deriva o Grafo de Conhecimento a partir de cada conjunto
   graphRepo.ts             leitura do grafo (explain/path/search)
 src/
@@ -148,7 +154,10 @@ src/
   data/phaseDefaults.ts    forma vazia dos formulários — fonte única de verdade
   services/popConductorService.ts   roteiro + regras de extração por fase (context-aware)
   services/voiceAgent.ts             TTS/STT do condutor — unlock() para Safari/iOS
-  components/FirstPersonSetup.tsx    tela bloqueante de cadastro da 1ª pessoa
+  services/authService.ts            login, logout, bootstrap e link de definição de senha
+  components/LoginScreen.tsx          tela de entrada (matrícula + senha)
+  components/BootstrapAdminSetup.tsx  cadastro do 1º Administrador (banco vazio)
+  components/SetPasswordScreen.tsx    tela pública do link de definição de senha
   components/              telas por fase, condutor de voz, visualizador do grafo
   utils/signatures.ts      leitura da assinatura vigente de uma fase (a mais
                             recente — uma fase pode acumular histórico de

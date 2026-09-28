@@ -1,5 +1,8 @@
 /**
- * Cliente HTTP para o cadastro de pessoas (papéis de acesso, sem login/senha ainda).
+ * Cliente HTTP para o cadastro de pessoas (papéis de acesso). Listar exige sessão
+ * autenticada; cadastrar e remover exigem sessão de Administrador — o servidor
+ * reconfere (ver _local-adr-policy-202). A senha de cada pessoa é definida
+ * separadamente, pelo link gerado em authService.generateSetupLinkApi.
  */
 import { UserProfile } from '../types/sgccco';
 

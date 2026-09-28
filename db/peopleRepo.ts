@@ -29,6 +29,13 @@ export async function listPeople(pool: Pool): Promise<UserProfile[]> {
   return rows.map(toUserProfile);
 }
 
+// Usado pelo bootstrap do primeiro Administrador (login real, Fase 3): só é permitido
+// criar a primeira pessoa sem sessão quando a tabela está vazia.
+export async function countPeople(pool: Pool): Promise<number> {
+  const { rows } = await pool.query<{ count: string }>('SELECT count(*)::text AS count FROM people');
+  return parseInt(rows[0].count, 10);
+}
+
 export async function createPerson(
   pool: Pool,
   person: { name: string; role: string; institution: string; registrationNumber: string }

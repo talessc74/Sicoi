@@ -7,7 +7,8 @@ import {
   verifyLogin,
   getPersonWithAuthStatus,
   createPasswordSetupToken,
-  consumePasswordSetupToken
+  consumePasswordSetupToken,
+  createFirstAdmin
 } from '../authRepo';
 
 const TEST_DATABASE_URL =
@@ -122,5 +123,27 @@ describe('authRepo', () => {
     await expect(consumePasswordSetupToken(pool, token, 'primeira-senha-123')).rejects.toThrow(
       'Link inválido, expirado ou já utilizado.'
     );
+  });
+
+  it('createFirstAdmin cria a primeira pessoa como administrador, com senha já definida', async () => {
+    const person = await createFirstAdmin(pool, {
+      name: 'Primeira Administradora',
+      institution: 'INC/DITEC/PF',
+      registrationNumber: '500',
+      password: 'senha-bootstrap-123'
+    });
+
+    expect(person.role).toBe('administrador');
+
+    const loggedIn = await verifyLogin(pool, '500', 'senha-bootstrap-123');
+    expect(loggedIn).toEqual(person);
+  });
+
+  it('createFirstAdmin recusa se já existir qualquer pessoa cadastrada', async () => {
+    await createPerson(pool, { name: 'Já Existe', role: 'tecnico', institution: 'INC', registrationNumber: '501' });
+
+    await expect(
+      createFirstAdmin(pool, { name: 'Segunda Tentativa', institution: 'INC', registrationNumber: '502', password: 'senha-bootstrap-123' })
+    ).rejects.toThrow('Já existe gente cadastrada — o bootstrap só funciona com o sistema vazio.');
   });
 });
