@@ -65,6 +65,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [newPersonEmail, setNewPersonEmail] = useState('');
   const [newPersonRegistration, setNewPersonRegistration] = useState('');
   const [isCreatingPerson, setIsCreatingPerson] = useState(false);
+  const [createPersonError, setCreatePersonError] = useState<string | null>(null);
   const [personPendingDeletion, setPersonPendingDeletion] = useState<UserProfile | null>(null);
   const isAdmin = currentUser.role === 'administrador';
 
@@ -123,6 +124,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const handleCreatePersonSubmit = async () => {
     if (!newPersonName.trim() || !newPersonInstitution.trim() || !newPersonEmail.trim()) return;
     setIsCreatingPerson(true);
+    setCreatePersonError(null);
     try {
       await onCreatePerson({
         name: newPersonName.trim(),
@@ -136,6 +138,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       setNewPersonEmail('');
       setNewPersonRegistration('');
       setShowAddPersonForm(false);
+    } catch (err: any) {
+      setCreatePersonError(err?.message || 'Não foi possível cadastrar a pessoa.');
     } finally {
       setIsCreatingPerson(false);
     }
@@ -384,9 +388,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               placeholder="Matrícula / registro profissional (opcional)"
               className="p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
             />
+            {createPersonError && (
+              <p className="sm:col-span-2 text-xs text-rose-600 dark:text-rose-400 font-mono">{createPersonError}</p>
+            )}
+
             <div className="sm:col-span-2 flex justify-end gap-2">
               <button
-                onClick={() => setShowAddPersonForm(false)}
+                onClick={() => { setShowAddPersonForm(false); setCreatePersonError(null); }}
                 className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300"
               >
                 Cancelar

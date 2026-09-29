@@ -1029,14 +1029,20 @@ app.get('/api/people', requireAdminSession, async (_req: Request, res: Response)
   }
 });
 
+const VALID_PEOPLE_ROLES = new Set(['tecnico', 'curador', 'administrador', 'pesquisador', 'estudante']);
+
 app.post('/api/people', requireAdminSession, async (req: Request, res: Response) => {
   try {
-    const { name, role, institution, email, registrationNumber } = req.body || {};
+    const { name, role, institution, registrationNumber } = req.body || {};
+    const email = String(req.body?.email || '').trim();
     if (!name || !role || !institution || !email) {
       return res.status(400).json({ error: 'Informe name, role, institution e email.' });
     }
-    if (!isValidEmail(String(email))) {
+    if (!isValidEmail(email)) {
       return res.status(400).json({ error: 'Informe um e-mail válido.' });
+    }
+    if (!VALID_PEOPLE_ROLES.has(role)) {
+      return res.status(400).json({ error: 'Papel inválido. Use tecnico, curador, administrador, pesquisador ou estudante.' });
     }
     const pool = getPool();
     const person = await createPerson(pool, { name, role, institution, email, registrationNumber: registrationNumber || undefined });
