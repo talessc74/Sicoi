@@ -82,10 +82,10 @@ export default function App() {
   // é mais semeado com dados de exemplo). Usado tanto na conferência inicial de
   // sessão quanto imediatamente depois de um login bem-sucedido.
   //
-  // A lista de pessoas (nome, papel, instituição e matrícula de todo mundo) só é
+  // A lista de pessoas (nome, papel, instituição e e-mail de todo mundo) só é
   // buscada para quem está logado como Administrador — o servidor recusa (403)
   // pedidos de qualquer outro papel, e não há razão para um Técnico ou Estudante
-  // ver a matrícula (o identificador de login) de todas as outras pessoas.
+  // ver o e-mail (o identificador de login) de todas as outras pessoas.
   const loadAppData = async (role: UserRole) => {
     const [loadedCollections, loadedPeople] = await Promise.all([
       fetchCollections(),

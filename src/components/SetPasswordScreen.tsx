@@ -50,7 +50,7 @@ export const SetPasswordScreen: React.FC<SetPasswordScreenProps> = ({ token }) =
           </div>
           <h1 className="text-sm font-bold text-slate-900 dark:text-white">Senha definida com sucesso</h1>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Já pode entrar no SIGCOI com sua matrícula e a senha que você acabou de criar.
+            Já pode entrar no SIGCOI com seu e-mail e a senha que você acabou de criar.
           </p>
           <button
             onClick={goToLogin}
