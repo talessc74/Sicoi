@@ -43,7 +43,6 @@ export async function bootstrapAdminApi(data: {
   name: string;
   institution: string;
   email: string;
-  registrationNumber?: string;
   password: string;
 }): Promise<UserProfile> {
   const res = await fetch('/api/auth/bootstrap-admin', {

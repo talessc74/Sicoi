@@ -37,7 +37,7 @@ describe('LoginScreen', () => {
   it('login correto chama onLoggedIn com a pessoa devolvida pela API', async () => {
     const user = userEvent.setup();
     const onLoggedIn = vi.fn();
-    const person = { id: 'p1', name: 'Perito X', role: 'tecnico', institution: 'INC', email: 'perito.x@inc.pf.gov.br', registrationNumber: '12345' };
+    const person = { id: 'p1', name: 'Perito X', role: 'tecnico', institution: 'INC', email: 'perito.x@inc.pf.gov.br' };
     mockFetchOnce(200, { person });
 
     render(<LoginScreen onLoggedIn={onLoggedIn} />);

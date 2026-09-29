@@ -18,7 +18,6 @@ export const BootstrapAdminSetup: React.FC<BootstrapAdminSetupProps> = ({ onLogg
   const [name, setName] = useState('');
   const [institution, setInstitution] = useState('');
   const [email, setEmail] = useState('');
-  const [registrationNumber, setRegistrationNumber] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -41,7 +40,6 @@ export const BootstrapAdminSetup: React.FC<BootstrapAdminSetupProps> = ({ onLogg
         name: name.trim(),
         institution: institution.trim(),
         email: email.trim(),
-        registrationNumber: registrationNumber.trim() || undefined,
         password
       });
       onLoggedIn(person);
@@ -102,19 +100,6 @@ export const BootstrapAdminSetup: React.FC<BootstrapAdminSetupProps> = ({ onLogg
               onChange={(e) => setEmail(e.target.value)}
               placeholder="nome@instituicao.gov.br"
               autoComplete="username"
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-hidden focus:ring-2 focus:ring-sky-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-              Matrícula / registro profissional <span className="font-normal text-slate-400">(opcional)</span>
-            </label>
-            <input
-              type="text"
-              value={registrationNumber}
-              onChange={(e) => setRegistrationNumber(e.target.value)}
-              placeholder="Ex.: CRBio 48.912-04"
               className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-hidden focus:ring-2 focus:ring-sky-500"
             />
           </div>

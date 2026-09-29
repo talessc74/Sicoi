@@ -31,7 +31,6 @@ export async function createPersonApi(person: {
   role: UserProfile['role'];
   institution: string;
   email: string;
-  registrationNumber?: string;
 }): Promise<UserProfile> {
   const res = await fetch('/api/people', {
     method: 'POST',

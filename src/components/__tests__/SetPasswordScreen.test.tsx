@@ -49,7 +49,7 @@ describe('SetPasswordScreen', () => {
 
   it('ao confirmar com sucesso, mostra a tela de confirmação em vez do formulário', async () => {
     const user = userEvent.setup();
-    const person = { id: 'p1', name: 'Perito X', role: 'tecnico', institution: 'INC', registrationNumber: '12345' };
+    const person = { id: 'p1', name: 'Perito X', role: 'tecnico', institution: 'INC' };
     mockFetchOnce(200, { person });
 
     render(<SetPasswordScreen token="abc123" />);

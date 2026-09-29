@@ -30,7 +30,7 @@ describe('peopleService', () => {
 
   it('createPersonApi envia POST com os dados e devolve a pessoa criada', async () => {
     mockFetchOnce(201, { person: { id: '2', name: 'Nova Pessoa' } });
-    const person = await createPersonApi({ name: 'Nova Pessoa', role: 'tecnico', institution: 'INC', email: 'nova.pessoa@inc.pf.gov.br', registrationNumber: '1' });
+    const person = await createPersonApi({ name: 'Nova Pessoa', role: 'tecnico', institution: 'INC', email: 'nova.pessoa@inc.pf.gov.br' });
 
     expect(person).toEqual({ id: '2', name: 'Nova Pessoa' });
     expect(fetch).toHaveBeenCalledWith(

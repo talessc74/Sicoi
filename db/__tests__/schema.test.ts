@@ -8,9 +8,15 @@ const TEST_DATABASE_URL =
 const pool = new Pool({ connectionString: TEST_DATABASE_URL });
 
 async function resetSchema() {
+  // Lista completa das tabelas do schema (todas as migrações) — precisa
+  // cobrir todas, não só as de conjuntos/grafo: uma migração que altera ou
+  // remove coluna de uma tabela deixada de fora (ex.: people em 013) quebra
+  // ao reaplicar as migrações do zero, porque a tabela sobrevive ao reset
+  // no formato final, não no formato que cada migração histórica espera.
   await pool.query(`
     DROP TABLE IF EXISTS change_log, pop_step_audit, custody_chain, signatures, phase2_photos, phase1_photos,
-      phase2_forms, phase1_forms, graph_edges, graph_nodes, collections, schema_migrations CASCADE;
+      phase2_forms, phase1_forms, graph_edges, graph_nodes, collections, admin_actions, login_attempts,
+      password_reset_requests, password_setup_tokens, people, session, schema_migrations CASCADE;
   `);
 }
 

@@ -8,9 +8,8 @@
  * quem está agindo vem da sessão autenticada no servidor — nunca de um
  * campo que o cliente manda.
  *
- * Identificador de login é o e-mail (não a matrícula): nem toda pessoa tem
- * matrícula — pesquisadores externos, por exemplo, não têm — mas e-mail,
- * todo mundo tem. Comparação sempre case-insensitive (`lower(email)`).
+ * Identificador de login é o e-mail — único campo que identifica a pessoa.
+ * Comparação sempre case-insensitive (`lower(email)`).
  *
  * Duas regras de segurança seguidas à risca aqui:
  * - Senha nunca é gravada em texto puro — só o hash bcrypt.
@@ -38,7 +37,6 @@ interface PersonAuthRow {
   role: string;
   institution: string;
   email: string;
-  registration_number: string | null;
   password_hash: string | null;
 }
 
@@ -48,8 +46,7 @@ function toUserProfile(row: PersonAuthRow): UserProfile {
     name: row.name,
     role: row.role as UserProfile['role'],
     institution: row.institution,
-    email: row.email,
-    registrationNumber: row.registration_number ?? undefined
+    email: row.email
   };
 }
 
@@ -69,7 +66,7 @@ export async function hashPassword(plainPassword: string): Promise<string> {
  */
 export async function verifyLogin(pool: Pool, email: string, plainPassword: string): Promise<UserProfile | null> {
   const { rows } = await pool.query<PersonAuthRow>(
-    'SELECT id, name, role, institution, email, registration_number, password_hash FROM people WHERE lower(email) = lower($1)',
+    'SELECT id, name, role, institution, email, password_hash FROM people WHERE lower(email) = lower($1)',
     [email]
   );
   const row = rows[0];
@@ -145,7 +142,7 @@ export async function clearLoginAttempts(pool: Pool, email: string): Promise<voi
 
 export async function getPersonWithAuthStatus(pool: Pool, id: string): Promise<(UserProfile & { hasPassword: boolean }) | null> {
   const { rows } = await pool.query<PersonAuthRow>(
-    'SELECT id, name, role, institution, email, registration_number, password_hash FROM people WHERE id = $1',
+    'SELECT id, name, role, institution, email, password_hash FROM people WHERE id = $1',
     [id]
   );
   if (!rows[0]) return null;
@@ -178,7 +175,7 @@ export async function hasUnactivatedAdministrator(pool: Pool): Promise<boolean> 
  */
 export async function claimAdministratorAccount(pool: Pool, email: string, newPassword: string): Promise<UserProfile> {
   const { rows } = await pool.query<PersonAuthRow>(
-    'SELECT id, name, role, institution, email, registration_number, password_hash FROM people WHERE lower(email) = lower($1)',
+    'SELECT id, name, role, institution, email, password_hash FROM people WHERE lower(email) = lower($1)',
     [email]
   );
   const row = rows[0];
@@ -188,7 +185,7 @@ export async function claimAdministratorAccount(pool: Pool, email: string, newPa
   const passwordHash = await hashPassword(newPassword);
   const { rows: updated } = await pool.query<PersonAuthRow>(
     `UPDATE people SET password_hash = $1 WHERE id = $2
-     RETURNING id, name, role, institution, email, registration_number, password_hash`,
+     RETURNING id, name, role, institution, email, password_hash`,
     [passwordHash, row.id]
   );
   return toUserProfile(updated[0]);
@@ -201,7 +198,7 @@ export async function claimAdministratorAccount(pool: Pool, email: string, newPa
  */
 export async function changeOwnPassword(pool: Pool, personId: string, currentPassword: string, newPassword: string): Promise<void> {
   const { rows } = await pool.query<PersonAuthRow>(
-    'SELECT id, name, role, institution, email, registration_number, password_hash FROM people WHERE id = $1',
+    'SELECT id, name, role, institution, email, password_hash FROM people WHERE id = $1',
     [personId]
   );
   const row = rows[0];
@@ -247,7 +244,7 @@ export async function createPasswordSetupToken(
  */
 export async function createFirstAdmin(
   pool: Pool,
-  person: { name: string; institution: string; email: string; registrationNumber?: string; password: string }
+  person: { name: string; institution: string; email: string; password: string }
 ): Promise<UserProfile> {
   const client = await pool.connect();
   try {
@@ -261,10 +258,10 @@ export async function createFirstAdmin(
     }
     const passwordHash = await hashPassword(person.password);
     const { rows } = await client.query<PersonAuthRow>(
-      `INSERT INTO people (name, role, institution, email, registration_number, password_hash)
-       VALUES ($1, 'administrador', $2, $3, $4, $5)
-       RETURNING id, name, role, institution, email, registration_number, password_hash`,
-      [person.name, person.institution, person.email, person.registrationNumber || null, passwordHash]
+      `INSERT INTO people (name, role, institution, email, password_hash)
+       VALUES ($1, 'administrador', $2, $3, $4)
+       RETURNING id, name, role, institution, email, password_hash`,
+      [person.name, person.institution, person.email, passwordHash]
     );
     await client.query('COMMIT');
     return toUserProfile(rows[0]);
@@ -357,7 +354,7 @@ export async function consumePasswordSetupToken(pool: Pool, token: string, newPa
     const passwordHash = await hashPassword(newPassword);
     const updated = await client.query<PersonAuthRow>(
       `UPDATE people SET password_hash = $1 WHERE id = $2
-       RETURNING id, name, role, institution, email, registration_number, password_hash`,
+       RETURNING id, name, role, institution, email, password_hash`,
       [passwordHash, rows[0].person_id]
     );
     await client.query('UPDATE password_setup_tokens SET used_at = now() WHERE id = $1', [rows[0].id]);

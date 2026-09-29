@@ -54,7 +54,7 @@ describe('ClaimAdminScreen', () => {
   it('ao confirmar, chama onLoggedIn com o administrador ativado', async () => {
     const user = userEvent.setup();
     const onLoggedIn = vi.fn();
-    const person = { id: 'p1', name: 'Nicole', role: 'administrador', institution: 'INC', email: 'nicole@inc.pf.gov.br', registrationNumber: 'NIC-001' };
+    const person = { id: 'p1', name: 'Nicole', role: 'administrador', institution: 'INC', email: 'nicole@inc.pf.gov.br' };
     mockFetchOnce(200, { person, csrfToken: 'abc' });
 
     render(<ClaimAdminScreen onLoggedIn={onLoggedIn} />);

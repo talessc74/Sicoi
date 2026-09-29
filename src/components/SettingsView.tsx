@@ -36,7 +36,7 @@ const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
 interface SettingsViewProps {
   currentUser: UserProfile;
   people: UserProfile[];
-  onCreatePerson: (person: { name: string; role: UserRole; institution: string; email: string; registrationNumber?: string }) => Promise<void>;
+  onCreatePerson: (person: { name: string; role: UserRole; institution: string; email: string }) => Promise<void>;
   onDeletePerson: (id: string) => Promise<void>;
   laboratoryMode: boolean;
   onToggleLaboratoryMode: () => void;
@@ -63,7 +63,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [newPersonRole, setNewPersonRole] = useState<UserRole>('tecnico');
   const [newPersonInstitution, setNewPersonInstitution] = useState('');
   const [newPersonEmail, setNewPersonEmail] = useState('');
-  const [newPersonRegistration, setNewPersonRegistration] = useState('');
   const [isCreatingPerson, setIsCreatingPerson] = useState(false);
   const [createPersonError, setCreatePersonError] = useState<string | null>(null);
   const [personPendingDeletion, setPersonPendingDeletion] = useState<UserProfile | null>(null);
@@ -130,13 +129,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         name: newPersonName.trim(),
         role: newPersonRole,
         institution: newPersonInstitution.trim(),
-        email: newPersonEmail.trim(),
-        registrationNumber: newPersonRegistration.trim() || undefined
+        email: newPersonEmail.trim()
       });
       setNewPersonName('');
       setNewPersonInstitution('');
       setNewPersonEmail('');
-      setNewPersonRegistration('');
       setShowAddPersonForm(false);
     } catch (err: any) {
       setCreatePersonError(err?.message || 'Não foi possível cadastrar a pessoa.');
@@ -381,13 +378,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               placeholder="E-mail (login)"
               className="p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
             />
-            <input
-              type="text"
-              value={newPersonRegistration}
-              onChange={(e) => setNewPersonRegistration(e.target.value)}
-              placeholder="Matrícula / registro profissional (opcional)"
-              className="p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
-            />
             {createPersonError && (
               <p className="sm:col-span-2 text-xs text-rose-600 dark:text-rose-400 font-mono">{createPersonError}</p>
             )}
@@ -465,10 +455,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     </span>
                   )}
                 </div>
-                <p className="text-slate-400 mt-0.5">
-                  {person.institution} · {person.email}
-                  {person.registrationNumber ? ` · ${person.registrationNumber}` : ''}
-                </p>
+                <p className="text-slate-400 mt-0.5">{person.institution} · {person.email}</p>
               </div>
               {isAdmin && (
                 <div className="flex items-center gap-2">

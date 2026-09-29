@@ -1,7 +1,7 @@
 ---
 name: _local-adr-policy-202-login-real-sessao-servidor
-description: "Ser alguém" no sistema é provar matrícula + senha e receber uma sessão assinada pelo servidor (cookie httpOnly) — nunca o navegador declarando um actorId, nem um seletor de perfil de um clique. Use antes de adicionar qualquer rota ou tela nova que precise saber quem está agindo, ou antes de mudar o fluxo de cadastro/gestão de contas.
-apply-to: db/authRepo.ts, db/peopleRepo.ts, server.ts (middleware de sessão, csrfProtection, requireAuth/requireSessionRole, rotas /api/auth/* e /api/people), db/migrations/009_auth.sql, db/migrations/010_password_reset_requests.sql, db/migrations/011_login_attempts.sql, db/migrations/012_email_identity.sql, src/services/authService.ts, src/services/csrf.ts, src/services/collectionsService.ts, src/services/adminService.ts, src/services/peopleService.ts, src/services/geminiService.ts, src/components/LoginScreen.tsx, src/components/BootstrapAdminSetup.tsx, src/components/ClaimAdminScreen.tsx, src/components/SetPasswordScreen.tsx, src/components/ForgotPasswordScreen.tsx, src/components/ChangePasswordModal.tsx, src/components/Header.tsx, src/components/SettingsView.tsx
+description: "Ser alguém" no sistema é provar e-mail + senha e receber uma sessão assinada pelo servidor (cookie httpOnly) — nunca o navegador declarando um actorId, nem um seletor de perfil de um clique. Use antes de adicionar qualquer rota ou tela nova que precise saber quem está agindo, ou antes de mudar o fluxo de cadastro/gestão de contas.
+apply-to: db/authRepo.ts, db/peopleRepo.ts, server.ts (middleware de sessão, csrfProtection, requireAuth/requireSessionRole, rotas /api/auth/* e /api/people), db/migrations/009_auth.sql, db/migrations/010_password_reset_requests.sql, db/migrations/011_login_attempts.sql, db/migrations/012_email_identity.sql, db/migrations/013_remove_registration_number.sql, src/services/authService.ts, src/services/csrf.ts, src/services/collectionsService.ts, src/services/adminService.ts, src/services/peopleService.ts, src/services/geminiService.ts, src/components/LoginScreen.tsx, src/components/BootstrapAdminSetup.tsx, src/components/ClaimAdminScreen.tsx, src/components/SetPasswordScreen.tsx, src/components/ForgotPasswordScreen.tsx, src/components/ChangePasswordModal.tsx, src/components/Header.tsx, src/components/SettingsView.tsx
 valid-from: 2026-09-28
 ---
 
@@ -235,6 +235,34 @@ sessão criada no login — nunca de um campo que o cliente envia.**
   `ADMIN_BOOTSTRAP_SECRET` seguem existindo no código como capacidade
   reservada para uma futura migração de dados pré-existentes, mas não são
   necessários para este dataset específico, que será descartado.
+- **Matrícula/registro profissional removida por completo (set/2026,
+  concluído)**: decisão do Tales, na mesma revisão de segurança pré-merge
+  — o campo nunca vai ser usado de verdade, então em vez de manter uma
+  coluna opcional morta no schema, foi removida. `registrationNumber`
+  desapareceu de `UserProfile`, de `peopleRepo.ts`/`authRepo.ts` (SELECT,
+  INSERT, RETURNING), das rotas `POST /api/auth/bootstrap-admin` e
+  `POST /api/people`, dos serviços do front-end e das telas
+  `BootstrapAdminSetup.tsx` e `SettingsView.tsx` (campo do formulário e
+  coluna da lista de pessoas). `db/migrations/013_remove_registration_number.sql`
+  remove a coluna `registration_number` e o índice único que a
+  acompanhava (`people_registration_number_key`, de
+  `migrations/009_auth.sql`) — e-mail passa a ser o único campo que
+  identifica uma pessoa, ponto. Consequência limpa: o tratamento especial
+  em `POST /api/people` que distinguia qual dos dois índices únicos tinha
+  sido violado (introduzido numa revisão anterior desta mesma noite,
+  ver commit `aa4afd5`) ficou sem função e foi removido — só existe mais
+  o índice único de `email`.
+- **Achado da revisão de "guarda de dados" (mesma noite, sem correção de
+  código — investigação confirmou que já estava certo)**: `email` só é
+  lido/gravado na tabela `people`, nunca copiado para `login_attempts`,
+  `password_reset_requests`, `password_setup_tokens`, `signatures`,
+  `change_log` ou `admin_actions` — essas três últimas guardam nome/papel/
+  id da pessoa como texto copiado no momento da assinatura/ação, sem
+  chave estrangeira para `people`, o que torna estruturalmente impossível
+  uma remoção de pessoa apagar o histórico dela por engano. Testado ao
+  vivo: criar uma pessoa com token de senha, pedido de redefinição e
+  tentativas de login pendentes, depois remover a pessoa — as três somem
+  (CASCADE), sem órfãos.
 
 ## References
 
@@ -249,7 +277,7 @@ sessão criada no login — nunca de um campo que o cliente envia.**
   `src/components/ChangePasswordModal.tsx`
 - Testes: `db/__tests__/authRepo.test.ts`, `db/__tests__/peopleRepo.test.ts`,
   `src/components/__tests__/{LoginScreen,BootstrapAdminSetup,ClaimAdminScreen,SetPasswordScreen,ForgotPasswordScreen,ChangePasswordModal}.test.tsx`
-- Manual do usuário: `public/manuais/manual-administrador-contas-v5.html`
+- Manual do usuário: `public/manuais/manual-administrador-contas-v6.html`
   (gestão de contas — inclui a seção "Primeiro acesso do Administrador",
   com o passo a passo da migração de dados antigos, e o cadastro por
   e-mail com matrícula opcional) e

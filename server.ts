@@ -820,7 +820,6 @@ app.post('/api/auth/bootstrap-admin', async (req: Request, res: Response) => {
     const name = String(req.body?.name || '').trim();
     const institution = String(req.body?.institution || '').trim();
     const email = String(req.body?.email || '').trim();
-    const registrationNumber = String(req.body?.registrationNumber || '').trim();
     const password = String(req.body?.password || '');
     if (!name || !institution || !email || !password) {
       return res.status(400).json({ error: 'Nome, instituição, e-mail e senha são obrigatórios.' });
@@ -831,7 +830,7 @@ app.post('/api/auth/bootstrap-admin', async (req: Request, res: Response) => {
     if (password.length < 8) {
       return res.status(400).json({ error: 'A senha deve ter pelo menos 8 caracteres.' });
     }
-    const person = await createFirstAdmin(getPool(), { name, institution, email, registrationNumber: registrationNumber || undefined, password });
+    const person = await createFirstAdmin(getPool(), { name, institution, email, password });
     return startSession(req, res, person, 201);
   } catch (error: any) {
     console.error('Erro no bootstrap do primeiro Administrador:', error);
@@ -1035,7 +1034,6 @@ app.post('/api/people', requireAdminSession, async (req: Request, res: Response)
   try {
     const { name, role, institution } = req.body || {};
     const email = String(req.body?.email || '').trim();
-    const registrationNumber = String(req.body?.registrationNumber || '').trim();
     if (!name || !role || !institution || !email) {
       return res.status(400).json({ error: 'Informe name, role, institution e email.' });
     }
@@ -1046,20 +1044,14 @@ app.post('/api/people', requireAdminSession, async (req: Request, res: Response)
       return res.status(400).json({ error: 'Papel inválido. Use tecnico, curador, administrador, pesquisador ou estudante.' });
     }
     const pool = getPool();
-    const person = await createPerson(pool, { name, role, institution, email, registrationNumber: registrationNumber || undefined });
+    const person = await createPerson(pool, { name, role, institution, email });
     return res.status(201).json({ person });
   } catch (error: any) {
     console.error('Erro ao cadastrar pessoa:', error);
-    // Violação de índice único — nunca repassa a mensagem crua do Postgres
-    // (revelaria nome de índice/constraint); devolve 409 com uma mensagem que
-    // a pessoa cadastrando de fato consegue agir. `people` tem dois índices
-    // únicos (email e, de antes do login por e-mail, registration_number —
-    // ver migrations/009_auth.sql), então o nome da constraint violada decide
-    // qual dos dois campos é apontado — nunca assuma que é sempre o e-mail.
+    // Violação do índice único de e-mail — nunca repassa a mensagem crua do
+    // Postgres (revelaria nome de índice/constraint); devolve 409 com uma
+    // mensagem que a pessoa cadastrando de fato consegue agir.
     if (error?.code === '23505') {
-      if (error.constraint === 'people_registration_number_key') {
-        return res.status(409).json({ error: 'Já existe uma pessoa cadastrada com essa matrícula/registro profissional.' });
-      }
       return res.status(409).json({ error: 'Já existe uma pessoa cadastrada com esse e-mail.' });
     }
     return res.status(500).json({ error: 'Erro ao cadastrar pessoa.' });
