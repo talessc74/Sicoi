@@ -1043,7 +1043,13 @@ app.post('/api/people', requireAdminSession, async (req: Request, res: Response)
     return res.status(201).json({ person });
   } catch (error: any) {
     console.error('Erro ao cadastrar pessoa:', error);
-    return res.status(500).json({ error: error?.message || 'Erro ao cadastrar pessoa.' });
+    // Violação do índice único de e-mail (case-insensitive) — nunca repassa a
+    // mensagem crua do Postgres (revelaria nome de índice/constraint); devolve
+    // 409 com uma mensagem que a pessoa cadastrando de fato consegue agir.
+    if (error?.code === '23505') {
+      return res.status(409).json({ error: 'Já existe uma pessoa cadastrada com esse e-mail.' });
+    }
+    return res.status(500).json({ error: 'Erro ao cadastrar pessoa.' });
   }
 });
 

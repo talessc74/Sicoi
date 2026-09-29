@@ -50,6 +50,14 @@ describe('peopleRepo', () => {
     expect(person.registrationNumber).toBeUndefined();
   });
 
+  it('recusa cadastrar dois e-mails iguais ignorando maiúsculas/minúsculas', async () => {
+    await createPerson(pool, { name: 'Primeira', role: 'tecnico', institution: 'INC', email: 'igual@inc.pf.gov.br' });
+
+    await expect(
+      createPerson(pool, { name: 'Segunda', role: 'tecnico', institution: 'INC', email: 'Igual@INC.PF.GOV.BR' })
+    ).rejects.toThrow();
+  });
+
   it('lista pessoas na ordem de cadastro', async () => {
     await createPerson(pool, { name: 'Primeira', role: 'tecnico', institution: 'INC', email: 'primeira@inc.pf.gov.br', registrationNumber: '1' });
     await createPerson(pool, { name: 'Segunda', role: 'curador', institution: 'INC', email: 'segunda@inc.pf.gov.br', registrationNumber: '2' });

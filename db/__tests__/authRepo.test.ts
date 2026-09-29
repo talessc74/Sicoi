@@ -282,6 +282,24 @@ describe('authRepo', () => {
     expect(await isLoginLocked(pool, 'alvo.ataque@inc.pf.gov.br')).toBe(true);
   });
 
+  it('o freio de força bruta é case-insensitive (não dá pra contornar variando o e-mail)', async () => {
+    await createPerson(pool, { name: 'Alvo Case', role: 'tecnico', institution: 'INC', email: 'alvo.case@inc.pf.gov.br', registrationNumber: '804' });
+
+    // Erra 4 vezes com variações de maiúsculas/minúsculas diferentes.
+    await recordFailedLogin(pool, 'alvo.case@inc.pf.gov.br');
+    await recordFailedLogin(pool, 'ALVO.CASE@INC.PF.GOV.BR');
+    await recordFailedLogin(pool, 'Alvo.Case@Inc.Pf.Gov.Br');
+    await recordFailedLogin(pool, 'alvo.case@INC.pf.gov.br');
+    expect(await isLoginLocked(pool, 'alvo.case@inc.pf.gov.br')).toBe(false);
+
+    // A 5ª, em qualquer case, deve travar a mesma conta.
+    await recordFailedLogin(pool, 'ALVO.CASE@inc.pf.gov.br');
+
+    // A trava vale não importa qual variação de case seja usada para checar.
+    expect(await isLoginLocked(pool, 'alvo.case@inc.pf.gov.br')).toBe(true);
+    expect(await isLoginLocked(pool, 'ALVO.CASE@INC.PF.GOV.BR')).toBe(true);
+  });
+
   it('clearLoginAttempts libera o e-mail e zera a contagem', async () => {
     await createPerson(pool, { name: 'Login Certo Depois', role: 'tecnico', institution: 'INC', email: 'login.certo.depois@inc.pf.gov.br', registrationNumber: '802' });
 
