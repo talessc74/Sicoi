@@ -1,7 +1,7 @@
 /**
- * Cadastro de pessoas (papéis de acesso). Sem login/senha ainda — é o registro de
- * quem está operando o sistema, usado para assinar fases e identificar
- * responsáveis. Substitui a lista fixa de usuários fictícios (MOCK_USERS).
+ * Cadastro de pessoas (papéis de acesso), feito pelo Administrador. Identidade
+ * por e-mail (login real) — matrícula é opcional, porque nem toda pessoa tem
+ * uma (pesquisadores externos, por exemplo, não têm).
  */
 import type { Pool } from 'pg';
 import type { UserProfile } from '../src/types/sgccco';
@@ -11,7 +11,8 @@ interface PersonRow {
   name: string;
   role: string;
   institution: string;
-  registration_number: string;
+  email: string;
+  registration_number: string | null;
 }
 
 function toUserProfile(row: PersonRow): UserProfile {
@@ -20,12 +21,15 @@ function toUserProfile(row: PersonRow): UserProfile {
     name: row.name,
     role: row.role as UserProfile['role'],
     institution: row.institution,
-    registrationNumber: row.registration_number
+    email: row.email,
+    registrationNumber: row.registration_number ?? undefined
   };
 }
 
 export async function listPeople(pool: Pool): Promise<UserProfile[]> {
-  const { rows } = await pool.query<PersonRow>('SELECT id, name, role, institution, registration_number FROM people ORDER BY created_at ASC');
+  const { rows } = await pool.query<PersonRow>(
+    'SELECT id, name, role, institution, email, registration_number FROM people ORDER BY created_at ASC'
+  );
   return rows.map(toUserProfile);
 }
 
@@ -38,12 +42,12 @@ export async function countPeople(pool: Pool): Promise<number> {
 
 export async function createPerson(
   pool: Pool,
-  person: { name: string; role: string; institution: string; registrationNumber: string }
+  person: { name: string; role: string; institution: string; email: string; registrationNumber?: string }
 ): Promise<UserProfile> {
   const { rows } = await pool.query<PersonRow>(
-    `INSERT INTO people (name, role, institution, registration_number) VALUES ($1, $2, $3, $4)
-     RETURNING id, name, role, institution, registration_number`,
-    [person.name, person.role, person.institution, person.registrationNumber]
+    `INSERT INTO people (name, role, institution, email, registration_number) VALUES ($1, $2, $3, $4, $5)
+     RETURNING id, name, role, institution, email, registration_number`,
+    [person.name, person.role, person.institution, person.email, person.registrationNumber || null]
   );
   return toUserProfile(rows[0]);
 }
@@ -51,7 +55,7 @@ export async function createPerson(
 export async function getPerson(pool: Pool, id: string): Promise<UserProfile | null> {
   if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
   const { rows } = await pool.query<PersonRow>(
-    'SELECT id, name, role, institution, registration_number FROM people WHERE id = $1',
+    'SELECT id, name, role, institution, email, registration_number FROM people WHERE id = $1',
     [id]
   );
   return rows[0] ? toUserProfile(rows[0]) : null;

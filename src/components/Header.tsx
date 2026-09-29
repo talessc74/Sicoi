@@ -343,7 +343,7 @@ export const Header: React.FC<HeaderProps> = ({
                   <p className="text-slate-500 dark:text-slate-400 mt-0.5">
                     {getRoleLabel(currentUser.role)} · {currentUser.institution}
                   </p>
-                  <p className="text-slate-400 mt-0.5 font-mono">{currentUser.registrationNumber}</p>
+                  <p className="text-slate-400 mt-0.5 font-mono">{currentUser.email}</p>
                 </div>
                 <button
                   onClick={() => {

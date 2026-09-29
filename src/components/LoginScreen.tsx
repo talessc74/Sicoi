@@ -10,17 +10,17 @@ interface LoginScreenProps {
 
 /**
  * Tela de login real (Fase 3 — login/logout, _local-adr-policy-202). Substitui o
- * antigo troca-de-perfil de um clique: só entra quem souber matrícula + senha de
+ * antigo troca-de-perfil de um clique: só entra quem souber e-mail + senha de
  * uma pessoa já cadastrada, com a senha já definida por um link do Administrador.
  */
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoggedIn }) => {
-  const [registrationNumber, setRegistrationNumber] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
 
-  const isValid = registrationNumber.trim() && password;
+  const isValid = email.trim() && password;
 
   if (showForgotPassword) {
     return <ForgotPasswordScreen onBack={() => setShowForgotPassword(false)} />;
@@ -32,7 +32,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoggedIn }) => {
     setIsSubmitting(true);
     setError(null);
     try {
-      const person = await loginApi(registrationNumber.trim(), password);
+      const person = await loginApi(email.trim(), password);
       onLoggedIn(person);
     } catch (err: any) {
       setError(err?.message || 'Não foi possível entrar.');
@@ -54,19 +54,19 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoggedIn }) => {
           <div>
             <h1 className="text-sm font-bold text-slate-900 dark:text-white">SIGCOI — Entrar</h1>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Digite sua matrícula e senha para acessar o sistema.
+              Digite seu e-mail e senha para acessar o sistema.
             </p>
           </div>
         </div>
 
         <div className="space-y-3 text-sm">
           <div>
-            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Matrícula / registro profissional</label>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">E-mail institucional</label>
             <input
-              type="text"
-              value={registrationNumber}
-              onChange={(e) => setRegistrationNumber(e.target.value)}
-              placeholder="Ex.: CRBio 48.912-04"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="nome@instituicao.gov.br"
               autoComplete="username"
               autoFocus
               className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-hidden focus:ring-2 focus:ring-sky-500"

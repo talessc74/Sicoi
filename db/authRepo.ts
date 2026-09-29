@@ -8,6 +8,10 @@
  * quem está agindo vem da sessão autenticada no servidor — nunca de um
  * campo que o cliente manda.
  *
+ * Identificador de login é o e-mail (não a matrícula): nem toda pessoa tem
+ * matrícula — pesquisadores externos, por exemplo, não têm — mas e-mail,
+ * todo mundo tem. Comparação sempre case-insensitive (`lower(email)`).
+ *
  * Duas regras de segurança seguidas à risca aqui:
  * - Senha nunca é gravada em texto puro — só o hash bcrypt.
  * - Token de "definir senha" nunca é gravado em texto puro — só o hash
@@ -33,7 +37,8 @@ interface PersonAuthRow {
   name: string;
   role: string;
   institution: string;
-  registration_number: string;
+  email: string;
+  registration_number: string | null;
   password_hash: string | null;
 }
 
@@ -43,7 +48,8 @@ function toUserProfile(row: PersonAuthRow): UserProfile {
     name: row.name,
     role: row.role as UserProfile['role'],
     institution: row.institution,
-    registrationNumber: row.registration_number
+    email: row.email,
+    registrationNumber: row.registration_number ?? undefined
   };
 }
 
@@ -56,15 +62,15 @@ export async function hashPassword(plainPassword: string): Promise<string> {
 }
 
 /**
- * Confere matrícula + senha. Devolve o perfil em caso de sucesso, `null` em
- * qualquer caso de falha (matrícula inexistente, sem senha definida ainda,
- * ou senha errada) — deliberadamente sem distinguir esses casos na resposta,
- * para não revelar a quem está tentando logar se a matrícula existe.
+ * Confere e-mail + senha. Devolve o perfil em caso de sucesso, `null` em
+ * qualquer caso de falha (e-mail inexistente, sem senha definida ainda, ou
+ * senha errada) — deliberadamente sem distinguir esses casos na resposta,
+ * para não revelar a quem está tentando logar se o e-mail existe.
  */
-export async function verifyLogin(pool: Pool, registrationNumber: string, plainPassword: string): Promise<UserProfile | null> {
+export async function verifyLogin(pool: Pool, email: string, plainPassword: string): Promise<UserProfile | null> {
   const { rows } = await pool.query<PersonAuthRow>(
-    'SELECT id, name, role, institution, registration_number, password_hash FROM people WHERE registration_number = $1',
-    [registrationNumber]
+    'SELECT id, name, role, institution, email, registration_number, password_hash FROM people WHERE lower(email) = lower($1)',
+    [email]
   );
   const row = rows[0];
   if (!row || !row.password_hash) return null;
@@ -75,29 +81,29 @@ export async function verifyLogin(pool: Pool, registrationNumber: string, plainP
 /**
  * Freio de força bruta no login, persistente em Postgres (substitui o Map em
  * memória da Fase 1 — sobrevivia só até o próximo reinício e crescia sem
- * limite com matrículas inventadas). Só grava linha para matrícula que
- * corresponde a uma pessoa real: sem conta, não há o que travar, e o tamanho
- * da tabela fica limitado ao número de pessoas cadastradas, nunca ao número
- * de tentativas de um atacante.
+ * limite com e-mails inventados). Só grava linha para e-mail que corresponde
+ * a uma pessoa real: sem conta, não há o que travar, e o tamanho da tabela
+ * fica limitado ao número de pessoas cadastradas, nunca ao número de
+ * tentativas de um atacante.
  */
-export async function isLoginLocked(pool: Pool, registrationNumber: string): Promise<boolean> {
+export async function isLoginLocked(pool: Pool, email: string): Promise<boolean> {
   const { rows } = await pool.query<{ locked_until: string | null }>(
     `SELECT la.locked_until FROM login_attempts la
      JOIN people p ON p.id = la.person_id
-     WHERE p.registration_number = $1`,
-    [registrationNumber]
+     WHERE lower(p.email) = lower($1)`,
+    [email]
   );
   const lockedUntil = rows[0]?.locked_until;
   return Boolean(lockedUntil && new Date(lockedUntil).getTime() > Date.now());
 }
 
-export async function recordFailedLogin(pool: Pool, registrationNumber: string): Promise<void> {
+export async function recordFailedLogin(pool: Pool, email: string): Promise<void> {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     const { rows: peopleRows } = await client.query<{ id: string }>(
-      'SELECT id FROM people WHERE registration_number = $1',
-      [registrationNumber]
+      'SELECT id FROM people WHERE lower(email) = lower($1)',
+      [email]
     );
     const person = peopleRows[0];
     if (!person) {
@@ -130,16 +136,16 @@ export async function recordFailedLogin(pool: Pool, registrationNumber: string):
   }
 }
 
-export async function clearLoginAttempts(pool: Pool, registrationNumber: string): Promise<void> {
+export async function clearLoginAttempts(pool: Pool, email: string): Promise<void> {
   await pool.query(
-    'DELETE FROM login_attempts WHERE person_id = (SELECT id FROM people WHERE registration_number = $1)',
-    [registrationNumber]
+    'DELETE FROM login_attempts WHERE person_id = (SELECT id FROM people WHERE lower(email) = lower($1))',
+    [email]
   );
 }
 
 export async function getPersonWithAuthStatus(pool: Pool, id: string): Promise<(UserProfile & { hasPassword: boolean }) | null> {
   const { rows } = await pool.query<PersonAuthRow>(
-    'SELECT id, name, role, institution, registration_number, password_hash FROM people WHERE id = $1',
+    'SELECT id, name, role, institution, email, registration_number, password_hash FROM people WHERE id = $1',
     [id]
   );
   if (!rows[0]) return null;
@@ -149,10 +155,10 @@ export async function getPersonWithAuthStatus(pool: Pool, id: string): Promise<(
 /**
  * Migração do modelo antigo para o login real (complemento à Fase 3 —
  * _local-adr-policy-202): quando o sistema já tem gente cadastrada de antes
- * (produção real, ~30 pessoas sem senha nenhuma), o bootstrap de banco vazio
- * (`createFirstAdmin`) não se aplica — o banco não está vazio. `needsAdminClaim`
- * (server.ts) usa isto para saber se ainda existe algum Administrador dos
- * dados antigos que nunca ativou o próprio acesso.
+ * (produção real), o bootstrap de banco vazio (`createFirstAdmin`) não se
+ * aplica — o banco não está vazio. `needsAdminClaim` (server.ts) usa isto
+ * para saber se ainda existe algum Administrador dos dados antigos que
+ * nunca ativou o próprio acesso.
  */
 export async function hasUnactivatedAdministrator(pool: Pool): Promise<boolean> {
   const { rows } = await pool.query(
@@ -167,23 +173,22 @@ export async function hasUnactivatedAdministrator(pool: Pool): Promise<boolean> 
  * só destrava uma já existente. A prova de quem pode fazer isto não é esta
  * função: é a rota em server.ts conferir o código de ativação
  * (ADMIN_BOOTSTRAP_SECRET) antes de chamar isto. Mensagem de erro
- * deliberadamente genérica — não distingue "matrícula não existe" de
- * "existe mas não é Administrador" de "já tem senha", mesmo cuidado de
- * `verifyLogin`.
+ * deliberadamente genérica — não distingue "e-mail não existe" de "existe
+ * mas não é Administrador" de "já tem senha", mesmo cuidado de `verifyLogin`.
  */
-export async function claimAdministratorAccount(pool: Pool, registrationNumber: string, newPassword: string): Promise<UserProfile> {
+export async function claimAdministratorAccount(pool: Pool, email: string, newPassword: string): Promise<UserProfile> {
   const { rows } = await pool.query<PersonAuthRow>(
-    'SELECT id, name, role, institution, registration_number, password_hash FROM people WHERE registration_number = $1',
-    [registrationNumber]
+    'SELECT id, name, role, institution, email, registration_number, password_hash FROM people WHERE lower(email) = lower($1)',
+    [email]
   );
   const row = rows[0];
   if (!row || row.role !== 'administrador' || row.password_hash !== null) {
-    throw new Error('Não há Administrador pendente de ativação com essa matrícula.');
+    throw new Error('Não há Administrador pendente de ativação com esse e-mail.');
   }
   const passwordHash = await hashPassword(newPassword);
   const { rows: updated } = await pool.query<PersonAuthRow>(
     `UPDATE people SET password_hash = $1 WHERE id = $2
-     RETURNING id, name, role, institution, registration_number, password_hash`,
+     RETURNING id, name, role, institution, email, registration_number, password_hash`,
     [passwordHash, row.id]
   );
   return toUserProfile(updated[0]);
@@ -196,7 +201,7 @@ export async function claimAdministratorAccount(pool: Pool, registrationNumber: 
  */
 export async function changeOwnPassword(pool: Pool, personId: string, currentPassword: string, newPassword: string): Promise<void> {
   const { rows } = await pool.query<PersonAuthRow>(
-    'SELECT id, name, role, institution, registration_number, password_hash FROM people WHERE id = $1',
+    'SELECT id, name, role, institution, email, registration_number, password_hash FROM people WHERE id = $1',
     [personId]
   );
   const row = rows[0];
@@ -242,7 +247,7 @@ export async function createPasswordSetupToken(
  */
 export async function createFirstAdmin(
   pool: Pool,
-  person: { name: string; institution: string; registrationNumber: string; password: string }
+  person: { name: string; institution: string; email: string; registrationNumber?: string; password: string }
 ): Promise<UserProfile> {
   const client = await pool.connect();
   try {
@@ -256,10 +261,10 @@ export async function createFirstAdmin(
     }
     const passwordHash = await hashPassword(person.password);
     const { rows } = await client.query<PersonAuthRow>(
-      `INSERT INTO people (name, role, institution, registration_number, password_hash)
-       VALUES ($1, 'administrador', $2, $3, $4)
-       RETURNING id, name, role, institution, registration_number, password_hash`,
-      [person.name, person.institution, person.registrationNumber, passwordHash]
+      `INSERT INTO people (name, role, institution, email, registration_number, password_hash)
+       VALUES ($1, 'administrador', $2, $3, $4, $5)
+       RETURNING id, name, role, institution, email, registration_number, password_hash`,
+      [person.name, person.institution, person.email, person.registrationNumber || null, passwordHash]
     );
     await client.query('COMMIT');
     return toUserProfile(rows[0]);
@@ -275,11 +280,11 @@ export async function createFirstAdmin(
  * "Esqueci a senha" (complemento à Fase 3): sem e-mail/SMS configurado, o
  * pedido não se resolve solitário — só fica visível para o Administrador
  * resolver gerando o link de acesso normal. Devolve sempre (sem lançar erro)
- * mesmo se a matrícula não existir, para não revelar quais matrículas estão
- * cadastradas — mesmo cuidado de `verifyLogin`.
+ * mesmo se o e-mail não existir, para não revelar quais e-mails estão
+ * cadastrados — mesmo cuidado de `verifyLogin`.
  */
-export async function requestPasswordReset(pool: Pool, registrationNumber: string): Promise<void> {
-  const { rows } = await pool.query<{ id: string }>('SELECT id FROM people WHERE registration_number = $1', [registrationNumber]);
+export async function requestPasswordReset(pool: Pool, email: string): Promise<void> {
+  const { rows } = await pool.query<{ id: string }>('SELECT id FROM people WHERE lower(email) = lower($1)', [email]);
   const person = rows[0];
   if (!person) return;
   const { rows: pending } = await pool.query(
@@ -294,7 +299,7 @@ export interface PendingPasswordResetRequest {
   id: string;
   personId: string;
   personName: string;
-  registrationNumber: string;
+  email: string;
   requestedAt: string;
 }
 
@@ -304,10 +309,10 @@ export async function listPendingPasswordResetRequests(pool: Pool): Promise<Pend
     id: string;
     person_id: string;
     person_name: string;
-    registration_number: string;
+    email: string;
     requested_at: string;
   }>(
-    `SELECT r.id, r.person_id, p.name AS person_name, p.registration_number, r.requested_at
+    `SELECT r.id, r.person_id, p.name AS person_name, p.email, r.requested_at
      FROM password_reset_requests r
      JOIN people p ON p.id = r.person_id
      WHERE r.resolved_at IS NULL
@@ -317,7 +322,7 @@ export async function listPendingPasswordResetRequests(pool: Pool): Promise<Pend
     id: r.id,
     personId: r.person_id,
     personName: r.person_name,
-    registrationNumber: r.registration_number,
+    email: r.email,
     requestedAt: r.requested_at
   }));
 }
@@ -352,7 +357,7 @@ export async function consumePasswordSetupToken(pool: Pool, token: string, newPa
     const passwordHash = await hashPassword(newPassword);
     const updated = await client.query<PersonAuthRow>(
       `UPDATE people SET password_hash = $1 WHERE id = $2
-       RETURNING id, name, role, institution, registration_number, password_hash`,
+       RETURNING id, name, role, institution, email, registration_number, password_hash`,
       [passwordHash, rows[0].person_id]
     );
     await client.query('UPDATE password_setup_tokens SET used_at = now() WHERE id = $1', [rows[0].id]);

@@ -26,6 +26,7 @@ describe('peopleRepo', () => {
       name: 'Perito Y',
       role: 'tecnico',
       institution: 'INC/DITEC/PF',
+      email: 'perito.y@inc.pf.gov.br',
       registrationNumber: '12345'
     });
 
@@ -33,12 +34,25 @@ describe('peopleRepo', () => {
     expect(person.name).toBe('Perito Y');
     expect(person.role).toBe('tecnico');
     expect(person.institution).toBe('INC/DITEC/PF');
+    expect(person.email).toBe('perito.y@inc.pf.gov.br');
     expect(person.registrationNumber).toBe('12345');
   });
 
+  it('cadastra uma pessoa sem matrícula (pesquisador externo)', async () => {
+    const person = await createPerson(pool, {
+      name: 'Pesquisadora Externa',
+      role: 'pesquisador',
+      institution: 'Universidade X',
+      email: 'pesquisadora@universidade-x.edu'
+    });
+
+    expect(person.email).toBe('pesquisadora@universidade-x.edu');
+    expect(person.registrationNumber).toBeUndefined();
+  });
+
   it('lista pessoas na ordem de cadastro', async () => {
-    await createPerson(pool, { name: 'Primeira', role: 'tecnico', institution: 'INC', registrationNumber: '1' });
-    await createPerson(pool, { name: 'Segunda', role: 'curador', institution: 'INC', registrationNumber: '2' });
+    await createPerson(pool, { name: 'Primeira', role: 'tecnico', institution: 'INC', email: 'primeira@inc.pf.gov.br', registrationNumber: '1' });
+    await createPerson(pool, { name: 'Segunda', role: 'curador', institution: 'INC', email: 'segunda@inc.pf.gov.br', registrationNumber: '2' });
 
     const people = await listPeople(pool);
 
@@ -46,7 +60,7 @@ describe('peopleRepo', () => {
   });
 
   it('busca uma pessoa por id existente', async () => {
-    const created = await createPerson(pool, { name: 'Alguém', role: 'curador', institution: 'INC', registrationNumber: '9' });
+    const created = await createPerson(pool, { name: 'Alguém', role: 'curador', institution: 'INC', email: 'alguem@inc.pf.gov.br', registrationNumber: '9' });
 
     const found = await getPerson(pool, created.id);
 
@@ -64,7 +78,7 @@ describe('peopleRepo', () => {
   });
 
   it('remove uma pessoa cadastrada', async () => {
-    const created = await createPerson(pool, { name: 'Removível', role: 'estudante', institution: 'INC', registrationNumber: '7' });
+    const created = await createPerson(pool, { name: 'Removível', role: 'estudante', institution: 'INC', email: 'removivel@inc.pf.gov.br', registrationNumber: '7' });
 
     await deletePerson(pool, created.id);
 
@@ -80,8 +94,8 @@ describe('peopleRepo', () => {
   });
 
   it('countPeople conta as pessoas cadastradas', async () => {
-    await createPerson(pool, { name: 'Primeira', role: 'tecnico', institution: 'INC', registrationNumber: '1' });
-    await createPerson(pool, { name: 'Segunda', role: 'curador', institution: 'INC', registrationNumber: '2' });
+    await createPerson(pool, { name: 'Primeira', role: 'tecnico', institution: 'INC', email: 'primeira@inc.pf.gov.br', registrationNumber: '1' });
+    await createPerson(pool, { name: 'Segunda', role: 'curador', institution: 'INC', email: 'segunda@inc.pf.gov.br', registrationNumber: '2' });
 
     expect(await countPeople(pool)).toBe(2);
   });

@@ -10,7 +10,11 @@ export interface UserProfile {
   name: string;
   role: UserRole;
   institution: string;
-  registrationNumber: string;
+  // E-mail é o identificador de login (matrícula nem toda pessoa tem —
+  // pesquisadores externos, por exemplo — mas e-mail, todo mundo tem).
+  email: string;
+  // Opcional: matrícula ou registro profissional, quando a pessoa tiver um.
+  registrationNumber?: string;
 }
 
 // Criptografia e Assinatura por Fase (§7)

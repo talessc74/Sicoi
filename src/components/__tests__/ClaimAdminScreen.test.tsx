@@ -20,7 +20,7 @@ afterEach(() => {
 });
 
 async function fillValidForm(user: ReturnType<typeof userEvent.setup>) {
-  await user.type(screen.getByPlaceholderText(/matrícula que já está cadastrada/i), 'NIC-001');
+  await user.type(screen.getByPlaceholderText(/e-mail já cadastrado/i), 'nicole@inc.pf.gov.br');
   await user.type(screen.getByPlaceholderText(/recebido de quem configurou/i), 'codigo-secreto-123');
   await user.type(screen.getByLabelText(/^Senha/i), 'senha-ativacao-123');
   await user.type(screen.getByLabelText(/Confirmar senha/i), 'senha-ativacao-123');
@@ -42,7 +42,7 @@ describe('ClaimAdminScreen', () => {
     const user = userEvent.setup();
     render(<ClaimAdminScreen onLoggedIn={vi.fn()} />);
 
-    await user.type(screen.getByPlaceholderText(/matrícula que já está cadastrada/i), 'NIC-001');
+    await user.type(screen.getByPlaceholderText(/e-mail já cadastrado/i), 'nicole@inc.pf.gov.br');
     await user.type(screen.getByPlaceholderText(/recebido de quem configurou/i), 'codigo-secreto-123');
     await user.type(screen.getByLabelText(/^Senha/i), 'senha-ativacao-123');
     await user.type(screen.getByLabelText(/Confirmar senha/i), 'outra-coisa-123');
@@ -54,7 +54,7 @@ describe('ClaimAdminScreen', () => {
   it('ao confirmar, chama onLoggedIn com o administrador ativado', async () => {
     const user = userEvent.setup();
     const onLoggedIn = vi.fn();
-    const person = { id: 'p1', name: 'Nicole', role: 'administrador', institution: 'INC', registrationNumber: 'NIC-001' };
+    const person = { id: 'p1', name: 'Nicole', role: 'administrador', institution: 'INC', email: 'nicole@inc.pf.gov.br', registrationNumber: 'NIC-001' };
     mockFetchOnce(200, { person, csrfToken: 'abc' });
 
     render(<ClaimAdminScreen onLoggedIn={onLoggedIn} />);
@@ -75,14 +75,14 @@ describe('ClaimAdminScreen', () => {
     expect(await screen.findByText('Código de ativação inválido.')).toBeInTheDocument();
   });
 
-  it('mostra a mensagem de erro quando não há Administrador pendente com essa matrícula', async () => {
+  it('mostra a mensagem de erro quando não há Administrador pendente com esse e-mail', async () => {
     const user = userEvent.setup();
-    mockFetchOnce(400, { error: 'Não há Administrador pendente de ativação com essa matrícula.' });
+    mockFetchOnce(400, { error: 'Não há Administrador pendente de ativação com esse e-mail.' });
 
     render(<ClaimAdminScreen onLoggedIn={vi.fn()} />);
     await fillValidForm(user);
     await user.click(screen.getByRole('button', { name: /ativar e entrar/i }));
 
-    expect(await screen.findByText('Não há Administrador pendente de ativação com essa matrícula.')).toBeInTheDocument();
+    expect(await screen.findByText('Não há Administrador pendente de ativação com esse e-mail.')).toBeInTheDocument();
   });
 });

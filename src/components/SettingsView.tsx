@@ -36,7 +36,7 @@ const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
 interface SettingsViewProps {
   currentUser: UserProfile;
   people: UserProfile[];
-  onCreatePerson: (person: { name: string; role: UserRole; institution: string; registrationNumber: string }) => Promise<void>;
+  onCreatePerson: (person: { name: string; role: UserRole; institution: string; email: string; registrationNumber?: string }) => Promise<void>;
   onDeletePerson: (id: string) => Promise<void>;
   laboratoryMode: boolean;
   onToggleLaboratoryMode: () => void;
@@ -62,6 +62,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [newPersonName, setNewPersonName] = useState('');
   const [newPersonRole, setNewPersonRole] = useState<UserRole>('tecnico');
   const [newPersonInstitution, setNewPersonInstitution] = useState('');
+  const [newPersonEmail, setNewPersonEmail] = useState('');
   const [newPersonRegistration, setNewPersonRegistration] = useState('');
   const [isCreatingPerson, setIsCreatingPerson] = useState(false);
   const [personPendingDeletion, setPersonPendingDeletion] = useState<UserProfile | null>(null);
@@ -120,17 +121,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   const handleCreatePersonSubmit = async () => {
-    if (!newPersonName.trim() || !newPersonInstitution.trim() || !newPersonRegistration.trim()) return;
+    if (!newPersonName.trim() || !newPersonInstitution.trim() || !newPersonEmail.trim()) return;
     setIsCreatingPerson(true);
     try {
       await onCreatePerson({
         name: newPersonName.trim(),
         role: newPersonRole,
         institution: newPersonInstitution.trim(),
-        registrationNumber: newPersonRegistration.trim()
+        email: newPersonEmail.trim(),
+        registrationNumber: newPersonRegistration.trim() || undefined
       });
       setNewPersonName('');
       setNewPersonInstitution('');
+      setNewPersonEmail('');
       setNewPersonRegistration('');
       setShowAddPersonForm(false);
     } finally {
@@ -294,7 +297,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <div>
                   <span className="font-semibold text-slate-800 dark:text-slate-200">{req.personName}</span>
                   <p className="text-slate-400 mt-0.5">
-                    {req.registrationNumber} · pediu em {new Date(req.requestedAt).toLocaleString('pt-BR')}
+                    {req.email} · pediu em {new Date(req.requestedAt).toLocaleString('pt-BR')}
                   </p>
                 </div>
                 <button
@@ -316,7 +319,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       )}
 
       {/* Pessoas cadastradas — só o Administrador vê ou gerencia (login real,
-          ver _local-adr-policy-202): nome, papel, instituição e matrícula de
+          ver _local-adr-policy-202): nome, papel, instituição e e-mail de
           quem tem acesso não é informação que qualquer pessoa logada precise
           ver, só quem gerencia contas. O servidor já recusa (403) esse dado
           para qualquer outro papel — isto só evita renderizar uma lista que
@@ -330,7 +333,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               Pessoas Cadastradas ({people.length})
             </h3>
             <p className="text-slate-500 mt-0.5">
-              Quem tem acesso ao sistema, por papel. Cada pessoa entra com matrícula e senha própria.
+              Quem tem acesso ao sistema, por papel. Cada pessoa entra com e-mail e senha própria.
             </p>
           </div>
           <button
@@ -368,10 +371,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               className="p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
             />
             <input
+              type="email"
+              value={newPersonEmail}
+              onChange={(e) => setNewPersonEmail(e.target.value)}
+              placeholder="E-mail (login)"
+              className="p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+            />
+            <input
               type="text"
               value={newPersonRegistration}
               onChange={(e) => setNewPersonRegistration(e.target.value)}
-              placeholder="Matrícula / registro profissional"
+              placeholder="Matrícula / registro profissional (opcional)"
               className="p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
             />
             <div className="sm:col-span-2 flex justify-end gap-2">
@@ -383,7 +393,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </button>
               <button
                 onClick={handleCreatePersonSubmit}
-                disabled={isCreatingPerson || !newPersonName.trim() || !newPersonInstitution.trim() || !newPersonRegistration.trim()}
+                disabled={isCreatingPerson || !newPersonName.trim() || !newPersonInstitution.trim() || !newPersonEmail.trim()}
                 className="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold disabled:opacity-40"
               >
                 {isCreatingPerson ? 'Salvando...' : 'Salvar'}
@@ -447,7 +457,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     </span>
                   )}
                 </div>
-                <p className="text-slate-400 mt-0.5">{person.institution} · {person.registrationNumber}</p>
+                <p className="text-slate-400 mt-0.5">
+                  {person.institution} · {person.email}
+                  {person.registrationNumber ? ` · ${person.registrationNumber}` : ''}
+                </p>
               </div>
               {isAdmin && (
                 <div className="flex items-center gap-2">

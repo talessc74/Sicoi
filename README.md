@@ -1,7 +1,7 @@
 # SIGCOI — Sistema de Gestão da Coleção Osteológica Identificada
 
 **Status: Alfa.** Em desenvolvimento ativo — funcional de ponta a ponta (ver
-"Estado atual" abaixo), com login real (matrícula + senha) desde a Fase 3
+"Estado atual" abaixo), com login real (e-mail + senha) desde a Fase 3
 de `_local-adr-policy-202`, mas ainda sem certificação campo a campo contra
 os apêndices oficiais do POP-02. Não use "v3.2" ou
 qualquer numeração de versão solta por aí como referência: a única versão
@@ -35,12 +35,12 @@ qualquer tela da aplicação mostra o hash do commit em execução, para
 conferir a qualquer momento que o que está no ar corresponde exatamente ao
 código deste repositório.
 
-Login real: matrícula + senha, com sessão no servidor (cookie httpOnly) — ao
+Login real: e-mail + senha, com sessão no servidor (cookie httpOnly) — ao
 abrir o sistema com o banco totalmente vazio, ele pede o cadastro do
 primeiro Administrador (com senha já definida ali). **Ao migrar dados
-antigos** (gente já cadastrada, sem senha nenhuma — o caso real da COI-INC),
-esse cadastro nunca aparece; em vez disso, quem já era Administrador ativa
-a própria conta com a matrícula + um código de ativação
+antigos** (gente já cadastrada, sem senha nenhuma), esse cadastro nunca
+aparece; em vez disso, quem já era Administrador ativa a própria conta com
+o e-mail + um código de ativação
 (`ADMIN_BOOTSTRAP_SECRET`, configurado por quem tem acesso ao ambiente) — ver
 a seção "Primeiro acesso do Administrador" do manual "Administrador — Gestão
 de Contas", na aba Documentos do próprio sistema. Depois disso, toda pessoa
@@ -160,7 +160,7 @@ src/
   services/popConductorService.ts   roteiro + regras de extração por fase (context-aware)
   services/voiceAgent.ts             TTS/STT do condutor — unlock() para Safari/iOS
   services/authService.ts            login, logout, bootstrap e link de definição de senha
-  components/LoginScreen.tsx          tela de entrada (matrícula + senha)
+  components/LoginScreen.tsx          tela de entrada (e-mail + senha)
   components/BootstrapAdminSetup.tsx  cadastro do 1º Administrador (banco vazio)
   components/ClaimAdminScreen.tsx     ativa Administrador de dados antigos (banco não vazio)
   components/SetPasswordScreen.tsx    tela pública do link de definição de senha

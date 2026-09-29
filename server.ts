@@ -58,6 +58,12 @@ declare module 'express-session' {
 // middleware requireAuth) — nunca de um actorId que o navegador declara no corpo ou
 // na query (essa era a falha que a auditoria de segurança encontrou: qualquer um
 // sabendo o UUID de um administrador podia agir como ele). Ver _local-adr-policy-202.
+// Validação de formato só — a unicidade real é garantida pelo índice
+// case-insensitive em Postgres (db/migrations/012_email_identity.sql).
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 function actorFromSession(req: Request): Actor {
   const person = (req as any).currentPerson;
   return person ? { id: person.id, name: person.name, role: person.role } : { id: null, name: null, role: null };
@@ -166,10 +172,10 @@ function csrfProtection(req: Request, res: Response, next: NextFunction): void {
 }
 app.use(csrfProtection);
 
-// Freio de força bruta no login: N tentativas falhas seguidas pela mesma
-// matrícula trava por um tempo. Persistente em Postgres (db/authRepo.ts) —
-// sobrevive a reinício do servidor e só existe para matrícula que corresponde
-// a uma pessoa real, então não cresce sem limite com matrículas inventadas.
+// Freio de força bruta no login: N tentativas falhas seguidas pelo mesmo
+// e-mail trava por um tempo. Persistente em Postgres (db/authRepo.ts) —
+// sobrevive a reinício do servidor e só existe para e-mail que corresponde
+// a uma pessoa real, então não cresce sem limite com e-mails inventados.
 
 // Rota protegida "de verdade": exige sessão válida — nunca um actorId que o
 // corpo da requisição declara. Anexa a pessoa autenticada em req.currentPerson.
@@ -813,15 +819,19 @@ app.post('/api/auth/bootstrap-admin', async (req: Request, res: Response) => {
   try {
     const name = String(req.body?.name || '').trim();
     const institution = String(req.body?.institution || '').trim();
+    const email = String(req.body?.email || '').trim();
     const registrationNumber = String(req.body?.registrationNumber || '').trim();
     const password = String(req.body?.password || '');
-    if (!name || !institution || !registrationNumber || !password) {
-      return res.status(400).json({ error: 'Nome, instituição, matrícula e senha são obrigatórios.' });
+    if (!name || !institution || !email || !password) {
+      return res.status(400).json({ error: 'Nome, instituição, e-mail e senha são obrigatórios.' });
+    }
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ error: 'Informe um e-mail válido.' });
     }
     if (password.length < 8) {
       return res.status(400).json({ error: 'A senha deve ter pelo menos 8 caracteres.' });
     }
-    const person = await createFirstAdmin(getPool(), { name, institution, registrationNumber, password });
+    const person = await createFirstAdmin(getPool(), { name, institution, email, registrationNumber: registrationNumber || undefined, password });
     return startSession(req, res, person, 201);
   } catch (error: any) {
     console.error('Erro no bootstrap do primeiro Administrador:', error);
@@ -840,10 +850,10 @@ app.post('/api/auth/claim-admin', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Recurso não disponível.' });
     }
     const providedSecret = String(req.body?.bootstrapSecret || '');
-    const registrationNumber = String(req.body?.registrationNumber || '').trim();
+    const email = String(req.body?.email || '').trim();
     const newPassword = String(req.body?.newPassword || '');
-    if (!providedSecret || !registrationNumber || !newPassword) {
-      return res.status(400).json({ error: 'Matrícula, código de ativação e nova senha são obrigatórios.' });
+    if (!providedSecret || !email || !newPassword) {
+      return res.status(400).json({ error: 'E-mail, código de ativação e nova senha são obrigatórios.' });
     }
     if (newPassword.length < 8) {
       return res.status(400).json({ error: 'A senha deve ter pelo menos 8 caracteres.' });
@@ -854,7 +864,7 @@ app.post('/api/auth/claim-admin', async (req: Request, res: Response) => {
     if (!secretMatches) {
       return res.status(403).json({ error: 'Código de ativação inválido.' });
     }
-    const person = await claimAdministratorAccount(getPool(), registrationNumber, newPassword);
+    const person = await claimAdministratorAccount(getPool(), email, newPassword);
     return startSession(req, res, person, 200);
   } catch (error: any) {
     console.error('Erro ao ativar conta de Administrador:', error);
@@ -864,21 +874,21 @@ app.post('/api/auth/claim-admin', async (req: Request, res: Response) => {
 
 app.post('/api/auth/login', async (req: Request, res: Response) => {
   try {
-    const registrationNumber = String(req.body?.registrationNumber || '').trim();
+    const email = String(req.body?.email || '').trim();
     const password = String(req.body?.password || '');
-    if (!registrationNumber || !password) {
-      return res.status(400).json({ error: 'Matrícula e senha são obrigatórias.' });
+    if (!email || !password) {
+      return res.status(400).json({ error: 'E-mail e senha são obrigatórios.' });
     }
     const pool = getPool();
-    if (await isLoginLocked(pool, registrationNumber)) {
+    if (await isLoginLocked(pool, email)) {
       return res.status(429).json({ error: 'Muitas tentativas de login. Aguarde alguns minutos e tente novamente.' });
     }
-    const person = await verifyLogin(pool, registrationNumber, password);
+    const person = await verifyLogin(pool, email, password);
     if (!person) {
-      await recordFailedLogin(pool, registrationNumber);
-      return res.status(401).json({ error: 'Matrícula ou senha inválida.' });
+      await recordFailedLogin(pool, email);
+      return res.status(401).json({ error: 'E-mail ou senha inválidos.' });
     }
-    await clearLoginAttempts(pool, registrationNumber);
+    await clearLoginAttempts(pool, email);
     return startSession(req, res, person);
   } catch (error: any) {
     console.error('Erro no login:', error);
@@ -970,18 +980,18 @@ app.post('/api/auth/setup-password', async (req: Request, res: Response) => {
   }
 });
 
-// "Esqueci a senha": pública, sem revelar se a matrícula existe (mesmo cuidado
-// do login) — sem e-mail/SMS configurado, o pedido só fica visível para o
-// Administrador resolver (ver GET /api/auth/password-reset-requests).
+// "Esqueci a senha": pública, sem revelar se o e-mail existe (mesmo cuidado
+// do login) — sem envio automático de e-mail configurado, o pedido só fica
+// visível para o Administrador resolver (ver GET /api/auth/password-reset-requests).
 app.post('/api/auth/forgot-password', async (req: Request, res: Response) => {
   try {
-    const registrationNumber = String(req.body?.registrationNumber || '').trim();
-    if (!registrationNumber) {
-      return res.status(400).json({ error: 'Matrícula é obrigatória.' });
+    const email = String(req.body?.email || '').trim();
+    if (!email) {
+      return res.status(400).json({ error: 'E-mail é obrigatório.' });
     }
-    await requestPasswordReset(getPool(), registrationNumber);
+    await requestPasswordReset(getPool(), email);
     return res.json({
-      message: 'Se essa matrícula estiver cadastrada, o Administrador foi avisado e vai gerar um novo link de acesso.'
+      message: 'Se esse e-mail estiver cadastrado, o Administrador foi avisado e vai gerar um novo link de acesso.'
     });
   } catch (error: any) {
     console.error('Erro ao registrar pedido de redefinição de senha:', error);
@@ -1002,7 +1012,7 @@ app.get('/api/auth/password-reset-requests', requireAuth, requireSessionRole('ad
 
 // --- Cadastro de pessoas (papéis de acesso) ---
 // Login real, Fase 3 (_local-adr-policy-202): listar, cadastrar e remover
-// exigem sessão de Administrador — o nome, papel, instituição e matrícula
+// exigem sessão de Administrador — o nome, papel, instituição e e-mail
 // (o identificador de login) de cada pessoa não é informação que qualquer
 // pessoa logada precise ver, só quem gerencia contas. A única exceção é o
 // bootstrap do primeiro Administrador (POST /api/auth/bootstrap-admin,
@@ -1021,12 +1031,15 @@ app.get('/api/people', requireAdminSession, async (_req: Request, res: Response)
 
 app.post('/api/people', requireAdminSession, async (req: Request, res: Response) => {
   try {
-    const { name, role, institution, registrationNumber } = req.body || {};
-    if (!name || !role || !institution || !registrationNumber) {
-      return res.status(400).json({ error: 'Informe name, role, institution e registrationNumber.' });
+    const { name, role, institution, email, registrationNumber } = req.body || {};
+    if (!name || !role || !institution || !email) {
+      return res.status(400).json({ error: 'Informe name, role, institution e email.' });
+    }
+    if (!isValidEmail(String(email))) {
+      return res.status(400).json({ error: 'Informe um e-mail válido.' });
     }
     const pool = getPool();
-    const person = await createPerson(pool, { name, role, institution, registrationNumber });
+    const person = await createPerson(pool, { name, role, institution, email, registrationNumber: registrationNumber || undefined });
     return res.status(201).json({ person });
   } catch (error: any) {
     console.error('Erro ao cadastrar pessoa:', error);

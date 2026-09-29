@@ -22,6 +22,7 @@ afterEach(() => {
 async function fillValidForm(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByPlaceholderText(/Carlos Alberto Menezes/i), 'Primeira Admin');
   await user.type(screen.getByPlaceholderText(/INC\/DITEC\/PF/i), 'INC/DITEC/PF');
+  await user.type(screen.getByPlaceholderText(/nome@instituicao/i), 'primeira.admin@inc.pf.gov.br');
   await user.type(screen.getByPlaceholderText(/CRBio/i), '00001');
   await user.type(screen.getByLabelText(/^Senha/i), 'senha-bootstrap-123');
   await user.type(screen.getByLabelText(/Confirmar senha/i), 'senha-bootstrap-123');
@@ -45,6 +46,7 @@ describe('BootstrapAdminSetup', () => {
 
     await user.type(screen.getByPlaceholderText(/Carlos Alberto Menezes/i), 'Admin');
     await user.type(screen.getByPlaceholderText(/INC\/DITEC\/PF/i), 'INC');
+    await user.type(screen.getByPlaceholderText(/nome@instituicao/i), 'admin@inc.pf.gov.br');
     await user.type(screen.getByPlaceholderText(/CRBio/i), '1');
     await user.type(screen.getByLabelText(/^Senha/i), 'curta');
     await user.type(screen.getByLabelText(/Confirmar senha/i), 'curta');
@@ -58,6 +60,7 @@ describe('BootstrapAdminSetup', () => {
 
     await user.type(screen.getByPlaceholderText(/Carlos Alberto Menezes/i), 'Admin');
     await user.type(screen.getByPlaceholderText(/INC\/DITEC\/PF/i), 'INC');
+    await user.type(screen.getByPlaceholderText(/nome@instituicao/i), 'admin@inc.pf.gov.br');
     await user.type(screen.getByPlaceholderText(/CRBio/i), '1');
     await user.type(screen.getByLabelText(/^Senha/i), 'senha-bootstrap-123');
     await user.type(screen.getByLabelText(/Confirmar senha/i), 'outra-coisa-123');
@@ -69,7 +72,7 @@ describe('BootstrapAdminSetup', () => {
   it('ao confirmar, chama onLoggedIn com o administrador criado', async () => {
     const user = userEvent.setup();
     const onLoggedIn = vi.fn();
-    const person = { id: 'p1', name: 'Primeira Admin', role: 'administrador', institution: 'INC/DITEC/PF', registrationNumber: '00001' };
+    const person = { id: 'p1', name: 'Primeira Admin', role: 'administrador', institution: 'INC/DITEC/PF', email: 'primeira.admin@inc.pf.gov.br', registrationNumber: '00001' };
     mockFetchOnce(201, { person });
 
     render(<BootstrapAdminSetup onLoggedIn={onLoggedIn} />);

@@ -16,7 +16,7 @@ interface ClaimAdminScreenProps {
  * Administrador sem senha. Ver o manual "Administrador · Gestão de Contas".
  */
 export const ClaimAdminScreen: React.FC<ClaimAdminScreenProps> = ({ onLoggedIn }) => {
-  const [registrationNumber, setRegistrationNumber] = useState('');
+  const [email, setEmail] = useState('');
   const [bootstrapSecret, setBootstrapSecret] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
@@ -24,7 +24,7 @@ export const ClaimAdminScreen: React.FC<ClaimAdminScreenProps> = ({ onLoggedIn }
   const [error, setError] = useState<string | null>(null);
 
   const isValid =
-    registrationNumber.trim() &&
+    email.trim() &&
     bootstrapSecret.trim() &&
     password.length >= 8 &&
     password === passwordConfirm;
@@ -35,7 +35,7 @@ export const ClaimAdminScreen: React.FC<ClaimAdminScreenProps> = ({ onLoggedIn }
     setIsSubmitting(true);
     setError(null);
     try {
-      const person = await claimAdminApi(registrationNumber.trim(), bootstrapSecret.trim(), password);
+      const person = await claimAdminApi(email.trim(), bootstrapSecret.trim(), password);
       onLoggedIn(person);
     } catch (err: any) {
       setError(err?.message || 'Não foi possível ativar a conta.');
@@ -57,7 +57,7 @@ export const ClaimAdminScreen: React.FC<ClaimAdminScreenProps> = ({ onLoggedIn }
           <div>
             <h1 className="text-sm font-bold text-slate-900 dark:text-white">Ativar acesso do Administrador</h1>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Sua conta já existe no sistema (de antes do login por senha existir). Digite sua matrícula, o código de
+              Sua conta já existe no sistema (de antes do login por senha existir). Digite seu e-mail, o código de
               ativação que você recebeu, e escolha sua senha.
             </p>
           </div>
@@ -65,12 +65,12 @@ export const ClaimAdminScreen: React.FC<ClaimAdminScreenProps> = ({ onLoggedIn }
 
         <div className="space-y-3 text-sm">
           <div>
-            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Matrícula / registro profissional</label>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">E-mail</label>
             <input
-              type="text"
-              value={registrationNumber}
-              onChange={(e) => setRegistrationNumber(e.target.value)}
-              placeholder="A matrícula que já está cadastrada para você"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="O e-mail já cadastrado para você"
               autoComplete="username"
               autoFocus
               className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-hidden focus:ring-2 focus:ring-sky-500"

@@ -11,15 +11,15 @@ interface ForgotPasswordScreenProps {
  * e-mail/SMS configurado no sistema, isto não redefine a senha por conta
  * própria: só avisa o Administrador (fila em Configurações), que resolve
  * gerando um novo link de acesso, do mesmo jeito de sempre. Por isso a
- * resposta nunca diz se a matrícula existe — mesmo cuidado do login.
+ * resposta nunca diz se o e-mail existe — mesmo cuidado do login.
  */
 export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ onBack }) => {
-  const [registrationNumber, setRegistrationNumber] = useState('');
+  const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<string | null>(null);
 
-  const isValid = registrationNumber.trim().length > 0;
+  const isValid = email.trim().length > 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,7 +27,7 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ onBa
     setIsSubmitting(true);
     setError(null);
     try {
-      const { message } = await forgotPasswordApi(registrationNumber.trim());
+      const { message } = await forgotPasswordApi(email.trim());
       setConfirmation(message);
     } catch (err: any) {
       setError(err?.message || 'Não foi possível registrar o pedido.');
@@ -67,12 +67,12 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ onBa
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Matrícula / registro profissional</label>
+              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">E-mail</label>
               <input
-                type="text"
-                value={registrationNumber}
-                onChange={(e) => setRegistrationNumber(e.target.value)}
-                placeholder="Ex.: CRBio 48.912-04"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="nome@instituicao.gov.br"
                 autoComplete="username"
                 autoFocus
                 className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-hidden focus:ring-2 focus:ring-sky-500"

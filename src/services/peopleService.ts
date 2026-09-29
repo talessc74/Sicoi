@@ -30,7 +30,8 @@ export async function createPersonApi(person: {
   name: string;
   role: UserProfile['role'];
   institution: string;
-  registrationNumber: string;
+  email: string;
+  registrationNumber?: string;
 }): Promise<UserProfile> {
   const res = await fetch('/api/people', {
     method: 'POST',

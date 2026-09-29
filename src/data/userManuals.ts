@@ -21,9 +21,9 @@ export const USER_MANUALS: UserManual[] = [
     id: 'manual-completo',
     title: 'Manual SIGCOI — Guia completo',
     description: 'Visão geral, perfis de acesso, login real, as 7 fases, assinatura & hash, ferramentas, condutor por voz, glossário e FAQ.',
-    version: 'v6',
-    path: '/manuais/manual-sigcoi-completo-v6.html',
-    updatedAt: '2026-09-28',
+    version: 'v7',
+    path: '/manuais/manual-sigcoi-completo-v7.html',
+    updatedAt: '2026-09-29',
   },
   {
     id: 'manual-fases-4-a-7',
@@ -37,8 +37,8 @@ export const USER_MANUALS: UserManual[] = [
     id: 'manual-administrador-contas',
     title: 'Manual SIGCOI — Administrador · Gestão de Contas',
     description: 'Passo a passo do login real: ativar o primeiro acesso (migrando de dados antigos), cadastrar pessoa, gerar link de acesso, atender pedidos de "esqueci a senha", trocar a própria senha e remover acesso.',
-    version: 'v4',
-    path: '/manuais/manual-administrador-contas-v4.html',
+    version: 'v5',
+    path: '/manuais/manual-administrador-contas-v5.html',
     updatedAt: '2026-09-29',
   },
 ];

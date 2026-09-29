@@ -1,7 +1,7 @@
 ---
 name: _local-adr-policy-202-login-real-sessao-servidor
 description: "Ser alguém" no sistema é provar matrícula + senha e receber uma sessão assinada pelo servidor (cookie httpOnly) — nunca o navegador declarando um actorId, nem um seletor de perfil de um clique. Use antes de adicionar qualquer rota ou tela nova que precise saber quem está agindo, ou antes de mudar o fluxo de cadastro/gestão de contas.
-apply-to: db/authRepo.ts, db/peopleRepo.ts, server.ts (middleware de sessão, csrfProtection, requireAuth/requireSessionRole, rotas /api/auth/* e /api/people), db/migrations/009_auth.sql, db/migrations/010_password_reset_requests.sql, db/migrations/011_login_attempts.sql, src/services/authService.ts, src/services/csrf.ts, src/services/collectionsService.ts, src/services/adminService.ts, src/services/peopleService.ts, src/services/geminiService.ts, src/components/LoginScreen.tsx, src/components/BootstrapAdminSetup.tsx, src/components/ClaimAdminScreen.tsx, src/components/SetPasswordScreen.tsx, src/components/ForgotPasswordScreen.tsx, src/components/ChangePasswordModal.tsx, src/components/Header.tsx, src/components/SettingsView.tsx
+apply-to: db/authRepo.ts, db/peopleRepo.ts, server.ts (middleware de sessão, csrfProtection, requireAuth/requireSessionRole, rotas /api/auth/* e /api/people), db/migrations/009_auth.sql, db/migrations/010_password_reset_requests.sql, db/migrations/011_login_attempts.sql, db/migrations/012_email_identity.sql, src/services/authService.ts, src/services/csrf.ts, src/services/collectionsService.ts, src/services/adminService.ts, src/services/peopleService.ts, src/services/geminiService.ts, src/components/LoginScreen.tsx, src/components/BootstrapAdminSetup.tsx, src/components/ClaimAdminScreen.tsx, src/components/SetPasswordScreen.tsx, src/components/ForgotPasswordScreen.tsx, src/components/ChangePasswordModal.tsx, src/components/Header.tsx, src/components/SettingsView.tsx
 valid-from: 2026-09-28
 ---
 
@@ -193,6 +193,49 @@ sessão criada no login — nunca de um campo que o cliente envia.**
   de integração HTTP automatizado, mesma lacuna já registrada para as
   rotas de admin em `_local-adr-policy-201`.
 
+- **Identificador de login trocado de matrícula para e-mail (set/2026,
+  concluído)**: as ~30 pessoas cadastradas em produção até aqui são todas
+  dados fictícios de teste (matrículas inventadas, só para operar o
+  sistema durante o desenvolvimento) — serão apagadas antes do lançamento
+  real. No cadastro real, feito pelo Administrador, **e-mail passa a ser o
+  identificador único de login, obrigatório**; `registration_number`
+  (matrícula/registro profissional) vira **opcional**, porque nem toda
+  pessoa com acesso ao sistema tem uma — pesquisadores externos, por
+  exemplo, não têm, enquanto técnicos e curadores com registro
+  profissional real continuam podendo cadastrá-lo, como informação
+  complementar. `db/migrations/012_email_identity.sql` adiciona `email`
+  (índice único case-insensitive, `lower(email)`) e remove o `NOT NULL` de
+  `registration_number`; a obrigatoriedade de `email` é conferida na
+  aplicação (`peopleRepo.createPerson`, rotas de `server.ts`), não travada
+  no schema. Todas as funções de `authRepo.ts` que antes recebiam
+  `registrationNumber` como chave de busca (`verifyLogin`, `isLoginLocked`,
+  `recordFailedLogin`, `clearLoginAttempts`, `claimAdministratorAccount`,
+  `requestPasswordReset`) passam a receber `email`, sempre comparado
+  case-insensitive (`lower(email) = lower($1)`); `createFirstAdmin` exige
+  `email` e aceita `registrationNumber` opcional. Rotas afetadas:
+  `POST /api/auth/login`, `/bootstrap-admin`, `/claim-admin`,
+  `/forgot-password` e `POST /api/people` — todas trocam o campo
+  obrigatório de `registrationNumber` para `email` (com validação simples
+  de formato), mantendo as mesmas garantias de segurança já documentadas
+  acima (mensagens de erro genéricas que não revelam se o e-mail existe,
+  mesmo freio de força bruta, mesmo CSRF). Telas atualizadas:
+  `LoginScreen.tsx`, `BootstrapAdminSetup.tsx`, `ClaimAdminScreen.tsx`,
+  `ForgotPasswordScreen.tsx`, `SettingsView.tsx` (cadastro de pessoa e
+  lista, com matrícula exibida só quando presente) e `Header.tsx` (menu do
+  usuário mostra e-mail em vez de matrícula). Cadastro continua
+  exclusivamente pelo Administrador (nada mudou nisso) — a diferença é só
+  qual campo identifica a pessoa. Não há envio automático de e-mail: a
+  entrega do link de definição de senha continua manual, por fora do
+  sistema, como já era.
+- **Ação operacional pendente (fora do código)**: antes do lançamento
+  real, apagar todas as ~30 pessoas fictícias hoje cadastradas
+  (`DELETE FROM people` ou equivalente) — o cadastro real recomeça pelo
+  bootstrap do primeiro Administrador (`BootstrapAdminSetup`, banco
+  vazio), agora já pedindo e-mail. `ClaimAdminScreen`/
+  `ADMIN_BOOTSTRAP_SECRET` seguem existindo no código como capacidade
+  reservada para uma futura migração de dados pré-existentes, mas não são
+  necessários para este dataset específico, que será descartado.
+
 ## References
 
 - Arquivos: `db/migrations/009_auth.sql`,
@@ -206,10 +249,11 @@ sessão criada no login — nunca de um campo que o cliente envia.**
   `src/components/ChangePasswordModal.tsx`
 - Testes: `db/__tests__/authRepo.test.ts`, `db/__tests__/peopleRepo.test.ts`,
   `src/components/__tests__/{LoginScreen,BootstrapAdminSetup,ClaimAdminScreen,SetPasswordScreen,ForgotPasswordScreen,ChangePasswordModal}.test.tsx`
-- Manual do usuário: `public/manuais/manual-administrador-contas-v4.html`
+- Manual do usuário: `public/manuais/manual-administrador-contas-v5.html`
   (gestão de contas — inclui a seção "Primeiro acesso do Administrador",
-  com o passo a passo da migração de dados antigos) e
-  `public/manuais/manual-sigcoi-completo-v6.html` (seção "Perfis de
+  com o passo a passo da migração de dados antigos, e o cadastro por
+  e-mail com matrícula opcional) e
+  `public/manuais/manual-sigcoi-completo-v7.html` (seção "Perfis de
   acesso" atualizada)
 - Policy relacionada: `_local-adr-policy-201` (a Zona de Risco é
   exatamente o tipo de ação que mais precisava desta prova de identidade)

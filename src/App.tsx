@@ -164,7 +164,7 @@ export default function App() {
   // Cadastra uma nova pessoa (papel de acesso) — só o Administrador logado pode
   // (o servidor reconfere). A pessoa criada ainda não tem senha: o Administrador
   // gera o link de definição de senha para ela em Configurações.
-  const handleCreatePerson = async (person: { name: string; role: UserRole; institution: string; registrationNumber: string }) => {
+  const handleCreatePerson = async (person: { name: string; role: UserRole; institution: string; email: string; registrationNumber?: string }) => {
     const created = await createPersonApi(person);
     setPeople((prev) => [...prev, created]);
     setSyncError(null);

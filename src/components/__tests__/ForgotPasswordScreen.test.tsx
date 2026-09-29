@@ -20,37 +20,37 @@ afterEach(() => {
 });
 
 describe('ForgotPasswordScreen', () => {
-  it('começa com o botão desabilitado até a matrícula ser preenchida', async () => {
+  it('começa com o botão desabilitado até o e-mail ser preenchido', async () => {
     const user = userEvent.setup();
     render(<ForgotPasswordScreen onBack={vi.fn()} />);
 
     const button = screen.getByRole('button', { name: /avisar o administrador/i });
     expect(button).toBeDisabled();
 
-    await user.type(screen.getByPlaceholderText(/CRBio/i), '12345');
+    await user.type(screen.getByPlaceholderText(/nome@instituicao/i), 'perito.x@inc.pf.gov.br');
     expect(button).toBeEnabled();
   });
 
   it('ao confirmar, mostra a mensagem devolvida pela API em vez do formulário', async () => {
     const user = userEvent.setup();
-    const message = 'Se essa matrícula estiver cadastrada, o Administrador foi avisado e vai gerar um novo link de acesso.';
+    const message = 'Se esse e-mail estiver cadastrado, o Administrador foi avisado e vai gerar um novo link de acesso.';
     mockFetchOnce(200, { message });
 
     render(<ForgotPasswordScreen onBack={vi.fn()} />);
-    await user.type(screen.getByPlaceholderText(/CRBio/i), '12345');
+    await user.type(screen.getByPlaceholderText(/nome@instituicao/i), 'perito.x@inc.pf.gov.br');
     await user.click(screen.getByRole('button', { name: /avisar o administrador/i }));
 
     expect(await screen.findByText(message)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /voltar ao login/i })).toBeInTheDocument();
   });
 
-  it('nunca revela se a matrícula existe ou não — mesma mensagem para qualquer matrícula', async () => {
+  it('nunca revela se o e-mail existe ou não — mesma mensagem para qualquer e-mail', async () => {
     const user = userEvent.setup();
-    const message = 'Se essa matrícula estiver cadastrada, o Administrador foi avisado e vai gerar um novo link de acesso.';
+    const message = 'Se esse e-mail estiver cadastrado, o Administrador foi avisado e vai gerar um novo link de acesso.';
     mockFetchOnce(200, { message });
 
     render(<ForgotPasswordScreen onBack={vi.fn()} />);
-    await user.type(screen.getByPlaceholderText(/CRBio/i), 'matricula-que-nao-existe');
+    await user.type(screen.getByPlaceholderText(/nome@instituicao/i), 'email-que-nao-existe@inc.pf.gov.br');
     await user.click(screen.getByRole('button', { name: /avisar o administrador/i }));
 
     expect(await screen.findByText(message)).toBeInTheDocument();
@@ -61,7 +61,7 @@ describe('ForgotPasswordScreen', () => {
     mockFetchOnce(500, { error: 'Erro ao registrar o pedido. Tente novamente.' });
 
     render(<ForgotPasswordScreen onBack={vi.fn()} />);
-    await user.type(screen.getByPlaceholderText(/CRBio/i), '12345');
+    await user.type(screen.getByPlaceholderText(/nome@instituicao/i), 'perito.x@inc.pf.gov.br');
     await user.click(screen.getByRole('button', { name: /avisar o administrador/i }));
 
     expect(await screen.findByText('Erro ao registrar o pedido. Tente novamente.')).toBeInTheDocument();
