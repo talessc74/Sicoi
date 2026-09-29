@@ -55,7 +55,28 @@ describe('peopleRepo', () => {
 
     await expect(
       createPerson(pool, { name: 'Segunda', role: 'tecnico', institution: 'INC', email: 'Igual@INC.PF.GOV.BR' })
-    ).rejects.toThrow();
+    ).rejects.toMatchObject({ code: '23505', constraint: 'people_email_key' });
+  });
+
+  it('recusa cadastrar duas pessoas com a mesma matrícula, mesmo com e-mails diferentes', async () => {
+    await createPerson(pool, { name: 'Primeira', role: 'tecnico', institution: 'INC', email: 'primeira@inc.pf.gov.br', registrationNumber: '111' });
+
+    // A constraint violada tem que ser a de registration_number, não a de
+    // email — server.ts usa esse nome para decidir qual mensagem mostrar ao
+    // Administrador (ver POST /api/people). Se isto silenciosamente virar
+    // 'people_email_key', o Administrador recebe um erro que aponta o campo
+    // errado.
+    await expect(
+      createPerson(pool, { name: 'Segunda', role: 'tecnico', institution: 'INC', email: 'segunda@inc.pf.gov.br', registrationNumber: '111' })
+    ).rejects.toMatchObject({ code: '23505', constraint: 'people_registration_number_key' });
+  });
+
+  it('permite várias pessoas sem matrícula nenhuma (NULL não colide com NULL)', async () => {
+    const a = await createPerson(pool, { name: 'Pesquisador A', role: 'pesquisador', institution: 'Uni', email: 'a@uni.edu' });
+    const b = await createPerson(pool, { name: 'Pesquisador B', role: 'pesquisador', institution: 'Uni', email: 'b@uni.edu' });
+
+    expect(a.registrationNumber).toBeUndefined();
+    expect(b.registrationNumber).toBeUndefined();
   });
 
   it('lista pessoas na ordem de cadastro', async () => {

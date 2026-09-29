@@ -1043,10 +1043,16 @@ app.post('/api/people', requireAdminSession, async (req: Request, res: Response)
     return res.status(201).json({ person });
   } catch (error: any) {
     console.error('Erro ao cadastrar pessoa:', error);
-    // Violação do índice único de e-mail (case-insensitive) — nunca repassa a
-    // mensagem crua do Postgres (revelaria nome de índice/constraint); devolve
-    // 409 com uma mensagem que a pessoa cadastrando de fato consegue agir.
+    // Violação de índice único — nunca repassa a mensagem crua do Postgres
+    // (revelaria nome de índice/constraint); devolve 409 com uma mensagem que
+    // a pessoa cadastrando de fato consegue agir. `people` tem dois índices
+    // únicos (email e, de antes do login por e-mail, registration_number —
+    // ver migrations/009_auth.sql), então o nome da constraint violada decide
+    // qual dos dois campos é apontado — nunca assuma que é sempre o e-mail.
     if (error?.code === '23505') {
+      if (error.constraint === 'people_registration_number_key') {
+        return res.status(409).json({ error: 'Já existe uma pessoa cadastrada com essa matrícula/registro profissional.' });
+      }
       return res.status(409).json({ error: 'Já existe uma pessoa cadastrada com esse e-mail.' });
     }
     return res.status(500).json({ error: 'Erro ao cadastrar pessoa.' });
