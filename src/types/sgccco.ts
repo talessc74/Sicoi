@@ -10,7 +10,8 @@ export interface UserProfile {
   name: string;
   role: UserRole;
   institution: string;
-  registrationNumber: string;
+  // E-mail é o identificador de login — único campo que identifica a pessoa.
+  email: string;
 }
 
 // Criptografia e Assinatura por Fase (§7)

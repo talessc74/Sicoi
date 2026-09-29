@@ -1,9 +1,12 @@
 /**
  * Cliente HTTP da Zona de Risco do Administrador (exclusão reversível de caixa,
  * conjunto ou tudo — ver db/adminRepo.ts). O servidor reconfere o papel Administrador
- * a cada chamada; um `actorId` que não seja de um administrador cadastrado recebe 403.
+ * a cada chamada a partir da sessão de login (cookie) — nunca de um id que o
+ * cliente informe; quem não estiver logado como Administrador recebe 401/403.
+ * Ver _local-adr-policy-202.
  */
 import { OsteologicalCollection } from '../types/sgccco';
+import { csrfHeaders } from './csrf';
 
 async function parseJsonOrThrow(res: Response, fallbackMessage: string) {
   let data: any = null;
@@ -39,14 +42,14 @@ export interface AdminActionRow {
   affectedCount: number;
 }
 
-export async function fetchDeletedCollections(actorId: string): Promise<DeletedCollectionSummary[]> {
-  const res = await fetch(`/api/admin/deleted-collections?actorId=${encodeURIComponent(actorId)}`);
+export async function fetchDeletedCollections(): Promise<DeletedCollectionSummary[]> {
+  const res = await fetch('/api/admin/deleted-collections');
   const data = await parseJsonOrThrow(res, 'Erro ao listar conjuntos excluídos');
   return data.collections;
 }
 
-export async function fetchAdminActions(actorId: string): Promise<AdminActionRow[]> {
-  const res = await fetch(`/api/admin/actions?actorId=${encodeURIComponent(actorId)}`);
+export async function fetchAdminActions(): Promise<AdminActionRow[]> {
+  const res = await fetch('/api/admin/actions');
   const data = await parseJsonOrThrow(res, 'Erro ao listar ações administrativas');
   return data.actions;
 }
@@ -54,34 +57,34 @@ export async function fetchAdminActions(actorId: string): Promise<AdminActionRow
 async function postAdmin(path: string, body: Record<string, unknown>, fallbackMessage: string) {
   const res = await fetch(path, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
     body: JSON.stringify(body)
   });
   return parseJsonOrThrow(res, fallbackMessage);
 }
 
-export async function deleteCollectionApi(nic: string, actorId: string, reason: string): Promise<void> {
-  await postAdmin(`/api/admin/collections/${encodeURIComponent(nic)}/delete`, { actorId, reason }, 'Erro ao excluir conjunto');
+export async function deleteCollectionApi(nic: string, reason: string): Promise<void> {
+  await postAdmin(`/api/admin/collections/${encodeURIComponent(nic)}/delete`, { reason }, 'Erro ao excluir conjunto');
 }
 
-export async function restoreCollectionApi(nic: string, actorId: string): Promise<void> {
-  await postAdmin(`/api/admin/collections/${encodeURIComponent(nic)}/restore`, { actorId }, 'Erro ao restaurar conjunto');
+export async function restoreCollectionApi(nic: string): Promise<void> {
+  await postAdmin(`/api/admin/collections/${encodeURIComponent(nic)}/restore`, {}, 'Erro ao restaurar conjunto');
 }
 
-export async function deleteAllCollectionsApi(actorId: string, reason: string): Promise<{ affectedCount: number }> {
-  return postAdmin('/api/admin/collections/delete-all', { actorId, reason }, 'Erro ao excluir todos os conjuntos');
+export async function deleteAllCollectionsApi(reason: string): Promise<{ affectedCount: number }> {
+  return postAdmin('/api/admin/collections/delete-all', { reason }, 'Erro ao excluir todos os conjuntos');
 }
 
-export async function restoreAllCollectionsApi(actorId: string): Promise<{ affectedCount: number }> {
-  return postAdmin('/api/admin/collections/restore-all', { actorId }, 'Erro ao restaurar todos os conjuntos');
+export async function restoreAllCollectionsApi(): Promise<{ affectedCount: number }> {
+  return postAdmin('/api/admin/collections/restore-all', {}, 'Erro ao restaurar todos os conjuntos');
 }
 
-export async function deleteBoxApi(nic: string, boxId: string, actorId: string, reason: string): Promise<OsteologicalCollection> {
-  const data = await postAdmin(`/api/admin/collections/${encodeURIComponent(nic)}/boxes/${encodeURIComponent(boxId)}/delete`, { actorId, reason }, 'Erro ao excluir caixa');
+export async function deleteBoxApi(nic: string, boxId: string, reason: string): Promise<OsteologicalCollection> {
+  const data = await postAdmin(`/api/admin/collections/${encodeURIComponent(nic)}/boxes/${encodeURIComponent(boxId)}/delete`, { reason }, 'Erro ao excluir caixa');
   return data.collection;
 }
 
-export async function restoreBoxApi(nic: string, boxId: string, actorId: string): Promise<OsteologicalCollection> {
-  const data = await postAdmin(`/api/admin/collections/${encodeURIComponent(nic)}/boxes/${encodeURIComponent(boxId)}/restore`, { actorId }, 'Erro ao restaurar caixa');
+export async function restoreBoxApi(nic: string, boxId: string): Promise<OsteologicalCollection> {
+  const data = await postAdmin(`/api/admin/collections/${encodeURIComponent(nic)}/boxes/${encodeURIComponent(boxId)}/restore`, {}, 'Erro ao restaurar caixa');
   return data.collection;
 }

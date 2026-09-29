@@ -63,8 +63,8 @@ export const AdminDangerZone: React.FC<AdminDangerZoneProps> = ({ currentUser, c
     setIsLoadingTrail(true);
     try {
       const [deleted, log] = await Promise.all([
-        fetchDeletedCollections(currentUser.id),
-        fetchAdminActions(currentUser.id)
+        fetchDeletedCollections(),
+        fetchAdminActions()
       ]);
       setDeletedCollections(deleted);
       setActions(log);
@@ -114,7 +114,7 @@ export const AdminDangerZone: React.FC<AdminDangerZoneProps> = ({ currentUser, c
 
   const handleDeleteBox = () =>
     runAction(async () => {
-      await deleteBoxApi(boxNic, boxId, currentUser.id, boxReason.trim());
+      await deleteBoxApi(boxNic, boxId, boxReason.trim());
       setBoxNic('');
       setBoxId('');
       setBoxReason('');
@@ -122,12 +122,12 @@ export const AdminDangerZone: React.FC<AdminDangerZoneProps> = ({ currentUser, c
 
   const handleRestoreBox = (nic: string, id: string) =>
     runAction(async () => {
-      await restoreBoxApi(nic, id, currentUser.id);
+      await restoreBoxApi(nic, id);
     });
 
   const handleDeleteCollection = () =>
     runAction(async () => {
-      await deleteCollectionApi(collectionNic, currentUser.id, collectionReason.trim());
+      await deleteCollectionApi(collectionNic, collectionReason.trim());
       setCollectionNic('');
       setCollectionReason('');
       setCollectionConfirm('');
@@ -135,19 +135,19 @@ export const AdminDangerZone: React.FC<AdminDangerZoneProps> = ({ currentUser, c
 
   const handleRestoreCollection = (nic: string) =>
     runAction(async () => {
-      await restoreCollectionApi(nic, currentUser.id);
+      await restoreCollectionApi(nic);
     });
 
   const handleDeleteAll = () =>
     runAction(async () => {
-      await deleteAllCollectionsApi(currentUser.id, allReason.trim());
+      await deleteAllCollectionsApi(allReason.trim());
       setAllReason('');
       setAllConfirm('');
     });
 
   const handleRestoreAll = () =>
     runAction(async () => {
-      await restoreAllCollectionsApi(currentUser.id);
+      await restoreAllCollectionsApi();
     });
 
   return (
@@ -160,7 +160,8 @@ export const AdminDangerZone: React.FC<AdminDangerZoneProps> = ({ currentUser, c
         <p className="text-rose-700/80 dark:text-rose-300/70 mt-1 leading-relaxed">
           Nada aqui apaga um registro para sempre: toda exclusão só esconde o dado e pode ser restaurada ("Desfazer") a
           qualquer momento na lista abaixo. Cada ação fica gravada — quem, quando, o quê e por quê — numa trilha
-          própria que sobrevive a qualquer exclusão. O servidor reconfere que você é Administrador a cada chamada.
+          própria que sobrevive a qualquer exclusão. O servidor reconfere, pela sua sessão de login, que você é
+          Administrador a cada chamada — ficará registrado em nome de <strong>{currentUser.name}</strong>.
         </p>
       </div>
 
