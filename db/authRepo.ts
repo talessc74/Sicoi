@@ -147,6 +147,49 @@ export async function getPersonWithAuthStatus(pool: Pool, id: string): Promise<(
 }
 
 /**
+ * Migração do modelo antigo para o login real (complemento à Fase 3 —
+ * _local-adr-policy-202): quando o sistema já tem gente cadastrada de antes
+ * (produção real, ~30 pessoas sem senha nenhuma), o bootstrap de banco vazio
+ * (`createFirstAdmin`) não se aplica — o banco não está vazio. `needsAdminClaim`
+ * (server.ts) usa isto para saber se ainda existe algum Administrador dos
+ * dados antigos que nunca ativou o próprio acesso.
+ */
+export async function hasUnactivatedAdministrator(pool: Pool): Promise<boolean> {
+  const { rows } = await pool.query(
+    "SELECT 1 FROM people WHERE role = 'administrador' AND password_hash IS NULL LIMIT 1"
+  );
+  return rows.length > 0;
+}
+
+/**
+ * Ativa o acesso de uma pessoa que já era Administrador antes do login real
+ * existir (papel já cadastrado, sem senha ainda) — nunca cria pessoa nova,
+ * só destrava uma já existente. A prova de quem pode fazer isto não é esta
+ * função: é a rota em server.ts conferir o código de ativação
+ * (ADMIN_BOOTSTRAP_SECRET) antes de chamar isto. Mensagem de erro
+ * deliberadamente genérica — não distingue "matrícula não existe" de
+ * "existe mas não é Administrador" de "já tem senha", mesmo cuidado de
+ * `verifyLogin`.
+ */
+export async function claimAdministratorAccount(pool: Pool, registrationNumber: string, newPassword: string): Promise<UserProfile> {
+  const { rows } = await pool.query<PersonAuthRow>(
+    'SELECT id, name, role, institution, registration_number, password_hash FROM people WHERE registration_number = $1',
+    [registrationNumber]
+  );
+  const row = rows[0];
+  if (!row || row.role !== 'administrador' || row.password_hash !== null) {
+    throw new Error('Não há Administrador pendente de ativação com essa matrícula.');
+  }
+  const passwordHash = await hashPassword(newPassword);
+  const { rows: updated } = await pool.query<PersonAuthRow>(
+    `UPDATE people SET password_hash = $1 WHERE id = $2
+     RETURNING id, name, role, institution, registration_number, password_hash`,
+    [passwordHash, row.id]
+  );
+  return toUserProfile(updated[0]);
+}
+
+/**
  * Troca a própria senha de quem já está logado — exige a senha atual (não
  * basta a sessão) exatamente para o caso em que alguém deixou a sessão aberta
  * num computador compartilhado: sem saber a senha atual, não muda nada.

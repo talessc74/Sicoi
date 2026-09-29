@@ -35,7 +35,9 @@ import {
   changeOwnPassword,
   isLoginLocked,
   recordFailedLogin,
-  clearLoginAttempts
+  clearLoginAttempts,
+  hasUnactivatedAdministrator,
+  claimAdministratorAccount
 } from './db/authRepo';
 import type { Pool } from 'pg';
 
@@ -107,6 +109,14 @@ const sessionSecret = process.env.SESSION_SECRET;
 if (isProduction && !sessionSecret) {
   throw new Error('SESSION_SECRET não configurada. Defina no ambiente antes de subir em produção.');
 }
+
+// Código de ativação para migrar Administradores dos dados antigos (cadastrados
+// antes do login real, sem senha) — nunca obrigatório: só existe se alguém
+// configurar ADMIN_BOOTSTRAP_SECRET no ambiente. Diferente de SESSION_SECRET,
+// não falha o boot se estiver ausente — sem ele, a rota de ativação (abaixo)
+// simplesmente fica indisponível (404), o que é seguro por padrão. Ver
+// _local-adr-policy-202 e o manual do Administrador para o passo a passo.
+const adminBootstrapSecret = process.env.ADMIN_BOOTSTRAP_SECRET || null;
 const PgSessionStore = pgSessionFactory(session);
 app.use(
   session({
@@ -781,10 +791,18 @@ function startSession(req: Request, res: Response, person: Awaited<ReturnType<ty
 // Bootstrap do primeiro Administrador (Fase 3): só funciona com o sistema vazio —
 // depois que existe pelo menos uma pessoa, some (409) e todo cadastro passa a ser
 // feito por um Administrador autenticado em POST /api/people.
+//
+// needsAdminClaim cobre o outro caso real: um sistema migrado do modelo antigo,
+// com gente já cadastrada (inclusive Administradores) mas sem senha nenhuma —
+// aí o banco não está vazio, então needsBootstrap nunca vira true, e sem isto
+// ninguém jamais conseguiria logar. Só aparece se ADMIN_BOOTSTRAP_SECRET estiver
+// configurado (senão a migração precisa ser feita direto no banco).
 app.get('/api/auth/bootstrap-status', async (_req: Request, res: Response) => {
   try {
-    const total = await countPeople(getPool());
-    return res.json({ needsBootstrap: total === 0 });
+    const pool = getPool();
+    const total = await countPeople(pool);
+    const needsAdminClaim = Boolean(adminBootstrapSecret) && (await hasUnactivatedAdministrator(pool));
+    return res.json({ needsBootstrap: total === 0, needsAdminClaim });
   } catch (error: any) {
     console.error('Erro ao conferir status de bootstrap:', error);
     return res.status(500).json({ error: 'Erro ao conferir status de bootstrap.' });
@@ -808,6 +826,39 @@ app.post('/api/auth/bootstrap-admin', async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Erro no bootstrap do primeiro Administrador:', error);
     return res.status(409).json({ error: error?.message || 'Erro no bootstrap do primeiro Administrador.' });
+  }
+});
+
+// Ativa o acesso de um Administrador que já existia nos dados antigos (papel
+// cadastrado, sem senha) — nunca cria pessoa nova. Pública, mas exige o código
+// de ativação (ADMIN_BOOTSTRAP_SECRET) em comparação de tempo constante, para
+// não abrir uma brecha de "sou Administrador, confia" na porta de entrada do
+// site — exatamente o tipo de falha que a auditoria original encontrou.
+app.post('/api/auth/claim-admin', async (req: Request, res: Response) => {
+  try {
+    if (!adminBootstrapSecret) {
+      return res.status(404).json({ error: 'Recurso não disponível.' });
+    }
+    const providedSecret = String(req.body?.bootstrapSecret || '');
+    const registrationNumber = String(req.body?.registrationNumber || '').trim();
+    const newPassword = String(req.body?.newPassword || '');
+    if (!providedSecret || !registrationNumber || !newPassword) {
+      return res.status(400).json({ error: 'Matrícula, código de ativação e nova senha são obrigatórios.' });
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: 'A senha deve ter pelo menos 8 caracteres.' });
+    }
+    const expected = Buffer.from(adminBootstrapSecret);
+    const provided = Buffer.from(providedSecret);
+    const secretMatches = expected.length === provided.length && crypto.timingSafeEqual(expected, provided);
+    if (!secretMatches) {
+      return res.status(403).json({ error: 'Código de ativação inválido.' });
+    }
+    const person = await claimAdministratorAccount(getPool(), registrationNumber, newPassword);
+    return startSession(req, res, person, 200);
+  } catch (error: any) {
+    console.error('Erro ao ativar conta de Administrador:', error);
+    return res.status(400).json({ error: error?.message || 'Erro ao ativar conta de Administrador.' });
   }
 });
 

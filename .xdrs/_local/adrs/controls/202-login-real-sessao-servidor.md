@@ -1,7 +1,7 @@
 ---
 name: _local-adr-policy-202-login-real-sessao-servidor
 description: "Ser alguém" no sistema é provar matrícula + senha e receber uma sessão assinada pelo servidor (cookie httpOnly) — nunca o navegador declarando um actorId, nem um seletor de perfil de um clique. Use antes de adicionar qualquer rota ou tela nova que precise saber quem está agindo, ou antes de mudar o fluxo de cadastro/gestão de contas.
-apply-to: db/authRepo.ts, db/peopleRepo.ts, server.ts (middleware de sessão, csrfProtection, requireAuth/requireSessionRole, rotas /api/auth/* e /api/people), db/migrations/009_auth.sql, db/migrations/010_password_reset_requests.sql, db/migrations/011_login_attempts.sql, src/services/authService.ts, src/services/csrf.ts, src/services/collectionsService.ts, src/services/adminService.ts, src/services/peopleService.ts, src/services/geminiService.ts, src/components/LoginScreen.tsx, src/components/BootstrapAdminSetup.tsx, src/components/SetPasswordScreen.tsx, src/components/ForgotPasswordScreen.tsx, src/components/ChangePasswordModal.tsx, src/components/Header.tsx, src/components/SettingsView.tsx
+apply-to: db/authRepo.ts, db/peopleRepo.ts, server.ts (middleware de sessão, csrfProtection, requireAuth/requireSessionRole, rotas /api/auth/* e /api/people), db/migrations/009_auth.sql, db/migrations/010_password_reset_requests.sql, db/migrations/011_login_attempts.sql, src/services/authService.ts, src/services/csrf.ts, src/services/collectionsService.ts, src/services/adminService.ts, src/services/peopleService.ts, src/services/geminiService.ts, src/components/LoginScreen.tsx, src/components/BootstrapAdminSetup.tsx, src/components/ClaimAdminScreen.tsx, src/components/SetPasswordScreen.tsx, src/components/ForgotPasswordScreen.tsx, src/components/ChangePasswordModal.tsx, src/components/Header.tsx, src/components/SettingsView.tsx
 valid-from: 2026-09-28
 ---
 
@@ -95,12 +95,36 @@ sessão criada no login — nunca de um campo que o cliente envia.**
   pendente para a mesma pessoa. Gerar o link de acesso pela fila ou pela
   lista de pessoas resolve o pedido automaticamente
   (`resolvePendingPasswordResetRequests`).
-- **Sem risco de implantação pendente**: com a Fase 3 pronta, esta branch
-  já é segura para produção — o primeiro deploy encontrará o banco vazio
-  (ou as ~30 pessoas já cadastradas, sem senha) e pedirá o cadastro do
-  primeiro Administrador antes de liberar o resto do sistema; a partir
-  daí, cada pessoa existente recebe seu link de definição de senha por
-  fora do sistema.
+- **Risco de implantação encontrado e corrigido (mesmo dia)**: a afirmação
+  original aqui ("o primeiro deploy encontrará o banco vazio... e pedirá o
+  cadastro do primeiro Administrador") estava **errada** para o caso real —
+  `BootstrapAdminSetup`/`POST /api/auth/bootstrap-admin` só disparam
+  quando `countPeople() === 0`. A produção real da COI-INC já tem ~30
+  pessoas cadastradas (do modelo antigo, sem senha nenhuma), então o
+  banco **nunca** está vazio — a tela de bootstrap nunca apareceria, e
+  ninguém, nem quem já era Administrador, conseguiria logar. Corrigido
+  com um caminho separado: **ativação** (não criação) de um Administrador
+  que já existia. Ver `hasUnactivatedAdministrator`/
+  `claimAdministratorAccount` em `authRepo.ts`.
+- **Ativação de Administrador migrado (concluído)**: `ClaimAdminScreen.tsx`,
+  alcançada automaticamente quando `GET /api/auth/bootstrap-status` devolve
+  `needsAdminClaim: true` — banco não vazio, existe pelo menos um
+  `administrador` com `password_hash IS NULL`, e a variável de ambiente
+  `ADMIN_BOOTSTRAP_SECRET` está configurada (opcional; sem ela, a rota
+  `POST /api/auth/claim-admin` fica indisponível — 404, seguro por
+  padrão). A pessoa informa a própria matrícula (já cadastrada de antes),
+  o código de ativação, e a senha nova; o servidor confere o código em
+  tempo constante (`crypto.timingSafeEqual`) antes de tudo, e só ativa se
+  a matrícula corresponder a um Administrador ainda sem senha — nunca
+  cria pessoa nova. Mensagem de erro genérica (mesmo cuidado de
+  `verifyLogin`): não distingue matrícula inexistente, papel diferente ou
+  já ativada. `GET /api/auth/bootstrap-status` agora devolve
+  `{ needsBootstrap, needsAdminClaim }`; `App.tsx` decide entre
+  `BootstrapAdminSetup` (banco vazio), `ClaimAdminScreen` (banco com
+  Administrador migrado pendente) e `LoginScreen` (nenhum dos dois).
+  `ADMIN_BOOTSTRAP_SECRET` deve ser removida do ambiente depois que todos
+  os Administradores migrados tiverem ativado a própria conta —
+  documentado no manual do Administrador.
 - **"Trocar minha senha" (concluído)**: `ChangePasswordModal.tsx`,
   alcançado pelo menu do nome no `Header.tsx` — vale para qualquer papel
   logado, não só Administrador. `POST /api/auth/change-password`
@@ -152,33 +176,39 @@ sessão criada no login — nunca de um campo que o cliente envia.**
 - `SESSION_SECRET` segue a mesma regra de `DATABASE_URL`: sem valor
   default em produção — o servidor falha ao subir se não estiver
   configurada.
-- Cobertura: `db/__tests__/authRepo.test.ts` (21 testes, incluindo
-  `createFirstAdmin`, o ciclo de `requestPasswordReset` e
-  `changeOwnPassword`) e `db/__tests__/peopleRepo.test.ts`
+- Cobertura: `db/__tests__/authRepo.test.ts` (32 testes, incluindo
+  `createFirstAdmin`, o ciclo de `requestPasswordReset`,
+  `changeOwnPassword`, `hasUnactivatedAdministrator` e
+  `claimAdministratorAccount`) e `db/__tests__/peopleRepo.test.ts`
   (`countPeople`) no backend; `LoginScreen.test.tsx`,
-  `BootstrapAdminSetup.test.tsx`, `SetPasswordScreen.test.tsx`,
-  `ForgotPasswordScreen.test.tsx` e `ChangePasswordModal.test.tsx` no
-  front-end. As rotas HTTP em si foram validadas manualmente de ponta a
-  ponta (bootstrap → cadastrar pessoa → esqueci a senha → fila do
-  Administrador → gerar link → definir senha → login → trocar a própria
-  senha → login com a senha nova → checar permissão por papel → logout)
-  em vez de teste de integração HTTP automatizado — mesma lacuna já
-  registrada para as rotas de admin em `_local-adr-policy-201`.
+  `BootstrapAdminSetup.test.tsx`, `ClaimAdminScreen.test.tsx`,
+  `SetPasswordScreen.test.tsx`, `ForgotPasswordScreen.test.tsx` e
+  `ChangePasswordModal.test.tsx` no front-end. As rotas HTTP em si foram
+  validadas manualmente de ponta a ponta — incluindo, especificamente
+  para a ativação, o cenário real (banco pré-populado com dois
+  Administradores e um Técnico, nenhum com senha: código errado → 403,
+  matrícula de quem não é Administrador → 400, ativação certa → 200,
+  `bootstrap-status` continua `needsAdminClaim: true` enquanto sobrar
+  alguém, vira `false` só depois que todos ativaram) — em vez de teste
+  de integração HTTP automatizado, mesma lacuna já registrada para as
+  rotas de admin em `_local-adr-policy-201`.
 
 ## References
 
 - Arquivos: `db/migrations/009_auth.sql`,
-  `db/migrations/010_password_reset_requests.sql`, `db/authRepo.ts`,
-  `server.ts`, `src/services/authService.ts`,
+  `db/migrations/010_password_reset_requests.sql`,
+  `db/migrations/011_login_attempts.sql`, `db/authRepo.ts`,
+  `server.ts`, `src/services/authService.ts`, `src/services/csrf.ts`,
   `src/components/LoginScreen.tsx`, `src/components/BootstrapAdminSetup.tsx`,
+  `src/components/ClaimAdminScreen.tsx`,
   `src/components/SetPasswordScreen.tsx`,
   `src/components/ForgotPasswordScreen.tsx`,
   `src/components/ChangePasswordModal.tsx`
 - Testes: `db/__tests__/authRepo.test.ts`, `db/__tests__/peopleRepo.test.ts`,
-  `src/components/__tests__/{LoginScreen,BootstrapAdminSetup,SetPasswordScreen,ForgotPasswordScreen,ChangePasswordModal}.test.tsx`
-- Manual do usuário: `public/manuais/manual-administrador-contas-v3.html`
-  (gestão de contas, com o passo a passo da fila de "esqueci a senha" e
-  da troca de senha por conta própria) e
+  `src/components/__tests__/{LoginScreen,BootstrapAdminSetup,ClaimAdminScreen,SetPasswordScreen,ForgotPasswordScreen,ChangePasswordModal}.test.tsx`
+- Manual do usuário: `public/manuais/manual-administrador-contas-v4.html`
+  (gestão de contas — inclui a seção "Primeiro acesso do Administrador",
+  com o passo a passo da migração de dados antigos) e
   `public/manuais/manual-sigcoi-completo-v6.html` (seção "Perfis de
   acesso" atualizada)
 - Policy relacionada: `_local-adr-policy-201` (a Zona de Risco é

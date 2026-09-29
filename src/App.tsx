@@ -16,6 +16,7 @@ import { fetchCurrentUser, fetchBootstrapStatus, logoutApi } from './services/au
 import { Header } from './components/Header';
 import { LoginScreen } from './components/LoginScreen';
 import { BootstrapAdminSetup } from './components/BootstrapAdminSetup';
+import { ClaimAdminScreen } from './components/ClaimAdminScreen';
 import { SetPasswordScreen } from './components/SetPasswordScreen';
 import { HomeDashboard } from './components/HomeDashboard';
 import { DocumentSearchViewer } from './components/DocumentSearchViewer';
@@ -50,6 +51,10 @@ export default function App() {
   // conferida em GET /api/auth/me.
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [needsBootstrap, setNeedsBootstrap] = useState<boolean>(false);
+  // true quando o sistema já tem gente cadastrada de antes do login real
+  // (inclusive Administrador), sem senha nenhuma — a migração de dados
+  // antigos, não a instalação nova (ver ClaimAdminScreen.tsx).
+  const [needsAdminClaim, setNeedsAdminClaim] = useState<boolean>(false);
   const [people, setPeople] = useState<UserProfile[]>([]);
   const [collections, setCollections] = useState<OsteologicalCollection[]>([]);
   const [authorizations, setAuthorizations] = useState<ResearchAuthorization[]>(MOCK_RESEARCH_AUTHORIZATIONS);
@@ -141,6 +146,7 @@ export default function App() {
         if (!me) {
           const status = await fetchBootstrapStatus();
           setNeedsBootstrap(status.needsBootstrap);
+          setNeedsAdminClaim(status.needsAdminClaim);
           return;
         }
         setCurrentUser(me);
@@ -371,9 +377,9 @@ export default function App() {
   }
 
   if (!currentUser) {
-    return needsBootstrap
-      ? <BootstrapAdminSetup onLoggedIn={handleLoggedIn} />
-      : <LoginScreen onLoggedIn={handleLoggedIn} />;
+    if (needsBootstrap) return <BootstrapAdminSetup onLoggedIn={handleLoggedIn} />;
+    if (needsAdminClaim) return <ClaimAdminScreen onLoggedIn={handleLoggedIn} />;
+    return <LoginScreen onLoggedIn={handleLoggedIn} />;
   }
 
   return (

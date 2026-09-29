@@ -19,9 +19,24 @@ async function parseJsonOrThrow(res: Response, fallbackMessage: string) {
   return data;
 }
 
-export async function fetchBootstrapStatus(): Promise<{ needsBootstrap: boolean }> {
+export async function fetchBootstrapStatus(): Promise<{ needsBootstrap: boolean; needsAdminClaim: boolean }> {
   const res = await fetch('/api/auth/bootstrap-status');
   return parseJsonOrThrow(res, 'Erro ao conferir status inicial do sistema');
+}
+
+// Ativa o acesso de um Administrador que já existia antes do login real (papel
+// cadastrado, sem senha) — usado na migração de dados antigos para o login
+// real, com o código de ativação (ADMIN_BOOTSTRAP_SECRET) entregue por fora
+// do sistema por quem configura o ambiente. Ver fetchBootstrapStatus acima.
+export async function claimAdminApi(registrationNumber: string, bootstrapSecret: string, newPassword: string): Promise<UserProfile> {
+  const res = await fetch('/api/auth/claim-admin', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ registrationNumber, bootstrapSecret, newPassword })
+  });
+  const result = await parseJsonOrThrow(res, 'Erro ao ativar a conta de Administrador');
+  setCsrfToken(result.csrfToken);
+  return result.person;
 }
 
 export async function bootstrapAdminApi(data: {

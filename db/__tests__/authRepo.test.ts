@@ -15,7 +15,9 @@ import {
   changeOwnPassword,
   isLoginLocked,
   recordFailedLogin,
-  clearLoginAttempts
+  clearLoginAttempts,
+  hasUnactivatedAdministrator,
+  claimAdministratorAccount
 } from '../authRepo';
 
 const TEST_DATABASE_URL =
@@ -285,5 +287,53 @@ describe('authRepo', () => {
     const { rows } = await pool.query('SELECT failed_count, locked_until FROM login_attempts WHERE person_id = $1', [person.id]);
     expect(rows[0].failed_count).toBe(1);
     expect(rows[0].locked_until).toBeNull();
+  });
+
+  it('hasUnactivatedAdministrator devolve false quando não há ninguém, ou só gente sem o papel, ou já ativado', async () => {
+    expect(await hasUnactivatedAdministrator(pool)).toBe(false);
+
+    await createPerson(pool, { name: 'Técnico', role: 'tecnico', institution: 'INC', registrationNumber: '900' });
+    expect(await hasUnactivatedAdministrator(pool)).toBe(false);
+
+    const admin = await createPerson(pool, { name: 'Admin Antigo', role: 'administrador', institution: 'INC', registrationNumber: '901' });
+    expect(await hasUnactivatedAdministrator(pool)).toBe(true);
+
+    const passwordHash = await hashPassword('senha-ja-ativa-123');
+    await pool.query('UPDATE people SET password_hash = $1 WHERE id = $2', [passwordHash, admin.id]);
+    expect(await hasUnactivatedAdministrator(pool)).toBe(false);
+  });
+
+  it('claimAdministratorAccount ativa um Administrador dos dados antigos (papel já cadastrado, sem senha)', async () => {
+    const admin = await createPerson(pool, { name: 'Nicole', role: 'administrador', institution: 'INC', registrationNumber: 'NIC-001' });
+
+    const activated = await claimAdministratorAccount(pool, 'NIC-001', 'senha-ativacao-123');
+
+    expect(activated).toEqual(admin);
+    expect(await hasUnactivatedAdministrator(pool)).toBe(false);
+    expect(await verifyLogin(pool, 'NIC-001', 'senha-ativacao-123')).toEqual(admin);
+  });
+
+  it('claimAdministratorAccount recusa matrícula que não existe', async () => {
+    await expect(claimAdministratorAccount(pool, 'não-existe', 'senha-123456')).rejects.toThrow(
+      'Não há Administrador pendente de ativação com essa matrícula.'
+    );
+  });
+
+  it('claimAdministratorAccount recusa quem não é Administrador', async () => {
+    await createPerson(pool, { name: 'Técnico Comum', role: 'tecnico', institution: 'INC', registrationNumber: '902' });
+
+    await expect(claimAdministratorAccount(pool, '902', 'senha-123456')).rejects.toThrow(
+      'Não há Administrador pendente de ativação com essa matrícula.'
+    );
+  });
+
+  it('claimAdministratorAccount recusa quem já tem senha (já foi ativado antes)', async () => {
+    const admin = await createPerson(pool, { name: 'Já Ativou', role: 'administrador', institution: 'INC', registrationNumber: '903' });
+    const passwordHash = await hashPassword('senha-existente-123');
+    await pool.query('UPDATE people SET password_hash = $1 WHERE id = $2', [passwordHash, admin.id]);
+
+    await expect(claimAdministratorAccount(pool, '903', 'outra-senha-123')).rejects.toThrow(
+      'Não há Administrador pendente de ativação com essa matrícula.'
+    );
   });
 });

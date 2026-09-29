@@ -36,11 +36,16 @@ conferir a qualquer momento que o que está no ar corresponde exatamente ao
 código deste repositório.
 
 Login real: matrícula + senha, com sessão no servidor (cookie httpOnly) — ao
-abrir o sistema pela primeira vez com o banco totalmente vazio, ele pede o
-cadastro do primeiro Administrador (com senha já definida ali). Depois
-disso, toda pessoa nova é cadastrada por um Administrador logado, que gera
-um link de uso único para cada pessoa definir a própria senha. Ver o manual
-"Administrador — Gestão de Contas" na aba Documentos do próprio sistema.
+abrir o sistema com o banco totalmente vazio, ele pede o cadastro do
+primeiro Administrador (com senha já definida ali). **Ao migrar dados
+antigos** (gente já cadastrada, sem senha nenhuma — o caso real da COI-INC),
+esse cadastro nunca aparece; em vez disso, quem já era Administrador ativa
+a própria conta com a matrícula + um código de ativação
+(`ADMIN_BOOTSTRAP_SECRET`, configurado por quem tem acesso ao ambiente) — ver
+a seção "Primeiro acesso do Administrador" do manual "Administrador — Gestão
+de Contas", na aba Documentos do próprio sistema. Depois disso, toda pessoa
+nova é cadastrada por um Administrador logado, que gera um link de uso único
+para cada pessoa definir a própria senha.
 
 ## Fontes normativas
 
@@ -157,6 +162,7 @@ src/
   services/authService.ts            login, logout, bootstrap e link de definição de senha
   components/LoginScreen.tsx          tela de entrada (matrícula + senha)
   components/BootstrapAdminSetup.tsx  cadastro do 1º Administrador (banco vazio)
+  components/ClaimAdminScreen.tsx     ativa Administrador de dados antigos (banco não vazio)
   components/SetPasswordScreen.tsx    tela pública do link de definição de senha
   components/              telas por fase, condutor de voz, visualizador do grafo
   utils/signatures.ts      leitura da assinatura vigente de uma fase (a mais
