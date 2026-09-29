@@ -1033,8 +1033,9 @@ const VALID_PEOPLE_ROLES = new Set(['tecnico', 'curador', 'administrador', 'pesq
 
 app.post('/api/people', requireAdminSession, async (req: Request, res: Response) => {
   try {
-    const { name, role, institution, registrationNumber } = req.body || {};
+    const { name, role, institution } = req.body || {};
     const email = String(req.body?.email || '').trim();
+    const registrationNumber = String(req.body?.registrationNumber || '').trim();
     if (!name || !role || !institution || !email) {
       return res.status(400).json({ error: 'Informe name, role, institution e email.' });
     }
