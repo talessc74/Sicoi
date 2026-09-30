@@ -28,18 +28,18 @@ describe('collectionsService', () => {
     await expect(fetchCollections()).rejects.toThrow('Erro ao carregar conjuntos');
   });
 
-  it('createCollectionApi envia POST com o conjunto e o actorId', async () => {
+  it('createCollectionApi envia POST com o conjunto (sem actorId — identidade vem da sessão)', async () => {
     const collection = { nic: 'NIC-2026-0841' } as any;
     mockFetchOnce(201, { collection });
 
-    const created = await createCollectionApi(collection, 'actor-1');
+    const created = await createCollectionApi(collection);
 
     expect(created).toEqual(collection);
     expect(fetch).toHaveBeenCalledWith(
       '/api/collections',
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ collection, actorId: 'actor-1' })
+        body: JSON.stringify({ collection })
       })
     );
   });
@@ -48,7 +48,7 @@ describe('collectionsService', () => {
     const collection = { nic: 'NIC/2026 0841' } as any;
     mockFetchOnce(200, { collection });
 
-    await saveCollectionApi(collection, 'actor-1');
+    await saveCollectionApi(collection);
 
     expect(fetch).toHaveBeenCalledWith(
       `/api/collections/${encodeURIComponent('NIC/2026 0841')}`,
