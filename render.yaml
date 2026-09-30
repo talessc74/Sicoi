@@ -27,3 +27,11 @@ services:
         sync: false
       - key: APP_URL
         sync: false
+      - key: SESSION_SECRET
+        sync: false
+      # Opcional — só para migrar dados antigos (gente já cadastrada sem
+      # senha nenhuma) para o login real. Ver .env.example e o manual do
+      # Administrador. Remova esta variável depois que todos os
+      # Administradores dos dados antigos tiverem ativado a própria conta.
+      - key: ADMIN_BOOTSTRAP_SECRET
+        sync: false
