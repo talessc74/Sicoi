@@ -5,22 +5,19 @@
 --
 -- 1. people.password_hash: nunca a senha em si — sempre um hash bcrypt.
 --    Nulo até a pessoa definir a senha pela primeira vez.
--- 2. registration_number passa a ser único: é o identificador de login.
--- 3. password_setup_tokens: o Administrador gera um link de "definir senha"
+-- 2. password_setup_tokens: o Administrador gera um link de "definir senha"
 --    por pessoa (token de uso único, com validade), entregue por fora do
 --    sistema. Só o hash SHA-256 do token fica gravado — o token em si nunca é
 --    persistido, só devolvido uma vez no momento da geração.
--- 4. session: schema do connect-pg-simple (guarda a sessão de quem está
+-- 3. session: schema do connect-pg-simple (guarda a sessão de quem está
 --    logado) — criado aqui, não pela biblioteca, para ficar rastreado como
 --    qualquer outra tabela do projeto.
+--
+-- O identificador único de login é definido só na migration 012 (e-mail);
+-- matrícula nunca chegou a ser o identificador em produção de verdade.
 
 ALTER TABLE people
   ADD COLUMN IF NOT EXISTS password_hash TEXT;
-
--- Pode falhar se já existirem matrículas duplicadas nos dados reais — nesse
--- caso, é preciso resolver a duplicidade antes de aplicar esta migração.
-CREATE UNIQUE INDEX IF NOT EXISTS people_registration_number_key
-  ON people (registration_number);
 
 CREATE TABLE IF NOT EXISTS password_setup_tokens (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
