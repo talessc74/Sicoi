@@ -3,7 +3,6 @@
  * Substitui o estado local em memória (mockData) como fonte de verdade do App.
  */
 import { OsteologicalCollection } from '../types/sgccco';
-import { csrfHeaders } from './csrf';
 
 async function parseJsonOrThrow(res: Response, fallbackMessage: string) {
   let data: any = null;
@@ -24,23 +23,23 @@ export async function fetchCollections(): Promise<OsteologicalCollection[]> {
   return data.collections;
 }
 
-// Quem está gravando vem da sessão de login no servidor (cookie) — não é mais
-// enviado pelo cliente. Ver _local-adr-policy-202.
-export async function createCollectionApi(collection: OsteologicalCollection): Promise<OsteologicalCollection> {
+export async function createCollectionApi(collection: OsteologicalCollection, actorId?: string): Promise<OsteologicalCollection> {
   const res = await fetch('/api/collections', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
-    body: JSON.stringify({ collection })
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ collection, actorId })
   });
   const data = await parseJsonOrThrow(res, 'Erro ao criar conjunto');
   return data.collection;
 }
 
-export async function saveCollectionApi(collection: OsteologicalCollection): Promise<OsteologicalCollection> {
+// `actorId`: id da pessoa ativa, para o registro de alterações (nome e papel o
+// servidor busca no cadastro).
+export async function saveCollectionApi(collection: OsteologicalCollection, actorId?: string): Promise<OsteologicalCollection> {
   const res = await fetch(`/api/collections/${encodeURIComponent(collection.nic)}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
-    body: JSON.stringify({ collection })
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ collection, actorId })
   });
   const data = await parseJsonOrThrow(res, 'Erro ao salvar conjunto');
   return data.collection;

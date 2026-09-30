@@ -12,12 +12,8 @@ import {
 import { createEmptyPhase1Data, createEmptyPhase2Data } from './data/phaseDefaults';
 import { fetchCollections, createCollectionApi, saveCollectionApi } from './services/collectionsService';
 import { fetchPeople, createPersonApi, deletePersonApi } from './services/peopleService';
-import { fetchCurrentUser, fetchBootstrapStatus, logoutApi } from './services/authService';
 import { Header } from './components/Header';
-import { LoginScreen } from './components/LoginScreen';
-import { BootstrapAdminSetup } from './components/BootstrapAdminSetup';
-import { ClaimAdminScreen } from './components/ClaimAdminScreen';
-import { SetPasswordScreen } from './components/SetPasswordScreen';
+import { FirstPersonSetup } from './components/FirstPersonSetup';
 import { HomeDashboard } from './components/HomeDashboard';
 import { DocumentSearchViewer } from './components/DocumentSearchViewer';
 import { SettingsView } from './components/SettingsView';
@@ -38,23 +34,11 @@ import { GeminiForensicChatModal } from './components/GeminiForensicChatModal';
 import { NewCollectionModal } from './components/NewCollectionModal';
 import { Plus, ShieldCheck, Bot, Sparkles, Loader2, CheckCircle2 } from 'lucide-react';
 
-// Link de "definir senha" (gerado pelo Administrador, entregue por fora do
-// sistema — ver _local-adr-policy-202): chega como ?token=... na URL. Sem
-// roteador nesta SPA — lido uma vez, fora do componente, porque não muda
-// durante a sessão da aba.
-const passwordSetupToken = new URLSearchParams(window.location.search).get('token');
-
 export default function App() {
-  // Login real (Fase 3): currentUser só existe depois de POST /api/auth/login
-  // (ou do bootstrap do primeiro Administrador) ter criado uma sessão válida no
-  // servidor — nunca é "escolhido" localmente. Começa null até a sessão ser
-  // conferida em GET /api/auth/me.
+  // Sem login/senha ainda — currentUser é "quem está operando", escolhido entre as
+  // pessoas cadastradas no banco (ver FirstPersonSetup / handleCreatePerson). Começa
+  // null; só é preenchido depois que a lista de pessoas carrega.
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
-  const [needsBootstrap, setNeedsBootstrap] = useState<boolean>(false);
-  // true quando o sistema já tem gente cadastrada de antes do login real
-  // (inclusive Administrador), sem senha nenhuma — a migração de dados
-  // antigos, não a instalação nova (ver ClaimAdminScreen.tsx).
-  const [needsAdminClaim, setNeedsAdminClaim] = useState<boolean>(false);
   const [people, setPeople] = useState<UserProfile[]>([]);
   const [collections, setCollections] = useState<OsteologicalCollection[]>([]);
   const [authorizations, setAuthorizations] = useState<ResearchAuthorization[]>(MOCK_RESEARCH_AUTHORIZATIONS);
@@ -77,51 +61,14 @@ export default function App() {
   // testar do zero) NÃO é uma falha e não deve travar a tela.
   const [initialLoadFailed, setInitialLoadFailed] = useState<boolean>(false);
 
-  // Carrega conjuntos e pessoas depois que já se sabe quem está logado — o banco é
-  // sempre a fonte de verdade (um banco vazio de conjuntos é um estado válido, não
-  // é mais semeado com dados de exemplo). Usado tanto na conferência inicial de
-  // sessão quanto imediatamente depois de um login bem-sucedido.
+  // Carrega os conjuntos do Postgres ao abrir o app. O banco é sempre a fonte de
+  // verdade — um banco vazio é um estado válido (ninguém criou conjunto ainda),
+  // não é mais semeado automaticamente com dados de exemplo (isso escondia a
+  // possibilidade de testar o app do zero). Ver handleSeedExampleData para
+  // carregar os exemplos sob demanda.
   //
-  // A lista de pessoas (nome, papel, instituição e e-mail de todo mundo) só é
-  // buscada para quem está logado como Administrador — o servidor recusa (403)
-  // pedidos de qualquer outro papel, e não há razão para um Técnico ou Estudante
-  // ver o e-mail (o identificador de login) de todas as outras pessoas.
-  const loadAppData = async (role: UserRole) => {
-    const [loadedCollections, loadedPeople] = await Promise.all([
-      fetchCollections(),
-      role === 'administrador' ? fetchPeople() : Promise.resolve([])
-    ]);
-    setCollections(loadedCollections);
-    setSelectedNic(loadedCollections[0]?.nic || '');
-    setActivePhase(loadedCollections[0]?.currentPhase || 1);
-    setPeople(loadedPeople);
-  };
-
-  const handleLoggedIn = async (person: UserProfile) => {
-    setCurrentUser(person);
-    setIsLoadingCollections(true);
-    try {
-      await loadAppData(person.role);
-      setSyncError(null);
-    } catch (err: any) {
-      console.error('Falha ao carregar dados após login:', err);
-      setSyncError(err?.message || 'Não foi possível conectar ao banco de dados.');
-      setInitialLoadFailed(true);
-    } finally {
-      setIsLoadingCollections(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    await logoutApi();
-    setCurrentUser(null);
-    setPeople([]);
-    setActiveTab('inicio');
-  };
-
   // hasStartedRef evita que o StrictMode (que invoca efeitos duas vezes em
-  // desenvolvimento de propósito) dispare a conferência de sessão duas vezes em
-  // paralelo.
+  // desenvolvimento de propósito) dispare o fetch duas vezes em paralelo.
   //
   // Importante: como hasStartedRef já garante uma única execução real do fetch,
   // NÃO usamos o padrão usual de "cancelled" no cleanup do efeito — o StrictMode
@@ -134,23 +81,14 @@ export default function App() {
   useEffect(() => {
     if (hasStartedRef.current) return;
     hasStartedRef.current = true;
-    // A tela de "definir senha" (link de uso único) é isolada — não depende de
-    // sessão nem carrega conjuntos/pessoas.
-    if (passwordSetupToken) {
-      setIsLoadingCollections(false);
-      return;
-    }
     (async () => {
       try {
-        const me = await fetchCurrentUser();
-        if (!me) {
-          const status = await fetchBootstrapStatus();
-          setNeedsBootstrap(status.needsBootstrap);
-          setNeedsAdminClaim(status.needsAdminClaim);
-          return;
-        }
-        setCurrentUser(me);
-        await loadAppData(me.role);
+        const [loadedCollections, loadedPeople] = await Promise.all([fetchCollections(), fetchPeople()]);
+        setCollections(loadedCollections);
+        setSelectedNic(loadedCollections[0]?.nic || '');
+        setActivePhase(loadedCollections[0]?.currentPhase || 1);
+        setPeople(loadedPeople);
+        setCurrentUser(loadedPeople[0] || null);
       } catch (err: any) {
         console.error('Falha ao carregar dados iniciais do banco:', err);
         setSyncError(err?.message || 'Não foi possível conectar ao banco de dados.');
@@ -161,19 +99,21 @@ export default function App() {
     })();
   }, []);
 
-  // Cadastra uma nova pessoa (papel de acesso) — só o Administrador logado pode
-  // (o servidor reconfere). A pessoa criada ainda não tem senha: o Administrador
-  // gera o link de definição de senha para ela em Configurações.
-  const handleCreatePerson = async (person: { name: string; role: UserRole; institution: string; email: string }) => {
+  // Cadastra uma nova pessoa (papel de acesso) — sem login/senha ainda. Se for a
+  // primeira pessoa cadastrada, ela também vira o usuário ativo automaticamente.
+  const handleCreatePerson = async (person: { name: string; role: UserRole; institution: string; registrationNumber: string }) => {
     const created = await createPersonApi(person);
     setPeople((prev) => [...prev, created]);
+    if (!currentUser) setCurrentUser(created);
     setSyncError(null);
   };
 
   const handleDeletePerson = async (id: string) => {
     try {
       await deletePersonApi(id);
-      setPeople((prev) => prev.filter((p) => p.id !== id));
+      const remaining = people.filter((p) => p.id !== id);
+      setPeople(remaining);
+      if (currentUser?.id === id) setCurrentUser(remaining[0] || null);
       setSyncError(null);
     } catch (err: any) {
       console.error('Falha ao remover pessoa:', err);
@@ -198,7 +138,7 @@ export default function App() {
     // mais nova (e o servidor, que protege o histórico, recusaria a mais antiga).
     const queued = (saveQueueRef.current[updated.nic] || Promise.resolve())
       .catch(() => undefined)
-      .then(() => saveCollectionApi(updated));
+      .then(() => saveCollectionApi(updated, currentUser?.id));
     saveQueueRef.current[updated.nic] = queued;
     queued
       .then(() => {
@@ -296,7 +236,7 @@ export default function App() {
     };
 
     try {
-      const created = await createCollectionApi(newCol);
+      const created = await createCollectionApi(newCol, currentUser.id);
       setCollections(prev => [created, ...prev]);
       setSelectedNic(newNic);
       setActivePhase(1);
@@ -347,12 +287,6 @@ export default function App() {
     setCollections(loaded);
   };
 
-  // Link de "definir senha" (?token=...) é uma tela isolada, sem depender de
-  // sessão nem de conjuntos carregados — verificado antes de qualquer outro gate.
-  if (passwordSetupToken) {
-    return <SetPasswordScreen token={passwordSetupToken} />;
-  }
-
   if (isLoadingCollections) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950 text-slate-500 dark:text-slate-400 text-sm font-mono">
@@ -377,9 +311,7 @@ export default function App() {
   }
 
   if (!currentUser) {
-    if (needsBootstrap) return <BootstrapAdminSetup onLoggedIn={handleLoggedIn} />;
-    if (needsAdminClaim) return <ClaimAdminScreen onLoggedIn={handleLoggedIn} />;
-    return <LoginScreen onLoggedIn={handleLoggedIn} />;
+    return <FirstPersonSetup onCreatePerson={handleCreatePerson} />;
   }
 
   return (
@@ -393,7 +325,9 @@ export default function App() {
       {/* Top Header with Main Navigation Menu (§User Request) */}
       <Header
         currentUser={currentUser}
-        onLogout={handleLogout}
+        onUserChange={setCurrentUser}
+        people={people}
+        onCreatePerson={handleCreatePerson}
         onOpenQrScanner={() => setIsQrModalOpen(true)}
         activeTab={activeTab}
         onSelectTab={setActiveTab}
@@ -510,6 +444,7 @@ export default function App() {
         {activeTab === 'configuracoes' && (
           <SettingsView
             currentUser={currentUser}
+            onUserChange={setCurrentUser}
             people={people}
             onCreatePerson={handleCreatePerson}
             onDeletePerson={handleDeletePerson}

@@ -1,9 +1,8 @@
 # SIGCOI — Sistema de Gestão da Coleção Osteológica Identificada
 
 **Status: Alfa.** Em desenvolvimento ativo — funcional de ponta a ponta (ver
-"Estado atual" abaixo), com login real (e-mail + senha) desde a Fase 3
-de `_local-adr-policy-202`, mas ainda sem certificação campo a campo contra
-os apêndices oficiais do POP-02. Não use "v3.2" ou
+"Estado atual" abaixo), mas ainda sem login/senha real e sem certificação
+campo a campo contra os apêndices oficiais do POP-02. Não use "v3.2" ou
 qualquer numeração de versão solta por aí como referência: a única versão
 que importa é o hash do commit em execução, mostrado no topo de toda tela da
 aplicação (ver "Acessar agora" abaixo).
@@ -35,17 +34,9 @@ qualquer tela da aplicação mostra o hash do commit em execução, para
 conferir a qualquer momento que o que está no ar corresponde exatamente ao
 código deste repositório.
 
-Login real: e-mail + senha, com sessão no servidor (cookie httpOnly) — ao
-abrir o sistema com o banco totalmente vazio, ele pede o cadastro do
-primeiro Administrador (com senha já definida ali). **Ao migrar dados
-antigos** (gente já cadastrada, sem senha nenhuma), esse cadastro nunca
-aparece; em vez disso, quem já era Administrador ativa a própria conta com
-o e-mail + um código de ativação
-(`ADMIN_BOOTSTRAP_SECRET`, configurado por quem tem acesso ao ambiente) — ver
-a seção "Primeiro acesso do Administrador" do manual "Administrador — Gestão
-de Contas", na aba Documentos do próprio sistema. Depois disso, toda pessoa
-nova é cadastrada por um Administrador logado, que gera um link de uso único
-para cada pessoa definir a própria senha.
+Não há login/senha ainda (ver "Pendências conhecidas" abaixo) — ao abrir o
+sistema pela primeira vez, ele pede o cadastro da primeira pessoa (nome,
+papel, instituição, matrícula) para identificar quem está operando.
 
 ## Fontes normativas
 
@@ -118,10 +109,9 @@ consulte o índice `.xdrs/_local/index.md` daquele repositório.
   Dentro da Fase 4, a busca de referência para comparação entre conjuntos (um dos
   dois agentes de apoio previstos em `_local-adr-policy-001`) é só a interface
   — o modal existe mas a busca em si ainda não está implementada.
-- **Pendências conhecidas, fora do escopo até agora:** validação de entrada
-  mais rígida no backend, CSRF nas rotas que alteram estado, rate-limit de
-  login persistente entre reinícios do servidor (hoje é em memória — ver
-  `_local-adr-policy-202`).
+- **Pendências conhecidas, fora do escopo até agora:** login/senha real (o
+  cadastro de pessoas identifica quem está operando, mas não autentica),
+  CORS restrito (hoje `*`), validação de entrada mais rígida no backend.
 
 ## Rodando localmente
 
@@ -150,8 +140,7 @@ server.ts              servidor Express — API + serve o build em produção
 db/                     pool, migrações versionadas, camadas de acesso a dados
   migrations/*.sql       schema versionado, aplicado automaticamente no boot
   collectionsRepo.ts      persistência do conjunto (full_state + tabelas derivadas)
-  peopleRepo.ts            cadastro de pessoas (papéis de acesso)
-  authRepo.ts              login real: hash de senha, sessão, token de definição de senha
+  peopleRepo.ts            cadastro de pessoas (sem login/senha — só identificação)
   graphSync.ts            deriva o Grafo de Conhecimento a partir de cada conjunto
   graphRepo.ts             leitura do grafo (explain/path/search)
 src/
@@ -159,11 +148,7 @@ src/
   data/phaseDefaults.ts    forma vazia dos formulários — fonte única de verdade
   services/popConductorService.ts   roteiro + regras de extração por fase (context-aware)
   services/voiceAgent.ts             TTS/STT do condutor — unlock() para Safari/iOS
-  services/authService.ts            login, logout, bootstrap e link de definição de senha
-  components/LoginScreen.tsx          tela de entrada (e-mail + senha)
-  components/BootstrapAdminSetup.tsx  cadastro do 1º Administrador (banco vazio)
-  components/ClaimAdminScreen.tsx     ativa Administrador de dados antigos (banco não vazio)
-  components/SetPasswordScreen.tsx    tela pública do link de definição de senha
+  components/FirstPersonSetup.tsx    tela bloqueante de cadastro da 1ª pessoa
   components/              telas por fase, condutor de voz, visualizador do grafo
   utils/signatures.ts      leitura da assinatura vigente de uma fase (a mais
                             recente — uma fase pode acumular histórico de
