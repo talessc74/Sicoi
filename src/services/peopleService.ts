@@ -1,11 +1,7 @@
 /**
- * Cliente HTTP para o cadastro de pessoas (papéis de acesso). Listar exige sessão
- * autenticada; cadastrar e remover exigem sessão de Administrador — o servidor
- * reconfere (ver _local-adr-policy-202). A senha de cada pessoa é definida
- * separadamente, pelo link gerado em authService.generateSetupLinkApi.
+ * Cliente HTTP para o cadastro de pessoas (papéis de acesso, sem login/senha ainda).
  */
 import { UserProfile } from '../types/sgccco';
-import { csrfHeaders } from './csrf';
 
 async function parseJsonOrThrow(res: Response, fallbackMessage: string) {
   let data: any = null;
@@ -30,11 +26,11 @@ export async function createPersonApi(person: {
   name: string;
   role: UserProfile['role'];
   institution: string;
-  email: string;
+  registrationNumber: string;
 }): Promise<UserProfile> {
   const res = await fetch('/api/people', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(person)
   });
   const data = await parseJsonOrThrow(res, 'Erro ao cadastrar pessoa');
@@ -42,6 +38,6 @@ export async function createPersonApi(person: {
 }
 
 export async function deletePersonApi(id: string): Promise<void> {
-  const res = await fetch(`/api/people/${encodeURIComponent(id)}`, { method: 'DELETE', headers: csrfHeaders() });
+  const res = await fetch(`/api/people/${encodeURIComponent(id)}`, { method: 'DELETE' });
   await parseJsonOrThrow(res, 'Erro ao remover pessoa');
 }
