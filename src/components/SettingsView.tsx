@@ -19,6 +19,7 @@ import {
   AlertTriangle,
   Users,
   UserPlus,
+  Pencil,
   Link2,
   Copy,
   Loader2,
@@ -37,6 +38,7 @@ interface SettingsViewProps {
   currentUser: UserProfile;
   people: UserProfile[];
   onCreatePerson: (person: { name: string; role: UserRole; institution: string; email: string }) => Promise<void>;
+  onUpdatePerson: (id: string, person: { name: string; role: UserRole; institution: string; email: string }) => Promise<void>;
   onDeletePerson: (id: string) => Promise<void>;
   laboratoryMode: boolean;
   onToggleLaboratoryMode: () => void;
@@ -48,6 +50,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   currentUser,
   people,
   onCreatePerson,
+  onUpdatePerson,
   onDeletePerson,
   laboratoryMode,
   onToggleLaboratoryMode,
@@ -67,6 +70,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [createPersonError, setCreatePersonError] = useState<string | null>(null);
   const [personPendingDeletion, setPersonPendingDeletion] = useState<UserProfile | null>(null);
   const isAdmin = currentUser.role === 'administrador';
+
+  // Edição de uma pessoa já cadastrada — principal uso: preencher o e-mail de
+  // quem ainda é um registro antigo (de antes do login real, sem e-mail).
+  const [editingPersonId, setEditingPersonId] = useState<string | null>(null);
+  const [editPersonName, setEditPersonName] = useState('');
+  const [editPersonRole, setEditPersonRole] = useState<UserRole>('tecnico');
+  const [editPersonInstitution, setEditPersonInstitution] = useState('');
+  const [editPersonEmail, setEditPersonEmail] = useState('');
+  const [isSavingPerson, setIsSavingPerson] = useState(false);
+  const [editPersonError, setEditPersonError] = useState<string | null>(null);
 
   // Link de definição de senha gerado por último — mostrado uma única vez (o
   // token só existe em texto puro nesta resposta; depois só o hash fica no banco).
@@ -139,6 +152,39 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       setCreatePersonError(err?.message || 'Não foi possível cadastrar a pessoa.');
     } finally {
       setIsCreatingPerson(false);
+    }
+  };
+
+  const handleStartEditPerson = (person: UserProfile) => {
+    setEditingPersonId(person.id);
+    setEditPersonName(person.name);
+    setEditPersonRole(person.role);
+    setEditPersonInstitution(person.institution);
+    setEditPersonEmail(person.email || '');
+    setEditPersonError(null);
+  };
+
+  const handleCancelEditPerson = () => {
+    setEditingPersonId(null);
+    setEditPersonError(null);
+  };
+
+  const handleSaveEditPerson = async () => {
+    if (!editingPersonId || !editPersonName.trim() || !editPersonInstitution.trim() || !editPersonEmail.trim()) return;
+    setIsSavingPerson(true);
+    setEditPersonError(null);
+    try {
+      await onUpdatePerson(editingPersonId, {
+        name: editPersonName.trim(),
+        role: editPersonRole,
+        institution: editPersonInstitution.trim(),
+        email: editPersonEmail.trim()
+      });
+      setEditingPersonId(null);
+    } catch (err: any) {
+      setEditPersonError(err?.message || 'Não foi possível salvar as alterações.');
+    } finally {
+      setIsSavingPerson(false);
     }
   };
 
@@ -440,6 +486,62 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           {people.map((person) => {
             const theme = getRoleTheme(person.role);
             const RoleIcon = theme.icon;
+
+            if (editingPersonId === person.id) {
+              return (
+                <div key={person.id} className="p-4 bg-slate-50 dark:bg-slate-950/40 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <input
+                    type="text"
+                    value={editPersonName}
+                    onChange={(e) => setEditPersonName(e.target.value)}
+                    placeholder="Nome completo"
+                    className="p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                  />
+                  <select
+                    value={editPersonRole}
+                    onChange={(e) => setEditPersonRole(e.target.value as UserRole)}
+                    className="p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                  >
+                    {ROLE_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    value={editPersonInstitution}
+                    onChange={(e) => setEditPersonInstitution(e.target.value)}
+                    placeholder="Instituição"
+                    className="p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                  />
+                  <input
+                    type="email"
+                    value={editPersonEmail}
+                    onChange={(e) => setEditPersonEmail(e.target.value)}
+                    placeholder="E-mail (login)"
+                    className="p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                  />
+                  {editPersonError && (
+                    <p className="sm:col-span-2 text-xs text-rose-600 dark:text-rose-400 font-mono">{editPersonError}</p>
+                  )}
+                  <div className="sm:col-span-2 flex justify-end gap-2">
+                    <button
+                      onClick={handleCancelEditPerson}
+                      className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={handleSaveEditPerson}
+                      disabled={isSavingPerson || !editPersonName.trim() || !editPersonInstitution.trim() || !editPersonEmail.trim()}
+                      className="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold disabled:opacity-40"
+                    >
+                      {isSavingPerson ? 'Salvando...' : 'Salvar'}
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+
             return (
             <div key={person.id} className="p-4 flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -455,10 +557,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     </span>
                   )}
                 </div>
-                <p className="text-slate-400 mt-0.5">{person.institution} · {person.email}</p>
+                <p className="text-slate-400 mt-0.5">
+                  {person.institution} · {person.email || <span className="italic">sem e-mail cadastrado</span>}
+                </p>
               </div>
               {isAdmin && (
                 <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleStartEditPerson(person)}
+                    className="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-1.5"
+                    title="Editar nome, papel, instituição ou e-mail"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    Editar
+                  </button>
                   <button
                     onClick={() => handleGenerateSetupLink(person)}
                     disabled={generatingLinkForId === person.id}
