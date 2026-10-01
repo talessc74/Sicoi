@@ -1,7 +1,7 @@
 ---
 name: _local-adr-policy-202-login-real-sessao-servidor
 description: "Ser alguém" no sistema é provar e-mail + senha e receber uma sessão assinada pelo servidor (cookie httpOnly) — nunca o navegador declarando um actorId, nem um seletor de perfil de um clique. Use antes de adicionar qualquer rota ou tela nova que precise saber quem está agindo, ou antes de mudar o fluxo de cadastro/gestão de contas.
-apply-to: db/authRepo.ts, db/peopleRepo.ts, server.ts (middleware de sessão, csrfProtection, requireAuth/requireSessionRole, rotas /api/auth/* e /api/people), db/migrations/009_auth.sql, db/migrations/010_password_reset_requests.sql, db/migrations/011_login_attempts.sql, db/migrations/012_email_identity.sql, db/migrations/013_remove_registration_number.sql, src/services/authService.ts, src/services/csrf.ts, src/services/collectionsService.ts, src/services/adminService.ts, src/services/peopleService.ts, src/services/geminiService.ts, src/components/LoginScreen.tsx, src/components/BootstrapAdminSetup.tsx, src/components/ClaimAdminScreen.tsx, src/components/SetPasswordScreen.tsx, src/components/ForgotPasswordScreen.tsx, src/components/ChangePasswordModal.tsx, src/components/Header.tsx, src/components/SettingsView.tsx
+apply-to: db/authRepo.ts, db/peopleRepo.ts, server.ts (middleware de sessão, trust proxy, csrfProtection, requireAuth/requireSessionRole, rotas /api/auth/* e /api/people), db/migrations/009_auth.sql, db/migrations/010_password_reset_requests.sql, db/migrations/011_login_attempts.sql, db/migrations/012_email_identity.sql, db/migrations/013_remove_registration_number.sql, db/migrations/014_first_administrator.sql, db/migrations/015_ensure_first_administrator.sql, db/migrations/016_restore_registration_number_for_revert.sql, db/migrations/017_reset_pending_administrator.sql, src/services/authService.ts, src/services/csrf.ts, src/services/collectionsService.ts, src/services/adminService.ts, src/services/peopleService.ts, src/services/geminiService.ts, src/components/LoginScreen.tsx, src/components/BootstrapAdminSetup.tsx, src/components/ClaimAdminScreen.tsx, src/components/SetPasswordScreen.tsx, src/components/ForgotPasswordScreen.tsx, src/components/ChangePasswordModal.tsx, src/components/Header.tsx, src/components/SettingsView.tsx, src/App.tsx
 valid-from: 2026-09-28
 ---
 
@@ -264,25 +264,154 @@ sessão criada no login — nunca de um campo que o cliente envia.**
   tentativas de login pendentes, depois remover a pessoa — as três somem
   (CASCADE), sem órfãos.
 
+- **Episódio de lançamento em produção e correções subsequentes
+  (30/09–01/10/2026)**: o merge do login real para `main` expôs, em
+  sequência, uma cadeia de problemas que só apareciam em produção — nenhum
+  deles tinha sido pego pelos testes automatizados nem pela simulação
+  local até então, porque exigiam o ambiente real do Render (proxy
+  reverso, HTTPS na borda, instância que "dorme" no plano gratuito, banco
+  já populado com dados fictícios de teste). Nenhum envolveu alterar a
+  decisão central desta policy (sessão no servidor como única fonte de
+  identidade) — só a tornaram viável de implantar de verdade.
+  1. `SESSION_SECRET` ausente em produção: o próprio `server.ts` recusa
+     subir sem ela (comportamento correto, documentado acima) — a
+     variável nunca tinha sido configurada no Render porque o deploy
+     anterior ao login real não a exigia. Corrigido configurando a
+     variável; nenhuma mudança de código.
+  2. `db/migrations/009_auth.sql` tentava criar um índice único em
+     `registration_number` — e as pessoas fictícias de teste já
+     cadastradas em produção tinham esse campo duplicado, travando a
+     migração (e o boot) com `could not create unique index`. Esse
+     índice ficaria obsoleto duas migrações depois mesmo (`013` remove a
+     coluna) e nunca tinha aplicado com sucesso em nenhum ambiente, então
+     foi seguro removê-lo da migração em vez de exigir resolver a
+     duplicidade dos dados de teste manualmente.
+  3. **Bootstrap do primeiro Administrador sem apagar dados fictícios**:
+     em vez de `DELETE FROM people` (destrutivo, e bloqueado pelo próprio
+     classificador de segurança do ambiente de desenvolvimento usado,
+     por padrão de "exclusão em massa"), `db/migrations/014_first_administrator.sql`
+     insere o Administrador real com `ON CONFLICT DO NOTHING` —
+     convivendo com as pessoas fictícias, sem apagá-las. Isso revelou um
+     segundo problema: se o e-mail já existisse de um teste anterior
+     (outro papel, ou já com senha), o `DO NOTHING` deixava a pessoa como
+     estava, e a ativação (`hasUnactivatedAdministrator`) nunca
+     encontrava ninguém elegível. `db/migrations/015_ensure_first_administrator.sql`
+     corrigiu para `ON CONFLICT (lower(email)) DO UPDATE`, garantindo
+     papel `administrador` e `password_hash = NULL` de qualquer forma —
+     cria se não existir, corrige se já existir com outro estado.
+  4. **Cookie de sessão `Secure` atrás de proxy reverso**: faltava
+     `app.set('trust proxy', 1)` em produção. O Render termina HTTPS na
+     borda e encaminha para o processo por HTTP simples — sem essa
+     configuração, o Express não sabe que a conexão original era segura,
+     o que deixa o cookie de sessão (`cookie.secure = true` em produção)
+     sujeito a comportamento inconsistente atrás do proxy. Corrigido com
+     `app.set('trust proxy', 1)` logo na criação do `app`, antes de
+     qualquer middleware. Validado com um proxy HTTPS local (certificado
+     autoassinado, injetando `X-Forwarded-Proto`) reproduzindo a borda do
+     Render — não dava para confiar só em testar via HTTP puro, que
+     mascara exatamente este tipo de falha.
+  5. **CSRF bloqueando rotas públicas quando havia sessão de outra conta
+     no mesmo navegador**: `csrfProtection` só pulava a checagem quando
+     não existia sessão nenhuma (`!req.session.personId`). Um
+     Administrador testando o próprio link de "definir senha" no mesmo
+     navegador em que já estava logado tinha sessão ativa — a checagem
+     disparava, mas a tela pública de definir senha nunca manda
+     `X-CSRF-Token` (não foi desenhada para isso). Corrigido isentando por
+     caminho (`/api/auth/login`, `/bootstrap-admin`, `/claim-admin`,
+     `/setup-password`, `/forgot-password`), não só por ausência de
+     sessão.
+  6. **Tela de ativação sem saída para quem já tinha senha**:
+     `hasUnactivatedAdministrator()` verifica se existe *qualquer* pessoa
+     com papel `administrador` sem senha — não é específica por e-mail.
+     Com pessoas fictícias de teste ainda na base (algumas com esse
+     papel, nunca ativadas de propósito), essa checagem nunca ficava
+     `false`, mesmo com o Administrador real já ativado — qualquer
+     acesso sem sessão (dispositivo novo) caía de novo na tela de
+     ativação, sem nenhum link para o login comum. Corrigido com um link
+     "Já tem uma senha? Fazer login" em `ClaimAdminScreen.tsx`, que troca
+     para `LoginScreen.tsx` localmente em `App.tsx` (`preferLoginOverClaim`),
+     sem depender de resolver a causa de fundo (que se resolve sozinha
+     quando as pessoas fictícias forem limpas ou editadas).
+  7. **Ativação aparentemente perdida por timeout do lado do cliente**:
+     uma tentativa de ativação mostrou "Erro HTTP 502" no navegador — mas
+     o servidor provavelmente processou a escrita da senha antes da
+     conexão cair (instância gratuita do Render acordando devagar),
+     deixando a conta "ativada" sem confirmação visível, com uma senha
+     que ninguém sabia qual foi. `db/migrations/017_reset_pending_administrator.sql`
+     zera `password_hash` do Administrador de volta para `NULL`,
+     permitindo ativar de novo do zero. Reforça a recomendação, agora
+     documentada no manual do Administrador, de esperar a instância
+     "acordar" (30-60s) antes de tentar a primeira ativação do dia.
+  8. **Reversão e nova implantação**: diante da instabilidade acumulada
+     (itens 1-3), o site foi revertido temporariamente para o estado
+     anterior ao login real (commit `59bc290`) via um commit de código
+     (não pelo botão de rollback do Render, indisponível para automação
+     nesta sessão) — preservando o histórico de migrações já aplicadas
+     (irreversíveis: a coluna `registration_number` já tinha sido
+     removida de verdade em produção pela `013`) e adicionando
+     `db/migrations/016_restore_registration_number_for_revert.sql` só
+     para a coluna existir de novo (vazia) e o código revertido não
+     quebrar. Depois de validar os itens 4-5 (trust proxy, CSRF) contra
+     uma simulação completa do ambiente de produção, o login real foi
+     reintroduzido (reversão da reversão) com essas correções.
+  9. **Metodologia de validação, reforçada a partir daqui**: toda
+     correção depois do primeiro incidente foi testada simulando
+     localmente o estado real do banco de produção (migrações aplicadas
+     em sequência + dados fictícios + Administrador pendente), e as
+     correções de sessão/CSRF foram validadas com requisições HTTP reais
+     contra um servidor local atrás de um proxy HTTPS simulando a borda
+     do Render — não só testes de unidade. Esta é agora a prática
+     esperada para qualquer mudança futura nesta área antes de abrir PR.
+
+- **Edição de pessoa cadastrada (01/10/2026, concluído)**: pessoas
+  cadastradas antes do login real existir não têm e-mail — e sem e-mail
+  nunca conseguem ativar conta nenhuma, mesmo recebendo um link de
+  acesso. Em vez de forçar recriar do zero (perdendo o id original e
+  qualquer vínculo histórico a ele), `PUT /api/people/:id`
+  (`requireAdminSession`, mesma validação do cadastro) e `updatePerson`
+  em `db/peopleRepo.ts` permitem editar nome, papel, instituição e
+  e-mail de uma pessoa já existente. Botão "Editar" em
+  `SettingsView.tsx`, formulário inline reaproveitando os campos do
+  cadastro. Mesma proteção de e-mail único do cadastro (`error.code ===
+  '23505'` → 409).
+
+- **Mostrar/ocultar senha na tela de definição de senha (01/10/2026,
+  concluído)**: `SetPasswordScreen.tsx` ganhou um ícone de olho em cada
+  campo de senha (um único estado compartilhado entre os dois campos),
+  para a pessoa conferir o que digitou antes de confirmar — sobretudo
+  útil em teclados pequenos de celular. Puramente de interface; não
+  muda nenhuma validação ou rota do servidor.
+
 ## References
 
 - Arquivos: `db/migrations/009_auth.sql`,
   `db/migrations/010_password_reset_requests.sql`,
-  `db/migrations/011_login_attempts.sql`, `db/authRepo.ts`,
-  `server.ts`, `src/services/authService.ts`, `src/services/csrf.ts`,
+  `db/migrations/011_login_attempts.sql`,
+  `db/migrations/012_email_identity.sql`,
+  `db/migrations/013_remove_registration_number.sql`,
+  `db/migrations/014_first_administrator.sql`,
+  `db/migrations/015_ensure_first_administrator.sql`,
+  `db/migrations/016_restore_registration_number_for_revert.sql`,
+  `db/migrations/017_reset_pending_administrator.sql`,
+  `db/authRepo.ts`, `db/peopleRepo.ts`,
+  `server.ts`, `src/App.tsx`, `src/services/authService.ts`,
+  `src/services/csrf.ts`, `src/services/peopleService.ts`,
   `src/components/LoginScreen.tsx`, `src/components/BootstrapAdminSetup.tsx`,
   `src/components/ClaimAdminScreen.tsx`,
   `src/components/SetPasswordScreen.tsx`,
   `src/components/ForgotPasswordScreen.tsx`,
-  `src/components/ChangePasswordModal.tsx`
+  `src/components/ChangePasswordModal.tsx`,
+  `src/components/SettingsView.tsx`
 - Testes: `db/__tests__/authRepo.test.ts`, `db/__tests__/peopleRepo.test.ts`,
   `src/components/__tests__/{LoginScreen,BootstrapAdminSetup,ClaimAdminScreen,SetPasswordScreen,ForgotPasswordScreen,ChangePasswordModal}.test.tsx`
-- Manual do usuário: `public/manuais/manual-administrador-contas-v6.html`
-  (gestão de contas — inclui a seção "Primeiro acesso do Administrador",
-  com o passo a passo da migração de dados antigos, e o cadastro por
-  e-mail com matrícula opcional) e
-  `public/manuais/manual-sigcoi-completo-v7.html` (seção "Perfis de
-  acesso" atualizada)
+  — mais validação manual via HTTP real (não automatizada): round-trip de
+  login e de ativação atrás de um proxy HTTPS local simulando o Render,
+  cobrindo especificamente os itens 4-7 do episódio de lançamento acima.
+- Manual do usuário: `public/manuais/manual-administrador-contas-v7.html`
+  (gestão de contas — inclui "Primeiro acesso do Administrador" com nota
+  sobre a instância "acordando" e o link alternativo de login, e a nova
+  seção "Editar pessoa") e `public/manuais/manual-sigcoi-completo-v7.html`
+  (seção "Perfis de acesso", sem mudança necessária nesta rodada)
 - Policy relacionada: `_local-adr-policy-201` (a Zona de Risco é
   exatamente o tipo de ação que mais precisava desta prova de identidade)
 - Pendência seguinte (não coberta aqui): ajuste fino de expiração de
