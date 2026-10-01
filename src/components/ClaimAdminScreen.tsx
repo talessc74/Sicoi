@@ -5,6 +5,7 @@ import { ShieldCheck, Loader2 } from 'lucide-react';
 
 interface ClaimAdminScreenProps {
   onLoggedIn: (person: UserProfile) => void;
+  onUseLoginInstead: () => void;
 }
 
 /**
@@ -15,7 +16,7 @@ interface ClaimAdminScreenProps {
  * ambiente (Render) definiu ADMIN_BOOTSTRAP_SECRET e ainda existe algum
  * Administrador sem senha. Ver o manual "Administrador · Gestão de Contas".
  */
-export const ClaimAdminScreen: React.FC<ClaimAdminScreenProps> = ({ onLoggedIn }) => {
+export const ClaimAdminScreen: React.FC<ClaimAdminScreenProps> = ({ onLoggedIn, onUseLoginInstead }) => {
   const [email, setEmail] = useState('');
   const [bootstrapSecret, setBootstrapSecret] = useState('');
   const [password, setPassword] = useState('');
@@ -131,6 +132,14 @@ export const ClaimAdminScreen: React.FC<ClaimAdminScreenProps> = ({ onLoggedIn }
           Não tem um código de ativação? Ele é entregue por fora do sistema por quem configurou o ambiente — fale com
           essa pessoa antes de continuar.
         </p>
+
+        <button
+          type="button"
+          onClick={onUseLoginInstead}
+          className="w-full text-center text-xs font-semibold text-sky-700 dark:text-sky-400 hover:underline"
+        >
+          Já tem uma senha? Fazer login
+        </button>
       </form>
     </div>
   );

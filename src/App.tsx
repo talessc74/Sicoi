@@ -55,6 +55,11 @@ export default function App() {
   // (inclusive Administrador), sem senha nenhuma — a migração de dados
   // antigos, não a instalação nova (ver ClaimAdminScreen.tsx).
   const [needsAdminClaim, setNeedsAdminClaim] = useState<boolean>(false);
+  // Alguém já ativado, abrindo o site num dispositivo novo (sem sessão), não
+  // pode ficar preso na tela de ativação só porque needsAdminClaim detectou
+  // OUTRA pessoa pendente (ex.: dado fictício antigo nunca limpo) — esta flag
+  // deixa pular direto para o login comum.
+  const [preferLoginOverClaim, setPreferLoginOverClaim] = useState<boolean>(false);
   const [people, setPeople] = useState<UserProfile[]>([]);
   const [collections, setCollections] = useState<OsteologicalCollection[]>([]);
   const [authorizations, setAuthorizations] = useState<ResearchAuthorization[]>(MOCK_RESEARCH_AUTHORIZATIONS);
@@ -378,7 +383,11 @@ export default function App() {
 
   if (!currentUser) {
     if (needsBootstrap) return <BootstrapAdminSetup onLoggedIn={handleLoggedIn} />;
-    if (needsAdminClaim) return <ClaimAdminScreen onLoggedIn={handleLoggedIn} />;
+    if (needsAdminClaim && !preferLoginOverClaim) {
+      return (
+        <ClaimAdminScreen onLoggedIn={handleLoggedIn} onUseLoginInstead={() => setPreferLoginOverClaim(true)} />
+      );
+    }
     return <LoginScreen onLoggedIn={handleLoggedIn} />;
   }
 

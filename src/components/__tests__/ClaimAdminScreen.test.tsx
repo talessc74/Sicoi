@@ -29,7 +29,7 @@ async function fillValidForm(user: ReturnType<typeof userEvent.setup>) {
 describe('ClaimAdminScreen', () => {
   it('começa com o botão desabilitado até todos os campos válidos estarem preenchidos', async () => {
     const user = userEvent.setup();
-    render(<ClaimAdminScreen onLoggedIn={vi.fn()} />);
+    render(<ClaimAdminScreen onLoggedIn={vi.fn()} onUseLoginInstead={vi.fn()} />);
 
     const button = screen.getByRole('button', { name: /ativar e entrar/i });
     expect(button).toBeDisabled();
@@ -40,7 +40,7 @@ describe('ClaimAdminScreen', () => {
 
   it('mostra aviso e mantém desabilitado quando as senhas não coincidem', async () => {
     const user = userEvent.setup();
-    render(<ClaimAdminScreen onLoggedIn={vi.fn()} />);
+    render(<ClaimAdminScreen onLoggedIn={vi.fn()} onUseLoginInstead={vi.fn()} />);
 
     await user.type(screen.getByPlaceholderText(/e-mail já cadastrado/i), 'nicole@inc.pf.gov.br');
     await user.type(screen.getByPlaceholderText(/recebido de quem configurou/i), 'codigo-secreto-123');
@@ -57,7 +57,7 @@ describe('ClaimAdminScreen', () => {
     const person = { id: 'p1', name: 'Nicole', role: 'administrador', institution: 'INC', email: 'nicole@inc.pf.gov.br' };
     mockFetchOnce(200, { person, csrfToken: 'abc' });
 
-    render(<ClaimAdminScreen onLoggedIn={onLoggedIn} />);
+    render(<ClaimAdminScreen onLoggedIn={onLoggedIn} onUseLoginInstead={vi.fn()} />);
     await fillValidForm(user);
     await user.click(screen.getByRole('button', { name: /ativar e entrar/i }));
 
@@ -68,7 +68,7 @@ describe('ClaimAdminScreen', () => {
     const user = userEvent.setup();
     mockFetchOnce(403, { error: 'Código de ativação inválido.' });
 
-    render(<ClaimAdminScreen onLoggedIn={vi.fn()} />);
+    render(<ClaimAdminScreen onLoggedIn={vi.fn()} onUseLoginInstead={vi.fn()} />);
     await fillValidForm(user);
     await user.click(screen.getByRole('button', { name: /ativar e entrar/i }));
 
@@ -79,10 +79,20 @@ describe('ClaimAdminScreen', () => {
     const user = userEvent.setup();
     mockFetchOnce(400, { error: 'Não há Administrador pendente de ativação com esse e-mail.' });
 
-    render(<ClaimAdminScreen onLoggedIn={vi.fn()} />);
+    render(<ClaimAdminScreen onLoggedIn={vi.fn()} onUseLoginInstead={vi.fn()} />);
     await fillValidForm(user);
     await user.click(screen.getByRole('button', { name: /ativar e entrar/i }));
 
     expect(await screen.findByText('Não há Administrador pendente de ativação com esse e-mail.')).toBeInTheDocument();
+  });
+
+  it('chama onUseLoginInstead ao clicar em "Já tem uma senha? Fazer login"', async () => {
+    const user = userEvent.setup();
+    const onUseLoginInstead = vi.fn();
+    render(<ClaimAdminScreen onLoggedIn={vi.fn()} onUseLoginInstead={onUseLoginInstead} />);
+
+    await user.click(screen.getByRole('button', { name: /já tem uma senha\? fazer login/i }));
+
+    expect(onUseLoginInstead).toHaveBeenCalledOnce();
   });
 });
