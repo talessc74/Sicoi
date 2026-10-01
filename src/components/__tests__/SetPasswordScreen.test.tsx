@@ -73,4 +73,24 @@ describe('SetPasswordScreen', () => {
     expect(await screen.findByText('Link inválido, expirado ou já utilizado.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^definir senha$/i })).toBeEnabled();
   });
+
+  it('alterna entre ocultar e mostrar a senha ao clicar no botão de visualizar', async () => {
+    const user = userEvent.setup();
+    render(<SetPasswordScreen token="abc123" />);
+
+    const passwordInput = screen.getByLabelText(/^Nova senha/i) as HTMLInputElement;
+    const confirmInput = screen.getByLabelText(/Confirmar nova senha/i) as HTMLInputElement;
+    expect(passwordInput.type).toBe('password');
+    expect(confirmInput.type).toBe('password');
+
+    await user.click(screen.getAllByRole('button', { name: /mostrar senha/i })[0]);
+
+    expect(passwordInput.type).toBe('text');
+    expect(confirmInput.type).toBe('text');
+
+    await user.click(screen.getAllByRole('button', { name: /ocultar senha/i })[0]);
+
+    expect(passwordInput.type).toBe('password');
+    expect(confirmInput.type).toBe('password');
+  });
 });

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { setupPasswordApi } from '../services/authService';
-import { KeyRound, Loader2, CheckCircle2 } from 'lucide-react';
+import { KeyRound, Loader2, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 
 interface SetPasswordScreenProps {
   token: string;
@@ -18,6 +18,7 @@ export const SetPasswordScreen: React.FC<SetPasswordScreenProps> = ({ token }) =
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const isValid = password.length >= 8 && password === passwordConfirm;
 
@@ -84,27 +85,47 @@ export const SetPasswordScreen: React.FC<SetPasswordScreenProps> = ({ token }) =
         <div className="space-y-3 text-sm">
           <div>
             <label htmlFor="setup-password" className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Nova senha (mínimo 8 caracteres)</label>
-            <input
-              id="setup-password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="new-password"
-              autoFocus
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-hidden focus:ring-2 focus:ring-sky-500"
-            />
+            <div className="relative">
+              <input
+                id="setup-password"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="new-password"
+                autoFocus
+                className="w-full px-3 py-2 pr-10 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-hidden focus:ring-2 focus:ring-sky-500"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
 
           <div>
             <label htmlFor="setup-password-confirm" className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Confirmar nova senha</label>
-            <input
-              id="setup-password-confirm"
-              type="password"
-              value={passwordConfirm}
-              onChange={(e) => setPasswordConfirm(e.target.value)}
-              autoComplete="new-password"
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-hidden focus:ring-2 focus:ring-sky-500"
-            />
+            <div className="relative">
+              <input
+                id="setup-password-confirm"
+                type={showPassword ? 'text' : 'password'}
+                value={passwordConfirm}
+                onChange={(e) => setPasswordConfirm(e.target.value)}
+                autoComplete="new-password"
+                className="w-full px-3 py-2 pr-10 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-hidden focus:ring-2 focus:ring-sky-500"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
             {passwordConfirm && password !== passwordConfirm && (
               <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-1">As senhas não coincidem.</p>
             )}
