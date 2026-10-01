@@ -22,7 +22,7 @@ import {
   adminRestoreBox
 } from './db/adminRepo';
 import { getGraph, getNodeWithEdges, findPath, searchNodes } from './db/graphRepo';
-import { listPeople, createPerson, deletePerson, countPeople } from './db/peopleRepo';
+import { listPeople, createPerson, updatePerson, deletePerson, countPeople } from './db/peopleRepo';
 import {
   verifyLogin,
   getPersonWithAuthStatus,
@@ -1074,6 +1074,37 @@ app.post('/api/people', requireAdminSession, async (req: Request, res: Response)
       return res.status(409).json({ error: 'Já existe uma pessoa cadastrada com esse e-mail.' });
     }
     return res.status(500).json({ error: 'Erro ao cadastrar pessoa.' });
+  }
+});
+
+// Edita uma pessoa já cadastrada — principalmente para preencher o e-mail de
+// quem ainda é um registro antigo (de antes do login real), transformando-a
+// numa conta real sem recriar do zero. Mesma validação do cadastro.
+app.put('/api/people/:id', requireAdminSession, async (req: Request, res: Response) => {
+  try {
+    const { name, role, institution } = req.body || {};
+    const email = String(req.body?.email || '').trim();
+    if (!name || !role || !institution || !email) {
+      return res.status(400).json({ error: 'Informe name, role, institution e email.' });
+    }
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ error: 'Informe um e-mail válido.' });
+    }
+    if (!VALID_PEOPLE_ROLES.has(role)) {
+      return res.status(400).json({ error: 'Papel inválido. Use tecnico, curador, administrador, pesquisador ou estudante.' });
+    }
+    const pool = getPool();
+    const person = await updatePerson(pool, req.params.id, { name, role, institution, email });
+    if (!person) {
+      return res.status(404).json({ error: 'Pessoa não encontrada.' });
+    }
+    return res.json({ person });
+  } catch (error: any) {
+    console.error('Erro ao editar pessoa:', error);
+    if (error?.code === '23505') {
+      return res.status(409).json({ error: 'Já existe uma pessoa cadastrada com esse e-mail.' });
+    }
+    return res.status(500).json({ error: 'Erro ao editar pessoa.' });
   }
 });
 

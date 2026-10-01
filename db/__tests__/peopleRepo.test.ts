@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { Pool } from 'pg';
 import { runMigrations } from '../migrate';
-import { listPeople, createPerson, getPerson, deletePerson, countPeople } from '../peopleRepo';
+import { listPeople, createPerson, updatePerson, getPerson, deletePerson, countPeople } from '../peopleRepo';
 
 const TEST_DATABASE_URL =
   process.env.TEST_DATABASE_URL || 'postgresql://sgcccco_app:sgcccco_dev_local@localhost:5432/sgcccco_test';
@@ -77,6 +77,66 @@ describe('peopleRepo', () => {
     await deletePerson(pool, created.id);
 
     expect(await getPerson(pool, created.id)).toBeNull();
+  });
+
+  it('edita nome, papel, instituição e e-mail de uma pessoa cadastrada', async () => {
+    const created = await createPerson(pool, {
+      name: 'Nome Antigo',
+      role: 'tecnico',
+      institution: 'INC',
+      email: 'antigo@inc.pf.gov.br'
+    });
+
+    const updated = await updatePerson(pool, created.id, {
+      name: 'Nome Novo',
+      role: 'curador',
+      institution: 'PF',
+      email: 'novo@inc.pf.gov.br'
+    });
+
+    expect(updated).toEqual({
+      id: created.id,
+      name: 'Nome Novo',
+      role: 'curador',
+      institution: 'PF',
+      email: 'novo@inc.pf.gov.br'
+    });
+  });
+
+  it('permite preencher o e-mail de um registro antigo, sem e-mail (de antes do login real)', async () => {
+    const { rows } = await pool.query(
+      `INSERT INTO people (name, role, institution) VALUES ($1, $2, $3) RETURNING id`,
+      ['Pessoa Fictícia', 'curador', 'INC']
+    );
+    const legacyId = rows[0].id;
+
+    const updated = await updatePerson(pool, legacyId, {
+      name: 'Pessoa Fictícia',
+      role: 'curador',
+      institution: 'INC',
+      email: 'agora-tem-email@inc.pf.gov.br'
+    });
+
+    expect(updated?.email).toBe('agora-tem-email@inc.pf.gov.br');
+  });
+
+  it('devolve null ao editar um id inexistente', async () => {
+    const updated = await updatePerson(pool, '00000000-0000-0000-0000-000000000000', {
+      name: 'Ninguém',
+      role: 'tecnico',
+      institution: 'INC',
+      email: 'ninguem@inc.pf.gov.br'
+    });
+    expect(updated).toBeNull();
+  });
+
+  it('recusa editar para um e-mail já usado por outra pessoa', async () => {
+    await createPerson(pool, { name: 'Já tem', role: 'tecnico', institution: 'INC', email: 'ocupado@inc.pf.gov.br' });
+    const other = await createPerson(pool, { name: 'Outra', role: 'tecnico', institution: 'INC', email: 'livre@inc.pf.gov.br' });
+
+    await expect(
+      updatePerson(pool, other.id, { name: 'Outra', role: 'tecnico', institution: 'INC', email: 'ocupado@inc.pf.gov.br' })
+    ).rejects.toMatchObject({ code: '23505', constraint: 'people_email_key' });
   });
 
   it('remover um id inexistente não lança erro (idempotente)', async () => {

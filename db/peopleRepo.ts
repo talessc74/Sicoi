@@ -49,6 +49,23 @@ export async function createPerson(
   return toUserProfile(rows[0]);
 }
 
+// Edita uma pessoa já cadastrada — em especial, preencher o e-mail de quem
+// ainda é só um registro antigo (de antes do login real, sem e-mail nenhum),
+// transformando-a numa conta real sem precisar recriar do zero e perder o
+// histórico (assinaturas, auditoria) ligado ao id dela.
+export async function updatePerson(
+  pool: Pool,
+  id: string,
+  person: { name: string; role: string; institution: string; email: string }
+): Promise<UserProfile | null> {
+  const { rows } = await pool.query<PersonRow>(
+    `UPDATE people SET name = $1, role = $2, institution = $3, email = $4 WHERE id = $5
+     RETURNING id, name, role, institution, email`,
+    [person.name, person.role, person.institution, person.email, id]
+  );
+  return rows[0] ? toUserProfile(rows[0]) : null;
+}
+
 export async function getPerson(pool: Pool, id: string): Promise<UserProfile | null> {
   if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
   const { rows } = await pool.query<PersonRow>(

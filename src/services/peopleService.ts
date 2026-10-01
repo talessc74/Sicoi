@@ -41,6 +41,19 @@ export async function createPersonApi(person: {
   return data.person;
 }
 
+export async function updatePersonApi(
+  id: string,
+  person: { name: string; role: UserProfile['role']; institution: string; email: string }
+): Promise<UserProfile> {
+  const res = await fetch(`/api/people/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
+    body: JSON.stringify(person)
+  });
+  const data = await parseJsonOrThrow(res, 'Erro ao editar pessoa');
+  return data.person;
+}
+
 export async function deletePersonApi(id: string): Promise<void> {
   const res = await fetch(`/api/people/${encodeURIComponent(id)}`, { method: 'DELETE', headers: csrfHeaders() });
   await parseJsonOrThrow(res, 'Erro ao remover pessoa');

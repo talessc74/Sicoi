@@ -11,7 +11,7 @@ import {
 } from './data/mockData';
 import { createEmptyPhase1Data, createEmptyPhase2Data } from './data/phaseDefaults';
 import { fetchCollections, createCollectionApi, saveCollectionApi } from './services/collectionsService';
-import { fetchPeople, createPersonApi, deletePersonApi } from './services/peopleService';
+import { fetchPeople, createPersonApi, updatePersonApi, deletePersonApi } from './services/peopleService';
 import { fetchCurrentUser, fetchBootstrapStatus, logoutApi } from './services/authService';
 import { Header } from './components/Header';
 import { LoginScreen } from './components/LoginScreen';
@@ -172,6 +172,18 @@ export default function App() {
   const handleCreatePerson = async (person: { name: string; role: UserRole; institution: string; email: string }) => {
     const created = await createPersonApi(person);
     setPeople((prev) => [...prev, created]);
+    setSyncError(null);
+  };
+
+  // Edita uma pessoa já cadastrada — em especial, preenche o e-mail de quem
+  // ainda é um registro antigo (de antes do login real, sem e-mail), sem
+  // precisar recriar do zero e perder o histórico ligado ao id dela.
+  const handleUpdatePerson = async (
+    id: string,
+    person: { name: string; role: UserRole; institution: string; email: string }
+  ) => {
+    const updated = await updatePersonApi(id, person);
+    setPeople((prev) => prev.map((p) => (p.id === id ? updated : p)));
     setSyncError(null);
   };
 
@@ -521,6 +533,7 @@ export default function App() {
             currentUser={currentUser}
             people={people}
             onCreatePerson={handleCreatePerson}
+            onUpdatePerson={handleUpdatePerson}
             onDeletePerson={handleDeletePerson}
             laboratoryMode={laboratoryMode}
             onToggleLaboratoryMode={() => setLaboratoryMode(!laboratoryMode)}
