@@ -163,13 +163,23 @@ function ensureCsrfToken(req: Request): string {
 // cabeçalho X-CSRF-Token, o mesmo valor que só quem já leu a resposta de
 // login/bootstrap/"quem sou eu" tem — um site de terceiros não consegue ler
 // essa resposta (bloqueado por CORS), então não consegue forjar o cabeçalho.
-// Rotas sem sessão (login, bootstrap do 1º admin, esqueci a senha, definir
-// senha) não passam por aqui: cada uma já prova quem pode agir por senha ou
-// por token de uso único — não há cookie de sessão alheia para um CSRF
-// explorar nelas.
+// Rotas sem sessão (login, bootstrap do 1º admin, ativação de Administrador
+// pré-existente, esqueci a senha, definir senha) não passam por aqui: cada
+// uma já prova quem pode agir por senha ou por token de uso único — não há
+// cookie de sessão alheia para um CSRF explorar nelas. Isentas pelo caminho,
+// não só por ausência de sessão: um Administrador testando o próprio link de
+// convite no mesmo navegador em que já está logado (bem comum) tem sessão
+// ativa, mas a rota continua pública do mesmo jeito.
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+const CSRF_EXEMPT_PATHS = new Set([
+  '/api/auth/login',
+  '/api/auth/bootstrap-admin',
+  '/api/auth/claim-admin',
+  '/api/auth/setup-password',
+  '/api/auth/forgot-password'
+]);
 function csrfProtection(req: Request, res: Response, next: NextFunction): void {
-  if (SAFE_METHODS.has(req.method) || !req.session.personId) {
+  if (SAFE_METHODS.has(req.method) || !req.session.personId || CSRF_EXEMPT_PATHS.has(req.path)) {
     return next();
   }
   const headerToken = req.headers['x-csrf-token'];
