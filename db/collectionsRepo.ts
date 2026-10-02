@@ -448,14 +448,23 @@ async function syncPhotos(
   nic: string,
   photos: { id: string; category: string; url: string; caption?: string; sha256Hash: string; author: string; timestamp: string }[]
 ): Promise<void> {
-  // Sincronização simples: o array em full_state é a fonte de verdade e nunca perde
-  // entradas (App.tsx só concatena fotos, nunca remove) — replace completo é seguro.
-  await client.query(`DELETE FROM ${table} WHERE nic = $1`, [nic]);
+  // Sincronização: o array em full_state é a fonte de verdade para metadados (App.tsx
+  // só concatena fotos, nunca remove). Mas full_state nunca carrega os bytes de uma
+  // foto real (ver _local-adr-policy-301) — esses chegam só pela rota de upload, que
+  // grava direto na tabela. Por isso um registro com `data` preenchido nunca é apagado
+  // aqui, e o upsert de metadados nunca toca as colunas de bytes.
+  await client.query(`DELETE FROM ${table} WHERE nic = $1 AND data IS NULL`, [nic]);
   for (const photo of photos) {
     await client.query(
       `INSERT INTO ${table} (id, nic, category, url, caption, sha256_hash, author, taken_at)
        VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8)
-       ON CONFLICT (id) DO NOTHING`,
+       ON CONFLICT (id) DO UPDATE SET
+         category = EXCLUDED.category,
+         url = EXCLUDED.url,
+         caption = EXCLUDED.caption,
+         sha256_hash = EXCLUDED.sha256_hash,
+         author = EXCLUDED.author,
+         taken_at = EXCLUDED.taken_at`,
       [toUuidSafe(photo.id), nic, photo.category, photo.url, photo.caption || null, photo.sha256Hash, photo.author, photo.timestamp]
     );
   }
@@ -533,4 +542,47 @@ function toUuidSafe(id: string): string {
   if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return id;
   const hash = crypto.createHash('sha256').update(id).digest('hex');
   return `${hash.slice(0, 8)}-${hash.slice(8, 12)}-${hash.slice(12, 16)}-${hash.slice(16, 20)}-${hash.slice(20, 32)}`;
+}
+
+/**
+ * Grava os bytes de uma foto real (_local-adr-policy-301) na linha já criada por
+ * saveCollection/syncPhotos (que só grava metadados). Chamado depois que a foto já
+ * está no full_state — nunca antes, para não deixar bytes órfãos se o save falhar
+ * (fase travada, etc.).
+ */
+export async function attachPhotoBytes(
+  pool: Pool,
+  table: 'phase1_photos' | 'phase2_photos',
+  photoId: string,
+  bytes: Buffer,
+  mimetype: string,
+  sizeBytes: number,
+  width: number | null,
+  height: number | null
+): Promise<void> {
+  await pool.query(
+    `UPDATE ${table} SET data = $2, mimetype = $3, size_bytes = $4, width = $5, height = $6 WHERE id = $1::uuid`,
+    [photoId, bytes, mimetype, sizeBytes, width, height]
+  );
+}
+
+export interface StoredPhotoFile {
+  data: Buffer;
+  mimetype: string;
+}
+
+/** Lê os bytes de uma foto real para a rota de exibição. Nunca devolve fotos fictícias (sem `data`). */
+export async function getPhotoFile(
+  pool: Pool,
+  table: 'phase1_photos' | 'phase2_photos',
+  nic: string,
+  photoId: string
+): Promise<StoredPhotoFile | null> {
+  const { rows } = await pool.query<{ data: Buffer | null; mimetype: string | null }>(
+    `SELECT data, mimetype FROM ${table} WHERE id = $1::uuid AND nic = $2`,
+    [photoId, nic]
+  );
+  const row = rows[0];
+  if (!row || !row.data || !row.mimetype) return null;
+  return { data: row.data, mimetype: row.mimetype };
 }

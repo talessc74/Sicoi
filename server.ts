@@ -6,10 +6,21 @@ import { execSync } from 'child_process';
 import crypto from 'crypto';
 import session from 'express-session';
 import pgSessionFactory from 'connect-pg-simple';
+import multer from 'multer';
 import { GoogleGenAI } from '@google/genai';
 import { getPool } from './db/pool';
 import { runMigrations } from './db/migrate';
-import { listCollections, getCollection, createCollection, saveCollection, listChangeLog, verifyChangeLogChain, Actor } from './db/collectionsRepo';
+import {
+  listCollections,
+  getCollection,
+  createCollection,
+  saveCollection,
+  listChangeLog,
+  verifyChangeLogChain,
+  attachPhotoBytes,
+  getPhotoFile,
+  Actor
+} from './db/collectionsRepo';
 import { HistoryViolationError } from './db/historyGuard';
 import {
   listAdminActions,
@@ -680,6 +691,123 @@ app.get('/api/collections/:nic/history', async (req: Request, res: Response) => 
   } catch (error: any) {
     console.error('Erro ao carregar histórico:', error);
     return res.status(500).json({ error: error?.message || 'Erro ao carregar histórico.' });
+  }
+});
+
+// --- Fotos reais (Fase 1 e 2) — captura pela câmera, bytes guardados direto no
+// Postgres já existente, sem conta de armazenamento externa (_local-adr-policy-301).
+// Convive com o caminho antigo (full_state.phase{1,2}.photos + syncPhotos, que só
+// grava metadados) — a aposentadoria dele é um PR futuro, só depois do uso real.
+
+const photoUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
+
+function photoTableFor(phase: unknown): 'phase1_photos' | 'phase2_photos' | null {
+  if (phase === 'phase1') return 'phase1_photos';
+  if (phase === 'phase2') return 'phase2_photos';
+  return null;
+}
+
+// multer.single lança erro síncrono/assíncrono (ex.: arquivo maior que o limite) que
+// iria parar no handler de erro padrão do Express (resposta em HTML) — converte pra
+// JSON, igual a todo o resto da API.
+function handlePhotoUpload(req: Request, res: Response, next: NextFunction): void {
+  photoUpload.single('photo')(req, res, (err: unknown) => {
+    if (err) {
+      const message = err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE'
+        ? 'Foto maior que o limite de 20MB.'
+        : 'Falha ao processar o arquivo enviado.';
+      res.status(400).json({ error: message });
+      return;
+    }
+    next();
+  });
+}
+
+// Registra uma foto tirada na hora (câmera do celular/tablet) — qualquer papel
+// autenticado pode, na bancada em que está. O metadado entra em full_state pelo
+// mesmo saveCollection de qualquer outra edição (histórico protegido: uma fase já
+// assinada e travada recusa a foto nova até ser reaberta); os bytes só são gravados
+// depois do save confirmar, para nunca sobrar bytes órfãos se o save falhar.
+app.post('/api/collections/:nic/photos', requireAuth, handlePhotoUpload, async (req: Request, res: Response) => {
+  try {
+    const file = req.file;
+    if (!file) {
+      return res.status(400).json({ error: 'Nenhum arquivo de foto enviado (campo "photo").' });
+    }
+    if (!file.mimetype.startsWith('image/')) {
+      return res.status(400).json({ error: 'Arquivo enviado não é uma imagem.' });
+    }
+    const phase = req.body?.phase;
+    const table = photoTableFor(phase);
+    if (!table) {
+      return res.status(400).json({ error: 'Campo "phase" deve ser "phase1" ou "phase2".' });
+    }
+    const category = typeof req.body?.category === 'string' ? req.body.category.trim() : '';
+    if (!category) {
+      return res.status(400).json({ error: 'Campo "category" é obrigatório.' });
+    }
+    const caption = typeof req.body?.caption === 'string' && req.body.caption.trim() ? req.body.caption.trim() : undefined;
+    const width = Number.isFinite(Number(req.body?.width)) && req.body?.width !== undefined ? Math.round(Number(req.body.width)) : null;
+    const height = Number.isFinite(Number(req.body?.height)) && req.body?.height !== undefined ? Math.round(Number(req.body.height)) : null;
+
+    const pool = getPool();
+    const collection = await getCollection(pool, req.params.nic);
+    if (!collection) {
+      return res.status(404).json({ error: `Conjunto ${req.params.nic} não encontrado.` });
+    }
+
+    const actor = actorFromSession(req);
+    const photoId = crypto.randomUUID();
+    const sha256Hash = crypto.createHash('sha256').update(file.buffer).digest('hex');
+    const photo = {
+      id: photoId,
+      category,
+      author: actor.name || 'Desconhecido',
+      timestamp: new Date().toISOString(),
+      url: `/api/collections/${req.params.nic}/photos/${photoId}/file`,
+      caption,
+      sha256Hash
+    };
+
+    const phaseData = (collection as any)[phase];
+    const next = {
+      ...collection,
+      [phase]: { ...phaseData, photos: [...phaseData.photos, photo] }
+    };
+    const saved = await saveCollection(pool, next, actor);
+
+    // Só grava os bytes depois do save ter passado por todo o histórico protegido —
+    // se saveCollection recusar (fase travada, etc.), nada fica gravado.
+    await attachPhotoBytes(pool, table, photoId, file.buffer, file.mimetype, file.size, width, height);
+
+    return res.status(201).json({ collection: saved, photo });
+  } catch (error: any) {
+    console.error('Erro ao registrar foto:', error);
+    if (error instanceof HistoryViolationError) {
+      return res.status(409).json({ error: error.message });
+    }
+    return res.status(500).json({ error: error?.message || 'Erro ao registrar foto.' });
+  }
+});
+
+// Devolve os bytes de uma foto real — sempre mediado pela sessão de quem pede, no
+// mesmo request (requireAuth). Nenhum link público/temporário: não há provedor
+// externo para pré-assinar (_local-adr-policy-301).
+app.get('/api/collections/:nic/photos/:photoId/file', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const pool = getPool();
+    const file =
+      (await getPhotoFile(pool, 'phase1_photos', req.params.nic, req.params.photoId)) ||
+      (await getPhotoFile(pool, 'phase2_photos', req.params.nic, req.params.photoId));
+    if (!file) {
+      return res.status(404).json({ error: 'Foto não encontrada.' });
+    }
+    res.setHeader('Content-Type', file.mimetype);
+    res.setHeader('Cache-Control', 'private, max-age=86400');
+    return res.send(file.data);
+  } catch (error: any) {
+    console.error('Erro ao carregar foto:', error);
+    return res.status(500).json({ error: error?.message || 'Erro ao carregar foto.' });
   }
 });
 
