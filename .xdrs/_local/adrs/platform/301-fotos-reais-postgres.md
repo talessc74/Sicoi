@@ -101,11 +101,51 @@ Duas alternativas foram avaliadas e descartadas:
   CASCADE`).
 - **Sequência de PRs** (pequenos, cada um revertível por si só — lição
   direta do episódio de lançamento do login real): (1) schema (concluído,
-  018 + 019); (2) rota de upload e de leitura, convivendo com o
-  `syncPhotos` antigo; (3) frontend da Fase 1; (4) frontend do condutor de
-  voz (cobre Fase 1 e 2); (5) seção própria de foto na Fase 2 (hoje não tem
-  nenhuma — só herdava fotos fictícias pelo condutor de voz); (6) aposentar
-  `syncPhotos`, só depois dos outros provados em uso real.
+  018 + 019); (2) rota de upload e de leitura (concluído — ver
+  "Round 2" abaixo), convivendo com o `syncPhotos` antigo; (3) frontend da
+  Fase 1; (4) frontend do condutor de voz (cobre Fase 1 e 2); (5) seção
+  própria de foto na Fase 2 (hoje não tem nenhuma — só herdava fotos
+  fictícias pelo condutor de voz); (6) aposentar `syncPhotos`, só depois dos
+  outros provados em uso real.
+
+### Round 2 — rota de upload/leitura implementada (02/10/2026)
+
+`POST /api/collections/:nic/photos` e `GET
+/api/collections/:nic/photos/:photoId/file` foram implementadas exatamente
+como descrito acima, com uma correção a mais que o desenho original não
+tinha previsto:
+
+- **O metadado da foto entra em `full_state` pelo próprio `saveCollection`**
+  (não por uma gravação paralela) — a rota de upload carrega o conjunto
+  atual, acrescenta a entrada nova em `phase{1,2}.photos` e chama
+  `saveCollection` normalmente. Isso reaproveita de graça todo o histórico
+  protegido já existente: uma foto não pode ser adicionada a uma fase já
+  assinada e travada sem reabertura (mesma regra de qualquer outro campo),
+  e a tentativa de foto vira um `HistoryViolationError` (409), não um bug
+  novo. Os bytes só são gravados (`attachPhotoBytes`) depois que
+  `saveCollection` confirma — se o save for recusado, não sobra nenhum byte
+  órfão no banco.
+- **Risco encontrado e corrigido antes de ir pra produção**: o `syncPhotos`
+  existente (que roda dentro de todo `saveCollection`, inclusive o da
+  própria foto nova) apagava (`DELETE FROM phase1_photos WHERE nic = $1`) e
+  reinseria todas as fotos do conjunto a cada salvamento — sem nunca copiar
+  `data`/`mimetype`/etc, porque `full_state` nunca carrega bytes. Sem
+  ajuste, a PRIMEIRA edição de qualquer campo da Fase 1 ou 2 depois de uma
+  foto real ter sido tirada apagaria os bytes dela silenciosamente (a
+  entrada no histórico/metadado continuaria linda, mas o arquivo sumiria).
+  Corrigido em `db/collectionsRepo.ts`: `syncPhotos` agora só apaga
+  registros sem bytes (`AND data IS NULL`) e faz `ON CONFLICT (id) DO
+  UPDATE` só nas colunas de metadado, nunca tocando `data`/`mimetype`/
+  `size_bytes`/`width`/`height`. Verificado manualmente (upload de foto →
+  edição de um campo qualquer da Fase 1 → download da foto de novo →
+  bytes idênticos).
+- Validado com a suíte completa (226 testes) e com um teste manual de ponta
+  a ponta contra um Postgres local real: bootstrap de admin → criação de
+  conjunto → upload (hash do servidor confere com o hash calculado
+  localmente sobre os mesmos bytes) → download (bytes idênticos,
+  `Content-Type` correto) → leitura sem sessão recusada (401) → upload sem
+  token CSRF recusado (403) → edição de um campo qualquer da Fase 1 não
+  apaga a foto já gravada.
 
 ## References
 
