@@ -1,5 +1,5 @@
 -- Primeiro passo da captura real de fotos (Fase 1 e 2 — pedido do Tales,
--- out/2026, ver _local-adr-policy-203): até aqui, "registrar foto" gravava
+-- out/2026, ver _local-adr-policy-301): até aqui, "registrar foto" gravava
 -- sempre a mesma URL fixa de um banco de imagens (placeholder), e o campo
 -- sha256_hash era calculado sobre um texto (url|categoria|nic|usuário), não
 -- sobre bytes reais.

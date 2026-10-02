@@ -19,7 +19,7 @@ Decisões de arquitetura e técnicas deste projeto, criadas por deliberação AR
 
 ## Platform
 
-- [_local-adr-policy-301](platform/301-fotos-reais-r2.md) - Fotos reais (Fase 1 e 2): captura pela câmera, guardadas no Cloudflare R2, link assinado temporário na exibição, nunca bucket público
+- [_local-adr-policy-301](platform/301-fotos-reais-postgres.md) - Fotos reais (Fase 1 e 2): captura pela câmera, guardadas como bytes direto no Postgres já existente — sem conta de armazenamento externa
 
 ## Controls
 
