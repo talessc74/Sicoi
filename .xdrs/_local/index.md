@@ -23,8 +23,8 @@ trilha própria + papel reconferido no servidor. Identidade visual por
 papel: cor + ícone fixos, só no indicador de identidade. Login real:
 sessão no servidor (cookie httpOnly) como única fonte de identidade,
 nunca um actorId declarado pelo cliente. Fotos reais (Fase 1 e 2):
-captura pela câmera, guardadas no Cloudflare R2, link assinado
-temporário na exibição.
+captura pela câmera, guardadas como bytes direto no Postgres já
+existente — sem conta de armazenamento externa.
 
 ### BDRs — Business Decisions (0 documentos)
 
