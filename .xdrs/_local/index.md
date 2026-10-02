@@ -14,7 +14,7 @@ sobrescrevem `_core` quando os dois se sobrepõem.
 Manutenção dos Manuais do Usuário (`public/manuais/`) sincronizada com
 mudanças no site. CORS restrito a origens conhecidas.
 
-### ADRs — Architectural Decisions (4 documentos)
+### ADRs — Architectural Decisions (5 documentos)
 
 Histórico protegido de conjuntos: servidor como fonte de verdade,
 assinaturas travadas, registro de alterações encadeado por hash.
@@ -22,7 +22,9 @@ Exclusão administrativa reversível (Zona de Risco): soft delete +
 trilha própria + papel reconferido no servidor. Identidade visual por
 papel: cor + ícone fixos, só no indicador de identidade. Login real:
 sessão no servidor (cookie httpOnly) como única fonte de identidade,
-nunca um actorId declarado pelo cliente.
+nunca um actorId declarado pelo cliente. Fotos reais (Fase 1 e 2):
+captura pela câmera, guardadas no Cloudflare R2, link assinado
+temporário na exibição.
 
 ### BDRs — Business Decisions (0 documentos)
 
