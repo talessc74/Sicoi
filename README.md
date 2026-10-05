@@ -35,6 +35,13 @@ qualquer tela da aplicação mostra o hash do commit em execução, para
 conferir a qualquer momento que o que está no ar corresponde exatamente ao
 código deste repositório.
 
+**Banco de dados de produção:** PostgreSQL no **Neon** (console.neon.tech),
+gerenciado fora do blueprint — o Postgres gratuito do Render expira e é
+apagado, o do Neon não tem prazo. O serviço web continua no Render e se liga
+ao banco só pela variável `DATABASE_URL` (connection string *pooled* do Neon,
+colada no painel do Render). As tabelas são criadas e atualizadas sozinhas
+quando o servidor liga (`db/migrations/`).
+
 Login real: e-mail + senha, com sessão no servidor (cookie httpOnly) — ao
 abrir o sistema com o banco totalmente vazio, ele pede o cadastro do
 primeiro Administrador (com senha já definida ali). **Ao migrar dados
@@ -168,5 +175,5 @@ src/
   utils/signatures.ts      leitura da assinatura vigente de uma fase (a mais
                             recente — uma fase pode acumular histórico de
                             reaberturas sem perder nenhum registro anterior)
-render.yaml             Blueprint de deploy (Postgres + serviço web)
+render.yaml             Blueprint de deploy (serviço web; o banco é o Neon, fora do blueprint)
 ```

@@ -15,7 +15,15 @@ export function getPool(): Pool {
         'DATABASE_URL não configurada. Defina no .env (ver .env.example) apontando para o Postgres local.'
       );
     }
-    pool = new Pool({ connectionString });
+    // O banco de produção (Neon) exige conexão criptografada; o Postgres local de
+    // desenvolvimento e de testes não usa. Decide pela própria connection string,
+    // sem variável nova: a do Neon tem o host *.neon.tech e termina em
+    // ?sslmode=require.
+    const needsSsl = connectionString.includes('sslmode=require') || connectionString.includes('neon.tech');
+    pool = new Pool({
+      connectionString,
+      ssl: needsSsl ? { rejectUnauthorized: false } : undefined
+    });
   }
   return pool;
 }
