@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { GraphNode, GraphNodeType, GraphEdge } from '../types/sgccco';
-import { Network, Search, Info, Route, Loader2, RefreshCw } from 'lucide-react';
+import { Network, Search, Info, Route, Loader2, RefreshCw, Bone, X } from 'lucide-react';
+import { searchSimilarBones, BoneSimilaritySearchResult } from '../services/geminiService';
 
 interface KnowledgeGraphViewerProps {
   selectedNic?: string;
@@ -30,7 +31,8 @@ const nodeColorMap: Record<GraphNodeType, { fill: string; stroke: string; label:
   formulario_a2: { fill: '#14b8a6', stroke: '#0d9488', label: 'Formulário A.2', bg: 'bg-teal-100 text-teal-800' },
   foto: { fill: '#a855f7', stroke: '#9333ea', label: 'Foto', bg: 'bg-fuchsia-100 text-fuchsia-800' },
   assinatura: { fill: '#22c55e', stroke: '#16a34a', label: 'Assinatura (Responsável)', bg: 'bg-green-100 text-green-800' },
-  evento_custodia: { fill: '#f97316', stroke: '#ea580c', label: 'Evento de Custódia', bg: 'bg-orange-100 text-orange-800' }
+  evento_custodia: { fill: '#f97316', stroke: '#ea580c', label: 'Evento de Custódia', bg: 'bg-orange-100 text-orange-800' },
+  osso_consultado: { fill: '#ec4899', stroke: '#db2777', label: 'Osso Consultado (temporário)', bg: 'bg-pink-100 text-pink-800' }
 };
 
 const radiusMap: Record<GraphNodeType, number> = {
@@ -46,8 +48,13 @@ const radiusMap: Record<GraphNodeType, number> = {
   formulario_a2: 95,
   foto: 260,
   assinatura: 130,
-  evento_custodia: 170
+  evento_custodia: 170,
+  // Não usado no layout radial principal — o nó e seus candidatos ganham
+  // posição própria, fora do grafo persistido (ver `boneOverlay`).
+  osso_consultado: 0
 };
+
+const BONE_QUERY_NODE_ID = 'BONE-QUERY-TEMP';
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
@@ -76,6 +83,11 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
   const [globalQuery, setGlobalQuery] = useState('');
   const [globalResults, setGlobalResults] = useState<GraphNode[]>([]);
   const [isSearchingGlobal, setIsSearchingGlobal] = useState(false);
+
+  const [boneFreeText, setBoneFreeText] = useState('');
+  const [boneSearchResult, setBoneSearchResult] = useState<BoneSimilaritySearchResult | null>(null);
+  const [boneSearchError, setBoneSearchError] = useState<string | null>(null);
+  const [isSearchingBones, setIsSearchingBones] = useState(false);
 
   // Carrega o grafo persistido — o conjunto todo, ou escopado ao NIC selecionado na tela.
   // Só refaz sozinho quando o NIC selecionado muda (ou ao montar a tela); uma mudança feita
@@ -143,6 +155,78 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
     }
   }, [globalQuery]);
 
+  const runBoneSimilaritySearch = useCallback(async () => {
+    if (!boneFreeText.trim()) return;
+    setIsSearchingBones(true);
+    setBoneSearchError(null);
+    try {
+      const result = await searchSimilarBones({ freeText: boneFreeText.trim() });
+      setBoneSearchResult(result);
+    } catch (err: any) {
+      setBoneSearchResult(null);
+      setBoneSearchError(err.message || 'Erro ao buscar ossos parecidos.');
+    } finally {
+      setIsSearchingBones(false);
+    }
+  }, [boneFreeText]);
+
+  const clearBoneSearch = useCallback(() => {
+    setBoneSearchResult(null);
+    setBoneSearchError(null);
+    setBoneFreeText('');
+  }, []);
+
+  // Grafo sintético da busca por semelhança: nó temporário (o osso descrito) +
+  // os candidatos reais, nunca escritos em graph_nodes/graph_edges — só desenhado
+  // em memória, com posição própria (fora do layout radial do grafo persistido),
+  // pra não competir com o grafo do conjunto carregado (_local-adr-policy-103).
+  const boneOverlay = useMemo(() => {
+    if (!boneSearchResult || boneSearchResult.candidates.length === 0) return null;
+    const center = { x: 690, y: 480 };
+    const radius = 95;
+
+    const queryNode = {
+      id: BONE_QUERY_NODE_ID,
+      label: 'Osso consultado',
+      type: 'osso_consultado' as GraphNodeType,
+      properties: { descricaoLivre: boneFreeText || 'critério estruturado' },
+      x: center.x,
+      y: center.y
+    };
+
+    const candidateNodes = boneSearchResult.candidates.map((c, i) => {
+      const angle = (i * 2 * Math.PI) / boneSearchResult.candidates.length;
+      const properties: Record<string, any> = {
+        conjunto: c.nic,
+        lado: c.element.side,
+        presenca: c.element.presence,
+        preservacao: c.element.preservationQuality
+      };
+      if (c.similarity) {
+        properties.semelhanca = `${Math.round(c.similarity.similarityScore * 100)}% (confiança ${c.similarity.confidence}) — ${c.similarity.explanation}`;
+      }
+      return {
+        id: `ELEM-${c.nic}-${c.element.anatomicalCode}`,
+        label: c.element.namePt,
+        type: 'elemento' as GraphNodeType,
+        properties,
+        x: center.x + Math.cos(angle) * radius,
+        y: center.y + Math.sin(angle) * radius
+      };
+    });
+
+    const edges: GraphEdge[] = boneSearchResult.candidates.map((c) => ({
+      id: `sim-${c.nic}-${c.element.id}`,
+      source: BONE_QUERY_NODE_ID,
+      target: `ELEM-${c.nic}-${c.element.anatomicalCode}`,
+      relation: 'similar_a',
+      confidence: 'INFERRED',
+      provenance: { recordId: c.element.id, field: 'bone-similarity-search', version: 1, createdAt: new Date().toISOString() }
+    }));
+
+    return { nodes: [queryNode, ...candidateNodes], edges };
+  }, [boneSearchResult, boneFreeText]);
+
   const filteredNodes = useMemo(() => {
     return graphData.nodes.filter((n) => {
       const matchType = filterType === 'all' || n.type === filterType;
@@ -178,12 +262,22 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
     return graphData.edges.filter((e) => visibleNodeIds.has(e.source) && visibleNodeIds.has(e.target));
   }, [graphData.edges, visibleNodeIds]);
 
+  // Nós/arestas da busca por semelhança entram só no desenho (displayNodes/
+  // displayEdges) — nunca em layoutNodes/filteredEdges, que refletem o que de
+  // fato está em graph_nodes/graph_edges.
+  const displayNodes = useMemo(() => (boneOverlay ? [...layoutNodes, ...boneOverlay.nodes] : layoutNodes), [layoutNodes, boneOverlay]);
+  const displayEdges = useMemo(() => (boneOverlay ? [...filteredEdges, ...boneOverlay.edges] : filteredEdges), [filteredEdges, boneOverlay]);
+
   const getNodeCoords = (id: string) => {
-    const n = layoutNodes.find((item) => item.id === id);
+    const n = displayNodes.find((item) => item.id === id);
     return n ? { x: n.x, y: n.y } : null;
   };
 
-  const selectedNode = graphData.nodes.find((n) => n.id === selectedNodeId) || explainResult?.node || null;
+  const selectedNode =
+    graphData.nodes.find((n) => n.id === selectedNodeId) ||
+    boneOverlay?.nodes.find((n) => n.id === selectedNodeId) ||
+    explainResult?.node ||
+    null;
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
@@ -261,7 +355,7 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
                 </marker>
               </defs>
 
-              {filteredEdges.map((e) => {
+              {displayEdges.map((e) => {
                 const src = getNodeCoords(e.source);
                 const tgt = getNodeCoords(e.target);
                 if (!src || !tgt) return null;
@@ -276,7 +370,7 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
                       y1={src.y}
                       x2={tgt.x}
                       y2={tgt.y}
-                      stroke={isOnPath ? '#facc15' : isHighlighted ? '#38bdf8' : '#334155'}
+                      stroke={isOnPath ? '#facc15' : isHighlighted ? '#38bdf8' : e.relation === 'similar_a' ? '#ec4899' : '#334155'}
                       strokeWidth={isOnPath ? 3 : isHighlighted ? 2.5 : 1.2}
                       strokeDasharray={e.confidence === 'INFERRED' ? '3 3' : undefined}
                       markerEnd="url(#arrow)"
@@ -297,11 +391,11 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
                 );
               })}
 
-              {layoutNodes.map((node) => {
+              {displayNodes.map((node) => {
                 const meta = nodeColorMap[node.type];
                 const isSelected = selectedNode?.id === node.id;
                 const isOnPath = pathResult?.some((s) => s.nodeId === node.id);
-                const r = node.type === 'nic' ? 26 : node.type === 'individuo' ? 22 : 18;
+                const r = node.type === 'nic' || node.type === 'osso_consultado' ? 26 : node.type === 'individuo' ? 22 : 18;
 
                 return (
                   <g
@@ -495,6 +589,85 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
                     </li>
                   ))}
                 </ul>
+              )}
+            </div>
+
+            {/* Busca por semelhança entre ossos (_local-adr-policy-103) */}
+            <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
+              <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 mb-2">
+                <Bone className="w-4 h-4 text-pink-600" />
+                Busca por Semelhança (osso em mãos)
+              </h4>
+              <p className="text-slate-400 text-[11px] mb-2">
+                Descreva livremente o osso que você tem em mãos — a IA interpreta a descrição e compara com elementos reais já cadastrados no acervo.
+              </p>
+              <textarea
+                placeholder='ex.: "fêmur de 37cm com características femininas"'
+                value={boneFreeText}
+                onChange={(e) => setBoneFreeText(e.target.value)}
+                rows={3}
+                maxLength={1000}
+                className="w-full px-2 py-1.5 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] font-mono resize-none"
+              />
+              <div className="flex gap-1.5 mt-1.5">
+                <button
+                  onClick={runBoneSimilaritySearch}
+                  disabled={isSearchingBones || !boneFreeText.trim()}
+                  className="flex-1 px-2 py-1.5 rounded bg-pink-600 hover:bg-pink-700 text-white text-[11px] font-semibold disabled:opacity-50"
+                >
+                  {isSearchingBones ? 'Comparando...' : 'Buscar semelhantes'}
+                </button>
+                {(boneSearchResult || boneSearchError) && (
+                  <button
+                    onClick={clearBoneSearch}
+                    title="Limpar busca e voltar ao grafo normal"
+                    className="px-2 py-1.5 rounded border border-slate-300 dark:border-slate-700 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {boneSearchError && <p className="text-rose-500 text-[11px] mt-2">{boneSearchError}</p>}
+
+              {boneSearchResult && (
+                <div className="mt-2 space-y-2">
+                  {boneSearchResult.explanationError && (
+                    <p className="text-amber-500 text-[11px]">
+                      A IA não conseguiu explicar a semelhança ({boneSearchResult.explanationError}) — os resultados abaixo são reais, só sem o comentário.
+                    </p>
+                  )}
+                  {boneSearchResult.candidates.length === 0 ? (
+                    <p className="text-slate-400 text-[11px]">Nenhum elemento parecido encontrado no acervo.</p>
+                  ) : (
+                    <>
+                      <p className="text-pink-600 dark:text-pink-400 text-[10px] font-mono uppercase font-semibold">
+                        {boneSearchResult.candidates.length} candidato(s) real(is) no acervo:
+                      </p>
+                      <ul className="space-y-1.5">
+                        {boneSearchResult.candidates.map((c) => (
+                          <li
+                            key={`${c.nic}-${c.element.id}`}
+                            className="p-2 bg-white dark:bg-slate-950 rounded-lg border border-slate-200 dark:border-slate-800 font-mono text-[11px]"
+                          >
+                            <div className="flex justify-between gap-2">
+                              <span className="font-semibold text-slate-900 dark:text-white">{c.element.namePt}</span>
+                              <span className="text-slate-400 shrink-0">{c.nic}</span>
+                            </div>
+                            {c.similarity && (
+                              <p className="text-slate-500 dark:text-slate-400 mt-1">
+                                {Math.round(c.similarity.similarityScore * 100)}% parecido (confiança {c.similarity.confidence}) — {c.similarity.explanation}
+                              </p>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                      <p className="text-[10px] text-slate-400 italic">
+                        Conexões pontilhadas no grafo são sugestão da IA sobre dados reais do acervo — não são identificação confirmada.
+                      </p>
+                    </>
+                  )}
+                </div>
               )}
             </div>
 

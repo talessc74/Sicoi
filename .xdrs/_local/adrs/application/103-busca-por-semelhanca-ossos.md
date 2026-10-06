@@ -123,6 +123,38 @@ caminho de sucesso (qualidade da explicação de verdade) não foi validado
 ponta a ponta — só a parte determinística e a validação defensiva da
 resposta.
 
+### Round 4 — frontend: 4º painel no grafo existente (06/10/2026)
+
+`src/components/KnowledgeGraphViewer.tsx` ganhou o painel "Busca por
+Semelhança (osso em mãos)": uma descrição livre (textarea), botão de busca,
+e lista de candidatos reais — reaproveitando o mesmo componente que já
+desenha o grafo persistido, sem tela nova.
+
+O resultado da busca nunca é gravado em `graph_nodes`/`graph_edges` — vira
+um `boneOverlay` calculado em memória (`useMemo`, dependente só de
+`boneSearchResult`), com posição própria (canto inferior direito do SVG,
+longe do centro do grafo persistido) pra não competir visualmente com o
+grafo do conjunto selecionado. `GraphNodeType` ganhou `'osso_consultado'`
+(só o nó temporário) e `GraphEdgeRelation` ganhou `'similar_a'`
+(`confidence: 'INFERRED'` sempre) — a primeira vez que o sistema gera uma
+aresta `INFERRED` de verdade; o traço pontilhado já existia desde a primeira
+versão do grafo, só nunca tinha sido usado.
+
+Os candidatos reais reaproveitam o tipo `'elemento'` já existente (mesma cor,
+mesmo ID — `ELEM-{nic}-{anatomicalCode}`, igual ao que `graphSync.ts` já usa
+pros elementos persistidos), então um candidato que já esteja no grafo
+oficial aparece com a mesma identidade visual nos dois lugares.
+
+Verificado com Playwright de ponta a ponta, duas vezes:
+1. **Caminho real** (chave Gemini inválida de propósito, mesma limitação das
+   Rounds 2-3): confirma que o erro aparece formatado na tela, sem travar a
+   aplicação, com o botão "Limpar busca" disponível.
+2. **Caminho de sucesso** (resposta da rota interceptada/mockada só pra esta
+   verificação visual — não é uma IA de verdade respondendo): confirma o nó
+   "Osso consultado" (rosa) desenhado isolado do grafo principal, ligado por
+   aresta pontilhada rosa ao candidato real, e a lista lateral mostrando
+   "87% parecido (confiança alta) — [explicação]".
+
 ## References
 
 - Arquivos: `db/boneSimilarity.ts`, `db/__tests__/boneSimilarity.test.ts`,

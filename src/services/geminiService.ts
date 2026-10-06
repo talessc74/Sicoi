@@ -146,15 +146,28 @@ export interface BoneSimilarityCriteria {
   ageCategory?: 'jovem' | 'adulto_jovem' | 'adulto_medio' | 'adulto_maduro' | 'idoso';
 }
 
+export interface BoneSimilarityExplanation {
+  similarityScore: number;
+  explanation: string;
+  confidence: 'alta' | 'media' | 'baixa';
+}
+
 export interface BoneSimilarityCandidate {
   nic: string;
   element: Record<string, any>;
   individual: Record<string, any> | null;
+  // Só presente quando a busca foi por `freeText` e a explicação da IA deu certo
+  // para este candidato (_local-adr-policy-103) — ausente no caminho por
+  // `criteria` estruturado, ou se a explicação falhou (ver `explanationError`).
+  similarity?: BoneSimilarityExplanation;
 }
 
 export interface BoneSimilaritySearchResult {
   criteria: BoneSimilarityCriteria;
   candidates: BoneSimilarityCandidate[];
+  // Presente só quando a busca tentou explicar (freeText) e a IA falhou — a
+  // busca em si não falhou, os candidatos acima são reais e válidos.
+  explanationError?: string;
 }
 
 /**
