@@ -127,6 +127,97 @@ describe('computeGraphForCollection', () => {
     expect(custodyNode?.properties.purpose).toBe('consulta_pesquisa');
     expect(edges.some((e) => e.relation === 'evento_de_custodia' && e.target === custodyNode!.id)).toBe(true);
   });
+
+  it('liga elemento/patologia/exame ao indivíduo real associado, não a um "IND-01" fixo', () => {
+    const col = baseCollection('NIC-GRAPH-0004');
+    col.phase4.individuals = [
+      {
+        id: 'ind-id-1',
+        code: 'IND-01',
+        confidence: 'alta',
+        odontogram: [],
+        biologicalProfile: {
+          sexEstimate: { value: 'masculino', methodCode: 'x', bibliographicRef: 'x', notes: '' },
+          ageCategory: { value: 'adulto_medio', estimatedRangeYears: '30-40', methodCode: 'x', bibliographicRef: 'x' },
+          statureCm: { estimatedValue: 170, methodCode: 'x', bibliographicRef: 'x' },
+          ancestryIndication: { traitsObserved: '', methodCode: 'x', bibliographicRef: 'x' }
+        }
+      },
+      {
+        id: 'ind-id-2',
+        code: 'IND-02',
+        confidence: 'alta',
+        odontogram: [],
+        biologicalProfile: {
+          sexEstimate: { value: 'feminino', methodCode: 'x', bibliographicRef: 'x', notes: '' },
+          ageCategory: { value: 'jovem', estimatedRangeYears: '18-25', methodCode: 'x', bibliographicRef: 'x' },
+          statureCm: { estimatedValue: 160, methodCode: 'x', bibliographicRef: 'x' },
+          ancestryIndication: { traitsObserved: '', methodCode: 'x', bibliographicRef: 'x' }
+        }
+      }
+    ];
+    col.phase4.skeletalElements = [
+      {
+        id: 'elem-1',
+        anatomicalCode: 'MI_FEM_ESQ',
+        namePt: 'Fêmur Esquerdo',
+        region: 'membros_inferiores',
+        side: 'esquerdo',
+        presence: 'completo',
+        preservationQuality: 'boa',
+        associatedIndividualId: 'ind-id-2',
+        associationMethod: 'x',
+        associationConfidence: 'alta',
+        associationJustification: '',
+        observations: ''
+      }
+    ];
+    col.phase5.pathologies = [{ id: 'path-1', individualId: 'ind-id-2', taxonomyLabel: 'Fratura antiga' } as any];
+    col.phase5.complementaryExams = [
+      {
+        id: 'exam-1',
+        individualId: 'ind-id-2',
+        examType: 'tomografia_computadorizada_dicom',
+        fileUrl: 'x',
+        fileName: 'tc.dcm',
+        parametersExtractedByMethodPrepop: { normalizedMethodName: 'x' }
+      } as any
+    ];
+
+    const { edges } = computeGraphForCollection(col);
+    const elemEdge = edges.find((e) => e.relation === 'contem_elemento');
+    const pathEdge = edges.find((e) => e.relation === 'apresenta_patologia');
+    const examEdge = edges.find((e) => e.relation === 'possui_exame');
+
+    // Todos os três associados a IND-02 (ind-id-2) — nenhum deveria cair no IND-01.
+    expect(elemEdge?.source).toBe('NIC-GRAPH-0004-IND-02');
+    expect(pathEdge?.source).toBe('NIC-GRAPH-0004-IND-02');
+    expect(examEdge?.source).toBe('NIC-GRAPH-0004-IND-02');
+  });
+
+  it('sem indivíduo associado (ou id que não existe), liga ao próprio nó do conjunto', () => {
+    const col = baseCollection('NIC-GRAPH-0005');
+    col.phase4.skeletalElements = [
+      {
+        id: 'elem-orfao',
+        anatomicalCode: 'MI_TIB_DIR',
+        namePt: 'Tíbia Direita',
+        region: 'membros_inferiores',
+        side: 'direito',
+        presence: 'completo',
+        preservationQuality: 'boa',
+        associatedIndividualId: 'id-que-nao-existe',
+        associationMethod: 'x',
+        associationConfidence: 'alta',
+        associationJustification: '',
+        observations: ''
+      }
+    ];
+
+    const { edges } = computeGraphForCollection(col);
+    const elemEdge = edges.find((e) => e.relation === 'contem_elemento');
+    expect(elemEdge?.source).toBe('NIC-GRAPH-0005');
+  });
 });
 
 describe('syncGraphForCollection (via createCollection/saveCollection)', () => {

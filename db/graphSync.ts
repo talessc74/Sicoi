@@ -38,6 +38,23 @@ function unwrapFieldValues(record: Record<string, any>): Record<string, any> {
   return out;
 }
 
+/**
+ * Resolve o nó de indivíduo real a partir do id declarado (`associatedIndividualId` em
+ * `SkeletalElement`, `individualId` em `BonePathology`/`ComplementaryExam`) — nunca um ID
+ * fixo. Sem indivíduo declarado, ou id que não bate com nenhum já cadastrado (dado
+ * inconsistente), a aresta liga ao próprio nó do conjunto (`nic`), mesmo comportamento já
+ * existente pra elemento sem indivíduo associado.
+ */
+function resolveIndividualNodeId(
+  nic: string,
+  individuals: OsteologicalCollection['phase4']['individuals'] | undefined,
+  individualId: string | undefined
+): string {
+  if (!individualId) return nic;
+  const individual = (individuals || []).find((i) => i.id === individualId);
+  return individual ? `${nic}-${individual.code}` : nic;
+}
+
 function nodeFromRecord(id: string, type: GraphNode['type'], label: string, record: Record<string, any>): GraphNode {
   return { id, type, label, properties: unwrapFieldValues(record) };
 }
@@ -219,7 +236,7 @@ export function computeGraphForCollection(col: OsteologicalCollection): { nodes:
         presence: elem.presence,
         preservation: elem.preservationQuality
       }));
-      const parentId = elem.associatedIndividualId ? `${nic}-IND-01` : nic;
+      const parentId = resolveIndividualNodeId(nic, col.phase4?.individuals, elem.associatedIndividualId);
       edges.push(edge(`e-${parentId}-${elemNodeId}`, parentId, elemNodeId, 'contem_elemento', {
         recordId: elem.id,
         field: 'phase4.skeletalElements',
@@ -239,7 +256,7 @@ export function computeGraphForCollection(col: OsteologicalCollection): { nodes:
         timing: p.timingEstimate,
         description: p.description || p.notes
       }));
-      const targetIndNodeId = `${nic}-IND-01`;
+      const targetIndNodeId = resolveIndividualNodeId(nic, col.phase4?.individuals, p.individualId);
       edges.push(edge(`e-${targetIndNodeId}-${pathNodeId}`, targetIndNodeId, pathNodeId, 'apresenta_patologia', {
         recordId: p.id,
         field: 'phase5.pathologies',
@@ -256,7 +273,7 @@ export function computeGraphForCollection(col: OsteologicalCollection): { nodes:
       modality: ex.modalityCode || 'CT',
       date: ex.date || col.createdAt
     }));
-    const targetIndNodeId = `${nic}-IND-01`;
+    const targetIndNodeId = resolveIndividualNodeId(nic, col.phase4?.individuals, ex.individualId);
     edges.push(edge(`e-${targetIndNodeId}-${examNodeId}`, targetIndNodeId, examNodeId, 'possui_exame', {
       recordId: ex.id,
       field: 'phase5.exams',
