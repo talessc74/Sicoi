@@ -33,6 +33,7 @@ import {
   adminRestoreBox
 } from './db/adminRepo';
 import { getGraph, getNodeWithEdges, findPath, searchNodes } from './db/graphRepo';
+import { findSimilarSkeletalElements, BoneSimilarityCriteria } from './db/boneSimilarity';
 import { listPeople, createPerson, updatePerson, deletePerson, countPeople } from './db/peopleRepo';
 import {
   verifyLogin,
@@ -1309,6 +1310,54 @@ app.get('/api/graph/search', async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Erro ao buscar no grafo:', error);
     return res.status(500).json({ error: error?.message || 'Erro ao buscar no grafo.' });
+  }
+});
+
+// Busca de ossos parecidos entre os conjuntos já cadastrados, pra comparar com um
+// osso em mãos fora do acervo — exige sessão (requireAuth): diferente das rotas de
+// IA já existentes (/api/chat, /api/pop-step, /api/transcribe), que são públicas;
+// esta não repete esse padrão. Nesta primeira versão o critério já vem estruturado
+// no corpo (sem IA ainda) — a extração a partir de texto livre é um passo futuro.
+const SKELETAL_SIDES = new Set(['direito', 'esquerdo', 'axial_unico']);
+const SEX_ESTIMATES = new Set(['masculino', 'provavel_masculino', 'indeterminado', 'provavel_feminino', 'feminino']);
+const AGE_CATEGORIES = new Set(['jovem', 'adulto_jovem', 'adulto_medio', 'adulto_maduro', 'idoso']);
+
+app.post('/api/bone-similarity/search', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const body = req.body?.criteria || {};
+    const criteria: BoneSimilarityCriteria = {};
+
+    if (body.boneNameQuery !== undefined) {
+      if (typeof body.boneNameQuery !== 'string' || body.boneNameQuery.length > 200) {
+        return res.status(400).json({ error: '"boneNameQuery" deve ser texto de até 200 caracteres.' });
+      }
+      criteria.boneNameQuery = body.boneNameQuery;
+    }
+    if (body.side !== undefined) {
+      if (!SKELETAL_SIDES.has(body.side)) {
+        return res.status(400).json({ error: `"side" deve ser um de: ${[...SKELETAL_SIDES].join(', ')}.` });
+      }
+      criteria.side = body.side;
+    }
+    if (body.sexEstimate !== undefined) {
+      if (!SEX_ESTIMATES.has(body.sexEstimate)) {
+        return res.status(400).json({ error: `"sexEstimate" deve ser um de: ${[...SEX_ESTIMATES].join(', ')}.` });
+      }
+      criteria.sexEstimate = body.sexEstimate;
+    }
+    if (body.ageCategory !== undefined) {
+      if (!AGE_CATEGORIES.has(body.ageCategory)) {
+        return res.status(400).json({ error: `"ageCategory" deve ser um de: ${[...AGE_CATEGORIES].join(', ')}.` });
+      }
+      criteria.ageCategory = body.ageCategory;
+    }
+
+    const pool = getPool();
+    const candidates = await findSimilarSkeletalElements(pool, criteria);
+    return res.json({ candidates });
+  } catch (error: any) {
+    console.error('Erro na busca de ossos parecidos:', error);
+    return res.status(500).json({ error: error?.message || 'Erro na busca de ossos parecidos.' });
   }
 });
 

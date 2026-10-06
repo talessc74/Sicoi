@@ -14,7 +14,7 @@ sobrescrevem `_core` quando os dois se sobrepõem.
 Manutenção dos Manuais do Usuário (`public/manuais/`) sincronizada com
 mudanças no site. CORS restrito a origens conhecidas.
 
-### ADRs — Architectural Decisions (5 documentos)
+### ADRs — Architectural Decisions (6 documentos)
 
 Histórico protegido de conjuntos: servidor como fonte de verdade,
 assinaturas travadas, registro de alterações encadeado por hash.
@@ -24,7 +24,9 @@ papel: cor + ícone fixos, só no indicador de identidade. Login real:
 sessão no servidor (cookie httpOnly) como única fonte de identidade,
 nunca um actorId declarado pelo cliente. Fotos reais (Fase 1 e 2):
 captura pela câmera, guardadas como bytes direto no Postgres já
-existente — sem conta de armazenamento externa.
+existente — sem conta de armazenamento externa. Busca por semelhança
+entre ossos: recuperação real no Postgres primeiro, explicação por IA
+depois — nunca o inverso.
 
 ### BDRs — Business Decisions (0 documentos)
 
