@@ -33,7 +33,13 @@ import {
   adminRestoreBox
 } from './db/adminRepo';
 import { getGraph, getNodeWithEdges, findPath, searchNodes } from './db/graphRepo';
-import { findSimilarSkeletalElements, BoneSimilarityCriteria } from './db/boneSimilarity';
+import {
+  findSimilarSkeletalElements,
+  parseBoneSimilarityExplanations,
+  BoneSimilarityCriteria,
+  BoneSimilarityCandidate,
+  BoneSimilarityExplanation
+} from './db/boneSimilarity';
 import { listPeople, createPerson, updatePerson, deletePerson, countPeople } from './db/peopleRepo';
 import {
   verifyLogin,
@@ -1411,6 +1417,92 @@ async function extractBoneCriteriaFromFreeText(freeText: string): Promise<BoneSi
   return result.criteria;
 }
 
+// Só explica os N primeiros candidatos — custo e tamanho de prompt crescem com
+// a lista, e a busca já devolve os mais relevantes primeiro.
+const MAX_CANDIDATES_TO_EXPLAIN = 20;
+
+const BONE_SIMILARITY_EXPLANATION_RESPONSE_SCHEMA = {
+  type: 'ARRAY',
+  items: {
+    type: 'OBJECT',
+    properties: {
+      elementId: { type: 'STRING', description: 'Exatamente um dos IDs de elemento listados no contexto — nunca um ID novo.' },
+      similarityScore: { type: 'NUMBER', description: 'De 0 (nada parecido) a 1 (muito parecido).' },
+      explanation: { type: 'STRING', description: 'Em português, o que aproxima ou diferencia este elemento da descrição do usuário.' },
+      confidence: { type: 'STRING', enum: ['alta', 'media', 'baixa'], description: 'Confiança da comparação, não da identificação.' }
+    },
+    required: ['elementId', 'similarityScore', 'explanation', 'confidence']
+  }
+};
+
+// IA só comenta sobre candidatos que a busca determinística já trouxe — nunca
+// recebe a tarefa de "achar", só de "comparar" (_local-adr-policy-103). A
+// validação de resposta (descartar elementId desconhecido, tipo errado, etc.)
+// é a mesma `parseBoneSimilarityExplanations` testada em db/boneSimilarity.ts.
+async function explainBoneSimilarity(
+  freeText: string,
+  candidates: BoneSimilarityCandidate[]
+): Promise<Map<string, BoneSimilarityExplanation>> {
+  const toExplain = candidates.slice(0, MAX_CANDIDATES_TO_EXPLAIN);
+  const knownIds = new Set(toExplain.map((c) => c.element.id));
+
+  const contextLines = toExplain.map((c) => {
+    const bio = c.individual?.biologicalProfile;
+    const partes = [
+      `elementId: ${c.element.id}`,
+      `osso: ${c.element.namePt}`,
+      `lado: ${c.element.side}`,
+      `presença: ${c.element.presence}`,
+      `preservação: ${c.element.preservationQuality}`
+    ];
+    if (bio) {
+      partes.push(`sexo estimado do indivíduo: ${bio.sexEstimate.value}`);
+      partes.push(`categoria de idade do indivíduo: ${bio.ageCategory.value} (${bio.ageCategory.estimatedRangeYears})`);
+      partes.push(`estatura estimada do indivíduo: ${bio.statureCm.estimatedValue}cm`);
+    }
+    return `- ${partes.join(', ')}`;
+  });
+
+  let response;
+  try {
+    response = await getGeminiClient().models.generateContent({
+      model: 'gemini-3.1-flash-lite',
+      contents: [{
+        role: 'user',
+        parts: [{
+          text: `Descrição do osso em mãos: "${freeText}"\n\nCandidatos reais do acervo:\n${contextLines.join('\n')}`
+        }]
+      }],
+      config: {
+        systemInstruction:
+          'Você compara um osso descrito livremente com uma lista de elementos ósseos reais já cadastrados na Coleção Osteológica Identificada do INC (COI-INC). Para cada candidato da lista, avalie a semelhança com a descrição. Nunca comente sobre um elemento fora da lista. Isto é uma sugestão de comparação para apoiar a curadoria humana — nunca uma identificação confirmada.',
+        temperature: 0.2,
+        responseMimeType: 'application/json',
+        responseSchema: BONE_SIMILARITY_EXPLANATION_RESPONSE_SCHEMA as any
+      }
+    });
+  } catch (err: any) {
+    const status = err?.status === 401 || (err?.message && err.message.includes('401')) ? 401 : 502;
+    throw Object.assign(new Error(err?.message || 'Erro ao consultar o Gemini para explicar a semelhança.'), { statusCode: status });
+  }
+
+  const raw = response.text?.trim();
+  if (!raw) {
+    throw Object.assign(new Error('Resposta vazia do Gemini ao explicar a semelhança.'), { statusCode: 502 });
+  }
+  let parsed: any;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw Object.assign(new Error('Resposta do Gemini não é um JSON válido conforme o schema pedido.'), { statusCode: 502 });
+  }
+  if (!Array.isArray(parsed)) {
+    throw Object.assign(new Error('Resposta do Gemini não é uma lista conforme o schema pedido.'), { statusCode: 502 });
+  }
+
+  return parseBoneSimilarityExplanations(parsed, knownIds);
+}
+
 app.post('/api/bone-similarity/search', requireAuth, async (req: Request, res: Response) => {
   try {
     const freeText = req.body?.freeText;
@@ -1438,7 +1530,25 @@ app.post('/api/bone-similarity/search', requireAuth, async (req: Request, res: R
 
     const pool = getPool();
     const candidates = await findSimilarSkeletalElements(pool, criteria);
-    return res.json({ criteria, candidates });
+
+    // A explicação só faz sentido quando há uma descrição livre pra comparar —
+    // critério já estruturado é um filtro exato, não precisa de IA explicando.
+    // Falha aqui nunca derruba a busca: o resultado determinístico continua
+    // valendo, só sem o comentário da IA.
+    let explanationError: string | undefined;
+    if (typeof freeText === 'string' && freeText.trim() && candidates.length > 0) {
+      try {
+        const explanations = await explainBoneSimilarity(freeText, candidates);
+        for (const candidate of candidates as (BoneSimilarityCandidate & { similarity?: BoneSimilarityExplanation })[]) {
+          candidate.similarity = explanations.get(candidate.element.id);
+        }
+      } catch (err: any) {
+        console.error('Erro ao explicar semelhança de ossos (busca segue sem explicação):', err);
+        explanationError = err?.message || 'Não foi possível gerar a explicação de semelhança.';
+      }
+    }
+
+    return res.json({ criteria, candidates, explanationError });
   } catch (error: any) {
     console.error('Erro na busca de ossos parecidos:', error);
     const status = error?.statusCode || 500;

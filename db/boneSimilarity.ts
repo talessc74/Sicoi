@@ -24,7 +24,16 @@ export interface BoneSimilarityCandidate {
   nic: string;
   element: SkeletalElement;
   individual: IndividualHypothesis | null;
+  similarity?: BoneSimilarityExplanation;
 }
+
+export interface BoneSimilarityExplanation {
+  similarityScore: number;
+  explanation: string;
+  confidence: 'alta' | 'media' | 'baixa';
+}
+
+export const SIMILARITY_CONFIDENCES = new Set(['alta', 'media', 'baixa']);
 
 const MAX_CANDIDATES = 100;
 
@@ -84,4 +93,35 @@ export async function findSimilarSkeletalElements(
     }
   }
   return candidates;
+}
+
+/**
+ * Valida a resposta do Gemini pra explicação de semelhança (resposta de
+ * `BONE_SIMILARITY_EXPLANATION_RESPONSE_SCHEMA` em server.ts): descarta qualquer
+ * item que não seja um dos `knownIds` (um elemento inventado pelo modelo nunca
+ * chega ao cliente — _local-adr-policy-103), que tenha tipo errado em qualquer
+ * campo, ou cuja `confidence` não seja um dos três valores esperados. Função
+ * pura, sem IA nem banco — testável isoladamente.
+ */
+export function parseBoneSimilarityExplanations(
+  parsed: unknown,
+  knownIds: Set<string>
+): Map<string, BoneSimilarityExplanation> {
+  const explanations = new Map<string, BoneSimilarityExplanation>();
+  if (!Array.isArray(parsed)) return explanations;
+
+  for (const item of parsed) {
+    if (!item || typeof item !== 'object') continue;
+    const { elementId, similarityScore, explanation, confidence } = item as Record<string, unknown>;
+    if (typeof elementId !== 'string' || !knownIds.has(elementId)) continue;
+    if (typeof similarityScore !== 'number' || Number.isNaN(similarityScore)) continue;
+    if (typeof explanation !== 'string') continue;
+    if (typeof confidence !== 'string' || !SIMILARITY_CONFIDENCES.has(confidence)) continue;
+    explanations.set(elementId, {
+      similarityScore: Math.max(0, Math.min(1, similarityScore)),
+      explanation,
+      confidence: confidence as BoneSimilarityExplanation['confidence']
+    });
+  }
+  return explanations;
 }

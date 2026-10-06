@@ -92,6 +92,37 @@ desenvolvimento por falta de uma chave Gemini real — a parte determinística
 extração de verdade (qualidade da interpretação do texto livre) só se
 confirma com uso real.
 
+### Round 3 — IA explica a semelhança sobre os candidatos reais (06/10/2026)
+
+Quando a busca usa `freeText`, depois de encontrar os candidatos reais
+(Round 1), o Gemini é chamado de novo pra comparar cada um (até 20, limite
+de custo/tamanho de prompt) com a descrição do usuário, devolvendo
+`{ elementId, similarityScore, explanation, confidence }` por candidato —
+`responseSchema` do tipo `ARRAY`, igual ao padrão já usado em `/api/pop-step`,
+agora numa lista em vez de um objeto único.
+
+A validação da resposta (`parseBoneSimilarityExplanations`, movida pra
+`db/boneSimilarity.ts` pra ficar testável sem IA nem banco) descarta todo
+`elementId` que não esteja entre os candidatos reais passados no prompt —
+o modelo não tem como inventar um osso que não existe e tê-lo aceito pelo
+servidor. Também descarta tipo errado em qualquer campo e qualquer
+`confidence` fora do vocabulário fechado (`alta`/`media`/`baixa`), e limita
+`similarityScore` a `[0, 1]` mesmo se o modelo devolver fora da faixa.
+
+**Falha na explicação nunca derruba a busca**: se o Gemini falhar ao
+explicar, a rota devolve os candidatos reais sem `similarity` e um
+`explanationError` — quem está comparando ossos continua vendo o resultado
+determinístico, só sem o comentário da IA. Testado manualmente (chave
+inválida de propósito) e também pelos 6 testes novos de
+`parseBoneSimilarityExplanations` (elementId inventado descartado, tipo
+errado descartado, confidence fora do vocabulário descartada, score fora de
+`[0,1]` recortado, resposta que não é lista tratada como vazia).
+
+Limitação honesta, igual à Round 2: sem chave Gemini real neste ambiente, o
+caminho de sucesso (qualidade da explicação de verdade) não foi validado
+ponta a ponta — só a parte determinística e a validação defensiva da
+resposta.
+
 ## References
 
 - Arquivos: `db/boneSimilarity.ts`, `db/__tests__/boneSimilarity.test.ts`,
