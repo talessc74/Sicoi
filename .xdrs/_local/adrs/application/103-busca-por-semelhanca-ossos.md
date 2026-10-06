@@ -71,6 +71,27 @@ pelos testes desta policy, não corrigido aqui (fora de escopo — ver
 `_local-adr-policy-202`/disciplina de diff mínimo). Pendência registrada para
 PR futuro.
 
+### Round 2 — extração do critério por IA implementada (06/10/2026)
+
+`POST /api/bone-similarity/search` passou a aceitar `{ freeText }` além de
+`{ criteria }`: quando `freeText` é dado, o servidor extrai o critério via
+Gemini (`responseSchema` com `enum` nos mesmos vocabulários fechados de
+`SKELETAL_SIDES`/`SEX_ESTIMATES`/`AGE_CATEGORIES` — o modelo não consegue
+devolver um valor que o resto do sistema não entenda) e então chama a mesma
+`findSimilarSkeletalElements` da Round 1, sem duplicar a validação (função
+`parseBoneSimilarityCriteria` compartilhada pelos dois caminhos). A resposta
+agora inclui o `criteria` usado, pra quem chamou ver o que foi interpretado.
+
+Tratamento de erro do Gemini alinhado ao `/api/pop-step` já existente: 401
+só para falha de autenticação de verdade, 502 para qualquer outra falha do
+serviço externo — nunca 500 genérico (confirmado manualmente: uma chave
+inválida de propósito gerou 502, não 500, depois do ajuste). Não foi
+possível testar o caminho de sucesso ponta a ponta neste ambiente de
+desenvolvimento por falta de uma chave Gemini real — a parte determinística
+(schema, parsing, validação) está cobrada pelos testes automatizados; a
+extração de verdade (qualidade da interpretação do texto livre) só se
+confirma com uso real.
+
 ## References
 
 - Arquivos: `db/boneSimilarity.ts`, `db/__tests__/boneSimilarity.test.ts`,
