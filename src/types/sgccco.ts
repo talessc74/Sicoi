@@ -581,7 +581,11 @@ export type GraphNodeType =
   | 'formulario_a2'
   | 'foto'
   | 'assinatura'
-  | 'evento_custodia';
+  | 'evento_custodia'
+  // Nó temporário da busca por semelhança entre ossos (_local-adr-policy-103):
+  // o osso descrito pelo usuário, fora do acervo — nunca persistido em
+  // graph_nodes, só desenhado em memória no painel de busca.
+  | 'osso_consultado';
 
 export interface GraphNode {
   id: string;
@@ -602,16 +606,20 @@ export type GraphEdgeRelation =
   | 'tem_foto'
   | 'contem_caixa'
   | 'assinado_por'
-  | 'evento_de_custodia';
+  | 'evento_de_custodia'
+  // Liga o nó temporário 'osso_consultado' a um elemento real do acervo —
+  // sempre confidence: 'INFERRED' (_local-adr-policy-103).
+  | 'similar_a';
 
 export interface GraphEdge {
   id: string;
   source: string;
   target: string;
   relation: GraphEdgeRelation;
-  // Mesma semântica do Graphify: EXTRACTED = relação direta e explícita no dado;
-  // INFERRED = deduzida por uma análise posterior (não usado nesta entrega — todas
-  // as arestas calculadas hoje são EXTRACTED).
+  // Mesma semântica do Graphify: EXTRACTED = relação direta e explícita no dado
+  // (todo o grafo persistido, calculado em graphSync.ts); INFERRED = deduzida por
+  // uma análise posterior — usado pela primeira vez na busca por semelhança entre
+  // ossos (_local-adr-policy-103), nunca persistido, só no resultado da busca.
   confidence: 'EXTRACTED' | 'INFERRED';
   provenance: {
     recordId: string;
