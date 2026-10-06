@@ -4,7 +4,7 @@ import { runMigrations } from '../migrate';
 import { createCollection } from '../collectionsRepo';
 import { createEmptyPhase1Data, createEmptyPhase2Data } from '../../src/data/phaseDefaults';
 import type { OsteologicalCollection, IndividualHypothesis, SkeletalElement } from '../../src/types/sgccco';
-import { findSimilarSkeletalElements } from '../boneSimilarity';
+import { findSimilarSkeletalElements, parseBoneSimilarityExplanations } from '../boneSimilarity';
 
 const TEST_DATABASE_URL =
   process.env.TEST_DATABASE_URL || 'postgresql://sgcccco_app:sgcccco_dev_local@localhost:5432/sgcccco_test';
@@ -163,5 +163,57 @@ describe('boneSimilarity', () => {
 
     const comFiltroSexo = await findSimilarSkeletalElements(pool, { boneNameQuery: 'fêmur', sexEstimate: 'feminino' });
     expect(comFiltroSexo).toHaveLength(0);
+  });
+});
+
+describe('parseBoneSimilarityExplanations (validação da resposta do Gemini, sem IA nem banco)', () => {
+  const knownIds = new Set(['ELEM-A', 'ELEM-B']);
+
+  it('aceita itens válidos, cujo elementId está entre os candidatos reais', () => {
+    const result = parseBoneSimilarityExplanations(
+      [{ elementId: 'ELEM-A', similarityScore: 0.8, explanation: 'parecido', confidence: 'alta' }],
+      knownIds
+    );
+    expect(result.get('ELEM-A')).toEqual({ similarityScore: 0.8, explanation: 'parecido', confidence: 'alta' });
+  });
+
+  it('descarta um elementId que o modelo inventou, fora da lista de candidatos reais', () => {
+    const result = parseBoneSimilarityExplanations(
+      [{ elementId: 'ELEM-INVENTADO', similarityScore: 0.9, explanation: 'x', confidence: 'alta' }],
+      knownIds
+    );
+    expect(result.size).toBe(0);
+  });
+
+  it('descarta item com confidence fora do vocabulário fechado', () => {
+    const result = parseBoneSimilarityExplanations(
+      [{ elementId: 'ELEM-A', similarityScore: 0.5, explanation: 'x', confidence: 'certeza_total' }],
+      knownIds
+    );
+    expect(result.size).toBe(0);
+  });
+
+  it('descarta item com similarityScore ou explanation do tipo errado', () => {
+    const result = parseBoneSimilarityExplanations(
+      [
+        { elementId: 'ELEM-A', similarityScore: 'alta', explanation: 'x', confidence: 'alta' },
+        { elementId: 'ELEM-B', similarityScore: 0.5, explanation: 42, confidence: 'alta' }
+      ],
+      knownIds
+    );
+    expect(result.size).toBe(0);
+  });
+
+  it('limita similarityScore ao intervalo [0, 1] mesmo se o modelo devolver fora da faixa', () => {
+    const result = parseBoneSimilarityExplanations(
+      [{ elementId: 'ELEM-A', similarityScore: 5, explanation: 'x', confidence: 'baixa' }],
+      knownIds
+    );
+    expect(result.get('ELEM-A')?.similarityScore).toBe(1);
+  });
+
+  it('devolve vazio se a resposta não for uma lista', () => {
+    expect(parseBoneSimilarityExplanations({ not: 'an array' }, knownIds).size).toBe(0);
+    expect(parseBoneSimilarityExplanations(null, knownIds).size).toBe(0);
   });
 });
