@@ -18,6 +18,10 @@ Decisões de arquitetura e técnicas deste projeto, criadas por deliberação AR
 - [_local-adr-policy-102](application/102-identidade-visual-por-papel.md) - Identidade visual por papel: cor + ícone fixos, só no indicador de identidade, nunca reaproveitando cor de status
 - [_local-adr-policy-103](application/103-busca-por-semelhanca-ossos.md) - Busca por semelhança entre ossos: recuperação real no Postgres primeiro, explicação por IA depois — nunca o inverso
 
+## Integration
+
+- [_local-adr-policy-401](integration/401-exploracao-conexao-pci-conecta.md) - Exploração (sem decisão de implementar) de conexão com a Rede PCI Conecta — onde a busca por semelhança entre ossos ajudaria, e onde cruzaria a missão declarada do SIGCOI
+
 ## Platform
 
 - [_local-adr-policy-301](platform/301-fotos-reais-postgres.md) - Fotos reais (Fase 1 e 2): captura pela câmera, guardadas como bytes direto no Postgres já existente — sem conta de armazenamento externa
