@@ -1316,48 +1316,133 @@ app.get('/api/graph/search', async (req: Request, res: Response) => {
 // Busca de ossos parecidos entre os conjuntos já cadastrados, pra comparar com um
 // osso em mãos fora do acervo — exige sessão (requireAuth): diferente das rotas de
 // IA já existentes (/api/chat, /api/pop-step, /api/transcribe), que são públicas;
-// esta não repete esse padrão. Nesta primeira versão o critério já vem estruturado
-// no corpo (sem IA ainda) — a extração a partir de texto livre é um passo futuro.
+// esta não repete esse padrão. Aceita o critério já estruturado (`criteria`) ou uma
+// descrição livre (`freeText`), extraída para o mesmo formato pelo Gemini antes da
+// busca — a extração nunca inventa candidato, só interpreta o que o usuário descreveu
+// (_local-adr-policy-103).
 const SKELETAL_SIDES = new Set(['direito', 'esquerdo', 'axial_unico']);
 const SEX_ESTIMATES = new Set(['masculino', 'provavel_masculino', 'indeterminado', 'provavel_feminino', 'feminino']);
 const AGE_CATEGORIES = new Set(['jovem', 'adulto_jovem', 'adulto_medio', 'adulto_maduro', 'idoso']);
+const MAX_FREE_TEXT_LENGTH = 1000;
+
+function parseBoneSimilarityCriteria(body: any): { criteria: BoneSimilarityCriteria } | { error: string } {
+  const criteria: BoneSimilarityCriteria = {};
+  if (body.boneNameQuery !== undefined && body.boneNameQuery !== null) {
+    if (typeof body.boneNameQuery !== 'string' || body.boneNameQuery.length > 200) {
+      return { error: '"boneNameQuery" deve ser texto de até 200 caracteres.' };
+    }
+    criteria.boneNameQuery = body.boneNameQuery;
+  }
+  if (body.side !== undefined && body.side !== null) {
+    if (!SKELETAL_SIDES.has(body.side)) {
+      return { error: `"side" deve ser um de: ${[...SKELETAL_SIDES].join(', ')}.` };
+    }
+    criteria.side = body.side;
+  }
+  if (body.sexEstimate !== undefined && body.sexEstimate !== null) {
+    if (!SEX_ESTIMATES.has(body.sexEstimate)) {
+      return { error: `"sexEstimate" deve ser um de: ${[...SEX_ESTIMATES].join(', ')}.` };
+    }
+    criteria.sexEstimate = body.sexEstimate;
+  }
+  if (body.ageCategory !== undefined && body.ageCategory !== null) {
+    if (!AGE_CATEGORIES.has(body.ageCategory)) {
+      return { error: `"ageCategory" deve ser um de: ${[...AGE_CATEGORIES].join(', ')}.` };
+    }
+    criteria.ageCategory = body.ageCategory;
+  }
+  return { criteria };
+}
+
+// Schema de extração: o Gemini só pode devolver um dos valores dos vocabulários
+// fechados já usados em SkeletalElement/biologicalProfile (via `enum`) — nunca um
+// valor novo que o resto do sistema não entenda. Campo ausente na fala do usuário
+// vem omitido, nunca inventado.
+const BONE_CRITERIA_RESPONSE_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    boneNameQuery: {
+      type: 'STRING',
+      description: 'Nome do osso em português, como mencionado (ex.: "fêmur", "tíbia"). Omitido se a fala não menciona um osso específico.'
+    },
+    side: { type: 'STRING', enum: [...SKELETAL_SIDES], description: 'Lado do corpo, só se explicitamente mencionado.' },
+    sexEstimate: { type: 'STRING', enum: [...SEX_ESTIMATES], description: 'Estimativa de sexo, só se explicitamente mencionada.' },
+    ageCategory: { type: 'STRING', enum: [...AGE_CATEGORIES], description: 'Categoria de idade, só se explicitamente mencionada ou claramente dedutível de uma idade numérica.' }
+  }
+};
+
+async function extractBoneCriteriaFromFreeText(freeText: string): Promise<BoneSimilarityCriteria> {
+  const ai = getGeminiClient();
+  let response;
+  try {
+    response = await ai.models.generateContent({
+      model: 'gemini-3.1-flash-lite',
+      contents: [{ role: 'user', parts: [{ text: freeText }] }],
+      config: {
+        systemInstruction:
+          'Você extrai critérios de busca de uma descrição livre de um osso, pra comparar com o acervo da Coleção Osteológica Identificada do INC (COI-INC). Devolva só o que a fala realmente menciona ou torna claramente dedutível — nunca invente um valor que não foi dito.',
+        temperature: 0.2,
+        responseMimeType: 'application/json',
+        responseSchema: BONE_CRITERIA_RESPONSE_SCHEMA as any
+      }
+    });
+  } catch (err: any) {
+    // Mesma convenção de /api/pop-step: 401 só para falha de autenticação de
+    // verdade, 502 pra qualquer outra falha do Gemini (nunca 500 genérico —
+    // o erro é do serviço externo, não do nosso servidor).
+    const status = err?.status === 401 || (err?.message && err.message.includes('401')) ? 401 : 502;
+    throw Object.assign(new Error(err?.message || 'Erro ao consultar o Gemini para extrair o critério de busca.'), { statusCode: status });
+  }
+
+  const raw = response.text?.trim();
+  if (!raw) {
+    throw Object.assign(new Error('Resposta vazia do Gemini ao interpretar a descrição do osso.'), { statusCode: 502 });
+  }
+  let parsed: any;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw Object.assign(new Error('Resposta do Gemini não é um JSON válido conforme o schema pedido.'), { statusCode: 502 });
+  }
+  const result = parseBoneSimilarityCriteria(parsed);
+  if ('error' in result) {
+    throw Object.assign(new Error(`O Gemini devolveu um critério fora do vocabulário esperado: ${result.error}`), { statusCode: 502 });
+  }
+  return result.criteria;
+}
 
 app.post('/api/bone-similarity/search', requireAuth, async (req: Request, res: Response) => {
   try {
-    const body = req.body?.criteria || {};
-    const criteria: BoneSimilarityCriteria = {};
+    const freeText = req.body?.freeText;
+    let criteria: BoneSimilarityCriteria;
 
-    if (body.boneNameQuery !== undefined) {
-      if (typeof body.boneNameQuery !== 'string' || body.boneNameQuery.length > 200) {
-        return res.status(400).json({ error: '"boneNameQuery" deve ser texto de até 200 caracteres.' });
+    if (freeText !== undefined && freeText !== null) {
+      if (typeof freeText !== 'string' || !freeText.trim()) {
+        return res.status(400).json({ error: '"freeText" deve ser um texto não vazio.' });
       }
-      criteria.boneNameQuery = body.boneNameQuery;
-    }
-    if (body.side !== undefined) {
-      if (!SKELETAL_SIDES.has(body.side)) {
-        return res.status(400).json({ error: `"side" deve ser um de: ${[...SKELETAL_SIDES].join(', ')}.` });
+      if (freeText.length > MAX_FREE_TEXT_LENGTH) {
+        return res.status(400).json({ error: `"freeText" deve ter até ${MAX_FREE_TEXT_LENGTH} caracteres.` });
       }
-      criteria.side = body.side;
-    }
-    if (body.sexEstimate !== undefined) {
-      if (!SEX_ESTIMATES.has(body.sexEstimate)) {
-        return res.status(400).json({ error: `"sexEstimate" deve ser um de: ${[...SEX_ESTIMATES].join(', ')}.` });
+      const apiKey = getCleanApiKey();
+      if (!apiKey) {
+        return res.status(401).json({ error: 'Chave GEMINI_API_KEY não configurada no servidor.', code: 401 });
       }
-      criteria.sexEstimate = body.sexEstimate;
-    }
-    if (body.ageCategory !== undefined) {
-      if (!AGE_CATEGORIES.has(body.ageCategory)) {
-        return res.status(400).json({ error: `"ageCategory" deve ser um de: ${[...AGE_CATEGORIES].join(', ')}.` });
+      criteria = await extractBoneCriteriaFromFreeText(freeText);
+    } else {
+      const result = parseBoneSimilarityCriteria(req.body?.criteria || {});
+      if ('error' in result) {
+        return res.status(400).json({ error: result.error });
       }
-      criteria.ageCategory = body.ageCategory;
+      criteria = result.criteria;
     }
 
     const pool = getPool();
     const candidates = await findSimilarSkeletalElements(pool, criteria);
-    return res.json({ candidates });
+    return res.json({ criteria, candidates });
   } catch (error: any) {
     console.error('Erro na busca de ossos parecidos:', error);
-    return res.status(500).json({ error: error?.message || 'Erro na busca de ossos parecidos.' });
+    const status = error?.statusCode || 500;
+    return res.status(status).json({ error: error?.message || 'Erro na busca de ossos parecidos.' });
   }
 });
 

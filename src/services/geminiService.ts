@@ -135,3 +135,45 @@ export async function sendPopStepMessage(transcript: string, stepContext: string
   }
   return data;
 }
+
+// Mesmos vocabulários fechados de SkeletalElement/biologicalProfile
+// (src/types/sgccco.ts) — mantidos aqui, e não importados de db/, porque db/ é
+// código de servidor (usa 'pg') e não deve entrar no bundle do frontend.
+export interface BoneSimilarityCriteria {
+  boneNameQuery?: string;
+  side?: 'direito' | 'esquerdo' | 'axial_unico';
+  sexEstimate?: 'masculino' | 'provavel_masculino' | 'indeterminado' | 'provavel_feminino' | 'feminino';
+  ageCategory?: 'jovem' | 'adulto_jovem' | 'adulto_medio' | 'adulto_maduro' | 'idoso';
+}
+
+export interface BoneSimilarityCandidate {
+  nic: string;
+  element: Record<string, any>;
+  individual: Record<string, any> | null;
+}
+
+export interface BoneSimilaritySearchResult {
+  criteria: BoneSimilarityCriteria;
+  candidates: BoneSimilarityCandidate[];
+}
+
+/**
+ * Busca ossos parecidos a partir de uma descrição livre (extraída pelo Gemini no
+ * servidor) ou de um critério já estruturado — nunca os dois ao mesmo tempo.
+ * Investigação, não gravação: não altera nenhum conjunto (_local-adr-policy-103).
+ */
+export async function searchSimilarBones(
+  input: { freeText: string } | { criteria: BoneSimilarityCriteria }
+): Promise<BoneSimilaritySearchResult> {
+  const res = await fetch('/api/bone-similarity/search', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
+    body: JSON.stringify(input)
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || `Erro HTTP ${res.status} ao buscar ossos parecidos.`);
+  }
+  return data;
+}
