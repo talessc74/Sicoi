@@ -61,15 +61,21 @@ semelhança. O modelo nunca recebe a tarefa de "encontrar" candidatos — só de
   gerado por código nenhum — esta é a primeira vez, e o rótulo visual existente
   já comunica "isto é sugestão, não fato", sem precisar inventar UI nova.
 
-### Achado registrado durante a implementação (fora do escopo desta policy)
+### Achado registrado durante a implementação (fora do escopo desta policy) — **corrigido em 06/10/2026**
 
-`db/graphSync.ts` liga todo elemento ósseo ao nó do indivíduo via um ID fixo
-(`` `${nic}-IND-01` ``), não ao `id`/`code` real do indivíduo associado — um
-conjunto com um indivíduo de código diferente de "IND-01" gera uma aresta
-apontando para um nó inexistente (falha de chave estrangeira). Encontrado
-pelos testes desta policy, não corrigido aqui (fora de escopo — ver
-`_local-adr-policy-202`/disciplina de diff mínimo). Pendência registrada para
-PR futuro.
+`db/graphSync.ts` ligava todo elemento ósseo, patologia e exame ao nó do
+indivíduo via um ID fixo (`` `${nic}-IND-01` ``), não ao `id`/`code` real do
+indivíduo associado — um conjunto com mais de um indivíduo gerava arestas
+erradas (tudo ligado ao primeiro, nunca ao segundo/terceiro) ou, pra um
+indivíduo de código diferente de "IND-01", uma aresta apontando pra um nó
+inexistente (falha de chave estrangeira). Encontrado pelos testes desta
+policy, corrigido numa revisão geral do projeto posterior: nova função
+`resolveIndividualNodeId` resolve o nó real a partir de
+`associatedIndividualId`/`individualId`, com fallback pro nó do conjunto
+(`nic`) quando não há indivíduo associado ou o id não bate com nenhum
+cadastrado. Dois testes novos em `db/__tests__/graphSync.test.ts` provam o
+comportamento (indivíduo real resolvido corretamente; id órfão cai no
+fallback seguro).
 
 ### Round 2 — extração do critério por IA implementada (06/10/2026)
 
