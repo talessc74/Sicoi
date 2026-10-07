@@ -126,9 +126,9 @@ consulte o índice `.xdrs/_local/index.md` daquele repositório.
   dois agentes de apoio previstos em `_local-adr-policy-001`) é só a interface
   — o modal existe mas a busca em si ainda não está implementada.
 - **Pendências conhecidas, fora do escopo até agora:** validação de entrada
-  mais rígida no backend, CSRF nas rotas que alteram estado, rate-limit de
-  login persistente entre reinícios do servidor (hoje é em memória — ver
-  `_local-adr-policy-202`).
+  mais rígida no backend. CSRF (double-submit token, `csrfProtection` em
+  `server.ts`) e rate-limit de login persistente em Postgres (tabela
+  `login_attempts`) já estão implementados — ver `_local-adr-policy-202`.
 
 ## Rodando localmente
 
