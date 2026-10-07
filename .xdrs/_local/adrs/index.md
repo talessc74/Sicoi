@@ -30,3 +30,4 @@ Decisões de arquitetura e técnicas deste projeto, criadas por deliberação AR
 
 - [_local-adr-policy-201](controls/201-exclusao-administrativa-reversivel.md) - Exclusão administrativa reversível (Zona de Risco): soft delete + trilha própria + papel reconferido no servidor
 - [_local-adr-policy-202](controls/202-login-real-sessao-servidor.md) - Login real: sessão no servidor (cookie httpOnly) como única fonte de identidade, nunca um actorId declarado pelo cliente
+- [_local-adr-policy-203](controls/203-leitura-publica-de-conjuntos-e-grafo.md) - Leitura de conjuntos, histórico e grafo exige sessão autenticada — nenhuma dessas rotas é pública

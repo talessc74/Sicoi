@@ -615,8 +615,10 @@ app.post('/api/transcribe', async (req: Request, res: Response) => {
 
 // --- Persistência (§ Postgres — conjuntos, formulários A.1/A.2, assinaturas, custódia) ---
 
-// Lista todos os conjuntos osteológicos (dashboard, seletor de NIC)
-app.get('/api/collections', async (_req: Request, res: Response) => {
+// Lista todos os conjuntos osteológicos (dashboard, seletor de NIC) — exige
+// sessão: lista NICs, custódia e perfil biológico, dado forense demais pra
+// ficar público sem login (_local-adr-policy-203).
+app.get('/api/collections', requireAuth, async (_req: Request, res: Response) => {
   try {
     const pool = getPool();
     const collections = await listCollections(pool);
@@ -627,8 +629,8 @@ app.get('/api/collections', async (_req: Request, res: Response) => {
   }
 });
 
-// Carrega um conjunto específico pelo NIC
-app.get('/api/collections/:nic', async (req: Request, res: Response) => {
+// Carrega um conjunto específico pelo NIC — exige sessão (_local-adr-policy-203)
+app.get('/api/collections/:nic', requireAuth, async (req: Request, res: Response) => {
   try {
     const pool = getPool();
     const collection = await getCollection(pool, req.params.nic);
@@ -682,7 +684,9 @@ app.put('/api/collections/:nic', requireAuth, async (req: Request, res: Response
 
 // Histórico completo de um conjunto: assinaturas (com a cópia de cada versão
 // assinada) e registro de alterações, com a conferência da corrente de hashes.
-app.get('/api/collections/:nic/history', async (req: Request, res: Response) => {
+// Exige sessão — nome de quem assinou cada fase e cadeia de custódia não são
+// dado público (_local-adr-policy-203).
+app.get('/api/collections/:nic/history', requireAuth, async (req: Request, res: Response) => {
   try {
     const pool = getPool();
     const collection = await getCollection(pool, req.params.nic);
@@ -1256,8 +1260,9 @@ app.delete('/api/people/:id', requireAdminSession, async (req: Request, res: Res
 
 // --- Grafo de Conhecimento (§16) — mirrors os verbos de consulta do Graphify ---
 
-// Grafo completo, ou escopado a um NIC (?nic=...)
-app.get('/api/graph', async (req: Request, res: Response) => {
+// Grafo completo, ou escopado a um NIC (?nic=...) — exige sessão: expõe o
+// mesmo perfil biológico/custódia que a listagem de conjuntos (_local-adr-policy-203)
+app.get('/api/graph', requireAuth, async (req: Request, res: Response) => {
   try {
     const pool = getPool();
     const graph = await getGraph(pool, typeof req.query.nic === 'string' ? req.query.nic : undefined);
@@ -1268,8 +1273,9 @@ app.get('/api/graph', async (req: Request, res: Response) => {
   }
 });
 
-// "explain": um nó e todas as suas arestas de entrada/saída
-app.get('/api/graph/node/:id', async (req: Request, res: Response) => {
+// "explain": um nó e todas as suas arestas de entrada/saída — exige sessão
+// (_local-adr-policy-203)
+app.get('/api/graph/node/:id', requireAuth, async (req: Request, res: Response) => {
   try {
     const pool = getPool();
     const result = await getNodeWithEdges(pool, req.params.id);
@@ -1283,8 +1289,8 @@ app.get('/api/graph/node/:id', async (req: Request, res: Response) => {
   }
 });
 
-// "path": caminho mais curto entre dois nós
-app.get('/api/graph/path', async (req: Request, res: Response) => {
+// "path": caminho mais curto entre dois nós — exige sessão (_local-adr-policy-203)
+app.get('/api/graph/path', requireAuth, async (req: Request, res: Response) => {
   try {
     const from = typeof req.query.from === 'string' ? req.query.from : '';
     const to = typeof req.query.to === 'string' ? req.query.to : '';
@@ -1303,8 +1309,8 @@ app.get('/api/graph/path', async (req: Request, res: Response) => {
   }
 });
 
-// "query": busca por texto em label/propriedades
-app.get('/api/graph/search', async (req: Request, res: Response) => {
+// "query": busca por texto em label/propriedades — exige sessão (_local-adr-policy-203)
+app.get('/api/graph/search', requireAuth, async (req: Request, res: Response) => {
   try {
     const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
     if (!q) {
