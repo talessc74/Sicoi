@@ -289,7 +289,6 @@ app.get('/api/status', (_req: Request, res: Response) => {
   res.json({
     status: 'online',
     hasApiKey: hasKey,
-    keyMasked: hasKey ? `${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)}` : 'NÃO CONFIGURADA',
     supportedModels: {
       general: 'gemini-3.5-flash',
       complex: 'gemini-3.1-pro-preview',

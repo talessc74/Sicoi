@@ -17,7 +17,6 @@ export interface ChatMessage {
 export interface ApiStatus {
   status: string;
   hasApiKey: boolean;
-  keyMasked: string;
   supportedModels: {
     general: string;
     complex: string;
