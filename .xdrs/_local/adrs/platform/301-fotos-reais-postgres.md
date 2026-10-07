@@ -1,7 +1,7 @@
 ---
 name: _local-adr-policy-301-fotos-reais-postgres
 description: Fotos de Fase 1 e Fase 2 passam de placeholder (URL fixa, hash de metadado) para captura real pela câmera, guardadas como bytes direto no Postgres já existente. Use antes de tocar em qualquer coisa relacionada a foto, upload de arquivo, ou armazenamento de dados binários.
-apply-to: db/migrations/018_photo_storage.sql, db/migrations/019_photo_bytes_in_postgres.sql, server.ts (rota de upload/download de foto), db/collectionsRepo.ts (syncPhotos), src/services/photoService.ts, src/components/Phase1Recebimento.tsx, src/components/Phase2Limpeza.tsx, src/components/PopConversationalConductor.tsx, src/types/sgccco.ts
+apply-to: db/migrations/018_photo_storage.sql, db/migrations/019_photo_bytes_in_postgres.sql, server.ts (rota de upload/download de foto), db/collectionsRepo.ts (syncPhotos), src/components/Phase1Recebimento.tsx, src/components/Phase2Limpeza.tsx, src/components/PopConversationalConductor.tsx, src/types/sgccco.ts
 valid-from: 2026-10-02
 ---
 
@@ -151,8 +151,9 @@ tinha previsto:
 
 - Arquivos: `db/migrations/018_photo_storage.sql`,
   `db/migrations/019_photo_bytes_in_postgres.sql`, `server.ts`,
-  `db/collectionsRepo.ts`, `src/services/photoService.ts` (a partir do
-  próximo PR), `src/components/Phase1Recebimento.tsx`,
+  `db/collectionsRepo.ts` (upload/download de foto ficou direto nestes
+  dois arquivos — não existe `src/services/photoService.ts` separado),
+  `src/components/Phase1Recebimento.tsx`,
   `src/components/PopConversationalConductor.tsx`,
   `src/components/Phase2Limpeza.tsx`
 - Policy relacionada: `_local-adr-policy-202` (servidor como fonte de
