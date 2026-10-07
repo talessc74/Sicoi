@@ -40,6 +40,7 @@ import {
   BoneSimilarityCandidate,
   BoneSimilarityExplanation
 } from './db/boneSimilarity';
+import { validateChatMessages, validatePopStepInput, validateTranscribeInput } from './db/aiInputValidation';
 import { listPeople, createPerson, updatePerson, deletePerson, countPeople } from './db/peopleRepo';
 import {
   verifyLogin,
@@ -381,8 +382,9 @@ app.post('/api/chat', async (req: Request, res: Response) => {
       systemInstruction = 'Você é o assistente de curadoria do SIGCOI, sistema de gestão da Coleção Osteológica Identificada do INC (COI-INC/DITEC/PF) — biobanco e coleção de referência para pesquisa aplicada, capacitação e ensino em antropologia forense, instituída pela Portaria DITEC/PF nº 1415/2024, sem finalidade de resolução de casos criminais. Auxilie com precisão científica e técnica na análise de remanescentes ósseos, controle e rastreabilidade do acervo, estimativa de sexo, idade, estatura, ancestralidade, traumatologia e patologias ósseas segundo os protocolos científicos da coleção.',
     } = req.body;
 
-    if (!Array.isArray(messages) || messages.length === 0) {
-      return res.status(400).json({ error: 'Nenhuma mensagem fornecida para a conversa.' });
+    const messagesError = validateChatMessages(messages);
+    if (messagesError) {
+      return res.status(400).json({ error: messagesError });
     }
 
     // Validação e seleção de modelo conforme especificação
@@ -472,8 +474,9 @@ app.post('/api/pop-step', async (req: Request, res: Response) => {
     }
 
     const { transcript, stepContext, model = 'gemini-3.1-flash-lite' } = req.body;
-    if (!transcript || !stepContext) {
-      return res.status(400).json({ error: 'Requisição deve conter { transcript, stepContext }.' });
+    const popStepError = validatePopStepInput(transcript, stepContext);
+    if (popStepError) {
+      return res.status(400).json({ error: popStepError });
     }
 
     const ai = getGeminiClient();
@@ -541,9 +544,9 @@ app.post('/api/transcribe', async (req: Request, res: Response) => {
 
     const ai = getGeminiClient();
     const { audioBase64, mimeType = 'audio/webm' } = req.body;
-
-    if (!audioBase64) {
-      return res.status(400).json({ error: 'Nenhum áudio codificado em base64 foi enviado.' });
+    const transcribeError = validateTranscribeInput(audioBase64, mimeType);
+    if (transcribeError) {
+      return res.status(400).json({ error: transcribeError });
     }
 
     // Limpar prefixo data: se presente
