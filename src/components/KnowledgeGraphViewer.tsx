@@ -398,30 +398,36 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
                 const r = node.type === 'nic' || node.type === 'osso_consultado' ? 26 : node.type === 'individuo' ? 22 : 18;
 
                 return (
-                  <g
-                    key={node.id}
-                    transform={`translate(${node.x}, ${node.y})`}
-                    onClick={() => selectNode(node.id)}
-                    className="cursor-pointer transition-transform duration-100 hover:scale-110"
-                  >
-                    <circle
-                      r={r}
-                      fill={meta.fill}
-                      stroke={isSelected ? '#ffffff' : isOnPath ? '#facc15' : meta.stroke}
-                      strokeWidth={isSelected || isOnPath ? 3 : 1.5}
-                      className="drop-shadow-md"
-                    />
-                    <text
-                      textAnchor="middle"
-                      dy="4"
-                      fill="#ffffff"
-                      fontSize={node.type === 'nic' ? '10' : '9'}
-                      fontWeight="600"
-                      fontFamily="monospace"
-                      className="pointer-events-none"
+                  // O posicionamento real (translate) fica só aqui, como atributo SVG — uma
+                  // classe CSS de "transform" neste <g> (ex.: hover:scale) sobrescreveria esse
+                  // translate em vez de somar a ele, fazendo o nó pular pro canto do SVG a cada
+                  // hover (bug encontrado: nó ficava instável/impossível de clicar). O efeito de
+                  // hover vive num <g> interno, que escala em torno do próprio centro
+                  // (transform-box: fill-box) sem tocar na posição deste <g> externo.
+                  <g key={node.id} transform={`translate(${node.x}, ${node.y})`} onClick={() => selectNode(node.id)} className="cursor-pointer">
+                    <g
+                      className="transition-transform duration-100 hover:scale-110"
+                      style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
                     >
-                      {node.label.length > 11 ? node.label.substring(0, 9) + '..' : node.label}
-                    </text>
+                      <circle
+                        r={r}
+                        fill={meta.fill}
+                        stroke={isSelected ? '#ffffff' : isOnPath ? '#facc15' : meta.stroke}
+                        strokeWidth={isSelected || isOnPath ? 3 : 1.5}
+                        className="drop-shadow-md"
+                      />
+                      <text
+                        textAnchor="middle"
+                        dy="4"
+                        fill="#ffffff"
+                        fontSize={node.type === 'nic' ? '10' : '9'}
+                        fontWeight="600"
+                        fontFamily="monospace"
+                        className="pointer-events-none"
+                      >
+                        {node.label.length > 11 ? node.label.substring(0, 9) + '..' : node.label}
+                      </text>
+                    </g>
                   </g>
                 );
               })}
