@@ -1,6 +1,6 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { GraphNode, GraphNodeType, GraphEdge } from '../types/sgccco';
-import { Network, Search, Info, Route, Loader2, RefreshCw, Bone, X } from 'lucide-react';
+import { Network, Search, Info, Route, Loader2, RefreshCw, Bone, X, Move } from 'lucide-react';
 import { searchSimilarBones, BoneSimilaritySearchResult } from '../services/geminiService';
 
 interface KnowledgeGraphViewerProps {
@@ -89,6 +89,28 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
   const [boneSearchError, setBoneSearchError] = useState<string | null>(null);
   const [isSearchingBones, setIsSearchingBones] = useState(false);
 
+  // Posições que a pessoa arrastou manualmente — sobrescrevem o layout radial
+  // calculado, só pra esta tela (não é gravado no banco: o grafo em si continua
+  // vindo de computeGraphForCollection; isto é puramente de visualização).
+  const [manualPositions, setManualPositions] = useState<Record<string, { x: number; y: number }>>({});
+  const svgRef = useRef<SVGSVGElement>(null);
+  const dragStateRef = useRef<{ id: string; moved: boolean; startClientX: number; startClientY: number; offsetX: number; offsetY: number } | null>(null);
+
+  // Converte coordenada de tela (clientX/Y do evento de mouse) pra coordenada do
+  // espaço interno do SVG (viewBox "0 0 840 600") — necessário porque o SVG é
+  // renderizado numa área de tamanho variável (responsiva), então 1px de mouse na
+  // tela não corresponde a 1 unidade do viewBox.
+  const toSvgPoint = useCallback((clientX: number, clientY: number) => {
+    const svg = svgRef.current;
+    const ctm = svg?.getScreenCTM();
+    if (!svg || !ctm) return { x: clientX, y: clientY };
+    const point = svg.createSVGPoint();
+    point.x = clientX;
+    point.y = clientY;
+    const transformed = point.matrixTransform(ctm.inverse());
+    return { x: transformed.x, y: transformed.y };
+  }, []);
+
   // Carrega o grafo persistido — o conjunto todo, ou escopado ao NIC selecionado na tela.
   // Só refaz sozinho quando o NIC selecionado muda (ou ao montar a tela); uma mudança feita
   // em outra aba/tela enquanto esta já estava aberta não chega aqui sozinha — por isso o
@@ -124,6 +146,61 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
       .catch(() => setExplainResult(null))
       .finally(() => setIsExplaining(false));
   }, []);
+
+  // Começa o arraste de um nó — guarda o deslocamento entre o ponto clicado e o
+  // centro do nó, pra ele não "pular" pro cursor no primeiro movimento.
+  const handleNodeMouseDown = useCallback(
+    (e: React.MouseEvent, node: { id: string; x: number; y: number }) => {
+      e.stopPropagation();
+      const svgPoint = toSvgPoint(e.clientX, e.clientY);
+      dragStateRef.current = {
+        id: node.id,
+        moved: false,
+        startClientX: e.clientX,
+        startClientY: e.clientY,
+        offsetX: svgPoint.x - node.x,
+        offsetY: svgPoint.y - node.y
+      };
+    },
+    [toSvgPoint]
+  );
+
+  // Ouvintes globais (não só no próprio nó): o mouse costuma sair da área do nó
+  // durante o arraste rápido, e o movimento/soltar precisam continuar sendo
+  // percebidos mesmo assim. Um clique sem movimento (abaixo do limiar) ainda
+  // seleciona o nó, igual a antes — só passa a ser arraste depois de um
+  // deslocamento perceptível.
+  useEffect(() => {
+    function handleMove(e: MouseEvent) {
+      const drag = dragStateRef.current;
+      if (!drag) return;
+      const dx = e.clientX - drag.startClientX;
+      const dy = e.clientY - drag.startClientY;
+      if (!drag.moved && Math.hypot(dx, dy) > 3) {
+        drag.moved = true;
+      }
+      if (drag.moved) {
+        const svgPoint = toSvgPoint(e.clientX, e.clientY);
+        setManualPositions((prev) => ({
+          ...prev,
+          [drag.id]: { x: svgPoint.x - drag.offsetX, y: svgPoint.y - drag.offsetY }
+        }));
+      }
+    }
+    function handleUp() {
+      const drag = dragStateRef.current;
+      if (drag && !drag.moved) {
+        selectNode(drag.id);
+      }
+      dragStateRef.current = null;
+    }
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleUp);
+    };
+  }, [toSvgPoint, selectNode]);
 
   const runPathFinder = useCallback(async () => {
     if (!pathFrom.trim() || !pathTo.trim()) return;
@@ -265,7 +342,17 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
   // Nós/arestas da busca por semelhança entram só no desenho (displayNodes/
   // displayEdges) — nunca em layoutNodes/filteredEdges, que refletem o que de
   // fato está em graph_nodes/graph_edges.
-  const displayNodes = useMemo(() => (boneOverlay ? [...layoutNodes, ...boneOverlay.nodes] : layoutNodes), [layoutNodes, boneOverlay]);
+  const displayNodesBeforeDrag = useMemo(
+    () => (boneOverlay ? [...layoutNodes, ...boneOverlay.nodes] : layoutNodes),
+    [layoutNodes, boneOverlay]
+  );
+  // Posição arrastada manualmente sobrescreve a calculada — última camada antes
+  // do desenho, pra sobreviver a filtro/busca mudando sem perder o que a pessoa
+  // já organizou.
+  const displayNodes = useMemo(
+    () => displayNodesBeforeDrag.map((n) => (manualPositions[n.id] ? { ...n, ...manualPositions[n.id] } : n)),
+    [displayNodesBeforeDrag, manualPositions]
+  );
   const displayEdges = useMemo(() => (boneOverlay ? [...filteredEdges, ...boneOverlay.edges] : filteredEdges), [filteredEdges, boneOverlay]);
 
   const getNodeCoords = (id: string) => {
@@ -290,6 +377,7 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             Persistido no banco a cada gravação. Cobre todo campo coletado nas fases, caixas, localização, assinaturas e custódia.
+            Arraste qualquer nó para reorganizar a visualização.
           </p>
         </div>
 
@@ -302,6 +390,15 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isLoadingGraph ? 'animate-spin' : ''}`} />
           </button>
+          {Object.keys(manualPositions).length > 0 && (
+            <button
+              onClick={() => setManualPositions({})}
+              title="Desfazer os arrastos e voltar ao layout automático"
+              className="p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+            >
+              <Move className="w-3.5 h-3.5" />
+            </button>
+          )}
           <div className="relative">
             <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
             <input
@@ -348,7 +445,7 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
               ))}
             </div>
 
-            <svg width="100%" height="520" viewBox="0 0 840 600" className="select-none">
+            <svg ref={svgRef} width="100%" height="520" viewBox="0 0 840 600" className="select-none">
               <defs>
                 <marker id="arrow" viewBox="0 0 10 10" refX="22" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
                   <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569" />
@@ -404,7 +501,12 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
                   // hover (bug encontrado: nó ficava instável/impossível de clicar). O efeito de
                   // hover vive num <g> interno, que escala em torno do próprio centro
                   // (transform-box: fill-box) sem tocar na posição deste <g> externo.
-                  <g key={node.id} transform={`translate(${node.x}, ${node.y})`} onClick={() => selectNode(node.id)} className="cursor-pointer">
+                  <g
+                    key={node.id}
+                    transform={`translate(${node.x}, ${node.y})`}
+                    onMouseDown={(e) => handleNodeMouseDown(e, node)}
+                    className="cursor-grab active:cursor-grabbing"
+                  >
                     <g
                       className="transition-transform duration-100 hover:scale-110"
                       style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
