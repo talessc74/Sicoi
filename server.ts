@@ -41,6 +41,7 @@ import {
   BoneSimilarityExplanation
 } from './db/boneSimilarity';
 import { listPeople, createPerson, updatePerson, deletePerson, countPeople } from './db/peopleRepo';
+import { listAuthorizations, createAuthorization, updateAuthorization } from './db/authorizationsRepo';
 import {
   verifyLogin,
   getPersonWithAuthStatus,
@@ -1254,6 +1255,81 @@ app.delete('/api/people/:id', requireAdminSession, async (req: Request, res: Res
   } catch (error: any) {
     console.error('Erro ao remover pessoa:', error);
     return res.status(500).json({ error: error?.message || 'Erro ao remover pessoa.' });
+  }
+});
+
+// --- Autorizações de pesquisa (Fase 7, §13 — ABAC) ---
+// Listar exige só sessão autenticada: o Pesquisador precisa ver as
+// autorizações pra filtrar sua própria consulta (ABAC em Phase7ConsultaPesquisa.tsx).
+// Criar e editar (inclusive revogar) exigem sessão de Administrador.
+
+const VALID_AUTHORIZATION_STATUS = new Set(['ativa', 'expirada', 'suspensa', 'revogada', 'aprovada']);
+
+function validateAuthorizationBody(body: any): string | null {
+  const { id, title, principalInvestigator, investigatorEmail, institution, cepEthicsApprovalNumber, status, validFrom, validUntil } =
+    body || {};
+  if (!id || !title || !principalInvestigator || !investigatorEmail || !institution || !cepEthicsApprovalNumber || !validFrom || !validUntil) {
+    return 'Informe id, title, principalInvestigator, investigatorEmail, institution, cepEthicsApprovalNumber, validFrom e validUntil.';
+  }
+  if (!VALID_AUTHORIZATION_STATUS.has(status)) {
+    return 'status inválido. Use ativa, expirada, suspensa, revogada ou aprovada.';
+  }
+  if (!isValidEmail(investigatorEmail)) {
+    return 'investigatorEmail deve ser um e-mail válido.';
+  }
+  return null;
+}
+
+app.get('/api/research-authorizations', requireAuth, async (_req: Request, res: Response) => {
+  try {
+    const pool = getPool();
+    const authorizations = await listAuthorizations(pool);
+    return res.json({ authorizations });
+  } catch (error: any) {
+    console.error('Erro ao listar autorizações de pesquisa:', error);
+    return res.status(500).json({ error: error?.message || 'Erro ao listar autorizações de pesquisa.' });
+  }
+});
+
+app.post('/api/research-authorizations', requireAdminSession, async (req: Request, res: Response) => {
+  try {
+    const validationError = validateAuthorizationBody(req.body);
+    if (validationError) {
+      return res.status(400).json({ error: validationError });
+    }
+    const pool = getPool();
+    const authorization = await createAuthorization(pool, req.body);
+    return res.status(201).json({ authorization });
+  } catch (error: any) {
+    console.error('Erro ao criar autorização de pesquisa:', error);
+    if (error?.code === '23505') {
+      return res.status(409).json({ error: 'Já existe uma autorização com esse id.' });
+    }
+    return res.status(500).json({ error: error?.message || 'Erro ao criar autorização de pesquisa.' });
+  }
+});
+
+// Também usada para revogar: a curadoria do estado ("status": "revogada") é
+// decisão do Administrador, nunca um delete — mesmo espírito de
+// _local-adr-policy-201 (reversível, com trilha de quem mudou e quando).
+app.put('/api/research-authorizations/:id', requireAdminSession, async (req: Request, res: Response) => {
+  try {
+    if (req.body?.id !== req.params.id) {
+      return res.status(400).json({ error: 'id do corpo da requisição não confere com o id da URL.' });
+    }
+    const validationError = validateAuthorizationBody(req.body);
+    if (validationError) {
+      return res.status(400).json({ error: validationError });
+    }
+    const pool = getPool();
+    const authorization = await updateAuthorization(pool, req.params.id, req.body);
+    if (!authorization) {
+      return res.status(404).json({ error: 'Autorização não encontrada.' });
+    }
+    return res.json({ authorization });
+  } catch (error: any) {
+    console.error('Erro ao editar autorização de pesquisa:', error);
+    return res.status(500).json({ error: error?.message || 'Erro ao editar autorização de pesquisa.' });
   }
 });
 
