@@ -44,6 +44,40 @@ import { Plus, ShieldCheck, Bot, Sparkles, Loader2, CheckCircle2 } from 'lucide-
 // durante a sessão da aba.
 const passwordSetupToken = new URLSearchParams(window.location.search).get('token');
 
+// Navegação por estado de aba (activeTab/activePhase), sem roteador — o botão
+// "voltar" físico do navegador/celular não tinha efeito nenhum dentro do app
+// (saía do site inteiro em vez de voltar uma tela). As funções abaixo traduzem
+// esse estado pra uma URL real e de volta, pra sincronizar com o histórico do
+// navegador via history.pushState/popstate (ver os efeitos logo após os
+// useState, dentro do componente). server.ts já serve index.html pra qualquer
+// caminho (dev via Vite appType:'spa', produção via app.get('*', ...)), então
+// uma URL como /fases/4 funciona tanto num "voltar" quanto num recarregamento
+// direto da página.
+const VALID_TABS = ['inicio', 'fases', 'documentos', 'configuracoes', 'ajuda', 'grafo', 'auditoria', 'pesquisa', 'estantes'] as const;
+type NavigableTab = (typeof VALID_TABS)[number];
+
+function isNavigableTab(value: string): value is NavigableTab {
+  return (VALID_TABS as readonly string[]).includes(value);
+}
+
+function pathForNavState(tab: string, phase: number): string {
+  if (tab === 'inicio') return '/';
+  if (tab === 'fases') return `/fases/${phase}`;
+  return `/${tab}`;
+}
+
+function parseNavStateFromPath(pathname: string): { activeTab: NavigableTab; activePhase: number } | null {
+  const segments = pathname.split('/').filter(Boolean);
+  if (segments.length === 0) return { activeTab: 'inicio', activePhase: 1 };
+  const [tab, phaseSegment] = segments;
+  if (!isNavigableTab(tab)) return null;
+  if (tab === 'fases') {
+    const phase = Number(phaseSegment);
+    return { activeTab: 'fases', activePhase: phase >= 1 && phase <= 7 ? phase : 1 };
+  }
+  return { activeTab: tab, activePhase: 1 };
+}
+
 export default function App() {
   // Login real (Fase 3): currentUser só existe depois de POST /api/auth/login
   // (ou do bootstrap do primeiro Administrador) ter criado uma sessão válida no
@@ -165,6 +199,59 @@ export default function App() {
       }
     })();
   }, []);
+
+  // Sincroniza activeTab/activePhase com a URL real (history.pushState), pra o
+  // botão "voltar" do navegador/celular voltar uma tela dentro do app em vez de
+  // sair do site. skipNextNavPushRef evita o efeito de baixo reagir à própria
+  // mudança disparada por um popstate (senão cada "voltar" empilharia um
+  // "avançar" de volta, cancelando o gesto).
+  const skipNextNavPushRef = useRef(false);
+
+  useEffect(() => {
+    // Restaura o estado inicial a partir da URL (ex.: recarregar em /fases/4
+    // volta pra Fase 4) — ignorado quando há um token de definição de senha na
+    // query string, caminho isolado que não usa activeTab/activePhase.
+    const parsedInitial = passwordSetupToken ? null : parseNavStateFromPath(window.location.pathname);
+    if (parsedInitial) {
+      skipNextNavPushRef.current = true;
+      setActiveTab(parsedInitial.activeTab);
+      setActivePhase(parsedInitial.activePhase as PhaseNumber);
+    }
+    // replaceState (nunca pushState) aqui: só anexamos o estado de navegação à
+    // entrada do histórico que já existe, sem criar uma nova.
+    window.history.replaceState(
+      { activeTab: parsedInitial?.activeTab ?? 'inicio', activePhase: parsedInitial?.activePhase ?? 1 },
+      '',
+      window.location.pathname + window.location.search
+    );
+
+    function handlePopState(event: PopStateEvent) {
+      const state = event.state as { activeTab?: string; activePhase?: number } | null;
+      const parsedFromState =
+        state?.activeTab && isNavigableTab(state.activeTab)
+          ? { activeTab: state.activeTab, activePhase: state.activePhase ?? 1 }
+          : null;
+      const parsed = parsedFromState ?? parseNavStateFromPath(window.location.pathname);
+      if (!parsed) return;
+      skipNextNavPushRef.current = true;
+      setActiveTab(parsed.activeTab);
+      setActivePhase(parsed.activePhase as PhaseNumber);
+    }
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (skipNextNavPushRef.current) {
+      skipNextNavPushRef.current = false;
+      return;
+    }
+    const path = pathForNavState(activeTab, activePhase);
+    if (window.location.pathname !== path) {
+      window.history.pushState({ activeTab, activePhase }, '', path);
+    }
+  }, [activeTab, activePhase]);
 
   // Cadastra uma nova pessoa (papel de acesso) — só o Administrador logado pode
   // (o servidor reconfere). A pessoa criada ainda não tem senha: o Administrador

@@ -14,7 +14,7 @@ sobrescrevem `_core` quando os dois se sobrepõem.
 Manutenção dos Manuais do Usuário (`public/manuais/`) sincronizada com
 mudanças no site. CORS restrito a origens conhecidas.
 
-### ADRs — Architectural Decisions (8 documentos)
+### ADRs — Architectural Decisions (9 documentos)
 
 Histórico protegido de conjuntos: servidor como fonte de verdade,
 assinaturas travadas, registro de alterações encadeado por hash.
@@ -31,6 +31,8 @@ conexão com a Rede PCI Conecta: onde a busca por semelhança ajudaria,
 e onde cruzaria a missão declarada do SIGCOI. Leitura de conjuntos,
 histórico e grafo exige sessão autenticada: nenhuma dessas rotas é
 pública, e `/api/status` não devolve mais fragmento real de chave.
+Navegação sincronizada com a URL (sem roteador): o botão "voltar" do
+navegador/celular volta uma tela dentro do app, em vez de sair do site.
 
 ### BDRs — Business Decisions (0 documentos)
 
