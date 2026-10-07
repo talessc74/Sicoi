@@ -85,7 +85,9 @@ mais nenhum caractere da chave configurada.
 
 ## References
 
-- Arquivos: `server.ts`
+- Arquivos: `server.ts`, `src/services/geminiService.ts` (a partir do
+  Round 2), `src/components/GeminiForensicChatModal.tsx` (a partir do
+  Round 2)
 - Policy relacionada: `_local-adr-policy-202` (sessão no servidor como
   única fonte de identidade — mesma máquina de autenticação reutilizada
   aqui), `_local-adr-policy-103` (rotas de IA públicas existentes, que
