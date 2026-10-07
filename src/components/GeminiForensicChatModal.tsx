@@ -503,9 +503,6 @@ export const GeminiForensicChatModal: React.FC<GeminiForensicChatModalProps> = (
             <span className="flex items-center gap-1.5">
               <KeyRound className="w-3 h-3 text-slate-400" />
               <span>Chave segura via Proxy Express</span>
-              {apiStatus?.keyMasked && (
-                <span className="text-[10px] text-slate-500">({apiStatus.keyMasked})</span>
-              )}
             </span>
             <span>Microfone · Modelo: gemini-3.5-transcribe</span>
           </div>

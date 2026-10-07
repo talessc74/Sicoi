@@ -1,7 +1,7 @@
 ---
 name: _local-adr-policy-203-leitura-publica-de-conjuntos-e-grafo
 description: Leitura de conjuntos, histórico e grafo de conhecimento exige sessão autenticada — nenhuma dessas rotas é pública. Use antes de adicionar ou revisar qualquer rota GET que devolva dado de conjunto osteológico, custódia, assinatura ou grafo.
-apply-to: server.ts (rotas GET /api/collections, /api/collections/:nic, /api/collections/:nic/history, /api/graph, /api/graph/node/:id, /api/graph/path, /api/graph/search)
+apply-to: server.ts (rotas GET /api/collections, /api/collections/:nic, /api/collections/:nic/history, /api/graph, /api/graph/node/:id, /api/graph/path, /api/graph/search, /api/status), src/services/geminiService.ts (ApiStatus), src/components/GeminiForensicChatModal.tsx
 valid-from: 2026-10-07
 ---
 
@@ -61,6 +61,27 @@ pra escrita e pra Zona de Risco (`_local-adr-policy-201`).
   dependente do comportamento antigo) e manualmente: as sete rotas
   devolvem 401 sem sessão e 200 com sessão válida, contra um servidor
   local real.
+
+### Round 2 — `/api/status` para de devolver fragmento real da chave Gemini (07/10/2026)
+
+Mesmo ciclo de revisão, achado de risco mais baixo mas da mesma família:
+`GET /api/status` (rota pública, usada só pra diagnóstico de que a chave
+do Gemini está configurada) devolvia `keyMasked`, com os 4 primeiros e 4
+últimos caracteres **reais** da chave (`AIza...9kXq`, por exemplo) — não
+um exemplo genérico, um recorte de verdade da variável de ambiente de
+produção, sem exigir login.
+
+Decisão: nenhum fragmento de chave é devolvido. A rota passa a expor só
+`hasApiKey: boolean` — suficiente pro diagnóstico que já existia (o chat
+Gemini mostra "Chave segura via Proxy Express" sem mais nenhum detalhe),
+sem vazar nenhum caractere real da chave. Campo `keyMasked` removido do
+tipo `ApiStatus` (`src/services/geminiService.ts`) e do trecho que o
+exibia em `GeminiForensicChatModal.tsx` — não ficou nenhum código morto
+referenciando o campo.
+
+Validado com a suíte completa (238 testes) e manualmente: `curl
+/api/status` contra servidor local confirma que a resposta não contém
+mais nenhum caractere da chave configurada.
 
 ## References
 
