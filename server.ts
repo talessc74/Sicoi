@@ -40,6 +40,7 @@ import {
   BoneSimilarityCandidate,
   BoneSimilarityExplanation
 } from './db/boneSimilarity';
+import { findSimilarIndividuals } from './db/individualReferenceSearch';
 import { listPeople, createPerson, updatePerson, deletePerson, countPeople } from './db/peopleRepo';
 import {
   verifyLogin,
@@ -1558,6 +1559,36 @@ app.post('/api/bone-similarity/search', requireAuth, async (req: Request, res: R
     console.error('Erro na busca de ossos parecidos:', error);
     const status = error?.statusCode || 500;
     return res.status(status).json({ error: error?.message || 'Erro na busca de ossos parecidos.' });
+  }
+});
+
+// Fase 4 (§15): busca indivíduos com perfil biológico comparável em outros
+// conjuntos do acervo, a partir de um indivíduo já registrado — nunca de
+// texto livre do cliente, para não confiar em valores de perfil biológico
+// que o navegador poderia forjar. Investigação, não gravação: não altera
+// nenhum conjunto.
+app.post('/api/phase4/individuals/reference-search', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { nic, individualId } = req.body || {};
+    if (typeof nic !== 'string' || !nic.trim() || typeof individualId !== 'string' || !individualId.trim()) {
+      return res.status(400).json({ error: '"nic" e "individualId" são obrigatórios.' });
+    }
+
+    const pool = getPool();
+    const collection = await getCollection(pool, nic);
+    if (!collection) {
+      return res.status(404).json({ error: 'Conjunto não encontrado.' });
+    }
+    const referenceIndividual = collection.phase4.individuals.find((i) => i.id === individualId);
+    if (!referenceIndividual) {
+      return res.status(404).json({ error: 'Indivíduo não encontrado neste conjunto.' });
+    }
+
+    const matches = await findSimilarIndividuals(pool, nic, individualId, referenceIndividual.biologicalProfile);
+    return res.json({ matches });
+  } catch (error: any) {
+    console.error('Erro na busca de referência entre conjuntos (Fase 4):', error);
+    return res.status(500).json({ error: error?.message || 'Erro na busca de referência entre conjuntos.' });
   }
 });
 
