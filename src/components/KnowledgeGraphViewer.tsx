@@ -56,6 +56,16 @@ const radiusMap: Record<GraphNodeType, number> = {
 
 const BONE_QUERY_NODE_ID = 'BONE-QUERY-TEMP';
 
+// Quadro original do layout radial (viewBox "0 0 840 600" de sempre). Enquanto
+// nenhum nó é arrastado pra fora dele, o SVG continua responsivo (width="100%",
+// escala pra caber no painel) — igual a antes. Só quando um arrasto ultrapassa
+// esta margem é que o SVG passa a ter tamanho real em pixels (sem escala) dentro
+// de um contêiner com rolagem, pra dar como chegar até o nó movido.
+const BASE_GRAPH_BOUNDS = { minX: 0, minY: 0, maxX: 840, maxY: 600 };
+// Maior raio desenhado (nó "nic"/"osso_consultado", r=26) + folga pro rótulo de
+// texto abaixo do nó não ficar cortado bem na borda do quadro.
+const NODE_EDGE_MARGIN = 40;
+
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
   const data = await res.json().catch(() => null);
@@ -355,6 +365,30 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
   );
   const displayEdges = useMemo(() => (boneOverlay ? [...filteredEdges, ...boneOverlay.edges] : filteredEdges), [filteredEdges, boneOverlay]);
 
+  // Quadro do SVG: começa igual ao de sempre (BASE_GRAPH_BOUNDS) e só cresce pra
+  // incluir um nó que foi arrastado pra fora dele. Recalcula a cada posição —
+  // inclusive durante o próprio arrasto, então o quadro (e a barra de rolagem)
+  // cresce em tempo real conforme o nó passa da borda.
+  const graphBounds = useMemo(() => {
+    let { minX, minY, maxX, maxY } = BASE_GRAPH_BOUNDS;
+    for (const n of displayNodes) {
+      minX = Math.min(minX, n.x - NODE_EDGE_MARGIN);
+      minY = Math.min(minY, n.y - NODE_EDGE_MARGIN);
+      maxX = Math.max(maxX, n.x + NODE_EDGE_MARGIN);
+      maxY = Math.max(maxY, n.y + NODE_EDGE_MARGIN);
+    }
+    return { minX, minY, maxX, maxY };
+  }, [displayNodes]);
+
+  const graphExceedsFrame =
+    graphBounds.minX < BASE_GRAPH_BOUNDS.minX ||
+    graphBounds.minY < BASE_GRAPH_BOUNDS.minY ||
+    graphBounds.maxX > BASE_GRAPH_BOUNDS.maxX ||
+    graphBounds.maxY > BASE_GRAPH_BOUNDS.maxY;
+
+  const graphWidth = graphBounds.maxX - graphBounds.minX;
+  const graphHeight = graphBounds.maxY - graphBounds.minY;
+
   const getNodeCoords = (id: string) => {
     const n = displayNodes.find((item) => item.id === id);
     return n ? { x: n.x, y: n.y } : null;
@@ -435,7 +469,11 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
       {!isLoadingGraph && !loadError && (
         <div className="grid grid-cols-1 lg:grid-cols-4 min-h-[520px]">
           {/* SVG Graph Viewport */}
-          <div className="lg:col-span-3 bg-slate-950 relative overflow-hidden flex items-center justify-center p-2">
+          <div
+            className={`lg:col-span-3 bg-slate-950 relative p-2 ${
+              graphExceedsFrame ? 'max-h-[520px] overflow-auto' : 'overflow-hidden flex items-center justify-center'
+            }`}
+          >
             <div className="absolute top-3 left-3 z-10 flex flex-wrap gap-1.5 max-w-md bg-black/60 backdrop-blur-xs p-2 rounded-lg border border-slate-800 text-[10px] font-mono">
               {Object.entries(nodeColorMap).map(([type, meta]) => (
                 <span key={type} className="flex items-center gap-1 text-slate-300">
@@ -444,8 +482,19 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
                 </span>
               ))}
             </div>
+            {graphExceedsFrame && (
+              <div className="absolute bottom-2 right-3 z-10 text-[10px] font-mono text-slate-500 bg-black/60 px-2 py-1 rounded">
+                Nó movido pra fora do quadro original — use a barra de rolagem para alcançá-lo.
+              </div>
+            )}
 
-            <svg ref={svgRef} width="100%" height="520" viewBox="0 0 840 600" className="select-none">
+            <svg
+              ref={svgRef}
+              width={graphExceedsFrame ? graphWidth : '100%'}
+              height={graphExceedsFrame ? graphHeight : 520}
+              viewBox={`${graphBounds.minX} ${graphBounds.minY} ${graphWidth} ${graphHeight}`}
+              className="select-none"
+            >
               <defs>
                 <marker id="arrow" viewBox="0 0 10 10" refX="22" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
                   <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569" />
