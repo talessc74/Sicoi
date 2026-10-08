@@ -126,6 +126,7 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
 
   const handleRevokeAuthorization = async (authorization: ResearchAuthorization) => {
     setRevokingAuthId(authorization.id);
+    setNewAuthError(null);
     try {
       const revoked = await updateAuthorizationApi({ ...authorization, status: 'revogada' });
       onUpdateAuthorizations(authorizations.map((a) => (a.id === revoked.id ? revoked : a)));
@@ -646,7 +647,9 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
                     !newAuthForm.institution ||
                     !newAuthForm.cepEthicsApprovalNumber ||
                     !newAuthForm.validFrom ||
-                    !newAuthForm.validUntil
+                    !newAuthForm.validUntil ||
+                    !newAuthForm.allowedCollectionsNic.trim() ||
+                    newAuthForm.validFrom > newAuthForm.validUntil
                   }
                   className="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-medium disabled:opacity-50"
                 >

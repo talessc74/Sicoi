@@ -41,7 +41,13 @@ import {
   BoneSimilarityExplanation
 } from './db/boneSimilarity';
 import { listPeople, createPerson, updatePerson, deletePerson, countPeople } from './db/peopleRepo';
-import { listAuthorizations, createAuthorization, updateAuthorization } from './db/authorizationsRepo';
+import {
+  listAuthorizations,
+  createAuthorization,
+  updateAuthorization,
+  validateAuthorizationBody,
+  visibleAuthorizationsFor
+} from './db/authorizationsRepo';
 import {
   verifyLogin,
   getPersonWithAuthStatus,
@@ -1259,32 +1265,20 @@ app.delete('/api/people/:id', requireAdminSession, async (req: Request, res: Res
 });
 
 // --- Autorizações de pesquisa (Fase 7, §13 — ABAC) ---
-// Listar exige só sessão autenticada: o Pesquisador precisa ver as
-// autorizações pra filtrar sua própria consulta (ABAC em Phase7ConsultaPesquisa.tsx).
+// Listar exige só sessão autenticada (o Pesquisador precisa ver a própria
+// autorização pra filtrar sua consulta via ABAC em Phase7ConsultaPesquisa.tsx),
+// mas só o Administrador recebe a lista inteira — qualquer outro papel
+// recebe só as autorizações cujo e-mail bate com o da própria sessão (nunca
+// o e-mail/instituição/CEP de outro pesquisador: minimização de dados,
+// mesmo espírito de GET /api/people exigir requireAdminSession).
 // Criar e editar (inclusive revogar) exigem sessão de Administrador.
 
-const VALID_AUTHORIZATION_STATUS = new Set(['ativa', 'expirada', 'suspensa', 'revogada', 'aprovada']);
-
-function validateAuthorizationBody(body: any): string | null {
-  const { id, title, principalInvestigator, investigatorEmail, institution, cepEthicsApprovalNumber, status, validFrom, validUntil } =
-    body || {};
-  if (!id || !title || !principalInvestigator || !investigatorEmail || !institution || !cepEthicsApprovalNumber || !validFrom || !validUntil) {
-    return 'Informe id, title, principalInvestigator, investigatorEmail, institution, cepEthicsApprovalNumber, validFrom e validUntil.';
-  }
-  if (!VALID_AUTHORIZATION_STATUS.has(status)) {
-    return 'status inválido. Use ativa, expirada, suspensa, revogada ou aprovada.';
-  }
-  if (!isValidEmail(investigatorEmail)) {
-    return 'investigatorEmail deve ser um e-mail válido.';
-  }
-  return null;
-}
-
-app.get('/api/research-authorizations', requireAuth, async (_req: Request, res: Response) => {
+app.get('/api/research-authorizations', requireAuth, async (req: Request, res: Response) => {
   try {
     const pool = getPool();
     const authorizations = await listAuthorizations(pool);
-    return res.json({ authorizations });
+    const currentPerson = (req as any).currentPerson;
+    return res.json({ authorizations: visibleAuthorizationsFor(authorizations, currentPerson) });
   } catch (error: any) {
     console.error('Erro ao listar autorizações de pesquisa:', error);
     return res.status(500).json({ error: error?.message || 'Erro ao listar autorizações de pesquisa.' });
@@ -1293,7 +1287,7 @@ app.get('/api/research-authorizations', requireAuth, async (_req: Request, res: 
 
 app.post('/api/research-authorizations', requireAdminSession, async (req: Request, res: Response) => {
   try {
-    const validationError = validateAuthorizationBody(req.body);
+    const validationError = validateAuthorizationBody(req.body, isValidEmail);
     if (validationError) {
       return res.status(400).json({ error: validationError });
     }
@@ -1317,7 +1311,7 @@ app.put('/api/research-authorizations/:id', requireAdminSession, async (req: Req
     if (req.body?.id !== req.params.id) {
       return res.status(400).json({ error: 'id do corpo da requisição não confere com o id da URL.' });
     }
-    const validationError = validateAuthorizationBody(req.body);
+    const validationError = validateAuthorizationBody(req.body, isValidEmail);
     if (validationError) {
       return res.status(400).json({ error: validationError });
     }

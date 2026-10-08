@@ -123,6 +123,16 @@ function pesquisadorUser(): UserProfile {
   };
 }
 
+function administradorUser(): UserProfile {
+  return {
+    id: 'u3',
+    name: 'Admin',
+    role: 'administrador',
+    institution: 'INC/DITEC/PF',
+    email: 'admin@inc.pf.gov.br'
+  };
+}
+
 describe('Phase7ConsultaPesquisa', () => {
   it('com papel amplo (curador), ambos os conjuntos aparecem disponíveis para busca', () => {
     mockFetchOnce();
@@ -211,5 +221,87 @@ describe('Phase7ConsultaPesquisa', () => {
 
     expect(screen.getByText('Projeto Restrito ao NIC-2026-0001')).toBeInTheDocument();
     expect(screen.getByText('NIC-2026-0001')).toBeInTheDocument();
+  });
+
+  it('Administrador: botão "Criar Autorização" fica desabilitado sem NICs autorizados', async () => {
+    mockFetchOnce();
+    const user = userEvent.setup();
+
+    render(
+      <Phase7ConsultaPesquisa
+        collections={[]}
+        currentUser={administradorUser()}
+        authorizations={[]}
+        onUpdateAuthorizations={vi.fn()}
+        onUpdateCollections={vi.fn()}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: /Gestão ABAC de Autorizações/i }));
+    await user.click(screen.getByRole('button', { name: /Nova Autorização/i }));
+
+    await user.type(screen.getByPlaceholderText('Título do projeto'), 'Projeto Y');
+    await user.type(screen.getByPlaceholderText('Pesquisador principal'), 'Dr. Y');
+    await user.type(screen.getByPlaceholderText('E-mail do pesquisador'), 'y@uni.edu');
+    await user.type(screen.getByPlaceholderText('Instituição'), 'Universidade Y');
+    await user.type(screen.getByPlaceholderText('Número de aprovação do CEP'), 'CEP-999');
+    await user.type(screen.getByLabelText('Válida de:'), '2026-01-01');
+    await user.type(screen.getByLabelText('Válida até:'), '2026-12-31');
+
+    const createButton = screen.getByRole('button', { name: /Criar Autorização/i });
+    expect(createButton).toBeDisabled();
+
+    await user.type(screen.getByPlaceholderText(/NICs autorizados/), 'NIC-2026-0001');
+    expect(createButton).toBeEnabled();
+  });
+
+  it('Administrador: revogar uma autorização limpa um erro anterior de criação', async () => {
+    const user = userEvent.setup();
+    const authToRevoke = baseAuthorization({ id: 'auth-revoke', title: 'Projeto a Revogar' });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (url === '/api/version') {
+          return Promise.resolve({ ok: true, status: 200, json: async () => ({ commit: null }) });
+        }
+        if (url === '/api/research-authorizations' && init?.method === 'POST') {
+          return Promise.resolve({ ok: false, status: 409, json: async () => ({ error: 'Já existe uma autorização com esse id.' }) });
+        }
+        if (url === `/api/research-authorizations/${authToRevoke.id}` && init?.method === 'PUT') {
+          return Promise.resolve({ ok: true, status: 200, json: async () => ({ authorization: { ...authToRevoke, status: 'revogada' } }) });
+        }
+        return Promise.resolve({ ok: true, status: 200, json: async () => ({}) });
+      })
+    );
+
+    const onUpdateAuthorizations = vi.fn();
+    render(
+      <Phase7ConsultaPesquisa
+        collections={[]}
+        currentUser={administradorUser()}
+        authorizations={[authToRevoke]}
+        onUpdateAuthorizations={onUpdateAuthorizations}
+        onUpdateCollections={vi.fn()}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: /Gestão ABAC de Autorizações/i }));
+    await user.click(screen.getByRole('button', { name: /Nova Autorização/i }));
+    await user.type(screen.getByPlaceholderText('Título do projeto'), 'Projeto Duplicado');
+    await user.type(screen.getByPlaceholderText('Pesquisador principal'), 'Dr. Y');
+    await user.type(screen.getByPlaceholderText('E-mail do pesquisador'), 'y@uni.edu');
+    await user.type(screen.getByPlaceholderText('Instituição'), 'Universidade Y');
+    await user.type(screen.getByPlaceholderText('Número de aprovação do CEP'), 'CEP-999');
+    await user.type(screen.getByPlaceholderText(/NICs autorizados/), 'NIC-2026-0001');
+    await user.type(screen.getByLabelText('Válida de:'), '2026-01-01');
+    await user.type(screen.getByLabelText('Válida até:'), '2026-12-31');
+    await user.click(screen.getByRole('button', { name: /Criar Autorização/i }));
+
+    expect(await screen.findByText('Já existe uma autorização com esse id.')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /Revogar/i }));
+
+    await screen.findByText('Revogar');
+    expect(screen.queryByText('Já existe uma autorização com esse id.')).not.toBeInTheDocument();
   });
 });
