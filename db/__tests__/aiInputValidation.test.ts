@@ -1,10 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import {
   validateChatMessages,
+  validateChatSystemInstruction,
+  validateChatModel,
   validatePopStepInput,
+  validatePopStepModel,
   validateTranscribeInput,
   MAX_CHAT_MESSAGE_LENGTH,
   MAX_CHAT_MESSAGES,
+  MAX_CHAT_SYSTEM_INSTRUCTION_LENGTH,
   MAX_POP_TRANSCRIPT_LENGTH,
   MAX_POP_STEP_CONTEXT_LENGTH,
   MAX_AUDIO_BASE64_LENGTH
@@ -35,6 +39,54 @@ describe('validateChatMessages', () => {
   it('recusa mensagem mais longa que o limite', () => {
     const tooLong = 'x'.repeat(MAX_CHAT_MESSAGE_LENGTH + 1);
     expect(validateChatMessages([{ role: 'user', content: tooLong }])).toMatch(new RegExp(`até ${MAX_CHAT_MESSAGE_LENGTH}`));
+  });
+});
+
+describe('validateChatSystemInstruction', () => {
+  it('aceita texto dentro do limite', () => {
+    expect(validateChatSystemInstruction('Você é um assistente.')).toBeNull();
+  });
+
+  it('recusa valor que não é texto', () => {
+    expect(validateChatSystemInstruction(123)).toMatch(/texto/);
+    expect(validateChatSystemInstruction(undefined)).toMatch(/texto/);
+    expect(validateChatSystemInstruction(null)).toMatch(/texto/);
+  });
+
+  it('recusa texto mais longo que o limite', () => {
+    const tooLong = 'x'.repeat(MAX_CHAT_SYSTEM_INSTRUCTION_LENGTH + 1);
+    expect(validateChatSystemInstruction(tooLong)).toMatch(new RegExp(`até ${MAX_CHAT_SYSTEM_INSTRUCTION_LENGTH}`));
+  });
+});
+
+describe('validateChatModel', () => {
+  it('aceita os apelidos que o front-end já manda hoje', () => {
+    for (const model of ['fast', 'lite', 'complex', 'pro', 'general', 'flash']) {
+      expect(validateChatModel(model)).toBeNull();
+    }
+  });
+
+  it('aceita os nomes canônicos de modelo que o servidor resolve internamente', () => {
+    for (const model of ['gemini-3.1-flash-lite', 'gemini-3.1-pro-preview', 'gemini-3.5-flash']) {
+      expect(validateChatModel(model)).toBeNull();
+    }
+  });
+
+  it('recusa qualquer valor fora da lista permitida', () => {
+    expect(validateChatModel('gpt-4')).toMatch(/modelos suportados/);
+    expect(validateChatModel(123)).toMatch(/modelos suportados/);
+    expect(validateChatModel(undefined)).toMatch(/modelos suportados/);
+  });
+});
+
+describe('validatePopStepModel', () => {
+  it('aceita o único modelo que o front-end usa hoje', () => {
+    expect(validatePopStepModel('gemini-3.1-flash-lite')).toBeNull();
+  });
+
+  it('recusa qualquer outro valor', () => {
+    expect(validatePopStepModel('gemini-3.5-flash')).toMatch(/modelos suportados/);
+    expect(validatePopStepModel(undefined)).toMatch(/modelos suportados/);
   });
 });
 

@@ -40,7 +40,14 @@ import {
   BoneSimilarityCandidate,
   BoneSimilarityExplanation
 } from './db/boneSimilarity';
-import { validateChatMessages, validatePopStepInput, validateTranscribeInput } from './db/aiInputValidation';
+import {
+  validateChatMessages,
+  validateChatSystemInstruction,
+  validateChatModel,
+  validatePopStepInput,
+  validatePopStepModel,
+  validateTranscribeInput
+} from './db/aiInputValidation';
 import { listPeople, createPerson, updatePerson, deletePerson, countPeople } from './db/peopleRepo';
 import {
   verifyLogin,
@@ -386,6 +393,14 @@ app.post('/api/chat', async (req: Request, res: Response) => {
     if (messagesError) {
       return res.status(400).json({ error: messagesError });
     }
+    const systemInstructionError = validateChatSystemInstruction(systemInstruction);
+    if (systemInstructionError) {
+      return res.status(400).json({ error: systemInstructionError });
+    }
+    const modelError = validateChatModel(model);
+    if (modelError) {
+      return res.status(400).json({ error: modelError });
+    }
 
     // Validação e seleção de modelo conforme especificação
     let targetModel = model;
@@ -478,6 +493,10 @@ app.post('/api/pop-step', async (req: Request, res: Response) => {
     if (popStepError) {
       return res.status(400).json({ error: popStepError });
     }
+    const popStepModelError = validatePopStepModel(model);
+    if (popStepModelError) {
+      return res.status(400).json({ error: popStepModelError });
+    }
 
     const ai = getGeminiClient();
     const systemInstruction = `Você é o Condutor do POP-01 (COI-INC), conduzindo por voz o preenchimento de um formulário oficial de gestão da Coleção Osteológica Identificada do INC (COI-INC), coleção de referência para pesquisa e ensino. Sua única tarefa é interpretar a fala do usuário dentro do contexto do passo atual e devolver o JSON estruturado pedido. Nunca invente valor que não foi falado. Nunca decida stepConfirmed=true se um campo obrigatório continua faltando.
@@ -544,9 +563,9 @@ app.post('/api/transcribe', async (req: Request, res: Response) => {
 
     const ai = getGeminiClient();
     const { audioBase64, mimeType = 'audio/webm' } = req.body;
-    const transcribeError = validateTranscribeInput(audioBase64, mimeType);
-    if (transcribeError) {
-      return res.status(400).json({ error: transcribeError });
+    const transcribeValidationError = validateTranscribeInput(audioBase64, mimeType);
+    if (transcribeValidationError) {
+      return res.status(400).json({ error: transcribeValidationError });
     }
 
     // Limpar prefixo data: se presente

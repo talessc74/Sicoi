@@ -10,10 +10,30 @@
 
 export const MAX_CHAT_MESSAGE_LENGTH = 8000;
 export const MAX_CHAT_MESSAGES = 50;
+export const MAX_CHAT_SYSTEM_INSTRUCTION_LENGTH = 4000;
 export const MAX_POP_TRANSCRIPT_LENGTH = 4000;
 export const MAX_POP_STEP_CONTEXT_LENGTH = 20000;
 // ~15MB de áudio bruto (base64 é ~1.37x maior que o binário original).
 export const MAX_AUDIO_BASE64_LENGTH = 20_000_000;
+
+// Apelidos que o front-end já manda hoje (sendChatMessage em geminiService.ts)
+// mais os nomes de modelo canônicos que o servidor resolve internamente —
+// qualquer outro valor nunca chega ao SDK do Gemini.
+export const VALID_CHAT_MODEL_INPUTS = new Set([
+  'fast',
+  'lite',
+  'complex',
+  'pro',
+  'general',
+  'flash',
+  'gemini-3.1-flash-lite',
+  'gemini-3.1-pro-preview',
+  'gemini-3.5-flash'
+]);
+
+// /api/pop-step nunca recebe "model" do cliente hoje (sendPopStepMessage
+// sempre omite o campo) — só o default do servidor é aceito.
+export const VALID_POP_STEP_MODEL_INPUTS = new Set(['gemini-3.1-flash-lite']);
 
 export function validateChatMessages(messages: unknown): string | null {
   if (!Array.isArray(messages) || messages.length === 0) {
@@ -37,6 +57,23 @@ export function validateChatMessages(messages: unknown): string | null {
   return null;
 }
 
+export function validateChatSystemInstruction(systemInstruction: unknown): string | null {
+  if (typeof systemInstruction !== 'string') {
+    return 'O campo "systemInstruction" deve ser texto.';
+  }
+  if (systemInstruction.length > MAX_CHAT_SYSTEM_INSTRUCTION_LENGTH) {
+    return `"systemInstruction" deve ter até ${MAX_CHAT_SYSTEM_INSTRUCTION_LENGTH} caracteres.`;
+  }
+  return null;
+}
+
+export function validateChatModel(model: unknown): string | null {
+  if (typeof model !== 'string' || !VALID_CHAT_MODEL_INPUTS.has(model)) {
+    return '"model" deve ser um dos modelos suportados.';
+  }
+  return null;
+}
+
 export function validatePopStepInput(transcript: unknown, stepContext: unknown): string | null {
   if (typeof transcript !== 'string' || !transcript.trim() || typeof stepContext !== 'string' || !stepContext.trim()) {
     return 'Requisição deve conter { transcript, stepContext } como texto não vazio.';
@@ -46,6 +83,13 @@ export function validatePopStepInput(transcript: unknown, stepContext: unknown):
   }
   if (stepContext.length > MAX_POP_STEP_CONTEXT_LENGTH) {
     return `"stepContext" deve ter até ${MAX_POP_STEP_CONTEXT_LENGTH} caracteres.`;
+  }
+  return null;
+}
+
+export function validatePopStepModel(model: unknown): string | null {
+  if (typeof model !== 'string' || !VALID_POP_STEP_MODEL_INPUTS.has(model)) {
+    return '"model" deve ser um dos modelos suportados.';
   }
   return null;
 }
