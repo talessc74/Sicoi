@@ -85,11 +85,49 @@ describe('individualReferenceSearch', () => {
     col2.phase4.individuals = [match];
     await createCollection(pool, col2);
 
-    const results = await findSimilarIndividuals(pool, 'NIC-REF-0001', reference.id, reference.biologicalProfile);
+    const results = await findSimilarIndividuals(pool, 'NIC-REF-0001', reference.biologicalProfile);
     expect(results).toHaveLength(1);
     expect(results[0].nic).toBe('NIC-REF-0002');
     expect(results[0].sharedTraits.length).toBeGreaterThan(0);
     expect(results[0].sharedTraits[0]).toContain('Sexo estimado');
+  });
+
+  it('nunca inclui indivíduos do mesmo conjunto do indivíduo de referência, mesmo que o perfil bata', async () => {
+    const col = baseCollection('NIC-REF-SAME-COLLECTION');
+    const reference = individual({ id: 'IND-01', code: 'IND-01' });
+    const sameCollectionMatch = individual({ id: 'IND-02', code: 'IND-02' });
+    col.phase4.individuals = [reference, sameCollectionMatch];
+    await createCollection(pool, col);
+
+    const results = await findSimilarIndividuals(pool, 'NIC-REF-SAME-COLLECTION', reference.biologicalProfile);
+    expect(results).toHaveLength(0);
+  });
+
+  it('não conta sexo "indeterminado" como traço em comum (perfil padrão de indivíduo recém-criado)', async () => {
+    const col1 = baseCollection('NIC-REF-INDETERMINADO-0001');
+    const reference = individual({
+      biologicalProfile: {
+        ...individual().biologicalProfile,
+        sexEstimate: { value: 'indeterminado', methodCode: 'metodo-a', bibliographicRef: 'x', notes: '' },
+        ageCategory: { value: 'jovem', estimatedRangeYears: '', methodCode: 'metodo-outro', bibliographicRef: 'x' }
+      }
+    });
+    col1.phase4.individuals = [reference];
+    await createCollection(pool, col1);
+
+    const col2 = baseCollection('NIC-REF-INDETERMINADO-0002');
+    const otherUnclassified = individual({
+      biologicalProfile: {
+        ...individual().biologicalProfile,
+        sexEstimate: { value: 'indeterminado', methodCode: 'metodo-a', bibliographicRef: 'x', notes: '' },
+        ageCategory: { value: 'adulto_maduro', estimatedRangeYears: '', methodCode: 'metodo-y', bibliographicRef: 'x' }
+      }
+    });
+    col2.phase4.individuals = [otherUnclassified];
+    await createCollection(pool, col2);
+
+    const results = await findSimilarIndividuals(pool, 'NIC-REF-INDETERMINADO-0001', reference.biologicalProfile);
+    expect(results).toHaveLength(0);
   });
 
   it('não casa quando o valor é igual mas o método de estimativa é diferente', async () => {
@@ -109,7 +147,7 @@ describe('individualReferenceSearch', () => {
     col2.phase4.individuals = [differentMethod];
     await createCollection(pool, col2);
 
-    const results = await findSimilarIndividuals(pool, 'NIC-REF-0003', reference.id, reference.biologicalProfile);
+    const results = await findSimilarIndividuals(pool, 'NIC-REF-0003', reference.biologicalProfile);
     expect(results).toHaveLength(0);
   });
 
@@ -119,7 +157,7 @@ describe('individualReferenceSearch', () => {
     col.phase4.individuals = [reference];
     await createCollection(pool, col);
 
-    const results = await findSimilarIndividuals(pool, 'NIC-REF-0005', reference.id, reference.biologicalProfile);
+    const results = await findSimilarIndividuals(pool, 'NIC-REF-0005', reference.biologicalProfile);
     expect(results).toHaveLength(0);
   });
 
@@ -135,7 +173,7 @@ describe('individualReferenceSearch', () => {
       await createCollection(pool, col);
     }
 
-    const results = await findSimilarIndividuals(pool, 'NIC-REF-LIMIT-REFERENCE', reference.id, reference.biologicalProfile);
+    const results = await findSimilarIndividuals(pool, 'NIC-REF-LIMIT-REFERENCE', reference.biologicalProfile);
     expect(results).toHaveLength(20);
   });
 });

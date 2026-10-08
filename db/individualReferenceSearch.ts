@@ -24,15 +24,23 @@ const MAX_MATCHES = 20;
 /**
  * Casa quando sexo OU idade bate em valor E método de estimativa — exigir os
  * dois juntos evita que a comparação vire "todo mundo classificado como
- * adulto" (pouco útil pra curadoria). Retorna a lista de traços em comum
- * (pode ter os dois).
+ * adulto" (pouco útil pra curadoria). "indeterminado" nunca conta como
+ * traço em comum: é o valor padrão de todo indivíduo recém-criado (ver
+ * `handleAddIndividual` em `Phase4Curadoria.tsx`), não uma classificação de
+ * verdade — sem essa exclusão, dois indivíduos ainda não analisados
+ * "combinam" só por nenhum dos dois ter sido classificado ainda. Retorna a
+ * lista de traços em comum (pode ter os dois).
  */
 function sharedTraits(
   a: IndividualHypothesis['biologicalProfile'],
   b: IndividualHypothesis['biologicalProfile']
 ): string[] {
   const shared: string[] = [];
-  if (a.sexEstimate.value === b.sexEstimate.value && a.sexEstimate.methodCode === b.sexEstimate.methodCode) {
+  if (
+    b.sexEstimate.value !== 'indeterminado' &&
+    a.sexEstimate.value === b.sexEstimate.value &&
+    a.sexEstimate.methodCode === b.sexEstimate.methodCode
+  ) {
     shared.push(`Sexo estimado "${b.sexEstimate.value}" pelo mesmo método (${b.sexEstimate.methodCode})`);
   }
   if (a.ageCategory.value === b.ageCategory.value && a.ageCategory.methodCode === b.ageCategory.methodCode) {
@@ -42,15 +50,16 @@ function sharedTraits(
 }
 
 /**
- * Varre todos os conjuntos não excluídos buscando outros indivíduos (Fase 4)
- * com perfil biológico comparável ao indivíduo de referência — filtro em
- * memória sobre o `full_state` já carregado, mesmo padrão de
- * `boneSimilarity.findSimilarSkeletalElements`.
+ * Varre todos os conjuntos não excluídos buscando, em OUTROS conjuntos
+ * (nunca no mesmo conjunto do indivíduo de referência — comparar dois
+ * indivíduos do mesmo conjunto não é "achar referência no acervo"),
+ * indivíduos (Fase 4) com perfil biológico comparável ao indivíduo de
+ * referência — filtro em memória sobre o `full_state` já carregado, mesmo
+ * padrão de `boneSimilarity.findSimilarSkeletalElements`.
  */
 export async function findSimilarIndividuals(
   pool: Pool,
   excludeNic: string,
-  excludeIndividualId: string,
   referenceProfile: IndividualHypothesis['biologicalProfile']
 ): Promise<IndividualReferenceMatch[]> {
   const { rows } = await pool.query<{ nic: string; full_state: OsteologicalCollection }>(
@@ -59,9 +68,9 @@ export async function findSimilarIndividuals(
 
   const matches: IndividualReferenceMatch[] = [];
   for (const row of rows) {
+    if (row.nic === excludeNic) continue;
     const individuals = row.full_state.phase4?.individuals || [];
     for (const individual of individuals) {
-      if (row.nic === excludeNic && individual.id === excludeIndividualId) continue;
       const traits = sharedTraits(referenceProfile, individual.biologicalProfile);
       if (traits.length > 0) {
         matches.push({ nic: row.nic, individual, sharedTraits: traits });

@@ -1584,7 +1584,7 @@ app.post('/api/phase4/individuals/reference-search', requireAuth, async (req: Re
       return res.status(404).json({ error: 'Indivíduo não encontrado neste conjunto.' });
     }
 
-    const matches = await findSimilarIndividuals(pool, nic, individualId, referenceIndividual.biologicalProfile);
+    const matches = await findSimilarIndividuals(pool, nic, referenceIndividual.biologicalProfile);
     return res.json({ matches });
   } catch (error: any) {
     console.error('Erro na busca de referência entre conjuntos (Fase 4):', error);
