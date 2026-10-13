@@ -137,7 +137,8 @@ describe('Phase2Limpeza', () => {
     expect(screen.getByText(/estudante.*Técnico ou Curador pode assinar a Fase 2/i)).toBeInTheDocument();
   });
 
-  it('permite a assinatura do Pesquisador com tudo preenchido e seco (decisão de acesso, out/2026)', () => {
+  it('bloqueia a assinatura do Pesquisador mesmo com tudo preenchido e seco — sua participação é a confirmação opcional', async () => {
+    const user = userEvent.setup();
     const collection = makeCollection({
       phase2: {
         ...createEmptyPhase2Data(),
@@ -150,12 +151,19 @@ describe('Phase2Limpeza', () => {
         boxDryingStatus: [{ boxId: 'box-1', cleaningStatus: 'seca' }]
       }
     });
+    const onUpdateCollection = vi.fn();
     render(
-      <Phase2Limpeza collection={collection} currentUser={makeUser('pesquisador')} onUpdateCollection={vi.fn()} laboratoryMode={false} />
+      <Phase2Limpeza collection={collection} currentUser={makeUser('pesquisador')} onUpdateCollection={onUpdateCollection} laboratoryMode={false} />
     );
 
     const signButton = screen.getByRole('button', { name: /^assinar fase 2$/i });
-    expect(signButton).toBeEnabled();
+    expect(signButton).toBeDisabled();
+    expect(screen.getByText(/pesquisador.*Técnico ou Curador pode assinar a Fase 2/i)).toBeInTheDocument();
+
+    const confirmButton = screen.getByRole('button', { name: /confirmar revisão \(pesquisador\)/i });
+    await user.click(confirmButton);
+    const updated = onUpdateCollection.mock.calls.at(-1)?.[0];
+    expect(updated.phase2.researcherConfirmation?.confirmedByName).toBeTruthy();
   });
 
   it('chama onUpdateCollection com o estado atualizado quando um campo do formulário é editado', async () => {

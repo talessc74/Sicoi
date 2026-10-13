@@ -79,6 +79,18 @@ export interface FieldWithAiSuggestion<T> {
   confirmedByUser?: boolean;
 }
 
+// Confirmação opcional do Pesquisador numa fase onde ele tem acesso (Fases 1, 2,
+// 3 e 5 — decisão de acesso out/2026). Nunca é a assinatura que destrava a fase:
+// essa continua sendo exclusiva do Técnico (ou do Curador, agindo como técnico) —
+// ver canSignAsTechnician em utils/permissions.ts. O Pesquisador pode ou não
+// registrar esta confirmação; ela é só um registro de que revisou a fase, nunca
+// bloqueia nem substitui a assinatura obrigatória.
+export interface ResearcherReviewConfirmation {
+  confirmedByName: string;
+  confirmedAt: string;
+  sha256Hash: string;
+}
+
 // Categorias fixas do checklist fotográfico do Formulário A.1 (campos 5-9)
 export type Phase1PhotoCategory =
   | 'foto1_saco_fechado'
@@ -199,6 +211,10 @@ export interface Phase1Data {
 
   preliminaryBoxes: PreliminaryBox[];
   photos: Phase1Photo[];
+
+  // Não é campo do A.1 — confirmação opcional do Pesquisador (ver
+  // ResearcherReviewConfirmation), nunca a assinatura que destrava a fase.
+  researcherConfirmation?: ResearcherReviewConfirmation;
 }
 
 export interface PreliminaryBox {
@@ -279,6 +295,10 @@ export interface Phase2Data {
   dryingConfirmedBy?: string;
 
   photos: Phase1Photo[];
+
+  // Não é campo do A.2 — confirmação opcional do Pesquisador (ver
+  // ResearcherReviewConfirmation), nunca a assinatura que destrava a fase.
+  researcherConfirmation?: ResearcherReviewConfirmation;
 }
 
 // Fase 3: Acondicionamento Provisório e Fila de Curadoria
@@ -294,6 +314,10 @@ export interface Phase3Data {
     qrScannedConfirmation?: boolean;
   }[];
   enteredQueueAt?: string;
+
+  // Confirmação opcional do Pesquisador (ver ResearcherReviewConfirmation),
+  // nunca a assinatura/ação que destrava a fase.
+  researcherConfirmation?: ResearcherReviewConfirmation;
 }
 
 // Grau de Certeza Biológica (§8)
@@ -498,6 +522,11 @@ export interface Phase5Data {
     hash: string;
   }[];
   completenessChecklist?: CompletenessChecklist;
+
+  // Confirmação opcional do Pesquisador (ver ResearcherReviewConfirmation) —
+  // nunca substitui technicianPhysicalSign, que continua sendo a única
+  // assinatura que trava e avança a fase.
+  researcherConfirmation?: ResearcherReviewConfirmation;
 }
 
 // Fase 6: Armazenamento Definitivo no Galpão

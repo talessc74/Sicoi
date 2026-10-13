@@ -123,7 +123,7 @@ describe('Phase1Recebimento', () => {
     expect(getInputByLabelText(/Hora \(ex: 11h20min\)/i)).toBeInTheDocument();
   });
 
-  it('bloqueia a assinatura quando o papel ativo não é Técnico, Pesquisador nem Curador', async () => {
+  it('bloqueia a assinatura quando o papel ativo não é Técnico nem Curador', async () => {
     const user = userEvent.setup();
     const collection = baseCollection('NIC-TEST-0002');
     const currentUser = makeUser('estudante');
@@ -147,25 +147,36 @@ describe('Phase1Recebimento', () => {
     ).toBeInTheDocument();
   });
 
-  it('não bloqueia a assinatura do Pesquisador por papel (decisão de acesso, out/2026: mesmos acessos do Técnico)', async () => {
+  it('bloqueia a assinatura do Pesquisador — sua participação é a confirmação opcional, nunca a assinatura que trava a fase', async () => {
     const user = userEvent.setup();
     const collection = baseCollection('NIC-TEST-0002B');
     const currentUser = makeUser('pesquisador');
+    const onUpdateCollection = vi.fn();
 
     render(
       <Phase1Recebimento
         collection={collection}
         currentUser={currentUser}
-        onUpdateCollection={vi.fn()}
+        onUpdateCollection={onUpdateCollection}
         laboratoryMode={false}
       />
     );
 
     await goToFormMode(user);
 
+    const signButton = screen.getByRole('button', { name: /revisar & assinar fase 1/i });
+    expect(signButton).toBeDisabled();
     expect(
-      screen.queryByText((text) => text.includes('"pesquisador"') && text.includes('Técnico ou Curador pode assinar'))
-    ).not.toBeInTheDocument();
+      screen.getByText((text) => text.includes('"pesquisador"') && text.includes('Técnico ou Curador pode assinar'))
+    ).toBeInTheDocument();
+
+    // A confirmação opcional do Pesquisador existe, é separada, e nunca mexe em canSign.
+    const confirmButton = screen.getByRole('button', { name: /confirmar revisão \(pesquisador\)/i });
+    await user.click(confirmButton);
+
+    const updated = onUpdateCollection.mock.calls.at(-1)?.[0] as OsteologicalCollection;
+    expect(updated.phase1.researcherConfirmation?.confirmedByName).toBe('Fulano de Tal');
+    expect(screen.getByRole('button', { name: /revisar & assinar fase 1/i })).toBeDisabled();
   });
 
   it('chama onUpdateCollection com os dados atualizados ao preencher um campo do formulário', async () => {

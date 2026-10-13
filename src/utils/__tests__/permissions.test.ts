@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canPerformRole, hasAdminAccess } from '../permissions';
+import { canPerformRole, canSignAsTechnician, hasAdminAccess } from '../permissions';
 import type { UserRole } from '../../types/sgccco';
 
 describe('permissões do Curador', () => {
@@ -24,6 +24,23 @@ describe('permissões do Curador', () => {
 
   it('não deixa o Técnico agir como Pesquisador (a exceção é de mão única)', () => {
     expect(canPerformRole('tecnico', 'pesquisador')).toBe(false);
+  });
+});
+
+describe('canSignAsTechnician — quem pode SER a assinatura "técnico" (diferente de canPerformRole)', () => {
+  it('vale para Técnico e Curador', () => {
+    expect(canSignAsTechnician('tecnico')).toBe(true);
+    expect(canSignAsTechnician('curador')).toBe(true);
+  });
+
+  it('nunca vale para o Pesquisador — mesmo tendo acesso de técnico via canPerformRole, não pode ser a assinatura obrigatória', () => {
+    expect(canSignAsTechnician('pesquisador')).toBe(false);
+    expect(canPerformRole('pesquisador', 'tecnico')).toBe(true); // acesso sim, assinatura não
+  });
+
+  it('não vale para administrador nem estudante', () => {
+    expect(canSignAsTechnician('administrador')).toBe(false);
+    expect(canSignAsTechnician('estudante')).toBe(false);
   });
 });
 

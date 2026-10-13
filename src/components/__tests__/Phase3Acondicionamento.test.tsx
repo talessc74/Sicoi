@@ -171,7 +171,8 @@ describe('Phase3Acondicionamento', () => {
     ).toBeDisabled();
   });
 
-  it('habilita a assinatura para o Pesquisador com tudo alocado (decisão de acesso, out/2026)', () => {
+  it('desabilita a assinatura para o Pesquisador mesmo com tudo alocado — sua participação é a confirmação opcional', async () => {
+    const userEv = userEvent.setup();
     const collection = baseCollection('NIC-0003B', [makeBox('box-1', 'CX-001')]);
     collection.phase3.boxLocations = [
       {
@@ -183,19 +184,25 @@ describe('Phase3Acondicionamento', () => {
       }
     ];
     const user = makeUser('pesquisador');
+    const onUpdateCollection = vi.fn();
 
     render(
       <Phase3Acondicionamento
         collection={collection}
         allCollections={[collection]}
         currentUser={user}
-        onUpdateCollection={vi.fn()}
+        onUpdateCollection={onUpdateCollection}
       />
     );
 
     expect(
       screen.getByRole('button', { name: /assinar acondicionamento provisório/i })
-    ).toBeEnabled();
+    ).toBeDisabled();
+
+    const confirmButton = screen.getByRole('button', { name: /confirmar revisão \(pesquisador\)/i });
+    await userEv.click(confirmButton);
+    const updated = onUpdateCollection.mock.calls.at(-1)?.[0];
+    expect(updated.phase3.researcherConfirmation?.confirmedByName).toBeTruthy();
   });
 
   it('confirma a leitura dupla de QR e chama onUpdateCollection com o local alocado', async () => {

@@ -10,6 +10,12 @@ import type { UserProfile, UserRole } from '../types/sgccco';
 // abaixo propaga a decisão pra todos esses lugares de uma vez. A Fase 6 não
 // tem portão de papel nenhum hoje (está aberta pra todo mundo), então nada
 // precisa mudar lá.
+// Correção (mesmo mês): "acesso" e "assinatura" são coisas distintas — este
+// helper continua valendo pra acesso/edição, mas a assinatura que trava cada
+// fase passou a usar canSignAsTechnician abaixo, que NUNCA aceita o
+// Pesquisador. Ver cada Phase*.tsx: canActAsTechnician (este helper, pro
+// acesso aos campos/checklist) é uma variável separada de canSign/
+// canSignPhysical (canSignAsTechnician, pra assinatura).
 export const canPerformRole = (currentRole: UserRole, requiredRole: UserRole): boolean =>
   currentRole === 'curador' ||
   currentRole === requiredRole ||

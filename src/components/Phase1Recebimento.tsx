@@ -14,8 +14,8 @@ import {
 import { PopConversationalConductor } from './PopConversationalConductor';
 import { calculateSha256, generateSignaturePayload } from '../services/auditService';
 import { getLatestPhaseSignature } from '../utils/signatures';
-import { canPerformRole } from '../utils/permissions';
-import { Shield, Lock, FileText, Camera, CheckCircle2, AlertCircle, Sparkles, Printer, Bot, Save } from 'lucide-react';
+import { canSignAsTechnician } from '../utils/permissions';
+import { Shield, Lock, FileText, Camera, CheckCircle2, AlertCircle, Sparkles, Printer, Bot, Save, UserCheck } from 'lucide-react';
 
 interface Phase1RecebimentoProps {
   collection: OsteologicalCollection;
@@ -124,7 +124,11 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
   const isLocked = phaseSignature?.status === 'locked';
 
   const canViewRestrictedLegal = currentUser.role === 'curador' || currentUser.role === 'administrador';
-  const canActAsTechnician = canPerformRole(currentUser.role, 'tecnico');
+  // A assinatura que trava a fase é exclusiva de Técnico/Curador — o Pesquisador
+  // tem acesso à Fase 1, mas sua participação é a confirmação opcional abaixo
+  // (handleConfirmResearcherReview), nunca esta assinatura (decisão de acesso
+  // out/2026, correção: "o técnico é obrigatório, o pesquisador pode ou não").
+  const canActAsTechnician = canSignAsTechnician(currentUser.role);
 
   const p1 = collection.phase1;
 
@@ -232,6 +236,21 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
     onUpdateCollection(updated);
   };
 
+  // Confirmação opcional do Pesquisador — nunca trava nem destrava nada, nunca
+  // substitui a assinatura do Técnico/Curador acima. Só registra que o
+  // Pesquisador revisou a fase, se ele quiser (pode ou não).
+  const handleConfirmResearcherReview = async () => {
+    const timestamp = new Date().toISOString();
+    const hash = await calculateSha256(`researcher-review|phase1|${collection.nic}|${currentUser.id}|${timestamp}`);
+    onUpdateCollection({
+      ...collection,
+      phase1: {
+        ...collection.phase1,
+        researcherConfirmation: { confirmedByName: currentUser.name, confirmedAt: timestamp, sha256Hash: hash }
+      }
+    });
+  };
+
   // Validação para assinatura, fiel aos campos obrigatórios (*) do Formulário A.1.
   // Cada entrada também vira um item legível na lista de pendências abaixo — sem
   // isso, o botão só fica cinza sem nenhuma pista do porquê (mesma classe de bug
@@ -325,6 +344,24 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
               <Printer className="w-4 h-4 text-slate-500" />
               <span>Imprimir Etiqueta QR</span>
             </button>
+
+            {currentUser.role === 'pesquisador' && !isLocked && (
+              p1.researcherConfirmation ? (
+                <div className="px-3 py-2 rounded-xl bg-sky-50 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-900 flex items-center gap-2 text-xs font-mono text-sky-700 dark:text-sky-300 font-semibold">
+                  <UserCheck className="w-4 h-4 text-sky-600" />
+                  <span>Revisão do Pesquisador confirmada</span>
+                </div>
+              ) : (
+                <button
+                  onClick={handleConfirmResearcherReview}
+                  title="Confirmação opcional — não trava nem substitui a assinatura do Técnico/Curador."
+                  className="px-3 py-2 rounded-xl border border-sky-300 dark:border-sky-800 bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 text-xs font-semibold flex items-center gap-1.5 hover:bg-sky-100 dark:hover:bg-sky-900/60 transition-colors"
+                >
+                  <UserCheck className="w-4 h-4" />
+                  <span>Confirmar Revisão (Pesquisador)</span>
+                </button>
+              )
+            )}
 
             {isLocked ? (
               <div className="px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-900 flex items-center gap-2 text-xs font-mono text-emerald-700 dark:text-emerald-300 font-semibold">
