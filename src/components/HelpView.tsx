@@ -45,16 +45,16 @@ export const HelpView: React.FC<HelpViewProps> = ({
     },
     {
       question: 'Qual é a técnica correta para marcação óssea permanente?',
-      answer: `O POP-OSTEO-05 determina a aplicação de uma camada base de resina acrílica Paraloid B-72 a 20% em acetona sobre a cortical óssea, seguida da escrita manual com tinta nanquim indelével preta do código oficial SIGCOI (ex: SIGCOI/NIC-2026-0841/IND-01/FEM-D), selando-se posteriormente com uma camada adicional de Paraloid.`
+      answer: `O POP-OSTEO-05 determina a aplicação de uma camada base de resina acrílica Paraloid B-72 a 20% em acetona sobre a cortical óssea, seguida da escrita manual com tinta nanquim indelével preta do código oficial SIGCOI (ex: SIGCOI/COI-001/IND-01/FEM-D), selando-se posteriormente com uma camada adicional de Paraloid.`
     },
     {
       question: 'Como um pesquisador externo obtém autorização de acesso aos dados?',
-      answer: `Pela Portaria DITEC/PF nº 1415/2024 (art. 5º), a solicitação é dirigida ao Diretor do INC/DITEC/PF com o formulário de acesso (Anexo 2), o termo de responsabilidade (Anexo 3) e um plano de trabalho; no caso de pesquisa, também com a aprovação do Comitê de Ética em Pesquisa de instituição de ensino superior. O acesso é supervisionado por um perito criminal federal (termo de supervisão, Anexo 1) e autorizado e controlado pelo curador. No SIGCOI, a autorização é cadastrada na Fase 7, delimitando os NICs e as variáveis liberados para consulta e exportação com hash de reprodutibilidade. Publicações devem citar a “Coleção Osteológica Identificada do Instituto Nacional de Criminalística - COI-INC/DITEC/PF”.`
+      answer: `Pela Portaria DITEC/PF nº 1415/2024 (art. 5º), a solicitação é dirigida ao Diretor do INC/DITEC/PF com o formulário de acesso (Anexo 2), o termo de responsabilidade (Anexo 3) e um plano de trabalho; no caso de pesquisa, também com a aprovação do Comitê de Ética em Pesquisa de instituição de ensino superior. O acesso é supervisionado por um perito criminal federal (termo de supervisão, Anexo 1) e autorizado e controlado pelo curador. No SIGCOI, a autorização é cadastrada na Fase 7, delimitando os conjuntos (COI) e as variáveis liberados para consulta e exportação com hash de reprodutibilidade. Publicações devem citar a “Coleção Osteológica Identificada do Instituto Nacional de Criminalística - COI-INC/DITEC/PF”.`
     }
   ];
 
   const glossaryTerms = [
-    { term: 'NIC', desc: 'Número de Identificação do Conjunto (formato NIC-AAAA-XXXX). Identificador mestre único e imutável.' },
+    { term: 'COI-XXX', desc: 'Número do conjunto na COI-INC (formato COI-001), o mesmo da caixa. Identificador mestre único e imutável. Nos POPs, é chamado de NIC.' },
     { term: 'NMI', desc: 'Número Mínimo de Indivíduos determinado cientificamente por duplicação anatômica ou maturação.' },
     { term: 'ABAC', desc: 'Attribute-Based Access Control. Controle de acesso baseado em atributos (papel, projeto, comitê de ética).' },
     { term: 'Paraloid B-72', desc: 'Copolímero de etil-metacrilato utilizado na conservação de acervos osteológicos para criar base reversível de marcação.' },
@@ -94,9 +94,9 @@ export const HelpView: React.FC<HelpViewProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
           <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
             <div className="w-6 h-6 rounded-full bg-sky-600 text-white font-bold flex items-center justify-center font-mono">1</div>
-            <h4 className="font-bold text-slate-900 dark:text-white">Seleção do Conjunto (NIC)</h4>
+            <h4 className="font-bold text-slate-900 dark:text-white">Seleção do Conjunto (COI)</h4>
             <p className="text-slate-500 leading-relaxed">
-              Selecione o NIC na fita superior ou crie um novo conjunto através do botão "Novo Conjunto".
+              Selecione o conjunto (COI) na fita superior ou crie um novo conjunto através do botão "Novo Conjunto".
             </p>
           </div>
 

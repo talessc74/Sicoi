@@ -11,6 +11,7 @@ interface PersonRow {
   role: string;
   institution: string;
   email: string;
+  admin_access: boolean;
 }
 
 function toUserProfile(row: PersonRow): UserProfile {
@@ -19,13 +20,14 @@ function toUserProfile(row: PersonRow): UserProfile {
     name: row.name,
     role: row.role as UserProfile['role'],
     institution: row.institution,
-    email: row.email
+    email: row.email,
+    adminAccess: row.admin_access === true
   };
 }
 
 export async function listPeople(pool: Pool): Promise<UserProfile[]> {
   const { rows } = await pool.query<PersonRow>(
-    'SELECT id, name, role, institution, email FROM people ORDER BY created_at ASC'
+    'SELECT id, name, role, institution, email, admin_access FROM people ORDER BY created_at ASC'
   );
   return rows.map(toUserProfile);
 }
@@ -39,12 +41,12 @@ export async function countPeople(pool: Pool): Promise<number> {
 
 export async function createPerson(
   pool: Pool,
-  person: { name: string; role: string; institution: string; email: string }
+  person: { name: string; role: string; institution: string; email: string; adminAccess?: boolean }
 ): Promise<UserProfile> {
   const { rows } = await pool.query<PersonRow>(
-    `INSERT INTO people (name, role, institution, email) VALUES ($1, $2, $3, $4)
-     RETURNING id, name, role, institution, email`,
-    [person.name, person.role, person.institution, person.email]
+    `INSERT INTO people (name, role, institution, email, admin_access) VALUES ($1, $2, $3, $4, $5)
+     RETURNING id, name, role, institution, email, admin_access`,
+    [person.name, person.role, person.institution, person.email, person.adminAccess === true]
   );
   return toUserProfile(rows[0]);
 }
@@ -56,12 +58,12 @@ export async function createPerson(
 export async function updatePerson(
   pool: Pool,
   id: string,
-  person: { name: string; role: string; institution: string; email: string }
+  person: { name: string; role: string; institution: string; email: string; adminAccess?: boolean }
 ): Promise<UserProfile | null> {
   const { rows } = await pool.query<PersonRow>(
-    `UPDATE people SET name = $1, role = $2, institution = $3, email = $4 WHERE id = $5
-     RETURNING id, name, role, institution, email`,
-    [person.name, person.role, person.institution, person.email, id]
+    `UPDATE people SET name = $1, role = $2, institution = $3, email = $4, admin_access = $5 WHERE id = $6
+     RETURNING id, name, role, institution, email, admin_access`,
+    [person.name, person.role, person.institution, person.email, person.adminAccess === true, id]
   );
   return rows[0] ? toUserProfile(rows[0]) : null;
 }
@@ -69,7 +71,7 @@ export async function updatePerson(
 export async function getPerson(pool: Pool, id: string): Promise<UserProfile | null> {
   if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
   const { rows } = await pool.query<PersonRow>(
-    'SELECT id, name, role, institution, email FROM people WHERE id = $1',
+    'SELECT id, name, role, institution, email, admin_access FROM people WHERE id = $1',
     [id]
   );
   return rows[0] ? toUserProfile(rows[0]) : null;

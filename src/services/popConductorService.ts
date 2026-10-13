@@ -974,7 +974,7 @@ export const INC_DITEC_PF_POPS: Record<PhaseNumber, PopDefinition> = {
         stepTitle: 'Marcação Física em Paraloid B-72',
         conductorPrompt: 'Confirme a aplicação do verniz Paraloid B-72, nanquim indelével e selagem superficial nos ossos diagnósticos.',
         requiresPhoto: true,
-        photoPrompt: 'Fotografia macro da marcação com sigla NIC no fêmur',
+        photoPrompt: 'Fotografia macro da marcação com o número COI no fêmur',
         quickSuggestions: [
           'Marcação executada com Paraloid B-72 a 15% e tinta nanquim preta em todos os ossos principais.',
           'Camada de base e cobertura de Paraloid B-72 em acetona aplicadas com sucesso.'

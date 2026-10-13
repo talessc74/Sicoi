@@ -1,7 +1,7 @@
 ---
 name: _local-adr-policy-202-login-real-sessao-servidor
 description: "Ser alguém" no sistema é provar e-mail + senha e receber uma sessão assinada pelo servidor (cookie httpOnly) — nunca o navegador declarando um actorId, nem um seletor de perfil de um clique. Use antes de adicionar qualquer rota ou tela nova que precise saber quem está agindo, ou antes de mudar o fluxo de cadastro/gestão de contas.
-apply-to: db/authRepo.ts, db/peopleRepo.ts, server.ts (middleware de sessão, trust proxy, csrfProtection, requireAuth/requireSessionRole, rotas /api/auth/* e /api/people), db/migrations/009_auth.sql, db/migrations/010_password_reset_requests.sql, db/migrations/011_login_attempts.sql, db/migrations/012_email_identity.sql, db/migrations/013_remove_registration_number.sql, db/migrations/014_first_administrator.sql, db/migrations/015_ensure_first_administrator.sql, db/migrations/016_restore_registration_number_for_revert.sql, db/migrations/017_reset_pending_administrator.sql, src/services/authService.ts, src/services/csrf.ts, src/services/collectionsService.ts, src/services/adminService.ts, src/services/peopleService.ts, src/services/geminiService.ts, src/components/LoginScreen.tsx, src/components/BootstrapAdminSetup.tsx, src/components/ClaimAdminScreen.tsx, src/components/SetPasswordScreen.tsx, src/components/ForgotPasswordScreen.tsx, src/components/ChangePasswordModal.tsx, src/components/Header.tsx, src/components/SettingsView.tsx, src/App.tsx
+apply-to: db/authRepo.ts, db/peopleRepo.ts, server.ts (middleware de sessão, trust proxy, csrfProtection, requireAuth/requireSessionRole, rotas /api/auth/* e /api/people), db/migrations/009_auth.sql, db/migrations/010_password_reset_requests.sql, db/migrations/011_login_attempts.sql, db/migrations/012_email_identity.sql, db/migrations/013_remove_registration_number.sql, db/migrations/014_first_administrator.sql, db/migrations/015_ensure_first_administrator.sql, db/migrations/016_restore_registration_number_for_revert.sql, db/migrations/017_reset_pending_administrator.sql, db/migrations/020_admin_access.sql, src/utils/permissions.ts, src/services/authService.ts, src/services/csrf.ts, src/services/collectionsService.ts, src/services/adminService.ts, src/services/peopleService.ts, src/services/geminiService.ts, src/components/LoginScreen.tsx, src/components/BootstrapAdminSetup.tsx, src/components/ClaimAdminScreen.tsx, src/components/SetPasswordScreen.tsx, src/components/ForgotPasswordScreen.tsx, src/components/ChangePasswordModal.tsx, src/components/Header.tsx, src/components/SettingsView.tsx, src/App.tsx
 valid-from: 2026-09-28
 ---
 
@@ -132,6 +132,20 @@ sessão criada no login — nunca de um campo que o cliente envia.**
   `authRepo.ts`, `bcrypt.compare` contra o hash gravado) mesmo com a
   sessão válida — justamente para o caso de sessão aberta num computador
   compartilhado; sem a senha atual certa, nada muda.
+- **Acesso de Administrador somado a outro papel (out/2026, pedido da
+  Nicole)**: a Curadora da coleção também administra o sistema, com uma
+  conta só. `people.admin_access` (migração `020_admin_access.sql`, default
+  `false`) libera as funções de Administrador para quem tem outro papel
+  principal; `role` continua sendo o que vai nas assinaturas e no histórico.
+  `requireSessionRole('administrador')` passa a usar `hasAdminAccess`
+  (`src/utils/permissions.ts`): `role === 'administrador'` **ou**
+  `admin_access`. Lido do banco a cada requisição, como o papel — ligar ou
+  desligar vale na próxima chamada, sem novo login. Só um Administrador liga
+  ou desliga a marca (rotas `/api/people` seguem `requireAdminSession`), e o
+  servidor recusa (400) quem tenta salvar o próprio cadastro sem acesso de
+  Administrador, para o sistema não ficar sem ninguém que administre.
+  Ativação de Administrador migrado (`claim-admin`) segue só para
+  `role = 'administrador'`.
 - **Limitação conhecida remanescente**: nem gerar um link novo, nem a
   pessoa trocar a própria senha, encerra sessões já abertas em outro
   computador/navegador com a senha antiga — a troca só se aplica ao

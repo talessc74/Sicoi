@@ -711,7 +711,7 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
                 <div className="mt-2.5 pt-2 border-t border-sky-500/30 text-xs">
                   <div className="flex items-center gap-1.5 text-sky-100 font-mono text-[10px] font-semibold mb-1">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" />
-                    <span>Dados Extraídos e Vinculados ao NIC:</span>
+                    <span>Dados Extraídos e Vinculados ao Conjunto:</span>
                   </div>
                   <div className="bg-sky-700/40 rounded-lg p-2 text-xs font-mono space-y-0.5 text-sky-50">
                     {Object.entries(msg.extractedData).map(([key, val]) => (

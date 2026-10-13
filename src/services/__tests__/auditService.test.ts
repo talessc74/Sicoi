@@ -58,9 +58,9 @@ describe('generateSignaturePayload', () => {
 });
 
 describe('generateExportHeader', () => {
-  it('inclui NIC, hash e aviso de restrição no cabeçalho', () => {
+  it('inclui o número do conjunto (COI), hash e aviso de restrição no cabeçalho', () => {
     const header = generateExportHeader({
-      nic: 'NIC-2026-0841',
+      nic: 'COI-001',
       curationVersion: 1,
       curatorName: 'Dra. Curadora',
       methodsApplied: ['Phenice (1969)'],
@@ -68,7 +68,7 @@ describe('generateExportHeader', () => {
       hash: 'abc123'
     });
 
-    expect(header).toContain('NIC: NIC-2026-0841');
+    expect(header).toContain('COI: COI-001');
     expect(header).toContain('abc123');
     expect(header).toContain('Phenice (1969)');
     expect(header).toContain('Dados de identificação civil e cemiterial de origem são restritos');
