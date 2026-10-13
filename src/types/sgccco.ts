@@ -79,6 +79,18 @@ export interface FieldWithAiSuggestion<T> {
   confirmedByUser?: boolean;
 }
 
+// Confirmação opcional do Pesquisador numa fase onde ele tem acesso (Fases 1, 2,
+// 3, 4 e 5 — decisão de acesso out/2026). Nunca é a assinatura que destrava a
+// fase: essa continua sendo exclusiva do Técnico (ou do Curador, agindo como
+// técnico) — ver canSignAsTechnician em utils/permissions.ts. O Pesquisador
+// pode ou não registrar esta confirmação; ela é só um registro de que revisou
+// a fase, nunca bloqueia nem substitui a assinatura obrigatória.
+export interface ResearcherReviewConfirmation {
+  confirmedByName: string;
+  confirmedAt: string;
+  sha256Hash: string;
+}
+
 // Categorias fixas do checklist fotográfico do Formulário A.1 (campos 5-9)
 export type Phase1PhotoCategory =
   | 'foto1_saco_fechado'
@@ -395,6 +407,11 @@ export interface Phase4Data {
     signedAt: string;
     sha256Hash: string;
   };
+
+  // Confirmação opcional do Pesquisador (ver ResearcherReviewConfirmation) —
+  // nunca substitui technicianAssemblySign, que continua sendo a assinatura
+  // exclusiva de Técnico/Curador.
+  researcherConfirmation?: ResearcherReviewConfirmation;
 }
 
 // Fase 5: Patologias, Exames e Marcação Óssea

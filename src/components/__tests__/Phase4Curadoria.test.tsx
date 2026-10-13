@@ -409,6 +409,49 @@ describe('Phase4Curadoria', () => {
     expect(updated.phase4.completeAssemblyPhotoApproved).toBeTruthy();
   });
 
+  it('Pesquisador tem acesso à aba Montagem (pode aprovar a foto) mas não pode assinar — sua participação é a confirmação opcional', async () => {
+    const user = userEvent.setup();
+    const onUpdateCollection = vi.fn();
+    const collectionWithPhoto = baseCollection({
+      phase4: {
+        curationVersionNumber: 1,
+        curationVersionStatus: 'rascunho',
+        curatorAuthor: 'x',
+        individuals: [],
+        skeletalElements: [],
+        completeAssemblyPhotoApproved: {
+          photoUrl: 'https://example.com/foto.jpg',
+          capturedAt: new Date().toISOString(),
+          approvedBy: 'Fulano Pesquisador',
+          approvedAt: new Date().toISOString(),
+          sha256Hash: 'abc123',
+          resolution: '4032x3024'
+        }
+      } as any
+    });
+
+    render(
+      <Phase4Curadoria
+        collection={collectionWithPhoto}
+        currentUser={makeUser('pesquisador')}
+        onUpdateCollection={onUpdateCollection}
+        laboratoryMode={false}
+      />
+    );
+
+    // Acesso à aba Montagem preservado (decisão de acesso out/2026) — mesmo com
+    // a foto já aprovada, o botão de assinatura continua bloqueado pro Pesquisador.
+    expect(screen.getByRole('button', { name: /Assinar Fechamento da Fase 4/i })).toBeDisabled();
+
+    const confirmButton = screen.getByRole('button', { name: /confirmar revisão \(pesquisador\)/i });
+    await user.click(confirmButton);
+    const updated = onUpdateCollection.mock.calls.at(-1)?.[0];
+    expect(updated.phase4.researcherConfirmation?.confirmedByName).toBeTruthy();
+    // A confirmação do Pesquisador nunca grava as assinaturas reais.
+    expect(updated.phase4.technicianAssemblySign).toBeUndefined();
+    expect(updated.phase4.curatorInventorySign).toBeUndefined();
+  });
+
   it('Técnico não edita Indivíduos/Inventário/Odontograma — acesso novo é só a aba Montagem', () => {
     const collection = baseCollection({
       phase4: {
