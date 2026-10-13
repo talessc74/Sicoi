@@ -386,6 +386,18 @@ export interface Phase4Data {
     sha256Hash: string;
     resolution: string;
   };
+
+  // Confirmação explícita de que não há fotografia oficial de montagem pra
+  // guardar agora — a câmera normalmente é obrigatória pra fechar a Fase 4,
+  // mas o sistema pergunta em vez de travar pra sempre quando ela não está
+  // disponível (mesmo padrão da Fase 1 — ver _local-adr-policy-301). Nunca
+  // coexiste com completeAssemblyPhotoApproved: registrar uma foto real
+  // sempre limpa esta justificativa (e vice-versa).
+  assemblyPhotoJustification?: {
+    justifiedByName: string;
+    justifiedAt: string;
+    reason: string;
+  };
 }
 
 // Fase 5: Patologias, Exames e Marcação Óssea

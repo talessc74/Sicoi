@@ -211,6 +211,128 @@ describe('Phase4Curadoria', () => {
     expect(signButton).toBeDisabled();
   });
 
+  it('ao clicar em "Capturar & Aprovar Foto Agora" e escolher um arquivo, envia upload real em vez de aprovar um placeholder', async () => {
+    const user = userEvent.setup();
+    const collection = baseCollection({
+      phase4: {
+        curationVersionNumber: 1,
+        curationVersionStatus: 'rascunho',
+        curatorAuthor: 'x',
+        individuals: [makeIndividual()],
+        skeletalElements: []
+      } as any
+    });
+    const onUpdateCollection = vi.fn();
+
+    const savedCollection = {
+      ...collection,
+      phase4: {
+        ...collection.phase4,
+        completeAssemblyPhotoApproved: {
+          photoUrl: '/api/collections/NIC-2026-0001/photos/photo-real-1/file',
+          capturedAt: new Date().toISOString(),
+          approvedBy: 'Dra. Curadora',
+          approvedAt: new Date().toISOString(),
+          sha256Hash: 'hash-real-da-montagem',
+          resolution: '4032x3024'
+        }
+      }
+    };
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: async () => ({ collection: savedCollection, photo: { id: 'photo-real-1' } })
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { container } = render(
+      <Phase4Curadoria
+        collection={collection}
+        currentUser={makeUser('curador')}
+        onUpdateCollection={onUpdateCollection}
+        laboratoryMode={false}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: /Foto Montagem Completa/i }));
+    await user.click(screen.getByRole('button', { name: /Capturar & Aprovar Foto Agora/i }));
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    expect(fileInput).toBeTruthy();
+    const file = new File(['bytes-da-foto'], 'montagem.jpg', { type: 'image/jpeg' });
+    await user.upload(fileInput, file);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      `/api/collections/${collection.nic}/photos`,
+      expect.objectContaining({ method: 'POST' })
+    );
+    const sentBody = fetchMock.mock.calls[0][1].body as FormData;
+    expect(sentBody.get('phase')).toBe('phase4');
+    expect(sentBody.get('photo')).toBe(file);
+
+    const lastUpdate = onUpdateCollection.mock.calls.at(-1)?.[0];
+    expect(lastUpdate.phase4.completeAssemblyPhotoApproved.sha256Hash).toBe('hash-real-da-montagem');
+
+    vi.unstubAllGlobals();
+  });
+
+  it('ao clicar em "Não há foto" e confirmar com justificativa, marca como justificado sem chamar upload, e libera a assinatura', async () => {
+    const user = userEvent.setup();
+    const collection = baseCollection({
+      phase4: {
+        curationVersionNumber: 1,
+        curationVersionStatus: 'rascunho',
+        curatorAuthor: 'x',
+        individuals: [makeIndividual()],
+        skeletalElements: []
+      } as any
+    });
+    const onUpdateCollection = vi.fn();
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { unmount } = render(
+      <Phase4Curadoria
+        collection={collection}
+        currentUser={makeUser('curador')}
+        onUpdateCollection={onUpdateCollection}
+        laboratoryMode={false}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: /Foto Montagem Completa/i }));
+    await user.click(screen.getByRole('button', { name: /^não há foto$/i }));
+
+    expect(screen.getByText('Confirmar ausência de foto')).toBeInTheDocument();
+    const confirmButton = screen.getByRole('button', { name: /confirmar sem foto/i });
+    expect(confirmButton).toBeDisabled();
+
+    const textarea = screen.getByPlaceholderText(/câmera indisponível/i);
+    await user.type(textarea, 'Esqueleto incompleto não permite a foto padrão.');
+    expect(confirmButton).toBeEnabled();
+    await user.click(confirmButton);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    const updated = onUpdateCollection.mock.calls.at(-1)?.[0];
+    expect(updated.phase4.assemblyPhotoJustification?.reason).toBe('Esqueleto incompleto não permite a foto padrão.');
+    expect(updated.phase4.completeAssemblyPhotoApproved).toBeUndefined();
+
+    // A justificativa, por si só, já libera a assinatura (mesmo sem foto real).
+    unmount();
+    render(
+      <Phase4Curadoria
+        collection={updated}
+        currentUser={makeUser('curador')}
+        onUpdateCollection={onUpdateCollection}
+        laboratoryMode={false}
+      />
+    );
+    expect(screen.getByRole('button', { name: /Aprovar & Assinar Versão Científica/i })).toBeEnabled();
+
+    vi.unstubAllGlobals();
+  });
+
   it('ao criar um novo indivíduo (Curador), chama onUpdateCollection', async () => {
     const user = userEvent.setup();
     const onUpdateCollection = vi.fn();

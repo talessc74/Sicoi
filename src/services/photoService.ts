@@ -1,10 +1,10 @@
 /**
- * Captura real de foto (Fase 1 e Fase 2) — upload multipart pra
- * POST /api/collections/:nic/photos, que guarda os bytes direto no Postgres
- * e devolve o conjunto já salvo com a foto nova em full_state
- * (_local-adr-policy-301). Substitui o antigo placeholder (URL fixa de um
- * banco de imagens de terceiros, hash calculado sobre texto) que nunca
- * tirou foto nenhuma.
+ * Captura real de foto (Fase 1, Fase 2 e a fotografia oficial de montagem da
+ * Fase 4) — upload multipart pra POST /api/collections/:nic/photos, que guarda
+ * os bytes direto no Postgres e devolve o conjunto já salvo com a foto nova
+ * (_local-adr-policy-301). Substitui o antigo placeholder (URL fixa de um banco
+ * de imagens de terceiros, hash calculado sobre texto) que nunca tirou foto
+ * nenhuma.
  */
 import { OsteologicalCollection, Phase1Photo } from '../types/sgccco';
 import { csrfHeaders } from './csrf';
@@ -24,7 +24,7 @@ async function parseJsonOrThrow(res: Response, fallbackMessage: string) {
 
 export async function uploadCollectionPhoto(
   nic: string,
-  phase: 'phase1' | 'phase2',
+  phase: 'phase1' | 'phase2' | 'phase4',
   category: string,
   file: File,
   caption?: string
