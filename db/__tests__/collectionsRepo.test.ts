@@ -106,6 +106,32 @@ describe('collectionsRepo', () => {
     expect(reloaded?.phase1.equipeEnvolvidaLimpeza.value).toBe('Equipe Alfa');
   });
 
+  it('salva foto1/foto4.1 como "sim" ou "sem_foto_justificado" (não mais boolean) sem rejeitar no phase1_forms', async () => {
+    const col = baseCollection('NIC-REPO-0005');
+    await createCollection(pool, col);
+
+    col.phase1.foto1SacoFechado = { value: 'sim', isAiSuggested: false };
+    col.phase1.foto4_1RemanescentesIsolados = { value: 'sem_foto_justificado', isAiSuggested: false };
+    col.phase1.foto4_1RemanescentesIsoladosJustificativaAusencia = {
+      value: 'Câmera indisponível no momento do recebimento.',
+      isAiSuggested: false
+    };
+    await saveCollection(pool, col);
+
+    const { rows } = await pool.query(
+      'SELECT foto1_saco_fechado, foto4_1_remanescentes_isolados FROM phase1_forms WHERE nic = $1',
+      ['NIC-REPO-0005']
+    );
+    expect(rows[0].foto1_saco_fechado).toBe('sim');
+    expect(rows[0].foto4_1_remanescentes_isolados).toBe('sem_foto_justificado');
+
+    const reloaded = await getCollection(pool, 'NIC-REPO-0005');
+    expect(reloaded?.phase1.foto1SacoFechado.value).toBe('sim');
+    expect(reloaded?.phase1.foto4_1RemanescentesIsoladosJustificativaAusencia?.value).toBe(
+      'Câmera indisponível no momento do recebimento.'
+    );
+  });
+
   it('grava as descrições de 1ª costela e patela da coleta genética em phase1_forms', async () => {
     const col = baseCollection('NIC-REPO-0010');
     await createCollection(pool, col);

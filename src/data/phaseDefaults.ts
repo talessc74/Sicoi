@@ -14,10 +14,10 @@ export function createEmptyPhase1Data(): Phase1Data {
     dataAnalise: field(''),
     horaAnalise: field(''),
 
-    foto1SacoFechado: field(false),
+    foto1SacoFechado: field(undefined as any),
     foto2PlacaCemiterio: field(undefined as any),
     foto3RemanescentesMateriais: field(undefined as any),
-    foto4_1RemanescentesIsolados: field(false),
+    foto4_1RemanescentesIsolados: field(undefined as any),
     foto4_2MateriaisIsolados: field(undefined as any),
 
     tipoMaterial: field([]),
