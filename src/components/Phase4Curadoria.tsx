@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   OsteologicalCollection,
   UserProfile,
@@ -14,6 +14,7 @@ import {
   generateInitialOdontogram
 } from '../data/mockData';
 import { calculateSha256, generateSignaturePayload } from '../services/auditService';
+import { uploadCollectionPhoto } from '../services/photoService';
 import { getLatestPhaseSignature } from '../utils/signatures';
 import {
   UserCheck,
@@ -54,6 +55,11 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
   const [showMergeModal, setShowMergeModal] = useState(false);
   const [showSignModal, setShowSignModal] = useState(false);
   const [signing, setSigning] = useState(false);
+  const [uploadingAssemblyPhoto, setUploadingAssemblyPhoto] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [showNoPhotoModal, setShowNoPhotoModal] = useState(false);
+  const [noPhotoJustification, setNoPhotoJustification] = useState('');
+  const assemblyPhotoInputRef = useRef<HTMLInputElement>(null);
 
   const phaseSignature = getLatestPhaseSignature(collection.signatures, 4);
   const isLocked = phaseSignature?.status === 'locked';
@@ -161,18 +167,60 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
     setShowRefSearchModal(true);
   };
 
-  const handleApprovePhoto = async () => {
-    const hash = await calculateSha256(`ASSEMBLY-PHOTO-${collection.nic}-${Date.now()}`);
-    const updated = { ...collection };
-    updated.phase4.completeAssemblyPhotoApproved = {
-      photoUrl: 'https://images.unsplash.com/photo-1530210124550-912dc1381cb8?w=1000&auto=format&fit=crop&q=80',
-      capturedAt: new Date().toISOString(),
-      approvedBy: currentUser.name,
-      approvedAt: new Date().toISOString(),
-      sha256Hash: hash,
-      resolution: '4032x3024'
+  // Abre o seletor real de arquivo/câmera do dispositivo (input oculto mais
+  // abaixo, capture="environment") — nunca mais aprova a mesma imagem fixa de
+  // um banco de terceiros. O upload de verdade só acontece depois que o
+  // usuário escolhe o arquivo, em handleAssemblyPhotoFileSelected.
+  const handleRequestAssemblyPhoto = () => {
+    setUploadError(null);
+    assemblyPhotoInputRef.current?.click();
+  };
+
+  // Só grava o metadado (e marca como aprovada) depois que o upload real
+  // confirma — bytes e hash calculados pelo servidor sobre o arquivo de
+  // verdade, nunca sobre um texto qualquer.
+  const handleAssemblyPhotoFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // permite selecionar o mesmo arquivo de novo depois
+    if (!file) return;
+
+    setUploadingAssemblyPhoto(true);
+    setUploadError(null);
+    try {
+      const { collection: saved } = await uploadCollectionPhoto(
+        collection.nic,
+        'phase4',
+        'montagem_completa',
+        file,
+        'Fotografia Oficial de Montagem Completa'
+      );
+      onUpdateCollection(saved);
+    } catch (err: any) {
+      setUploadError(err?.message || 'Erro ao registrar a fotografia.');
+    } finally {
+      setUploadingAssemblyPhoto(false);
+    }
+  };
+
+  // Confirma explicitamente a ausência da foto, com justificativa obrigatória
+  // — nunca silenciosa, nunca travada pra sempre (mesmo padrão da Fase 1).
+  const handleConfirmNoAssemblyPhoto = () => {
+    if (!noPhotoJustification.trim()) return;
+    const updated = {
+      ...collection,
+      phase4: {
+        ...collection.phase4,
+        completeAssemblyPhotoApproved: undefined,
+        assemblyPhotoJustification: {
+          justifiedByName: currentUser.name,
+          justifiedAt: new Date().toISOString(),
+          reason: noPhotoJustification.trim()
+        }
+      }
     };
     onUpdateCollection(updated);
+    setShowNoPhotoModal(false);
+    setNoPhotoJustification('');
   };
 
   const handleSignPhase = async () => {
@@ -213,7 +261,9 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
     onUpdateCollection(updated);
   };
 
-  const canSignCuration = isCurator && individuals.length > 0 && Boolean(collection.phase4.completeAssemblyPhotoApproved);
+  const hasAssemblyPhotoOrJustification =
+    Boolean(collection.phase4.completeAssemblyPhotoApproved) || Boolean(collection.phase4.assemblyPhotoJustification);
+  const canSignCuration = isCurator && individuals.length > 0 && hasAssemblyPhotoOrJustification;
 
   return (
     <div className="space-y-6">
@@ -244,7 +294,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
                 onClick={() => setShowSignModal(true)}
                 disabled={!canSignCuration}
                 className="px-4 py-2 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-semibold hover:opacity-95 disabled:opacity-40 transition-all flex items-center gap-2 shadow-xs"
-                title={!canSignCuration ? 'Exige perfil de Curador, ao menos 1 indivíduo e foto de montagem completa aprovada.' : ''}
+                title={!canSignCuration ? 'Exige perfil de Curador, ao menos 1 indivíduo e foto de montagem (ou confirmar que não há foto).' : ''}
               >
                 <FileCheck className="w-4 h-4" />
                 <span>Aprovar & Assinar Versão Científica</span>
@@ -663,14 +713,29 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
             </div>
             {!collection.phase4.completeAssemblyPhotoApproved && canApprove && (
               <button
-                onClick={handleApprovePhoto}
-                className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium flex items-center gap-1.5"
+                onClick={handleRequestAssemblyPhoto}
+                disabled={uploadingAssemblyPhoto}
+                className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-medium flex items-center gap-1.5"
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Aprovar Fotografia Oficial</span>
+                <span>{uploadingAssemblyPhoto ? 'Enviando...' : 'Aprovar Fotografia Oficial'}</span>
               </button>
             )}
           </div>
+
+          {uploadError && (
+            <div className="p-2.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300">
+              {uploadError}
+            </div>
+          )}
+          <input
+            ref={assemblyPhotoInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={handleAssemblyPhotoFileSelected}
+          />
 
           {collection.phase4.completeAssemblyPhotoApproved ? (
             <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 relative bg-black">
@@ -693,6 +758,28 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
                 </div>
               </div>
             </div>
+          ) : collection.phase4.assemblyPhotoJustification ? (
+            <div className="p-6 text-center border-2 border-dashed border-amber-300 dark:border-amber-800 rounded-2xl space-y-2 bg-amber-50 dark:bg-amber-950/30">
+              <AlertCircle className="w-8 h-8 mx-auto text-amber-500" />
+              <p className="font-semibold text-amber-700 dark:text-amber-300">
+                Sem foto oficial — justificado
+              </p>
+              <p className="text-slate-600 dark:text-slate-300 text-[11px] max-w-md mx-auto">
+                {collection.phase4.assemblyPhotoJustification.reason}
+              </p>
+              <p className="text-slate-400 text-[10px]">
+                Confirmado por {collection.phase4.assemblyPhotoJustification.justifiedByName}
+              </p>
+              {canApprove && (
+                <button
+                  onClick={handleRequestAssemblyPhoto}
+                  disabled={uploadingAssemblyPhoto}
+                  className="mt-2 px-4 py-2 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 disabled:opacity-50 font-semibold"
+                >
+                  {uploadingAssemblyPhoto ? 'Enviando...' : 'Registrar Foto Agora'}
+                </button>
+              )}
+            </div>
           ) : (
             <div className="p-8 text-center border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl space-y-2">
               <Camera className="w-8 h-8 mx-auto text-slate-400" />
@@ -703,15 +790,68 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
                 Para fechar a curadoria científica, capture e aprove uma foto nítida do esqueleto articulado em norma anatômica com escala métrica.
               </p>
               {canApprove && (
-                <button
-                  onClick={handleApprovePhoto}
-                  className="mt-2 px-4 py-2 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-semibold"
-                >
-                  Capturar & Aprovar Foto Agora
-                </button>
+                <div className="flex items-center justify-center gap-2 mt-2">
+                  <button
+                    onClick={handleRequestAssemblyPhoto}
+                    disabled={uploadingAssemblyPhoto}
+                    className="px-4 py-2 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 disabled:opacity-50 font-semibold"
+                  >
+                    {uploadingAssemblyPhoto ? 'Enviando...' : 'Capturar & Aprovar Foto Agora'}
+                  </button>
+                  <button
+                    onClick={() => setShowNoPhotoModal(true)}
+                    disabled={uploadingAssemblyPhoto}
+                    className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 disabled:opacity-50 font-semibold"
+                  >
+                    Não há foto
+                  </button>
+                </div>
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Modal de Confirmação de Ausência de Foto — pergunta explícita antes de
+          aceitar seguir sem a fotografia oficial de montagem (nunca silencioso,
+          nunca travado pra sempre: exige justificativa escrita). */}
+      {showNoPhotoModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 text-xs">
+            <div className="flex items-center gap-2 text-amber-600 font-bold text-sm">
+              <AlertCircle className="w-5 h-5" />
+              <h4>Confirmar ausência de foto</h4>
+            </div>
+            <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+              Esta fotografia normalmente é obrigatória para fechar a curadoria científica. Antes de continuar sem ela, descreva por que não há uma foto pra guardar neste caso — a justificativa fica registrada no histórico do conjunto.
+            </p>
+            <textarea
+              rows={3}
+              autoFocus
+              value={noPhotoJustification}
+              onChange={(e) => setNoPhotoJustification(e.target.value)}
+              placeholder="Ex.: câmera indisponível no momento da montagem, esqueleto incompleto não permite a foto padrão..."
+              className="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+            />
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                onClick={() => {
+                  setShowNoPhotoModal(false);
+                  setNoPhotoJustification('');
+                }}
+                className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmNoAssemblyPhoto}
+                disabled={!noPhotoJustification.trim()}
+                className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-medium disabled:opacity-50"
+              >
+                Confirmar sem foto
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -796,7 +936,12 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
             <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl font-mono text-[11px] space-y-1">
               <div>COI: {collection.nic}</div>
               <div>Versão Científica: v{collection.phase4.curationVersionNumber} (Aprovada)</div>
-              <div>Foto de Montagem: {collection.phase4.completeAssemblyPhotoApproved?.sha256Hash.substring(0, 16)}...</div>
+              <div>
+                Foto de Montagem:{' '}
+                {collection.phase4.completeAssemblyPhotoApproved
+                  ? `${collection.phase4.completeAssemblyPhotoApproved.sha256Hash.substring(0, 16)}...`
+                  : 'sem foto (justificado)'}
+              </div>
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <button onClick={() => setShowSignModal(false)} className="px-4 py-2 rounded-lg border">
