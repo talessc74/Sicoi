@@ -94,7 +94,7 @@ describe('Phase5Patologias', () => {
     );
 
     expect(screen.getByText('NIC-PHASE5-0001')).toBeInTheDocument();
-    expect(screen.getByText(/Patologias & Traumas \(1\)/)).toBeInTheDocument();
+    expect(screen.getByText(/Alterações Ósseas & Traumas \(1\)/)).toBeInTheDocument();
     expect(screen.getByText(/Exames & DICOM \(0\)/)).toBeInTheDocument();
     expect(screen.getByText(/Marcação Física & Embalagem/)).toBeInTheDocument();
     expect(screen.getByText(/Checklist Determinístico \(0\/5\)/)).toBeInTheDocument();

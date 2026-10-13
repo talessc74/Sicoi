@@ -138,7 +138,7 @@ export const PublicQRInspectionModal: React.FC<PublicQRInspectionModalProps> = (
                 ))}
               </div>
             ) : (
-              <p className="text-slate-400 italic">Curadoria biológica em andamento.</p>
+              <p className="text-slate-400 italic">Montagem e inventário em andamento.</p>
             )}
           </div>
 

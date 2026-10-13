@@ -278,7 +278,7 @@ export interface Phase2Data {
   photos: Phase1Photo[];
 }
 
-// Fase 3: Acondicionamento Provisório e Fila de Curadoria
+// Fase 3: Acondicionamento Provisório e Fila de Montagem e Inventário
 export interface Phase3Data {
   boxLocations: {
     boxId: string;
@@ -296,7 +296,7 @@ export interface Phase3Data {
 // Grau de Certeza Biológica (§8)
 export type BiologicalConfidence = 'alto' | 'alta' | 'medio' | 'media' | 'baixo' | 'baixa' | 'inconclusivo' | 'inconclusiva';
 
-// Fase 4: Curadoria Científica, NMI e Perfil Biológico
+// Fase 4: Montagem e Inventário (NMI e Perfil Biológico)
 export type CurationVersionStatus = 'rascunho' | 'revisao' | 'aprovada_curador' | 'aprovada';
 
 export interface IndividualHypothesis {
@@ -380,7 +380,7 @@ export interface Phase4Data {
   };
 }
 
-// Fase 5: Patologias, Exames e Marcação Óssea
+// Fase 5: Alterações Ósseas, Exames e Marcação Óssea
 export interface BonePathology {
   id: string;
   elementId?: string;

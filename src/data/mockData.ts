@@ -197,7 +197,7 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
         id: 'cst-003',
         timestamp: '2026-06-20T08:15:00Z',
         sourceLocation: 'Acondicionamento Provisório (Sala B-10)',
-        targetLocation: 'Mesa de Curadoria e Montagem (Sala de Estudos A-02)',
+        targetLocation: 'Mesa de Montagem e Inventário (Sala de Estudos A-02)',
         carrierPerson: 'Carlos Alberto Menezes',
         receiverPerson: 'Dra. Helena Beatriz Siqueira',
         carrierSignatureHash: '2d019283019284019283019284019286',

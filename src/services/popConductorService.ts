@@ -866,7 +866,7 @@ export const INC_DITEC_PF_POPS: Record<PhaseNumber, PopDefinition> = {
     popCode: 'POP-INC-DITEC-PF-03',
     popTitle: 'Acondicionamento Provisório e Inventário',
     regulatoryRef: 'POP-INC-DITEC-PF-03 · Rastreabilidade de Caixas e Galpão',
-    introMessage: 'Iniciando o Condutor do POP-INC-DITEC-PF-03. Vamos associar as caixas de polionda alveolar neutro e registrar a coordenada física na sala de espera de curadoria.',
+    introMessage: 'Iniciando o Condutor do POP-INC-DITEC-PF-03. Vamos associar as caixas de polionda alveolar neutro e registrar a coordenada física na sala de espera de Montagem e Inventário.',
     steps: [
       {
         stepNumber: 1,
@@ -905,7 +905,7 @@ export const INC_DITEC_PF_POPS: Record<PhaseNumber, PopDefinition> = {
   4: {
     phaseNumber: 4,
     popCode: 'POP-INC-DITEC-PF-04',
-    popTitle: 'Curadoria e Perfil Biológico',
+    popTitle: 'Montagem e Inventário — Perfil Biológico',
     regulatoryRef: 'POP-INC-DITEC-PF-04 · Antropologia Forense',
     introMessage: 'Iniciando o Condutor do POP-INC-DITEC-PF-04. Vamos conduzir o pareamento anatômico, consolidação do NMI final e estimativas antropológicas de sexo, idade e ancestralidade.',
     steps: [
@@ -931,12 +931,12 @@ export const INC_DITEC_PF_POPS: Record<PhaseNumber, PopDefinition> = {
         }
       }
     ],
-    completionMessage: 'Curadoria do POP-04 registrada com sucesso.'
+    completionMessage: 'Montagem e Inventário do POP-04 registrados com sucesso.'
   },
   5: {
     phaseNumber: 5,
     popCode: 'POP-INC-DITEC-PF-05',
-    popTitle: 'Patologias, Traumatologia e DICOM',
+    popTitle: 'Alterações Ósseas, Traumatologia e DICOM',
     regulatoryRef: 'POP-INC-DITEC-PF-05 · Traumatologia Forense',
     introMessage: 'Condutor do POP-INC-DITEC-PF-05 ativo. Descreva as lesões traumáticas ante-mortem, peri-mortem ou pós-mortem e o status dos exames de imagem tomográfica.',
     steps: [

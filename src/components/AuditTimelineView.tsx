@@ -43,8 +43,8 @@ const PHASE_META: Record<PhaseNumber, { subtitle: string; signerRole: string }> 
   1: { subtitle: 'Recebimento & A.1', signerRole: 'Técnico' },
   2: { subtitle: 'Limpeza & Secagem A.2', signerRole: 'Técnico' },
   3: { subtitle: 'Acondic. Provisório', signerRole: 'Técnico' },
-  4: { subtitle: 'Curadoria & Perfil', signerRole: 'Curador' },
-  5: { subtitle: 'Patologias & Exames', signerRole: 'Curador / Técnico' },
+  4: { subtitle: 'Montagem e Inventário & Perfil', signerRole: 'Curador' },
+  5: { subtitle: 'Alterações Ósseas & Exames', signerRole: 'Curador / Técnico' },
   6: { subtitle: 'Galpão Definitivo', signerRole: 'Dupla Custódia' },
   7: { subtitle: 'Pesquisa & Grafo', signerRole: 'Admin / Livre' }
 };
@@ -646,8 +646,8 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
               <option value="1">Fase 1: Entrada / Recebimento</option>
               <option value="2">Fase 2: Limpeza e Secagem</option>
               <option value="3">Fase 3: Acondicionamento Prov.</option>
-              <option value="4">Fase 4: Curadoria / NMI</option>
-              <option value="5">Fase 5: Patologias e Embalagem</option>
+              <option value="4">Fase 4: Montagem e Inventário / NMI</option>
+              <option value="5">Fase 5: Alterações Ósseas e Embalagem</option>
               <option value="6">Fase 6: Galpão Definitivo</option>
               <option value="7">Fase 7: Consulta / Pesquisa</option>
             </select>
@@ -666,10 +666,10 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
               <option value="limpeza_higienizacao">Higienização e Limpeza</option>
               <option value="secagem_concluida">Secagem e Umidade</option>
               <option value="acondicionamento_provisorio">Estante Provisória</option>
-              <option value="curadoria_nmi">Curadoria e NMI</option>
+              <option value="curadoria_nmi">Montagem e Inventário e NMI</option>
               <option value="pareamento_anatomico">Pareamento Anatômico</option>
               <option value="perfil_biologico">Perfil Biológico</option>
-              <option value="patologia_registrada">Patologias Ósseas</option>
+              <option value="patologia_registrada">Alterações Ósseas</option>
               <option value="exame_dicom_anexado">Exame DICOM 3.0</option>
               <option value="marcacao_ossea">Marcação com Paraloid B-72</option>
               <option value="embalagem_inerte">Embalagem Inerte</option>
