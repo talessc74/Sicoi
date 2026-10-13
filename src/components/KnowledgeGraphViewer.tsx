@@ -19,7 +19,7 @@ interface PathStep {
 }
 
 const nodeColorMap: Record<GraphNodeType, { fill: string; stroke: string; label: string; bg: string }> = {
-  nic: { fill: '#2563eb', stroke: '#1d4ed8', label: 'Conjunto (NIC)', bg: 'bg-blue-100 text-blue-800' },
+  nic: { fill: '#2563eb', stroke: '#1d4ed8', label: 'Conjunto (COI)', bg: 'bg-blue-100 text-blue-800' },
   individuo: { fill: '#10b981', stroke: '#059669', label: 'Indivíduo (Hipótese)', bg: 'bg-emerald-100 text-emerald-800' },
   elemento: { fill: '#64748b', stroke: '#475569', label: 'Elemento Ósseo', bg: 'bg-slate-100 text-slate-800' },
   patologia: { fill: '#e11d48', stroke: '#be123c', label: 'Patologia / Lesão', bg: 'bg-rose-100 text-rose-800' },

@@ -13,6 +13,7 @@ import { createEmptyPhase1Data, createEmptyPhase2Data } from './data/phaseDefaul
 import { fetchCollections, createCollectionApi, saveCollectionApi } from './services/collectionsService';
 import { fetchPeople, createPersonApi, updatePersonApi, deletePersonApi } from './services/peopleService';
 import { fetchCurrentUser, fetchBootstrapStatus, logoutApi } from './services/authService';
+import { hasAdminAccess } from './utils/permissions';
 import { Header } from './components/Header';
 import { LoginScreen } from './components/LoginScreen';
 import { BootstrapAdminSetup } from './components/BootstrapAdminSetup';
@@ -125,10 +126,10 @@ export default function App() {
   // buscada para quem está logado como Administrador — o servidor recusa (403)
   // pedidos de qualquer outro papel, e não há razão para um Técnico ou Estudante
   // ver o e-mail (o identificador de login) de todas as outras pessoas.
-  const loadAppData = async (role: UserRole) => {
+  const loadAppData = async (person: UserProfile) => {
     const [loadedCollections, loadedPeople] = await Promise.all([
       fetchCollections(),
-      role === 'administrador' ? fetchPeople() : Promise.resolve([])
+      hasAdminAccess(person) ? fetchPeople() : Promise.resolve([])
     ]);
     setCollections(loadedCollections);
     setSelectedNic(loadedCollections[0]?.nic || '');
@@ -140,7 +141,7 @@ export default function App() {
     setCurrentUser(person);
     setIsLoadingCollections(true);
     try {
-      await loadAppData(person.role);
+      await loadAppData(person);
       setSyncError(null);
     } catch (err: any) {
       console.error('Falha ao carregar dados após login:', err);
@@ -189,7 +190,7 @@ export default function App() {
           return;
         }
         setCurrentUser(me);
-        await loadAppData(me.role);
+        await loadAppData(me);
       } catch (err: any) {
         console.error('Falha ao carregar dados iniciais do banco:', err);
         setSyncError(err?.message || 'Não foi possível conectar ao banco de dados.');
@@ -256,7 +257,7 @@ export default function App() {
   // Cadastra uma nova pessoa (papel de acesso) — só o Administrador logado pode
   // (o servidor reconfere). A pessoa criada ainda não tem senha: o Administrador
   // gera o link de definição de senha para ela em Configurações.
-  const handleCreatePerson = async (person: { name: string; role: UserRole; institution: string; email: string }) => {
+  const handleCreatePerson = async (person: { name: string; role: UserRole; institution: string; email: string; adminAccess?: boolean }) => {
     const created = await createPersonApi(person);
     setPeople((prev) => [...prev, created]);
     setSyncError(null);
@@ -267,10 +268,13 @@ export default function App() {
   // precisar recriar do zero e perder o histórico ligado ao id dela.
   const handleUpdatePerson = async (
     id: string,
-    person: { name: string; role: UserRole; institution: string; email: string }
+    person: { name: string; role: UserRole; institution: string; email: string; adminAccess?: boolean }
   ) => {
     const updated = await updatePersonApi(id, person);
     setPeople((prev) => prev.map((p) => (p.id === id ? updated : p)));
+    // Quem editou o próprio cadastro (ex.: Administradora que passa a ser
+    // Curadora com acesso de Administrador) já vê o papel novo, sem novo login.
+    if (currentUser?.id === id) setCurrentUser(updated);
     setSyncError(null);
   };
 
@@ -317,11 +321,11 @@ export default function App() {
       });
   };
 
-  // O NIC é digitado por quem cadastra (janela NewCollectionModal), não gerado em sequência.
+  // O número do conjunto (COI-XXX) é digitado por quem cadastra (janela NewCollectionModal), não gerado em sequência.
   const [showNewCollectionModal, setShowNewCollectionModal] = useState(false);
   const handleCreateNewCollection = () => setShowNewCollectionModal(true);
 
-  const createCollectionWithNic = async (newNic: string, nextNum: string) => {
+  const createCollectionWithNic = async (newNic: string) => {
     if (!currentUser) return;
     const newCol: OsteologicalCollection = {
       id: `col-${Date.now()}`,
@@ -330,18 +334,15 @@ export default function App() {
       createdAt: new Date().toISOString(),
       createdByTechnician: currentUser.name,
       signatures: [],
-      legalOrigin: {
-        deliveryDocumentNumber: `GUIA-REMESSA-INC-DITEC-PF-2026/${nextNum}`,
-        originInstitution: 'IML Regional Metropolitano',
-        cemeteryName: 'Cemitério Municipal São João',
-        cemeteryPlot: `Quadra 12 - Jazigo ${nextNum}`,
-        deathDeclarationNumber: `DO-2026-88${nextNum}`
-      },
+      // Dados restritos de origem começam vazios: antes vinham preenchidos com
+      // valores de exemplo (cemitério, guia, declaração de óbito inventados) que
+      // apareciam na Fase 1 como se fossem do conjunto real.
+      legalOrigin: {},
       phase1: {
         ...createEmptyPhase1Data(),
         preliminaryBoxes: [{
           id: `CX-${newNic}`,
-          boxCode: `CX-${nextNum}`,
+          boxCode: newNic,
           presumedIndividualLabel: 'Caixa do conjunto',
           currentLocation: 'Bancada de Recepção',
           qrCode: `SIGCOI://BOX/CX-${newNic}`
@@ -563,7 +564,7 @@ export default function App() {
                 title="Cadastrar nova entrada de conjunto osteológico no acervo"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Novo Conjunto (NIC)</span>
+                <span>Novo Conjunto (COI)</span>
               </button>
             </div>
           </div>
@@ -644,13 +645,13 @@ export default function App() {
         {activeTab === 'fases' && !currentCollection && (
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-10 text-center space-y-3">
             <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Nenhum conjunto osteológico cadastrado ainda.</p>
-            <p className="text-xs text-slate-500">Crie um novo conjunto (NIC) para começar.</p>
+            <p className="text-xs text-slate-500">Crie um novo conjunto (COI) para começar.</p>
             <button
               onClick={handleCreateNewCollection}
               className="px-4 py-2 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-semibold inline-flex items-center gap-1.5"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Novo Conjunto (NIC)</span>
+              <span>Novo Conjunto (COI)</span>
             </button>
           </div>
         )}

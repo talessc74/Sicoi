@@ -12,6 +12,9 @@ export interface UserProfile {
   institution: string;
   // E-mail é o identificador de login — único campo que identifica a pessoa.
   email: string;
+  // Funções de Administrador somadas ao papel principal (ex.: Curadora que
+  // também administra o sistema). `role` segue sendo o que vai nas assinaturas.
+  adminAccess?: boolean;
 }
 
 // Criptografia e Assinatura por Fase (§7)

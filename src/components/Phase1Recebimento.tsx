@@ -509,7 +509,7 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
               {/* Checklist de fotos */}
               <FormSection title="Checklist Fotográfico (POP-03)">
                 <PhotoChecklistRow
-                  label="Foto 1 — Saco fechado, lacre, NIC e escala *"
+                  label="Foto 1 — Saco fechado, lacre, número COI e escala *"
                   done={p1.foto1SacoFechado.value === true}
                   disabled={isLocked}
                   onCapture={() => {
@@ -780,7 +780,7 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
             </p>
 
             <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl text-xs space-y-1 font-mono text-slate-700 dark:text-slate-300 mb-4">
-              <div>NIC: {collection.nic}</div>
+              <div>COI: {collection.nic}</div>
               <div>Responsável: {currentUser.name} ({currentUser.role})</div>
               <div>Data: {new Date().toLocaleString('pt-BR')}</div>
             </div>
@@ -809,7 +809,7 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
       {showPrintLabel && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 text-center shadow-2xl space-y-4">
-            <h4 className="font-bold text-sm text-slate-900 dark:text-white font-mono">Etiqueta Oficial de Caixa / NIC</h4>
+            <h4 className="font-bold text-sm text-slate-900 dark:text-white font-mono">Etiqueta Oficial de Caixa / COI</h4>
             <div className="p-6 bg-white border-2 border-slate-900 rounded-xl inline-block mx-auto text-black">
               <div className="font-bold text-lg font-mono tracking-wider">{collection.nic}</div>
               <div className="w-36 h-36 mx-auto my-2 border-2 border-slate-900 flex items-center justify-center bg-slate-50">

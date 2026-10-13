@@ -41,6 +41,7 @@ import {
   BoneSimilarityExplanation
 } from './db/boneSimilarity';
 import { listPeople, createPerson, updatePerson, deletePerson, countPeople } from './db/peopleRepo';
+import { hasAdminAccess } from './src/utils/permissions';
 import {
   verifyLogin,
   getPersonWithAuthStatus,
@@ -235,7 +236,11 @@ async function requireAuth(req: Request, res: Response, next: NextFunction): Pro
 function requireSessionRole(role: string) {
   return (req: Request, res: Response, next: NextFunction) => {
     const person = (req as any).currentPerson;
-    if (!person || person.role !== role) {
+    // Funções de Administrador também valem para quem tem o acesso de
+    // Administrador somado a outro papel (people.admin_access — ex.: Curadora
+    // que administra o sistema). Os demais papéis seguem a comparação exata.
+    const allowed = role === 'administrador' ? hasAdminAccess(person) : person?.role === role;
+    if (!person || !allowed) {
       res.status(403).json({ error: `Esta ação exige o papel ${role}.` });
       return;
     }
@@ -648,7 +653,7 @@ app.post('/api/collections', requireAuth, async (req: Request, res: Response) =>
   try {
     const collection = req.body?.collection;
     if (!collection?.nic) {
-      return res.status(400).json({ error: 'Corpo da requisição deve conter { collection } com um NIC válido.' });
+      return res.status(400).json({ error: 'Corpo da requisição deve conter { collection } com um número de conjunto (COI) válido.' });
     }
     const pool = getPool();
     const persisted = await createCollection(pool, collection, actorFromSession(req));
@@ -665,7 +670,7 @@ app.put('/api/collections/:nic', requireAuth, async (req: Request, res: Response
   try {
     const collection = req.body?.collection;
     if (!collection || collection.nic !== req.params.nic) {
-      return res.status(400).json({ error: 'NIC do corpo da requisição não confere com o NIC da URL.' });
+      return res.status(400).json({ error: 'O número do conjunto (COI) no corpo da requisição não confere com o da URL.' });
     }
     const pool = getPool();
     const saved = await saveCollection(pool, collection, actorFromSession(req));
@@ -1200,8 +1205,11 @@ app.post('/api/people', requireAdminSession, async (req: Request, res: Response)
     if (!VALID_PEOPLE_ROLES.has(role)) {
       return res.status(400).json({ error: 'Papel inválido. Use tecnico, curador, administrador, pesquisador ou estudante.' });
     }
+    // Acesso de Administrador somado só faz sentido para outro papel — quem já
+    // é Administrador tem essas funções pelo próprio papel.
+    const adminAccess = role !== 'administrador' && req.body?.adminAccess === true;
     const pool = getPool();
-    const person = await createPerson(pool, { name, role, institution, email });
+    const person = await createPerson(pool, { name, role, institution, email, adminAccess });
     return res.status(201).json({ person });
   } catch (error: any) {
     console.error('Erro ao cadastrar pessoa:', error);
@@ -1231,8 +1239,15 @@ app.put('/api/people/:id', requireAdminSession, async (req: Request, res: Respon
     if (!VALID_PEOPLE_ROLES.has(role)) {
       return res.status(400).json({ error: 'Papel inválido. Use tecnico, curador, administrador, pesquisador ou estudante.' });
     }
+    const adminAccess = role !== 'administrador' && req.body?.adminAccess === true;
+    // Trava contra se trancar do lado de fora: quem edita o próprio cadastro
+    // não pode sair dele sem as funções de Administrador (senão ninguém
+    // consegue desfazer o erro se for o único Administrador).
+    if (req.params.id === (req as any).currentPerson.id && !hasAdminAccess({ role, adminAccess })) {
+      return res.status(400).json({ error: 'Você não pode tirar o seu próprio acesso de Administrador. Peça a outro Administrador para fazer isso.' });
+    }
     const pool = getPool();
-    const person = await updatePerson(pool, req.params.id, { name, role, institution, email });
+    const person = await updatePerson(pool, req.params.id, { name, role, institution, email, adminAccess });
     if (!person) {
       return res.status(404).json({ error: 'Pessoa não encontrada.' });
     }

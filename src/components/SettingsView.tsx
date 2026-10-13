@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { OsteologicalCollection, UserProfile, UserRole } from '../types/sgccco';
 import { AdminDangerZone } from './AdminDangerZone';
 import { getRoleTheme } from '../utils/roleTheme';
+import { hasAdminAccess } from '../utils/permissions';
 import { generateSetupLinkApi, fetchPendingPasswordResetRequestsApi, PendingPasswordResetRequest } from '../services/authService';
 import {
   Settings,
@@ -37,8 +38,8 @@ const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
 interface SettingsViewProps {
   currentUser: UserProfile;
   people: UserProfile[];
-  onCreatePerson: (person: { name: string; role: UserRole; institution: string; email: string }) => Promise<void>;
-  onUpdatePerson: (id: string, person: { name: string; role: UserRole; institution: string; email: string }) => Promise<void>;
+  onCreatePerson: (person: { name: string; role: UserRole; institution: string; email: string; adminAccess?: boolean }) => Promise<void>;
+  onUpdatePerson: (id: string, person: { name: string; role: UserRole; institution: string; email: string; adminAccess?: boolean }) => Promise<void>;
   onDeletePerson: (id: string) => Promise<void>;
   laboratoryMode: boolean;
   onToggleLaboratoryMode: () => void;
@@ -66,10 +67,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [newPersonRole, setNewPersonRole] = useState<UserRole>('tecnico');
   const [newPersonInstitution, setNewPersonInstitution] = useState('');
   const [newPersonEmail, setNewPersonEmail] = useState('');
+  const [newPersonAdminAccess, setNewPersonAdminAccess] = useState(false);
   const [isCreatingPerson, setIsCreatingPerson] = useState(false);
   const [createPersonError, setCreatePersonError] = useState<string | null>(null);
   const [personPendingDeletion, setPersonPendingDeletion] = useState<UserProfile | null>(null);
-  const isAdmin = currentUser.role === 'administrador';
+  const isAdmin = hasAdminAccess(currentUser);
 
   // Edição de uma pessoa já cadastrada — principal uso: preencher o e-mail de
   // quem ainda é um registro antigo (de antes do login real, sem e-mail).
@@ -78,6 +80,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [editPersonRole, setEditPersonRole] = useState<UserRole>('tecnico');
   const [editPersonInstitution, setEditPersonInstitution] = useState('');
   const [editPersonEmail, setEditPersonEmail] = useState('');
+  const [editPersonAdminAccess, setEditPersonAdminAccess] = useState(false);
   const [isSavingPerson, setIsSavingPerson] = useState(false);
   const [editPersonError, setEditPersonError] = useState<string | null>(null);
 
@@ -142,9 +145,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         name: newPersonName.trim(),
         role: newPersonRole,
         institution: newPersonInstitution.trim(),
-        email: newPersonEmail.trim()
+        email: newPersonEmail.trim(),
+        adminAccess: newPersonRole !== 'administrador' && newPersonAdminAccess
       });
       setNewPersonName('');
+      setNewPersonAdminAccess(false);
       setNewPersonInstitution('');
       setNewPersonEmail('');
       setShowAddPersonForm(false);
@@ -161,6 +166,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setEditPersonRole(person.role);
     setEditPersonInstitution(person.institution);
     setEditPersonEmail(person.email || '');
+    setEditPersonAdminAccess(person.adminAccess === true);
     setEditPersonError(null);
   };
 
@@ -178,7 +184,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         name: editPersonName.trim(),
         role: editPersonRole,
         institution: editPersonInstitution.trim(),
-        email: editPersonEmail.trim()
+        email: editPersonEmail.trim(),
+        adminAccess: editPersonRole !== 'administrador' && editPersonAdminAccess
       });
       setEditingPersonId(null);
     } catch (err: any) {
@@ -424,6 +431,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               placeholder="E-mail (login)"
               className="p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
             />
+            {newPersonRole !== 'administrador' && (
+              <label className="sm:col-span-2 flex items-start gap-2 cursor-pointer text-slate-700 dark:text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={newPersonAdminAccess}
+                  onChange={(e) => setNewPersonAdminAccess(e.target.checked)}
+                  className="rounded mt-0.5"
+                />
+                <span>
+                  <strong>Também é Administrador(a) do sistema</strong> — pode cadastrar pessoas, gerar links de acesso e usar a Zona de Risco.
+                  Nas assinaturas continua aparecendo o papel escolhido acima.
+                </span>
+              </label>
+            )}
             {createPersonError && (
               <p className="sm:col-span-2 text-xs text-rose-600 dark:text-rose-400 font-mono">{createPersonError}</p>
             )}
@@ -520,6 +541,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     placeholder="E-mail (login)"
                     className="p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                   />
+                  {editPersonRole !== 'administrador' && (
+                    <label className="sm:col-span-2 flex items-start gap-2 cursor-pointer text-slate-700 dark:text-slate-300">
+                      <input
+                        type="checkbox"
+                        checked={editPersonAdminAccess}
+                        onChange={(e) => setEditPersonAdminAccess(e.target.checked)}
+                        className="rounded mt-0.5"
+                      />
+                      <span>
+                        <strong>Também é Administrador(a) do sistema</strong> — pode cadastrar pessoas, gerar links de acesso e usar a Zona de Risco.
+                        Nas assinaturas continua aparecendo o papel escolhido acima.
+                      </span>
+                    </label>
+                  )}
                   {editPersonError && (
                     <p className="sm:col-span-2 text-xs text-rose-600 dark:text-rose-400 font-mono">{editPersonError}</p>
                   )}
@@ -551,6 +586,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     <RoleIcon className="w-2.5 h-2.5" />
                     {person.role}
                   </span>
+                  {person.role !== 'administrador' && person.adminAccess && (
+                    <span className={`flex items-center gap-1 text-[10px] uppercase font-mono px-1.5 py-0.5 rounded border ${getRoleTheme('administrador').badgeBg} ${getRoleTheme('administrador').badgeBorder} ${getRoleTheme('administrador').badgeText}`}>
+                      + administrador
+                    </span>
+                  )}
                   {currentUser.id === person.id && (
                     <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-300">
                       você
@@ -714,7 +754,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       {/* Zona de Risco — só visível para quem está com o papel Administrador ativo.
           O servidor reconfere isto de novo a cada chamada (ver requireAdmin em
           server.ts); esta condição é só para não mostrar botões que seriam recusados. */}
-      {currentUser.role === 'administrador' && (
+      {isAdmin && (
         <AdminDangerZone currentUser={currentUser} collections={collections} onRefreshCollections={onRefreshCollections} />
       )}
     </div>

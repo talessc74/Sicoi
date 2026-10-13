@@ -104,7 +104,7 @@ export function mergeSignatures(
       const snapshot = verifyNewSignature(incoming, received);
       if (!snapshot) {
         throw new HistoryViolationError(
-          `Assinatura inválida para NIC ${incoming.nic}, Fase ${received.phaseNumber}: hash não confere com o conteúdo da fase enviado.`
+          `Assinatura inválida para o conjunto ${incoming.nic}, Fase ${received.phaseNumber}: hash não confere com o conteúdo da fase enviado.`
         );
       }
       const accepted: PhaseSignature = {

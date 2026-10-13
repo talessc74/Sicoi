@@ -156,7 +156,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
     setRefSearchResults([
       `Ortner (2003) Identification of Pathological Conditions in Human Skeletal Remains, p. 120-145: Variações morfológicas compatíveis com "${query}".`,
       `Buikstra & Ubelaker (1994) Standards for Data Collection from Human Skeletal Remains: Protocolo de pontuação osteométrica.`,
-      `Caso do Grafo SIGCOI (NIC-2025-0419 / IND-01): Calo ósseo remodelado em diáfise femoral sob método Trotter & Gleser.`
+      `Caso do Grafo SIGCOI (COI-002 / IND-01): Calo ósseo remodelado em diáfise femoral sob método Trotter & Gleser.`
     ]);
     setShowRefSearchModal(true);
   };
@@ -794,7 +794,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
               Eu, {currentUser.name}, na condição de curadora da COI-INC, assumo a responsabilidade científica pela estimativa do perfil biológico, inventário anatômico, odontograma e montagem fotográfica do conjunto {collection.nic}.
             </p>
             <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl font-mono text-[11px] space-y-1">
-              <div>NIC: {collection.nic}</div>
+              <div>COI: {collection.nic}</div>
               <div>Versão Científica: v{collection.phase4.curationVersionNumber} (Aprovada)</div>
               <div>Foto de Montagem: {collection.phase4.completeAssemblyPhotoApproved?.sha256Hash.substring(0, 16)}...</div>
             </div>
