@@ -227,4 +227,105 @@ describe('Phase1Recebimento', () => {
     expect(screen.queryByText('DO-123')).not.toBeInTheDocument();
     expect(screen.getByText('Conteúdo Criptografado & Segregado')).toBeInTheDocument();
   });
+
+  it('ao clicar em "Registrar Foto" e escolher um arquivo, envia upload real e marca o campo como "Registrada"', async () => {
+    const user = userEvent.setup();
+    const collection = baseCollection('NIC-TEST-0010');
+    const onUpdateCollection = vi.fn();
+
+    const savedCollection: OsteologicalCollection = {
+      ...collection,
+      phase1: {
+        ...collection.phase1,
+        photos: [
+          {
+            id: 'photo-1',
+            category: 'foto1_saco_fechado',
+            uploadedByName: 'Fulano de Tal',
+            uploadedAt: new Date().toISOString(),
+            sha256Hash: 'hash-real-do-arquivo'
+          }
+        ]
+      }
+    } as unknown as OsteologicalCollection;
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: async () => ({ collection: savedCollection, photo: savedCollection.phase1.photos![0] })
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { container } = render(
+      <ControlledWrapper initialCollection={collection} currentUser={makeUser('tecnico')} onUpdateCollection={onUpdateCollection} />
+    );
+    await goToFormMode(user);
+
+    const registrarButtons = screen.getAllByRole('button', { name: /^registrar foto$/i });
+    expect(registrarButtons).toHaveLength(2); // Foto 1 e Foto 4.1 — as duas sem "não se aplica"
+    await user.click(registrarButtons[0]); // Foto 1 — Saco fechado
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    expect(fileInput).toBeTruthy();
+    const file = new File(['conteudo-binario-da-foto'], 'foto1.jpg', { type: 'image/jpeg' });
+    await user.upload(fileInput, file);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      `/api/collections/${collection.nic}/photos`,
+      expect.objectContaining({ method: 'POST' })
+    );
+    const sentBody = fetchMock.mock.calls[0][1].body as FormData;
+    expect(sentBody.get('phase')).toBe('phase1');
+    expect(sentBody.get('category')).toBe('foto1_saco_fechado');
+    expect(sentBody.get('photo')).toBe(file);
+
+    expect(await screen.findByText('Registrada')).toBeInTheDocument();
+    const lastUpdate = onUpdateCollection.mock.calls.at(-1)?.[0] as OsteologicalCollection;
+    expect(lastUpdate.phase1.foto1SacoFechado.value).toBe('sim');
+
+    vi.unstubAllGlobals();
+  });
+
+  it('ao clicar em "Não há foto" e confirmar com justificativa, marca o campo como justificado sem chamar upload', async () => {
+    const user = userEvent.setup();
+    const collection = baseCollection('NIC-TEST-0011');
+    const onUpdateCollection = vi.fn();
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <ControlledWrapper initialCollection={collection} currentUser={makeUser('tecnico')} onUpdateCollection={onUpdateCollection} />
+    );
+    await goToFormMode(user);
+
+    const naoHaFotoButtons = screen.getAllByRole('button', { name: /não há foto/i });
+    expect(naoHaFotoButtons).toHaveLength(2);
+    await user.click(naoHaFotoButtons[1]); // Foto 4.1 — Remanescentes isolados
+
+    expect(screen.getByText('Confirmar ausência de foto')).toBeInTheDocument();
+    const confirmButton = screen.getByRole('button', { name: /confirmar sem foto/i });
+    expect(confirmButton).toBeDisabled();
+
+    const textarea = screen.getByPlaceholderText(/câmera indisponível/i);
+    await user.type(textarea, 'Câmera do laboratório indisponível neste recebimento.');
+    expect(confirmButton).toBeEnabled();
+    await user.click(confirmButton);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.queryByText('Confirmar ausência de foto')).not.toBeInTheDocument();
+    expect(screen.getByText('Sem foto (justificado)')).toBeInTheDocument();
+
+    const lastUpdate = onUpdateCollection.mock.calls.at(-1)?.[0] as OsteologicalCollection;
+    expect(lastUpdate.phase1.foto4_1RemanescentesIsolados.value).toBe('sem_foto_justificado');
+    expect(lastUpdate.phase1.foto4_1RemanescentesIsoladosJustificativaAusencia?.value).toBe(
+      'Câmera do laboratório indisponível neste recebimento.'
+    );
+
+    // O bloqueio de assinatura não deve mais citar a Foto 4.1 como pendente — ela
+    // foi respondida com justificativa, não precisa de foto real pra desbloquear.
+    const signButton = screen.getByRole('button', { name: /revisar.*assinar fase 1/i });
+    expect(signButton.title || '').not.toMatch(/remanescentes isolados/i);
+
+    vi.unstubAllGlobals();
+  });
 });
