@@ -430,7 +430,7 @@ export const Phase5Patologias: React.FC<Phase5PatologiasProps> = ({
               </h3>
             </div>
             <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
-              O técnico deve registrar que cada osso recebeu a marcação com o NIC oficial utilizando técnica museológica padrão (tinta nanquim impermeável sobre base protetora de resina acrílica Paraloid B-72).
+              O técnico deve registrar que cada osso recebeu a marcação com o número COI oficial utilizando técnica museológica padrão (tinta nanquim impermeável sobre base protetora de resina acrílica Paraloid B-72).
             </p>
 
             <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">

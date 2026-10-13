@@ -653,7 +653,7 @@ app.post('/api/collections', requireAuth, async (req: Request, res: Response) =>
   try {
     const collection = req.body?.collection;
     if (!collection?.nic) {
-      return res.status(400).json({ error: 'Corpo da requisição deve conter { collection } com um NIC válido.' });
+      return res.status(400).json({ error: 'Corpo da requisição deve conter { collection } com um número de conjunto (COI) válido.' });
     }
     const pool = getPool();
     const persisted = await createCollection(pool, collection, actorFromSession(req));
@@ -670,7 +670,7 @@ app.put('/api/collections/:nic', requireAuth, async (req: Request, res: Response
   try {
     const collection = req.body?.collection;
     if (!collection || collection.nic !== req.params.nic) {
-      return res.status(400).json({ error: 'NIC do corpo da requisição não confere com o NIC da URL.' });
+      return res.status(400).json({ error: 'O número do conjunto (COI) no corpo da requisição não confere com o da URL.' });
     }
     const pool = getPool();
     const saved = await saveCollection(pool, collection, actorFromSession(req));

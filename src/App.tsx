@@ -321,11 +321,11 @@ export default function App() {
       });
   };
 
-  // O NIC é digitado por quem cadastra (janela NewCollectionModal), não gerado em sequência.
+  // O número do conjunto (COI-XXX) é digitado por quem cadastra (janela NewCollectionModal), não gerado em sequência.
   const [showNewCollectionModal, setShowNewCollectionModal] = useState(false);
   const handleCreateNewCollection = () => setShowNewCollectionModal(true);
 
-  const createCollectionWithNic = async (newNic: string, nextNum: string) => {
+  const createCollectionWithNic = async (newNic: string) => {
     if (!currentUser) return;
     const newCol: OsteologicalCollection = {
       id: `col-${Date.now()}`,
@@ -334,18 +334,15 @@ export default function App() {
       createdAt: new Date().toISOString(),
       createdByTechnician: currentUser.name,
       signatures: [],
-      legalOrigin: {
-        deliveryDocumentNumber: `GUIA-REMESSA-INC-DITEC-PF-2026/${nextNum}`,
-        originInstitution: 'IML Regional Metropolitano',
-        cemeteryName: 'Cemitério Municipal São João',
-        cemeteryPlot: `Quadra 12 - Jazigo ${nextNum}`,
-        deathDeclarationNumber: `DO-2026-88${nextNum}`
-      },
+      // Dados restritos de origem começam vazios: antes vinham preenchidos com
+      // valores de exemplo (cemitério, guia, declaração de óbito inventados) que
+      // apareciam na Fase 1 como se fossem do conjunto real.
+      legalOrigin: {},
       phase1: {
         ...createEmptyPhase1Data(),
         preliminaryBoxes: [{
           id: `CX-${newNic}`,
-          boxCode: `CX-${nextNum}`,
+          boxCode: newNic,
           presumedIndividualLabel: 'Caixa do conjunto',
           currentLocation: 'Bancada de Recepção',
           qrCode: `SIGCOI://BOX/CX-${newNic}`
@@ -567,7 +564,7 @@ export default function App() {
                 title="Cadastrar nova entrada de conjunto osteológico no acervo"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Novo Conjunto (NIC)</span>
+                <span>Novo Conjunto (COI)</span>
               </button>
             </div>
           </div>
@@ -648,13 +645,13 @@ export default function App() {
         {activeTab === 'fases' && !currentCollection && (
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-10 text-center space-y-3">
             <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Nenhum conjunto osteológico cadastrado ainda.</p>
-            <p className="text-xs text-slate-500">Crie um novo conjunto (NIC) para começar.</p>
+            <p className="text-xs text-slate-500">Crie um novo conjunto (COI) para começar.</p>
             <button
               onClick={handleCreateNewCollection}
               className="px-4 py-2 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-semibold inline-flex items-center gap-1.5"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Novo Conjunto (NIC)</span>
+              <span>Novo Conjunto (COI)</span>
             </button>
           </div>
         )}
