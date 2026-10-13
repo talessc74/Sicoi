@@ -13,6 +13,7 @@ import { createEmptyPhase1Data, createEmptyPhase2Data } from './data/phaseDefaul
 import { fetchCollections, createCollectionApi, saveCollectionApi } from './services/collectionsService';
 import { fetchPeople, createPersonApi, updatePersonApi, deletePersonApi } from './services/peopleService';
 import { fetchCurrentUser, fetchBootstrapStatus, logoutApi } from './services/authService';
+import { hasAdminAccess } from './utils/permissions';
 import { Header } from './components/Header';
 import { LoginScreen } from './components/LoginScreen';
 import { BootstrapAdminSetup } from './components/BootstrapAdminSetup';
@@ -125,10 +126,10 @@ export default function App() {
   // buscada para quem está logado como Administrador — o servidor recusa (403)
   // pedidos de qualquer outro papel, e não há razão para um Técnico ou Estudante
   // ver o e-mail (o identificador de login) de todas as outras pessoas.
-  const loadAppData = async (role: UserRole) => {
+  const loadAppData = async (person: UserProfile) => {
     const [loadedCollections, loadedPeople] = await Promise.all([
       fetchCollections(),
-      role === 'administrador' ? fetchPeople() : Promise.resolve([])
+      hasAdminAccess(person) ? fetchPeople() : Promise.resolve([])
     ]);
     setCollections(loadedCollections);
     setSelectedNic(loadedCollections[0]?.nic || '');
@@ -140,7 +141,7 @@ export default function App() {
     setCurrentUser(person);
     setIsLoadingCollections(true);
     try {
-      await loadAppData(person.role);
+      await loadAppData(person);
       setSyncError(null);
     } catch (err: any) {
       console.error('Falha ao carregar dados após login:', err);
@@ -189,7 +190,7 @@ export default function App() {
           return;
         }
         setCurrentUser(me);
-        await loadAppData(me.role);
+        await loadAppData(me);
       } catch (err: any) {
         console.error('Falha ao carregar dados iniciais do banco:', err);
         setSyncError(err?.message || 'Não foi possível conectar ao banco de dados.');
@@ -256,7 +257,7 @@ export default function App() {
   // Cadastra uma nova pessoa (papel de acesso) — só o Administrador logado pode
   // (o servidor reconfere). A pessoa criada ainda não tem senha: o Administrador
   // gera o link de definição de senha para ela em Configurações.
-  const handleCreatePerson = async (person: { name: string; role: UserRole; institution: string; email: string }) => {
+  const handleCreatePerson = async (person: { name: string; role: UserRole; institution: string; email: string; adminAccess?: boolean }) => {
     const created = await createPersonApi(person);
     setPeople((prev) => [...prev, created]);
     setSyncError(null);
@@ -267,10 +268,13 @@ export default function App() {
   // precisar recriar do zero e perder o histórico ligado ao id dela.
   const handleUpdatePerson = async (
     id: string,
-    person: { name: string; role: UserRole; institution: string; email: string }
+    person: { name: string; role: UserRole; institution: string; email: string; adminAccess?: boolean }
   ) => {
     const updated = await updatePersonApi(id, person);
     setPeople((prev) => prev.map((p) => (p.id === id ? updated : p)));
+    // Quem editou o próprio cadastro (ex.: Administradora que passa a ser
+    // Curadora com acesso de Administrador) já vê o papel novo, sem novo login.
+    if (currentUser?.id === id) setCurrentUser(updated);
     setSyncError(null);
   };
 

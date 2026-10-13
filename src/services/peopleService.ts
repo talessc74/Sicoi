@@ -31,6 +31,7 @@ export async function createPersonApi(person: {
   role: UserProfile['role'];
   institution: string;
   email: string;
+  adminAccess?: boolean;
 }): Promise<UserProfile> {
   const res = await fetch('/api/people', {
     method: 'POST',
@@ -43,7 +44,7 @@ export async function createPersonApi(person: {
 
 export async function updatePersonApi(
   id: string,
-  person: { name: string; role: UserProfile['role']; institution: string; email: string }
+  person: { name: string; role: UserProfile['role']; institution: string; email: string; adminAccess?: boolean }
 ): Promise<UserProfile> {
   const res = await fetch(`/api/people/${encodeURIComponent(id)}`, {
     method: 'PUT',

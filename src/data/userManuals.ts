@@ -36,9 +36,9 @@ export const USER_MANUALS: UserManual[] = [
   {
     id: 'manual-administrador-contas',
     title: 'Manual SIGCOI — Administrador · Gestão de Contas',
-    description: 'Passo a passo do login real: ativar o primeiro acesso (migrando de dados antigos), cadastrar pessoa, editar pessoa já cadastrada (ex.: adicionar e-mail a um registro antigo), gerar link de acesso, atender pedidos de "esqueci a senha", trocar a própria senha e remover acesso.',
-    version: 'v7',
-    path: '/manuais/manual-administrador-contas-v7.html',
-    updatedAt: '2026-10-01',
+    description: 'Passo a passo do login real: ativar o primeiro acesso (migrando de dados antigos), cadastrar pessoa, editar pessoa já cadastrada (ex.: adicionar e-mail a um registro antigo), dar acesso de Administrador a quem tem outro papel (ex.: Curadora que também administra), gerar link de acesso, atender pedidos de "esqueci a senha", trocar a própria senha e remover acesso.',
+    version: 'v8',
+    path: '/manuais/manual-administrador-contas-v8.html',
+    updatedAt: '2026-10-13',
   },
 ];

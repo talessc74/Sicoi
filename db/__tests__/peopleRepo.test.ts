@@ -99,8 +99,37 @@ describe('peopleRepo', () => {
       name: 'Nome Novo',
       role: 'curador',
       institution: 'PF',
-      email: 'novo@inc.pf.gov.br'
+      email: 'novo@inc.pf.gov.br',
+      adminAccess: false
     });
+  });
+
+  it('guarda o acesso de Administrador somado ao papel principal (Curadora que também administra)', async () => {
+    const created = await createPerson(pool, {
+      name: 'Curadora',
+      role: 'curador',
+      institution: 'INC',
+      email: 'curadora@inc.pf.gov.br',
+      adminAccess: true
+    });
+    expect(created.role).toBe('curador');
+    expect(created.adminAccess).toBe(true);
+
+    const listed = await listPeople(pool);
+    expect(listed[0].adminAccess).toBe(true);
+
+    const updated = await updatePerson(pool, created.id, {
+      name: 'Curadora',
+      role: 'curador',
+      institution: 'INC',
+      email: 'curadora@inc.pf.gov.br'
+    });
+    expect(updated?.adminAccess).toBe(false);
+  });
+
+  it('cadastro sem a marca não ganha acesso de Administrador', async () => {
+    const person = await createPerson(pool, { name: 'Técnico', role: 'tecnico', institution: 'INC', email: 'tec@inc.pf.gov.br' });
+    expect(person.adminAccess).toBe(false);
   });
 
   it('permite preencher o e-mail de um registro antigo, sem e-mail (de antes do login real)', async () => {
