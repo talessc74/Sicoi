@@ -258,7 +258,12 @@ describe('Phase4Curadoria', () => {
     await user.click(screen.getByRole('button', { name: /Foto Montagem Completa/i }));
     await user.click(screen.getByRole('button', { name: /Capturar & Aprovar Foto Agora/i }));
 
-    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    // Pergunta explicitamente câmera ou galeria, nunca abre a câmera direto.
+    expect(screen.getByText('Registrar foto')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /abrir câmera/i }));
+    expect(screen.queryByText('Registrar foto')).not.toBeInTheDocument();
+
+    const fileInput = container.querySelector('input[type="file"][capture]') as HTMLInputElement;
     expect(fileInput).toBeTruthy();
     const file = new File(['bytes-da-foto'], 'montagem.jpg', { type: 'image/jpeg' });
     await user.upload(fileInput, file);

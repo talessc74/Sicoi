@@ -12,6 +12,7 @@ import {
   Phase1Data
 } from '../types/sgccco';
 import { PopConversationalConductor } from './PopConversationalConductor';
+import { PhotoSourceModal } from './PhotoSourceModal';
 import { calculateSha256, generateSignaturePayload } from '../services/auditService';
 import { uploadCollectionPhoto } from '../services/photoService';
 import { getLatestPhaseSignature } from '../utils/signatures';
@@ -134,7 +135,12 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [noPhotoTarget, setNoPhotoTarget] = useState<MandatoryPhotoFieldKey | null>(null);
   const [noPhotoJustification, setNoPhotoJustification] = useState('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showPhotoSourceModal, setShowPhotoSourceModal] = useState(false);
+  // Dois inputs ocultos: um com capture="environment" (força a câmera) e um
+  // sem capture (abre o seletor comum do dispositivo, que pode incluir a
+  // galeria/arquivos) — o PhotoSourceModal decide qual deles clicar.
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const pendingPhotoRef = useRef<{ category: Phase1PhotoCategory; fieldKey: keyof typeof collection.phase1 } | null>(null);
 
   const phaseSignature = getLatestPhaseSignature(collection.signatures, 1);
@@ -172,14 +178,21 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
     onUpdateCollection({ ...collection, phase1: { ...collection.phase1, ...patch } });
   };
 
-  // Abre o seletor real de arquivo/câmera do dispositivo (capture="environment" no
-  // input, mais abaixo) — nunca mais anexa a mesma imagem fixa de um banco de
-  // terceiros. `fieldKey` é opcional: foto2/3/4.2 (tri-state "se aplicável") só
-  // marcam o campo quando o operador escolhe "Sim"; as outras usam o mesmo fluxo.
+  // Pergunta explicitamente câmera ou galeria antes de abrir qualquer seletor —
+  // sem isso, capture="environment" sozinho abre a câmera direto em muitos
+  // navegadores móveis, sem dar a opção de anexar uma foto já tirada (pedido
+  // do Tales, out/2026). `fieldKey` é opcional: foto2/3/4.2 (tri-state "se
+  // aplicável") só marcam o campo quando o operador escolhe "Sim"; as outras
+  // usam o mesmo fluxo.
   const handleRequestCapture = (category: Phase1PhotoCategory, fieldKey: keyof typeof collection.phase1) => {
     pendingPhotoRef.current = { category, fieldKey };
     setUploadError(null);
-    fileInputRef.current?.click();
+    setShowPhotoSourceModal(true);
+  };
+
+  const handleChoosePhotoSource = (source: 'camera' | 'gallery') => {
+    setShowPhotoSourceModal(false);
+    (source === 'camera' ? cameraInputRef : galleryInputRef).current?.click();
   };
 
   // Só grava depois que o upload real confirma (bytes + hash calculados pelo
@@ -550,10 +563,17 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
                   </div>
                 )}
                 <input
-                  ref={fileInputRef}
+                  ref={cameraInputRef}
                   type="file"
                   accept="image/*"
                   capture="environment"
+                  className="hidden"
+                  onChange={handleFileSelected}
+                />
+                <input
+                  ref={galleryInputRef}
+                  type="file"
+                  accept="image/*"
                   className="hidden"
                   onChange={handleFileSelected}
                 />
@@ -818,6 +838,18 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Escolha entre câmera e galeria antes de abrir qualquer seletor de arquivo. */}
+      {showPhotoSourceModal && (
+        <PhotoSourceModal
+          onChooseCamera={() => handleChoosePhotoSource('camera')}
+          onChooseGallery={() => handleChoosePhotoSource('gallery')}
+          onCancel={() => {
+            pendingPhotoRef.current = null;
+            setShowPhotoSourceModal(false);
+          }}
+        />
       )}
 
       {/* Modal de Confirmação de Ausência de Foto — pergunta explícita ao operador

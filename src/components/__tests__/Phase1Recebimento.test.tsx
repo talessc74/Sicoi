@@ -265,10 +265,15 @@ describe('Phase1Recebimento', () => {
     expect(registrarButtons).toHaveLength(2); // Foto 1 e Foto 4.1 — as duas sem "não se aplica"
     await user.click(registrarButtons[0]); // Foto 1 — Saco fechado
 
-    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
-    expect(fileInput).toBeTruthy();
+    // Pergunta explicitamente câmera ou galeria, nunca abre a câmera direto.
+    expect(screen.getByText('Registrar foto')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /abrir câmera/i }));
+    expect(screen.queryByText('Registrar foto')).not.toBeInTheDocument();
+
+    const cameraInput = container.querySelector('input[type="file"][capture]') as HTMLInputElement;
+    expect(cameraInput).toBeTruthy();
     const file = new File(['conteudo-binario-da-foto'], 'foto1.jpg', { type: 'image/jpeg' });
-    await user.upload(fileInput, file);
+    await user.upload(cameraInput, file);
 
     expect(fetchMock).toHaveBeenCalledWith(
       `/api/collections/${collection.nic}/photos`,
@@ -282,6 +287,47 @@ describe('Phase1Recebimento', () => {
     expect(await screen.findByText('Registrada')).toBeInTheDocument();
     const lastUpdate = onUpdateCollection.mock.calls.at(-1)?.[0] as OsteologicalCollection;
     expect(lastUpdate.phase1.foto1SacoFechado.value).toBe('sim');
+
+    vi.unstubAllGlobals();
+  });
+
+  it('ao escolher "Anexar Foto" em vez de "Abrir Câmera", usa o seletor sem capture (galeria/arquivos) e completa o upload igual', async () => {
+    const user = userEvent.setup();
+    const collection = baseCollection('NIC-TEST-0010B');
+    const onUpdateCollection = vi.fn();
+
+    const savedCollection: OsteologicalCollection = {
+      ...collection,
+      phase1: { ...collection.phase1, photos: [{ id: 'photo-2', category: 'foto4_1_remanescentes_isolados', sha256Hash: 'hash-anexada' }] }
+    } as unknown as OsteologicalCollection;
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: async () => ({ collection: savedCollection, photo: savedCollection.phase1.photos![0] })
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { container } = render(
+      <ControlledWrapper initialCollection={collection} currentUser={makeUser('tecnico')} onUpdateCollection={onUpdateCollection} />
+    );
+    await goToFormMode(user);
+
+    const registrarButtons = screen.getAllByRole('button', { name: /^registrar foto$/i });
+    await user.click(registrarButtons[1]); // Foto 4.1 — Remanescentes isolados
+
+    await user.click(screen.getByRole('button', { name: /anexar foto/i }));
+    expect(screen.queryByText('Registrar foto')).not.toBeInTheDocument();
+
+    const galleryInput = container.querySelector('input[type="file"]:not([capture])') as HTMLInputElement;
+    expect(galleryInput).toBeTruthy();
+    const file = new File(['foto-da-galeria'], 'anexada.jpg', { type: 'image/jpeg' });
+    await user.upload(galleryInput, file);
+
+    const sentBody = fetchMock.mock.calls[0][1].body as FormData;
+    expect(sentBody.get('category')).toBe('foto4_1_remanescentes_isolados');
+    const lastUpdate = onUpdateCollection.mock.calls.at(-1)?.[0] as OsteologicalCollection;
+    expect(lastUpdate.phase1.foto4_1RemanescentesIsolados.value).toBe('sim');
 
     vi.unstubAllGlobals();
   });

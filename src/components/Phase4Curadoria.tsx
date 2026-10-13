@@ -8,6 +8,7 @@ import {
   BiologicalConfidence
 } from '../types/sgccco';
 import { OdontogramViewer } from './OdontogramViewer';
+import { PhotoSourceModal } from './PhotoSourceModal';
 import {
   CONTROLLED_BIOLOGICAL_METHODS,
   STANDARD_SKELETAL_INVENTORY_TEMPLATES,
@@ -59,7 +60,12 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [showNoPhotoModal, setShowNoPhotoModal] = useState(false);
   const [noPhotoJustification, setNoPhotoJustification] = useState('');
-  const assemblyPhotoInputRef = useRef<HTMLInputElement>(null);
+  const [showPhotoSourceModal, setShowPhotoSourceModal] = useState(false);
+  // Dois inputs ocultos: um com capture="environment" (força a câmera) e um
+  // sem capture (seletor comum do dispositivo, que pode incluir a galeria) —
+  // o PhotoSourceModal decide qual deles clicar (pedido do Tales, out/2026).
+  const assemblyCameraInputRef = useRef<HTMLInputElement>(null);
+  const assemblyGalleryInputRef = useRef<HTMLInputElement>(null);
 
   const phaseSignature = getLatestPhaseSignature(collection.signatures, 4);
   const isLocked = phaseSignature?.status === 'locked';
@@ -167,13 +173,18 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
     setShowRefSearchModal(true);
   };
 
-  // Abre o seletor real de arquivo/câmera do dispositivo (input oculto mais
-  // abaixo, capture="environment") — nunca mais aprova a mesma imagem fixa de
-  // um banco de terceiros. O upload de verdade só acontece depois que o
-  // usuário escolhe o arquivo, em handleAssemblyPhotoFileSelected.
+  // Pergunta explicitamente câmera ou galeria antes de abrir qualquer
+  // seletor — nunca mais aprova a mesma imagem fixa de um banco de
+  // terceiros. O upload de verdade só acontece depois que o usuário escolhe
+  // o arquivo, em handleAssemblyPhotoFileSelected.
   const handleRequestAssemblyPhoto = () => {
     setUploadError(null);
-    assemblyPhotoInputRef.current?.click();
+    setShowPhotoSourceModal(true);
+  };
+
+  const handleChoosePhotoSource = (source: 'camera' | 'gallery') => {
+    setShowPhotoSourceModal(false);
+    (source === 'camera' ? assemblyCameraInputRef : assemblyGalleryInputRef).current?.click();
   };
 
   // Só grava o metadado (e marca como aprovada) depois que o upload real
@@ -729,10 +740,17 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
             </div>
           )}
           <input
-            ref={assemblyPhotoInputRef}
+            ref={assemblyCameraInputRef}
             type="file"
             accept="image/*"
             capture="environment"
+            className="hidden"
+            onChange={handleAssemblyPhotoFileSelected}
+          />
+          <input
+            ref={assemblyGalleryInputRef}
+            type="file"
+            accept="image/*"
             className="hidden"
             onChange={handleAssemblyPhotoFileSelected}
           />
@@ -810,6 +828,15 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
             </div>
           )}
         </div>
+      )}
+
+      {/* Escolha entre câmera e galeria antes de abrir qualquer seletor de arquivo. */}
+      {showPhotoSourceModal && (
+        <PhotoSourceModal
+          onChooseCamera={() => handleChoosePhotoSource('camera')}
+          onChooseGallery={() => handleChoosePhotoSource('gallery')}
+          onCancel={() => setShowPhotoSourceModal(false)}
+        />
       )}
 
       {/* Modal de Confirmação de Ausência de Foto — pergunta explícita antes de
