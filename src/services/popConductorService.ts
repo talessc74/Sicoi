@@ -368,14 +368,16 @@ export const INC_DITEC_PF_POPS: Record<PhaseNumber, PopDefinition> = {
           { field: 'foto4_2MateriaisIsolados', category: 'foto4_2_materiais_isolados', label: 'Materiais associados isolados', triState: true }
         ],
         quickSuggestions: [
-          'Foto do saco fechado feita. Placa de cemitério não se aplica. Materiais associados não se aplica. Remanescentes isolados fotografados.',
-          'Todas as fotos obrigatórias feitas, incluindo placa do cemitério e materiais associados isolados.'
+          'Placa de cemitério não se aplica. Materiais associados não se aplica.',
+          'Placa de cemitério e materiais associados isolados fotografados.'
         ],
         extractData: (input: string, context?: any) => {
           const lower = input.toLowerCase();
           const data: Record<string, any> = {};
 
-          if (/saco.*(fechado|lacre)/.test(lower) || /foto\s*1\b/.test(lower)) data.foto1SacoFechado = true;
+          // Foto 1 e Foto 4.1 não têm "não se aplica" — exigem foto real, então a
+          // narração nunca marca estas duas por si só (só o botão de captura real
+          // na UI faz isso; ver PopConversationalConductor.handleCaptureChecklistPhoto).
           if (/(placa).*(cemit[ée]rio)/.test(lower)) {
             data.foto2PlacaCemiterio = /n[ãa]o se aplica|sem placa/.test(lower) ? 'nao_se_aplica' : 'sim';
           }
@@ -386,13 +388,10 @@ export const INC_DITEC_PF_POPS: Record<PhaseNumber, PopDefinition> = {
           if (/materiais associados(?!\s*isolad)/.test(lower)) {
             data.foto3RemanescentesMateriais = /n[ãa]o se aplica/.test(lower) ? 'nao_se_aplica' : 'sim';
           }
-          if (/remanescentes isolad/.test(lower) || /foto\s*4\.?1\b/.test(lower)) data.foto4_1RemanescentesIsolados = true;
           if (/materiais associados isolad/.test(lower) || /foto\s*4\.?2\b/.test(lower)) {
             data.foto4_2MateriaisIsolados = /n[ãa]o se aplica/.test(lower) ? 'nao_se_aplica' : 'sim';
           }
           if (/todas as fotos/.test(lower)) {
-            data.foto1SacoFechado = true;
-            data.foto4_1RemanescentesIsolados = true;
             if (!data.foto2PlacaCemiterio) data.foto2PlacaCemiterio = 'sim';
             if (!data.foto3RemanescentesMateriais) data.foto3RemanescentesMateriais = 'sim';
             if (!data.foto4_2MateriaisIsolados) data.foto4_2MateriaisIsolados = 'sim';

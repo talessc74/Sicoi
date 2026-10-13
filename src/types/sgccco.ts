@@ -146,12 +146,17 @@ export interface Phase1Data {
   dataAnalise: FieldWithAiSuggestion<string>; // ISO 8601 (data)
   horaAnalise: FieldWithAiSuggestion<string>; // ex.: "11h20min"
 
-  // Checklist de fotos (campos 5-9) — obrigatoriedade de cada categoria conforme o A.1:
-  // foto1 e foto4.1 são sempre obrigatórias; foto2, foto3 e foto4.2 são "se aplicável".
-  foto1SacoFechado: FieldWithAiSuggestion<boolean>;
+  // Checklist de fotos (campos 5-9) — foto2, foto3 e foto4.2 são "se aplicável" (podem
+  // não existir no caso). foto1 e foto4.1 são sempre esperadas, mas não travam a fase
+  // pra sempre se não houver foto real: o operador pode registrar a foto de verdade
+  // (value: 'sim') ou, perguntado explicitamente pelo sistema, confirmar que não há
+  // foto pra guardar com justificativa obrigatória (value: 'sem_foto_justificado').
+  foto1SacoFechado: FieldWithAiSuggestion<'sim' | 'sem_foto_justificado'>;
+  foto1SacoFechadoJustificativaAusencia?: FieldWithAiSuggestion<string>;
   foto2PlacaCemiterio: FieldWithAiSuggestion<'sim' | 'nao_se_aplica'>;
   foto3RemanescentesMateriais: FieldWithAiSuggestion<'sim' | 'nao_se_aplica'>;
-  foto4_1RemanescentesIsolados: FieldWithAiSuggestion<boolean>;
+  foto4_1RemanescentesIsolados: FieldWithAiSuggestion<'sim' | 'sem_foto_justificado'>;
+  foto4_1RemanescentesIsoladosJustificativaAusencia?: FieldWithAiSuggestion<string>;
   foto4_2MateriaisIsolados: FieldWithAiSuggestion<'sim' | 'nao_se_aplica'>;
 
   // Tipo de material (campo 10) + descrições condicionais (11-15)

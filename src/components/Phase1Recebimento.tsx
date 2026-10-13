@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   OsteologicalCollection,
   UserProfile,
@@ -13,9 +13,20 @@ import {
 } from '../types/sgccco';
 import { PopConversationalConductor } from './PopConversationalConductor';
 import { calculateSha256, generateSignaturePayload } from '../services/auditService';
+import { uploadCollectionPhoto } from '../services/photoService';
 import { getLatestPhaseSignature } from '../utils/signatures';
 import { canPerformRole } from '../utils/permissions';
-import { Shield, Lock, FileText, Camera, CheckCircle2, AlertCircle, Sparkles, Printer, Bot, Save } from 'lucide-react';
+import { Shield, Lock, FileText, Camera, CheckCircle2, AlertCircle, Sparkles, Printer, Bot, Save, HelpCircle } from 'lucide-react';
+
+// As duas fotos sempre esperadas do checklist (campos 5 e 8 do A.1) — a diferença
+// das outras três (2, 3, 4.2) é que estas não têm "não se aplica": ou existe foto
+// real, ou o operador confirma explicitamente, com justificativa, que não há uma
+// pra guardar (perguntado pelo sistema — nunca travado pra sempre, nem ignorado em silêncio).
+type MandatoryPhotoFieldKey = 'foto1SacoFechado' | 'foto4_1RemanescentesIsolados';
+const MANDATORY_PHOTO_JUSTIFICATION_KEY: Record<MandatoryPhotoFieldKey, 'foto1SacoFechadoJustificativaAusencia' | 'foto4_1RemanescentesIsoladosJustificativaAusencia'> = {
+  foto1SacoFechado: 'foto1SacoFechadoJustificativaAusencia',
+  foto4_1RemanescentesIsolados: 'foto4_1RemanescentesIsoladosJustificativaAusencia'
+};
 
 interface Phase1RecebimentoProps {
   collection: OsteologicalCollection;
@@ -119,6 +130,12 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
   const [justSaved, setJustSaved] = useState(false);
   const [signing, setSigning] = useState(false);
   const [showPrintLabel, setShowPrintLabel] = useState(false);
+  const [uploadingCategory, setUploadingCategory] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [noPhotoTarget, setNoPhotoTarget] = useState<MandatoryPhotoFieldKey | null>(null);
+  const [noPhotoJustification, setNoPhotoJustification] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const pendingPhotoRef = useRef<{ category: Phase1PhotoCategory; fieldKey: keyof typeof collection.phase1 } | null>(null);
 
   const phaseSignature = getLatestPhaseSignature(collection.signatures, 1);
   const isLocked = phaseSignature?.status === 'locked';
@@ -155,36 +172,53 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
     onUpdateCollection({ ...collection, phase1: { ...collection.phase1, ...patch } });
   };
 
-  // Anexa a foto e marca o campo do checklist correspondente numa única atualização.
-  // Antes eram duas chamadas separadas (uma síncrona pro campo, outra async pra foto,
-  // cada uma lendo `collection` do fechamento no momento do clique): como a segunda só
-  // resolve depois do await do hash, ela sempre aplicava por cima um snapshot do estado
-  // ANTES da primeira mudança, apagando silenciosamente o campo que acabara de ser
-  // marcado. Combinar em uma função só, que só escreve depois que a foto (e seu hash)
-  // já está pronta, elimina essa corrida.
-  const handleTakePhotoAndSetField = async (
-    category: Phase1PhotoCategory,
-    fieldKey: keyof typeof p1,
-    fieldValue: FieldWithAiSuggestion<any>
-  ) => {
-    const photoId = `photo-p1-${category}-${Date.now()}`;
-    const url = 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=800&auto=format&fit=crop&q=80';
-    const hash = await calculateSha256(`${url}|${category}|${collection.nic}|${currentUser.id}`);
-    const newPhoto = {
-      id: photoId,
-      category,
-      author: currentUser.name,
-      timestamp: new Date().toISOString(),
-      sha256Hash: hash,
-      url
-    };
+  // Abre o seletor real de arquivo/câmera do dispositivo (capture="environment" no
+  // input, mais abaixo) — nunca mais anexa a mesma imagem fixa de um banco de
+  // terceiros. `fieldKey` é opcional: foto2/3/4.2 (tri-state "se aplicável") só
+  // marcam o campo quando o operador escolhe "Sim"; as outras usam o mesmo fluxo.
+  const handleRequestCapture = (category: Phase1PhotoCategory, fieldKey: keyof typeof collection.phase1) => {
+    pendingPhotoRef.current = { category, fieldKey };
+    setUploadError(null);
+    fileInputRef.current?.click();
+  };
+
+  // Só grava depois que o upload real confirma (bytes + hash calculados pelo
+  // servidor sobre o arquivo de verdade) — nunca em cima de um snapshot otimista
+  // local, pra não repetir a corrida que a versão anterior desta função já tinha
+  // corrigido (ver histórico): o campo do checklist é marcado sobre o `collection`
+  // que o PRÓPRIO upload devolve, não sobre o que estava no fechamento antes dele.
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const pending = pendingPhotoRef.current;
+    e.target.value = ''; // permite selecionar o mesmo arquivo de novo depois
+    pendingPhotoRef.current = null;
+    if (!file || !pending) return;
+
+    setUploadingCategory(pending.category);
+    setUploadError(null);
+    try {
+      const { collection: saved } = await uploadCollectionPhoto(collection.nic, 'phase1', pending.category, file);
+      const fieldValue: FieldWithAiSuggestion<any> = { value: 'sim', isAiSuggested: false };
+      onUpdateCollection({ ...saved, phase1: { ...saved.phase1, [pending.fieldKey]: fieldValue } });
+    } catch (err: any) {
+      setUploadError(err?.message || 'Erro ao registrar a foto.');
+    } finally {
+      setUploadingCategory(null);
+    }
+  };
+
+  const handleConfirmNoPhoto = () => {
+    if (!noPhotoTarget || !noPhotoJustification.trim()) return;
+    const justificationKey = MANDATORY_PHOTO_JUSTIFICATION_KEY[noPhotoTarget];
     const updated = { ...collection };
     updated.phase1 = {
       ...updated.phase1,
-      photos: [...updated.phase1.photos, newPhoto],
-      [fieldKey]: fieldValue
+      [noPhotoTarget]: { value: 'sem_foto_justificado', isAiSuggested: false },
+      [justificationKey]: { value: noPhotoJustification.trim(), isAiSuggested: false }
     };
     onUpdateCollection(updated);
+    setNoPhotoTarget(null);
+    setNoPhotoJustification('');
   };
 
   // O preenchimento já salva sozinho a cada campo (onUpdateCollection é chamado em todo
@@ -240,10 +274,10 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
   if (!Boolean(p1.equipeEnvolvidaLimpeza.value)) missingFieldLabels.push('equipe envolvida');
   if (!Boolean(p1.dataAnalise.value)) missingFieldLabels.push('data da análise');
   if (!Boolean(p1.horaAnalise.value)) missingFieldLabels.push('hora da análise');
-  if (p1.foto1SacoFechado.value !== true) missingFieldLabels.push('foto do saco fechado');
+  if (p1.foto1SacoFechado.value === undefined) missingFieldLabels.push('foto do saco fechado (ou confirmar que não há foto)');
   if (p1.foto2PlacaCemiterio.value === undefined) missingFieldLabels.push('foto da placa do cemitério (ou "não se aplica")');
   if (p1.foto3RemanescentesMateriais.value === undefined) missingFieldLabels.push('foto dos materiais associados (ou "não se aplica")');
-  if (p1.foto4_1RemanescentesIsolados.value !== true) missingFieldLabels.push('foto dos remanescentes isolados');
+  if (p1.foto4_1RemanescentesIsolados.value === undefined) missingFieldLabels.push('foto dos remanescentes isolados (ou confirmar que não há foto)');
   if (p1.foto4_2MateriaisIsolados.value === undefined) missingFieldLabels.push('foto dos materiais associados isolados (ou "não se aplica")');
   // Cada opção marcada que tem caixa de descrição exige a descrição preenchida.
   const pushMissingDescriptions = <T extends string>(
@@ -275,12 +309,14 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
   if (p1.houveDanos.value === true && !Boolean(p1.descricaoDanos.value)) missingFieldLabels.push('descrição do dano');
   const requiredFieldsFilled = missingFieldLabels.length === 0;
   const hasBoxes = collection.phase1.preliminaryBoxes.length > 0;
-  const hasPhotos = collection.phase1.photos.length > 0;
-  const canSign = requiredFieldsFilled && hasBoxes && hasPhotos && canActAsTechnician;
+  // "Pelo menos uma foto anexada" já é garantido pelos 5 campos do checklist acima
+  // (cada um exige foto real OU justificativa de ausência) — não precisa de um
+  // portão genérico à parte, que bloquearia incorretamente o caso legítimo de tudo
+  // justificado/não-aplicável sem nenhuma foto real.
+  const canSign = requiredFieldsFilled && hasBoxes && canActAsTechnician;
 
   const signBlockers: string[] = [...missingFieldLabels];
   if (!hasBoxes) signBlockers.push('nenhuma caixa vinculada ao conjunto');
-  if (!hasPhotos) signBlockers.push('nenhuma foto anexada');
   if (!canActAsTechnician) signBlockers.push(`a pessoa ativa agora ("${currentUser.name}") tem o papel "${currentUser.role}" — Técnico ou Curador pode assinar a Fase 1. Troque a pessoa ativa no menu de perfil, no topo da tela.`);
 
   return (
@@ -508,13 +544,27 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
 
               {/* Checklist de fotos */}
               <FormSection title="Checklist Fotográfico (POP-03)">
+                {uploadError && (
+                  <div className="p-2.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-[11px]">
+                    {uploadError}
+                  </div>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={handleFileSelected}
+                />
                 <PhotoChecklistRow
                   label="Foto 1 — Saco fechado, lacre, número COI e escala *"
-                  done={p1.foto1SacoFechado.value === true}
+                  value={p1.foto1SacoFechado.value}
+                  justification={p1.foto1SacoFechadoJustificativaAusencia?.value}
+                  uploading={uploadingCategory === 'foto1_saco_fechado'}
                   disabled={isLocked}
-                  onCapture={() => {
-                    handleTakePhotoAndSetField('foto1_saco_fechado', 'foto1SacoFechado', { value: true, isAiSuggested: false });
-                  }}
+                  onCapture={() => handleRequestCapture('foto1_saco_fechado', 'foto1SacoFechado')}
+                  onNoPhoto={() => setNoPhotoTarget('foto1SacoFechado')}
                 />
                 <TriStateRow
                   label="Foto 2 — Placa do cemitério, se aplicável *"
@@ -522,7 +572,7 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
                   disabled={isLocked}
                   onChange={(v) => {
                     if (v === 'sim') {
-                      handleTakePhotoAndSetField('foto2_placa_cemiterio', 'foto2PlacaCemiterio', { value: v, isAiSuggested: false });
+                      handleRequestCapture('foto2_placa_cemiterio', 'foto2PlacaCemiterio');
                     } else {
                       setField('foto2PlacaCemiterio', { value: v, isAiSuggested: false });
                     }
@@ -534,7 +584,7 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
                   disabled={isLocked}
                   onChange={(v) => {
                     if (v === 'sim') {
-                      handleTakePhotoAndSetField('foto3_remanescentes_materiais', 'foto3RemanescentesMateriais', { value: v, isAiSuggested: false });
+                      handleRequestCapture('foto3_remanescentes_materiais', 'foto3RemanescentesMateriais');
                     } else {
                       setField('foto3RemanescentesMateriais', { value: v, isAiSuggested: false });
                     }
@@ -542,11 +592,12 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
                 />
                 <PhotoChecklistRow
                   label="Foto 4.1 — Remanescentes isolados *"
-                  done={p1.foto4_1RemanescentesIsolados.value === true}
+                  value={p1.foto4_1RemanescentesIsolados.value}
+                  justification={p1.foto4_1RemanescentesIsoladosJustificativaAusencia?.value}
+                  uploading={uploadingCategory === 'foto4_1_remanescentes_isolados'}
                   disabled={isLocked}
-                  onCapture={() => {
-                    handleTakePhotoAndSetField('foto4_1_remanescentes_isolados', 'foto4_1RemanescentesIsolados', { value: true, isAiSuggested: false });
-                  }}
+                  onCapture={() => handleRequestCapture('foto4_1_remanescentes_isolados', 'foto4_1RemanescentesIsolados')}
+                  onNoPhoto={() => setNoPhotoTarget('foto4_1RemanescentesIsolados')}
                 />
                 <TriStateRow
                   label="Foto 4.2 — Materiais associados isolados, se aplicável *"
@@ -554,7 +605,7 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
                   disabled={isLocked}
                   onChange={(v) => {
                     if (v === 'sim') {
-                      handleTakePhotoAndSetField('foto4_2_materiais_isolados', 'foto4_2MateriaisIsolados', { value: v, isAiSuggested: false });
+                      handleRequestCapture('foto4_2_materiais_isolados', 'foto4_2MateriaisIsolados');
                     } else {
                       setField('foto4_2MateriaisIsolados', { value: v, isAiSuggested: false });
                     }
@@ -769,6 +820,49 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
         </div>
       )}
 
+      {/* Modal de Confirmação de Ausência de Foto — pergunta explícita ao operador
+          antes de aceitar seguir sem uma das duas fotos sempre esperadas (nunca
+          silencioso, nunca travado pra sempre: exige justificativa escrita). */}
+      {noPhotoTarget && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 text-xs">
+            <div className="flex items-center gap-2 text-amber-600 font-bold text-sm">
+              <AlertCircle className="w-5 h-5" />
+              <h4>Confirmar ausência de foto</h4>
+            </div>
+            <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+              Esta foto normalmente é obrigatória. Antes de continuar sem ela, descreva por que não há uma foto pra guardar neste caso — a justificativa fica registrada no histórico do conjunto.
+            </p>
+            <textarea
+              rows={3}
+              autoFocus
+              value={noPhotoJustification}
+              onChange={(e) => setNoPhotoJustification(e.target.value)}
+              placeholder="Ex.: câmera indisponível no momento do recebimento, material já estava sem o saco original..."
+              className="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+            />
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                onClick={() => {
+                  setNoPhotoTarget(null);
+                  setNoPhotoJustification('');
+                }}
+                className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmNoPhoto}
+                disabled={!noPhotoJustification.trim()}
+                className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-medium disabled:opacity-50"
+              >
+                Confirmar sem foto
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal de Assinatura da Fase 1 */}
       {showSignModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
@@ -961,28 +1055,46 @@ function OptionDescriptions<T extends string>({
   );
 }
 
-const PhotoChecklistRow: React.FC<{ label: string; done: boolean; disabled?: boolean; onCapture: () => void }> = ({
-  label,
-  done,
-  disabled,
-  onCapture
-}) => (
-  <div className="flex items-center justify-between text-xs p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+const PhotoChecklistRow: React.FC<{
+  label: string;
+  value: 'sim' | 'sem_foto_justificado' | undefined;
+  justification?: string;
+  uploading?: boolean;
+  disabled?: boolean;
+  onCapture: () => void;
+  onNoPhoto: () => void;
+}> = ({ label, value, justification, uploading, disabled, onCapture, onNoPhoto }) => (
+  <div className="flex items-center justify-between gap-2 text-xs p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
     <span className="text-slate-700 dark:text-slate-300">{label}</span>
-    {done ? (
-      <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold">
+    {value === 'sim' ? (
+      <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold shrink-0">
         <CheckCircle2 className="w-3.5 h-3.5" /> Registrada
       </span>
+    ) : value === 'sem_foto_justificado' ? (
+      <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-semibold shrink-0" title={justification}>
+        <AlertCircle className="w-3.5 h-3.5" /> Sem foto (justificado)
+      </span>
     ) : (
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={onCapture}
-        className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-medium flex items-center gap-1 disabled:opacity-50"
-      >
-        <Camera className="w-3.5 h-3.5" />
-        <span>Registrar Foto</span>
-      </button>
+      <div className="flex items-center gap-1.5 shrink-0">
+        <button
+          type="button"
+          disabled={disabled || uploading}
+          onClick={onCapture}
+          className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-medium flex items-center gap-1 disabled:opacity-50"
+        >
+          <Camera className="w-3.5 h-3.5" />
+          <span>{uploading ? 'Enviando...' : 'Registrar Foto'}</span>
+        </button>
+        <button
+          type="button"
+          disabled={disabled || uploading}
+          onClick={onNoPhoto}
+          className="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-[11px] font-medium flex items-center gap-1 disabled:opacity-50"
+        >
+          <HelpCircle className="w-3.5 h-3.5" />
+          <span>Não há foto</span>
+        </button>
+      </div>
     )}
   </div>
 );
