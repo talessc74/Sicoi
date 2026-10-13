@@ -144,8 +144,35 @@ describe('Phase3Acondicionamento', () => {
     ).toBeDisabled();
   });
 
-  it('desabilita a assinatura para papel sem permissão (pesquisador), mesmo com tudo alocado', () => {
+  it('desabilita a assinatura para papel sem permissão (estudante), mesmo com tudo alocado', () => {
     const collection = baseCollection('NIC-0003', [makeBox('box-1', 'CX-001')]);
+    collection.phase3.boxLocations = [
+      {
+        boxId: 'box-1',
+        location: { facility: 'Laboratório Central', room: 'Sala B-10', rack: 'Estante 04', shelf: 'Prateleira 02', boxSlot: 'Vão 01' },
+        placedAt: new Date().toISOString(),
+        technicianName: 'Fulano Técnico',
+        shelfQrScanned: true
+      }
+    ];
+    const user = makeUser('estudante');
+
+    render(
+      <Phase3Acondicionamento
+        collection={collection}
+        allCollections={[collection]}
+        currentUser={user}
+        onUpdateCollection={vi.fn()}
+      />
+    );
+
+    expect(
+      screen.getByRole('button', { name: /assinar acondicionamento provisório/i })
+    ).toBeDisabled();
+  });
+
+  it('habilita a assinatura para o Pesquisador com tudo alocado (decisão de acesso, out/2026)', () => {
+    const collection = baseCollection('NIC-0003B', [makeBox('box-1', 'CX-001')]);
     collection.phase3.boxLocations = [
       {
         boxId: 'box-1',
@@ -168,7 +195,7 @@ describe('Phase3Acondicionamento', () => {
 
     expect(
       screen.getByRole('button', { name: /assinar acondicionamento provisório/i })
-    ).toBeDisabled();
+    ).toBeEnabled();
   });
 
   it('confirma a leitura dupla de QR e chama onUpdateCollection com o local alocado', async () => {

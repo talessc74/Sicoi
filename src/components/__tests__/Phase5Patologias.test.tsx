@@ -170,6 +170,26 @@ describe('Phase5Patologias', () => {
     expect(screen.getByRole('button', { name: /Assinar Fechamento da Fase 5/i })).toBeDisabled();
   });
 
+  it('Pesquisador tem o mesmo acesso de assinatura física que o Técnico (decisão de acesso, out/2026)', async () => {
+    const user = userEvent.setup();
+    const collection = baseCollection({ phase5Checklist: fullChecklist });
+
+    render(
+      <Phase5Patologias
+        collection={collection}
+        currentUser={userWithRole('pesquisador')}
+        onUpdateCollection={vi.fn()}
+        laboratoryMode={false}
+      />
+    );
+
+    const signButton = screen.getByRole('button', { name: /Assinar Fechamento da Fase 5/i });
+    expect(signButton).toBeEnabled();
+    await user.click(signButton);
+    expect(screen.queryByLabelText(/Qual responsabilidade deseja confirmar agora\?/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Confirmação atual: física e embalagem\./i)).toBeInTheDocument();
+  });
+
   it('chama onUpdateCollection ao marcar um item do checklist', async () => {
     const collection = baseCollection();
     const onUpdateCollection = vi.fn();

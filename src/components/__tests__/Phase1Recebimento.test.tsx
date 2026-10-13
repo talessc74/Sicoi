@@ -123,10 +123,10 @@ describe('Phase1Recebimento', () => {
     expect(getInputByLabelText(/Hora \(ex: 11h20min\)/i)).toBeInTheDocument();
   });
 
-  it('bloqueia a assinatura quando o papel ativo não é Técnico nem Curador', async () => {
+  it('bloqueia a assinatura quando o papel ativo não é Técnico, Pesquisador nem Curador', async () => {
     const user = userEvent.setup();
     const collection = baseCollection('NIC-TEST-0002');
-    const currentUser = makeUser('pesquisador');
+    const currentUser = makeUser('estudante');
 
     render(
       <Phase1Recebimento
@@ -143,8 +143,29 @@ describe('Phase1Recebimento', () => {
     expect(signButton).toBeDisabled();
 
     expect(
-      screen.getByText((text) => text.includes('"pesquisador"') && text.includes('Técnico ou Curador pode assinar'))
+      screen.getByText((text) => text.includes('"estudante"') && text.includes('Técnico ou Curador pode assinar'))
     ).toBeInTheDocument();
+  });
+
+  it('não bloqueia a assinatura do Pesquisador por papel (decisão de acesso, out/2026: mesmos acessos do Técnico)', async () => {
+    const user = userEvent.setup();
+    const collection = baseCollection('NIC-TEST-0002B');
+    const currentUser = makeUser('pesquisador');
+
+    render(
+      <Phase1Recebimento
+        collection={collection}
+        currentUser={currentUser}
+        onUpdateCollection={vi.fn()}
+        laboratoryMode={false}
+      />
+    );
+
+    await goToFormMode(user);
+
+    expect(
+      screen.queryByText((text) => text.includes('"pesquisador"') && text.includes('Técnico ou Curador pode assinar'))
+    ).not.toBeInTheDocument();
   });
 
   it('chama onUpdateCollection com os dados atualizados ao preencher um campo do formulário', async () => {

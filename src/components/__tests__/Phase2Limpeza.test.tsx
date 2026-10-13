@@ -122,11 +122,11 @@ describe('Phase2Limpeza', () => {
     expect(screen.getByText(/todas as caixas precisam estar com status "seca"/i)).toBeInTheDocument();
   });
 
-  it('bloqueia a assinatura para um papel sem permissão (pesquisador), mesmo com tudo preenchido e seco', async () => {
+  it('bloqueia a assinatura para um papel sem permissão (estudante), mesmo com tudo preenchido e seco', async () => {
     const user = userEvent.setup();
     const collection = makeCollection();
     render(
-      <Phase2Limpeza collection={collection} currentUser={makeUser('pesquisador')} onUpdateCollection={vi.fn()} laboratoryMode={false} />
+      <Phase2Limpeza collection={collection} currentUser={makeUser('estudante')} onUpdateCollection={vi.fn()} laboratoryMode={false} />
     );
 
     await switchToFormMode(user);
@@ -134,7 +134,28 @@ describe('Phase2Limpeza', () => {
 
     const signButton = screen.getByRole('button', { name: /^assinar fase 2$/i });
     expect(signButton).toBeDisabled();
-    expect(screen.getByText(/pesquisador.*Técnico ou Curador pode assinar a Fase 2/i)).toBeInTheDocument();
+    expect(screen.getByText(/estudante.*Técnico ou Curador pode assinar a Fase 2/i)).toBeInTheDocument();
+  });
+
+  it('permite a assinatura do Pesquisador com tudo preenchido e seco (decisão de acesso, out/2026)', () => {
+    const collection = makeCollection({
+      phase2: {
+        ...createEmptyPhase2Data(),
+        equipeEnvolvidaLimpeza: { value: 'Equipe Alfa', isAiSuggested: false },
+        dataAnalise: { value: '2026-01-10', isAiSuggested: false },
+        horaAnalise: { value: '11h20min', isAiSuggested: false },
+        instrumentosUtilizados: { value: ['esponja'], isAiSuggested: false },
+        houveDanosMaceracao: { value: false, isAiSuggested: false },
+        formaSecagem: { value: 'estufa', isAiSuggested: false },
+        boxDryingStatus: [{ boxId: 'box-1', cleaningStatus: 'seca' }]
+      }
+    });
+    render(
+      <Phase2Limpeza collection={collection} currentUser={makeUser('pesquisador')} onUpdateCollection={vi.fn()} laboratoryMode={false} />
+    );
+
+    const signButton = screen.getByRole('button', { name: /^assinar fase 2$/i });
+    expect(signButton).toBeEnabled();
   });
 
   it('chama onUpdateCollection com o estado atualizado quando um campo do formulário é editado', async () => {
