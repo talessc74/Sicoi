@@ -11,6 +11,7 @@ import {
 import { voiceService } from '../services/voiceAgent';
 import { sendPopStepMessage } from '../services/geminiService';
 import { uploadCollectionPhoto } from '../services/photoService';
+import { PhotoSourceModal } from './PhotoSourceModal';
 import {
   Mic,
   MicOff,
@@ -67,9 +68,14 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
   const [aiConfig, setAiConfig] = useState<AiConductorAgentConfig>(DEFAULT_AI_AGENT_CONFIG);
   const [showExtractedPanel, setShowExtractedPanel] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [showPhotoSourceModal, setShowPhotoSourceModal] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const photoInputRef = useRef<HTMLInputElement>(null);
+  // Dois inputs ocultos: um com capture="environment" (força a câmera) e um
+  // sem capture (seletor comum do dispositivo, que pode incluir a galeria) —
+  // o PhotoSourceModal decide qual deles clicar (pedido do Tales, out/2026).
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const pendingCaptureRef = useRef<PendingPhotoCapture | null>(null);
   const currentStep: PopConductorStep | undefined = popDef.steps[currentStepIndex];
 
@@ -381,7 +387,12 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
       stepNumber: step,
       caption: `Registro fotográfico do ${popDef.popCode} - Passo ${step}`
     };
-    photoInputRef.current?.click();
+    setShowPhotoSourceModal(true);
+  };
+
+  const handleChoosePhotoSource = (source: 'camera' | 'gallery') => {
+    setShowPhotoSourceModal(false);
+    (source === 'camera' ? cameraInputRef : galleryInputRef).current?.click();
   };
 
   // Reavalia se o passo atual ficou completo a partir do que já está salvo na
@@ -436,7 +447,7 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
   // depois do upload confirmar (handleCaptureFileSelected).
   const handleCaptureChecklistPhoto = (item: PopConductorPhotoChecklistItem) => {
     pendingCaptureRef.current = { kind: 'checklist', item };
-    photoInputRef.current?.click();
+    setShowPhotoSourceModal(true);
   };
 
   // Só grava o registro da foto (e, no caso do checklist, marca o campo do
@@ -830,10 +841,17 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
 
             {/* Photo Shortcut Button */}
             <input
-              ref={photoInputRef}
+              ref={cameraInputRef}
               type="file"
               accept="image/*"
               capture="environment"
+              className="hidden"
+              onChange={handleCaptureFileSelected}
+            />
+            <input
+              ref={galleryInputRef}
+              type="file"
+              accept="image/*"
               className="hidden"
               onChange={handleCaptureFileSelected}
             />
@@ -879,6 +897,18 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
           </div>
         )}
       </div>
+
+      {/* Escolha entre câmera e galeria antes de abrir qualquer seletor de arquivo. */}
+      {showPhotoSourceModal && (
+        <PhotoSourceModal
+          onChooseCamera={() => handleChoosePhotoSource('camera')}
+          onChooseGallery={() => handleChoosePhotoSource('gallery')}
+          onCancel={() => {
+            pendingCaptureRef.current = null;
+            setShowPhotoSourceModal(false);
+          }}
+        />
+      )}
 
       {/* Modal: AI Agent Architecture Slot (Future Integration) */}
       {showAiModal && (

@@ -92,7 +92,12 @@ describe('PopConversationalConductor — captura real de fotos (sem placeholder 
 
     await user.click(screen.getByTitle('Capturar foto de registro'));
 
-    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    // Pergunta explicitamente câmera ou galeria, nunca abre a câmera direto.
+    expect(screen.getByText('Registrar foto')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /abrir câmera/i }));
+    expect(screen.queryByText('Registrar foto')).not.toBeInTheDocument();
+
+    const fileInput = container.querySelector('input[type="file"][capture]') as HTMLInputElement;
     expect(fileInput).toBeTruthy();
     const file = new File(['bytes-da-foto'], 'foto.jpg', { type: 'image/jpeg' });
     await user.upload(fileInput, file);
@@ -160,7 +165,9 @@ describe('PopConversationalConductor — captura real de fotos (sem placeholder 
     expect(fotografarButtons.length).toBeGreaterThan(0);
     await user.click(fotografarButtons[0]); // Foto 1 — Saco fechado com lacre e escala
 
-    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.click(screen.getByRole('button', { name: /anexar foto/i }));
+
+    const fileInput = container.querySelector('input[type="file"]:not([capture])') as HTMLInputElement;
     const file = new File(['bytes-da-foto-1'], 'foto1.jpg', { type: 'image/jpeg' });
     await user.upload(fileInput, file);
 
