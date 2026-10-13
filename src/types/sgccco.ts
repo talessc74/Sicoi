@@ -381,6 +381,20 @@ export interface Phase4Data {
     sha256Hash: string;
     resolution: string;
   };
+  // Confirmação do Técnico de que a Montagem está completa — precisa existir
+  // junto com curatorInventorySign pra fase travar e avançar (mesmo padrão
+  // de duas confirmações já usado em phase5.technicianPhysicalSign/
+  // curatorScientificSign). Nenhuma das duas sozinha avança a fase.
+  technicianAssemblySign?: {
+    signedByName: string;
+    signedAt: string;
+    sha256Hash: string;
+  };
+  curatorInventorySign?: {
+    signedByName: string;
+    signedAt: string;
+    sha256Hash: string;
+  };
 }
 
 // Fase 5: Patologias, Exames e Marcação Óssea

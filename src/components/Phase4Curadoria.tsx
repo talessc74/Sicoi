@@ -15,6 +15,7 @@ import {
 } from '../data/mockData';
 import { calculateSha256, generateSignaturePayload } from '../services/auditService';
 import { getLatestPhaseSignature } from '../utils/signatures';
+import { canPerformRole } from '../utils/permissions';
 import {
   UserCheck,
   Search,
@@ -54,6 +55,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
   const [showMergeModal, setShowMergeModal] = useState(false);
   const [showSignModal, setShowSignModal] = useState(false);
   const [signing, setSigning] = useState(false);
+  const [signatureTarget, setSignatureTarget] = useState<'curador' | 'tecnico'>('curador');
 
   const phaseSignature = getLatestPhaseSignature(collection.signatures, 4);
   const isLocked = phaseSignature?.status === 'locked';
@@ -61,7 +63,12 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
   const isCurator = currentUser.role === 'curador';
   const isStudent = currentUser.role === 'estudante';
   const canEdit = isCurator || isStudent;
-  const canApprove = isCurator;
+  // Aba Montagem (e aprovação da foto oficial): mesmo acesso de Técnico já
+  // usado nas demais fases (Fase 1, 2, 3 e 5) — Curador, Técnico e
+  // Pesquisador. Indivíduos/Inventário/Odontograma continuam exclusivos de
+  // Curador e Estudante, como já eram.
+  const canAccessMontagem = canPerformRole(currentUser.role, 'tecnico');
+  const canApprove = canAccessMontagem;
 
   const individuals = collection.phase4.individuals || [];
   const currentInd = individuals.find(i => i.id === selectedIndividualId) || individuals[0];
@@ -176,36 +183,58 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
   };
 
   const handleSignPhase = async () => {
+    if ((signatureTarget === 'curador' && !canSignInventory) || (signatureTarget === 'tecnico' && !canSignAssembly)) return;
     setSigning(true);
     const timestamp = new Date().toISOString();
-    // O lacre é calculado sobre o estado FINAL da fase (já aprovada), que é o que
-    // fica gravado — antes era calculado antes de marcar "aprovada" e nunca conferia.
-    const finalPhase4 = { ...collection.phase4, curationVersionStatus: 'aprovada' as const, curatorAuthor: currentUser.name };
-    const payload = generateSignaturePayload({
-      nic: collection.nic,
-      phaseNumber: 4,
-      signedBy: currentUser.id,
-      role: currentUser.role,
-      timestamp,
-      dataSnapshotJson: JSON.stringify(finalPhase4)
-    });
-    const hash = await calculateSha256(payload);
-
-    const updated = { ...collection, phase4: finalPhase4 };
-    updated.signatures = [
-      ...updated.signatures.map((s) => (s.phaseNumber === 4 ? { ...s, status: 'unlocked_for_revision' as const } : s)),
-      {
+    const signPayload = (phase4Data: typeof collection.phase4) =>
+      generateSignaturePayload({
+        nic: collection.nic,
         phaseNumber: 4,
         signedBy: currentUser.id,
-        signedByName: currentUser.name,
-        signedByRole: currentUser.role,
-        signedAt: timestamp,
-        sha256Hash: hash,
-        status: 'locked'
+        role: currentUser.role,
+        timestamp,
+        dataSnapshotJson: JSON.stringify(phase4Data)
+      });
+    // Hash da confirmação individual (técnico ou curador), sobre a fase antes dela.
+    const hash = await calculateSha256(signPayload(collection.phase4));
+
+    const partialSign = { signedByName: currentUser.name, signedAt: timestamp, sha256Hash: hash };
+    const updated = {
+      ...collection,
+      phase4: {
+        ...collection.phase4,
+        ...(signatureTarget === 'curador'
+          ? { curatorInventorySign: partialSign }
+          : { technicianAssemblySign: partialSign })
       }
-    ];
-    if (updated.currentPhase < 5) {
-      updated.currentPhase = 5;
+    };
+
+    // A fase só trava depois das duas confirmações (Montagem e Inventário), inclusive
+    // quando o Curador faz as duas — mesmo mecanismo já usado na Fase 5.
+    const hasAssemblySign = Boolean(updated.phase4.technicianAssemblySign);
+    const hasInventorySign = Boolean(updated.phase4.curatorInventorySign);
+
+    if (hasAssemblySign && hasInventorySign) {
+      // O lacre é calculado sobre o estado FINAL da fase, já com as duas confirmações
+      // e já aprovada, que é o que fica gravado.
+      updated.phase4.curationVersionStatus = 'aprovada';
+      updated.phase4.curatorAuthor = currentUser.role === 'curador' ? currentUser.name : updated.phase4.curatorAuthor;
+      const phaseHash = await calculateSha256(signPayload(updated.phase4));
+      updated.signatures = [
+        ...updated.signatures.map((s) => (s.phaseNumber === 4 ? { ...s, status: 'unlocked_for_revision' as const } : s)),
+        {
+          phaseNumber: 4,
+          signedBy: currentUser.id,
+          signedByName: currentUser.name,
+          signedByRole: currentUser.role,
+          signedAt: timestamp,
+          sha256Hash: phaseHash,
+          status: 'locked'
+        }
+      ];
+      if (updated.currentPhase < 5) {
+        updated.currentPhase = 5;
+      }
     }
 
     setSigning(false);
@@ -213,7 +242,8 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
     onUpdateCollection(updated);
   };
 
-  const canSignCuration = isCurator && individuals.length > 0 && Boolean(collection.phase4.completeAssemblyPhotoApproved);
+  const canSignAssembly = canAccessMontagem && Boolean(collection.phase4.completeAssemblyPhotoApproved) && !collection.phase4.technicianAssemblySign;
+  const canSignInventory = isCurator && individuals.length > 0 && !collection.phase4.curatorInventorySign;
 
   return (
     <div className="space-y-6">
@@ -237,17 +267,20 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
             {isLocked ? (
               <div className="px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-900 flex items-center gap-2 text-xs font-mono text-emerald-700 dark:text-emerald-300 font-semibold">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>Versão Científica Aprovada & Assinada</span>
+                <span>Fase 4 Duplamente Assinada & Travada</span>
               </div>
             ) : (
               <button
-                onClick={() => setShowSignModal(true)}
-                disabled={!canSignCuration}
+                onClick={() => {
+                  setSignatureTarget(canSignInventory ? 'curador' : 'tecnico');
+                  setShowSignModal(true);
+                }}
+                disabled={!canSignAssembly && !canSignInventory}
                 className="px-4 py-2 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-semibold hover:opacity-95 disabled:opacity-40 transition-all flex items-center gap-2 shadow-xs"
-                title={!canSignCuration ? 'Exige perfil de Curador, ao menos 1 indivíduo e foto de montagem completa aprovada.' : ''}
+                title={!canSignAssembly && !canSignInventory ? 'Exige foto de montagem aprovada (Técnico/Pesquisador/Curador) ou ao menos 1 indivíduo (Curador) — a confirmação que falta pra você.' : ''}
               >
                 <FileCheck className="w-4 h-4" />
-                <span>Aprovar & Assinar Versão Científica</span>
+                <span>Assinar Fechamento da Fase 4</span>
               </button>
             )}
           </div>
@@ -682,7 +715,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
               />
               <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 text-white text-xs flex justify-between font-mono">
                 <div>
-                  <span className="font-bold block">Status: APROVADA PELO CURADOR</span>
+                  <span className="font-bold block">Status: APROVADA</span>
                   <span>Aprovada por: {collection.phase4.completeAssemblyPhotoApproved.approvedBy}</span>
                 </div>
                 <div className="text-right">
@@ -788,15 +821,34 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl text-xs space-y-4">
             <h3 className="font-bold text-base text-slate-900 dark:text-white">
-              Assinatura Científica Curatorial — Fase 4
+              Assinatura de Fechamento — Fase 4
             </h3>
             <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
-              Eu, {currentUser.name}, na condição de curadora da COI-INC, assumo a responsabilidade científica pela estimativa do perfil biológico, inventário anatômico, odontograma e montagem fotográfica do conjunto {collection.nic}.
+              Você está assinando como <strong>{currentUser.name} ({currentUser.role.toUpperCase()})</strong>. A Fase 4 exige confirmação de Montagem e confirmação de Inventário. O Curador pode realizar as duas, uma de cada vez.
+            </p>
+            {canSignAssembly && canSignInventory && (
+              <div className="space-y-2">
+                <label className="block font-semibold text-slate-700 dark:text-slate-300" htmlFor="phase4-signature-target">
+                  Qual responsabilidade deseja confirmar agora?
+                </label>
+                <select
+                  id="phase4-signature-target"
+                  value={signatureTarget}
+                  onChange={(event) => setSignatureTarget(event.target.value as 'curador' | 'tecnico')}
+                  className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+                >
+                  <option value="curador">Inventário (Curador)</option>
+                  <option value="tecnico">Montagem (Técnico, Pesquisador ou Curador)</option>
+                </select>
+              </div>
+            )}
+            <p className="font-semibold text-slate-700 dark:text-slate-300">
+              Confirmação atual: {signatureTarget === 'curador' ? 'inventário' : 'montagem'}.
             </p>
             <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl font-mono text-[11px] space-y-1">
               <div>COI: {collection.nic}</div>
-              <div>Versão Científica: v{collection.phase4.curationVersionNumber} (Aprovada)</div>
-              <div>Foto de Montagem: {collection.phase4.completeAssemblyPhotoApproved?.sha256Hash.substring(0, 16)}...</div>
+              <div>Versão Científica: v{collection.phase4.curationVersionNumber}</div>
+              <div>Foto de Montagem: {collection.phase4.completeAssemblyPhotoApproved?.sha256Hash.substring(0, 16) || 'pendente'}...</div>
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <button onClick={() => setShowSignModal(false)} className="px-4 py-2 rounded-lg border">
@@ -808,7 +860,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
                 className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium flex items-center gap-1.5"
               >
                 <CheckCircle2 className="w-4 h-4" />
-                <span>Confirmar e Liberar Fase 5</span>
+                <span>Confirmar Minha Assinatura</span>
               </button>
             </div>
           </div>

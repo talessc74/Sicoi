@@ -150,11 +150,13 @@ describe('Phase4Curadoria', () => {
       />
     );
 
-    const signButton = screen.getByRole('button', { name: /Aprovar & Assinar Versão Científica/i });
+    const signButton = screen.getByRole('button', { name: /Assinar Fechamento da Fase 4/i });
     expect(signButton).toBeDisabled();
   });
 
-  it('não permite assinar sem indivíduo cadastrado, mesmo sendo Curador', () => {
+  it('sem indivíduo cadastrado, o Curador ainda pode confirmar a Montagem (foto aprovada), mas a fase não trava sem o Inventário', async () => {
+    const user = userEvent.setup();
+    const onUpdateCollection = vi.fn();
     const collection = baseCollection({
       phase4: {
         curationVersionNumber: 1,
@@ -177,16 +179,31 @@ describe('Phase4Curadoria', () => {
       <Phase4Curadoria
         collection={collection}
         currentUser={makeUser('curador')}
-        onUpdateCollection={vi.fn()}
+        onUpdateCollection={onUpdateCollection}
         laboratoryMode={false}
       />
     );
 
-    const signButton = screen.getByRole('button', { name: /Aprovar & Assinar Versão Científica/i });
-    expect(signButton).toBeDisabled();
+    // Botão habilitado — a Montagem está pronta pra confirmar, mesmo sem indivíduo.
+    const signButton = screen.getByRole('button', { name: /Assinar Fechamento da Fase 4/i });
+    expect(signButton).toBeEnabled();
+    await user.click(signButton);
+    // Sem a opção de escolher — sem indivíduo, só a Montagem está disponível, mesmo pro Curador.
+    expect(screen.queryByLabelText(/Qual responsabilidade deseja confirmar agora\?/i)).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Confirmar Minha Assinatura/i }));
+
+    expect(onUpdateCollection).toHaveBeenCalled();
+    const updated = onUpdateCollection.mock.calls[onUpdateCollection.mock.calls.length - 1][0];
+    expect(updated.phase4.technicianAssemblySign).toBeTruthy();
+    expect(updated.phase4.curatorInventorySign).toBeUndefined();
+    // Sem as duas confirmações, a fase não trava nem avança.
+    expect(updated.currentPhase).toBe(4);
+    expect(updated.signatures.find((s: any) => s.phaseNumber === 4)).toBeUndefined();
   });
 
-  it('não permite assinar sem a foto de montagem completa aprovada, mesmo sendo Curador com indivíduo', () => {
+  it('sem a foto de montagem aprovada, o Curador ainda pode confirmar o Inventário (com indivíduo), mas a fase não trava sem a Montagem', async () => {
+    const user = userEvent.setup();
+    const onUpdateCollection = vi.fn();
     const collection = baseCollection({
       phase4: {
         curationVersionNumber: 1,
@@ -202,13 +219,80 @@ describe('Phase4Curadoria', () => {
       <Phase4Curadoria
         collection={collection}
         currentUser={makeUser('curador')}
-        onUpdateCollection={vi.fn()}
+        onUpdateCollection={onUpdateCollection}
         laboratoryMode={false}
       />
     );
 
-    const signButton = screen.getByRole('button', { name: /Aprovar & Assinar Versão Científica/i });
-    expect(signButton).toBeDisabled();
+    const signButton = screen.getByRole('button', { name: /Assinar Fechamento da Fase 4/i });
+    expect(signButton).toBeEnabled();
+    await user.click(signButton);
+    expect(screen.queryByLabelText(/Qual responsabilidade deseja confirmar agora\?/i)).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Confirmar Minha Assinatura/i }));
+
+    expect(onUpdateCollection).toHaveBeenCalled();
+    const updated = onUpdateCollection.mock.calls[onUpdateCollection.mock.calls.length - 1][0];
+    expect(updated.phase4.curatorInventorySign).toBeTruthy();
+    expect(updated.phase4.technicianAssemblySign).toBeUndefined();
+    expect(updated.currentPhase).toBe(4);
+    expect(updated.signatures.find((s: any) => s.phaseNumber === 4)).toBeUndefined();
+  });
+
+  it('Técnico confirma a Montagem e Curador confirma o Inventário — só então a fase trava e avança', async () => {
+    const user = userEvent.setup();
+    const onUpdateCollection = vi.fn();
+    const collectionReadyForBoth = baseCollection({
+      phase4: {
+        curationVersionNumber: 1,
+        curationVersionStatus: 'rascunho',
+        curatorAuthor: 'x',
+        individuals: [makeIndividual()],
+        skeletalElements: [],
+        completeAssemblyPhotoApproved: {
+          photoUrl: 'https://example.com/foto.jpg',
+          capturedAt: new Date().toISOString(),
+          approvedBy: 'Fulano Técnico',
+          approvedAt: new Date().toISOString(),
+          sha256Hash: 'abc123',
+          resolution: '4032x3024'
+        }
+      } as any
+    });
+
+    // Técnico confirma a Montagem primeiro.
+    const { unmount } = render(
+      <Phase4Curadoria
+        collection={collectionReadyForBoth}
+        currentUser={makeUser('tecnico', { name: 'Fulano Técnico' })}
+        onUpdateCollection={onUpdateCollection}
+        laboratoryMode={false}
+      />
+    );
+    await user.click(screen.getByRole('button', { name: /Assinar Fechamento da Fase 4/i }));
+    await user.click(screen.getByRole('button', { name: /Confirmar Minha Assinatura/i }));
+    const afterTecnico = onUpdateCollection.mock.calls[onUpdateCollection.mock.calls.length - 1][0];
+    expect(afterTecnico.phase4.technicianAssemblySign).toBeTruthy();
+    expect(afterTecnico.currentPhase).toBe(4);
+    unmount();
+
+    // Curador confirma o Inventário em seguida, sobre o estado já com a Montagem confirmada.
+    render(
+      <Phase4Curadoria
+        collection={afterTecnico}
+        currentUser={makeUser('curador')}
+        onUpdateCollection={onUpdateCollection}
+        laboratoryMode={false}
+      />
+    );
+    await user.click(screen.getByRole('button', { name: /Assinar Fechamento da Fase 4/i }));
+    await user.click(screen.getByRole('button', { name: /Confirmar Minha Assinatura/i }));
+
+    const finalUpdate = onUpdateCollection.mock.calls[onUpdateCollection.mock.calls.length - 1][0];
+    expect(finalUpdate.phase4.curatorInventorySign).toBeTruthy();
+    expect(finalUpdate.phase4.curationVersionStatus).toBe('aprovada');
+    expect(finalUpdate.currentPhase).toBe(5);
+    const phase4Signature = finalUpdate.signatures.find((s: any) => s.phaseNumber === 4);
+    expect(phase4Signature?.status).toBe('locked');
   });
 
   it('ao criar um novo indivíduo (Curador), chama onUpdateCollection', async () => {
@@ -291,7 +375,61 @@ describe('Phase4Curadoria', () => {
     const justificationInput = screen.getByDisplayValue('Concordância anatômica e antimeria.');
     expect(justificationInput).not.toBeDisabled();
 
-    const signButton = screen.getByRole('button', { name: /Aprovar & Assinar Versão Científica/i });
+    const signButton = screen.getByRole('button', { name: /Assinar Fechamento da Fase 4/i });
     expect(signButton).toBeDisabled();
+  });
+
+  it('Técnico tem acesso à aba Montagem e pode aprovar a foto oficial (decisão de acesso, out/2026)', async () => {
+    const user = userEvent.setup();
+    const onUpdateCollection = vi.fn();
+    const collection = baseCollection({
+      phase4: {
+        curationVersionNumber: 1,
+        curationVersionStatus: 'rascunho',
+        curatorAuthor: 'x',
+        individuals: [],
+        skeletalElements: []
+      } as any
+    });
+
+    render(
+      <Phase4Curadoria
+        collection={collection}
+        currentUser={makeUser('tecnico')}
+        onUpdateCollection={onUpdateCollection}
+        laboratoryMode={false}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: /Foto Montagem Completa/i }));
+    await user.click(screen.getByRole('button', { name: /Capturar & Aprovar Foto Agora/i }));
+
+    expect(onUpdateCollection).toHaveBeenCalled();
+    const updated = onUpdateCollection.mock.calls[0][0];
+    expect(updated.phase4.completeAssemblyPhotoApproved).toBeTruthy();
+  });
+
+  it('Técnico não edita Indivíduos/Inventário/Odontograma — acesso novo é só a aba Montagem', () => {
+    const collection = baseCollection({
+      phase4: {
+        curationVersionNumber: 1,
+        curationVersionStatus: 'rascunho',
+        curatorAuthor: 'x',
+        individuals: [makeIndividual()],
+        skeletalElements: []
+      } as any
+    });
+
+    render(
+      <Phase4Curadoria
+        collection={collection}
+        currentUser={makeUser('tecnico')}
+        onUpdateCollection={vi.fn()}
+        laboratoryMode={false}
+      />
+    );
+
+    const justificationInput = screen.getByDisplayValue('Concordância anatômica e antimeria.');
+    expect(justificationInput).toBeDisabled();
   });
 });
