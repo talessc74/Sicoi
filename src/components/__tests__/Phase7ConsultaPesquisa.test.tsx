@@ -123,6 +123,17 @@ function pesquisadorUser(): UserProfile {
   };
 }
 
+function tecnicoUser(overrides: Partial<UserProfile> = {}): UserProfile {
+  return {
+    id: 'u3',
+    name: 'Técnico de Laboratório',
+    role: 'tecnico',
+    institution: 'INC/DITEC/PF',
+    email: 'tecnico@inc.pf.gov.br',
+    ...overrides
+  };
+}
+
 describe('Phase7ConsultaPesquisa', () => {
   it('com papel amplo (curador), ambos os conjuntos aparecem disponíveis para busca', () => {
     mockFetchOnce();
@@ -211,5 +222,60 @@ describe('Phase7ConsultaPesquisa', () => {
 
     expect(screen.getByText('Projeto Restrito ao NIC-2026-0001')).toBeInTheDocument();
     expect(screen.getByText('NIC-2026-0001')).toBeInTheDocument();
+  });
+
+  it('Técnico sem acesso de Exportação Científica (padrão do papel, §13) vê o botão desabilitado', () => {
+    mockFetchOnce();
+    const collections = [baseCollection('NIC-2026-0001')];
+
+    render(
+      <Phase7ConsultaPesquisa
+        collections={collections}
+        currentUser={tecnicoUser()}
+        authorizations={[]}
+        onUpdateAuthorizations={vi.fn()}
+        onUpdateCollections={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: /Exportação Reprodutível/i })).toBeDisabled();
+  });
+
+  it('Técnico com o ajuste de acesso ligado (§13) consegue exportar mesmo sem ser Curador/Administrador/Pesquisador', async () => {
+    mockFetchOnce();
+    const user = userEvent.setup();
+    const collections = [baseCollection('NIC-2026-0001')];
+
+    render(
+      <Phase7ConsultaPesquisa
+        collections={collections}
+        currentUser={tecnicoUser({ exportAccess: true })}
+        authorizations={[]}
+        onUpdateAuthorizations={vi.fn()}
+        onUpdateCollections={vi.fn()}
+      />
+    );
+
+    const exportButton = screen.getByRole('button', { name: /Exportação Reprodutível/i });
+    expect(exportButton).not.toBeDisabled();
+    await user.click(exportButton);
+    expect(screen.getByText(/Exportação Reprodutível do Acervo/i)).toBeInTheDocument();
+  });
+
+  it('Curador continua com Exportação Científica liberada por padrão', () => {
+    mockFetchOnce();
+    const collections = [baseCollection('NIC-2026-0001')];
+
+    render(
+      <Phase7ConsultaPesquisa
+        collections={collections}
+        currentUser={curadorUser()}
+        authorizations={[]}
+        onUpdateAuthorizations={vi.fn()}
+        onUpdateCollections={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: /Exportação Reprodutível/i })).not.toBeDisabled();
   });
 });

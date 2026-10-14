@@ -48,7 +48,7 @@ export const Phase0Recebimento: React.FC<Phase0RecebimentoProps> = ({
   // Mesma decisão de acesso out/2026 das demais fases: Técnico e Pesquisador
   // podem preencher, mas só Técnico (ou Curador agindo como técnico) assina.
   const canAccess = canPerformRole(currentUser.role, 'tecnico');
-  const canActAsTechnician = canSignAsTechnician(currentUser.role);
+  const canActAsTechnician = canSignAsTechnician(currentUser);
 
   const p0: Phase0Data = collection.phase0 ?? createEmptyPhase0Data();
 

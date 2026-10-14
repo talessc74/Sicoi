@@ -100,7 +100,11 @@ describe('peopleRepo', () => {
       role: 'curador',
       institution: 'PF',
       email: 'novo@inc.pf.gov.br',
-      adminAccess: false
+      adminAccess: false,
+      legalOriginAccess: false,
+      curationAccess: false,
+      phaseSigningAccess: false,
+      exportAccess: false
     });
   });
 
@@ -130,6 +134,38 @@ describe('peopleRepo', () => {
   it('cadastro sem a marca não ganha acesso de Administrador', async () => {
     const person = await createPerson(pool, { name: 'Técnico', role: 'tecnico', institution: 'INC', email: 'tec@inc.pf.gov.br' });
     expect(person.adminAccess).toBe(false);
+  });
+
+  it('guarda e edita os 4 ajustes de acesso por pessoa (§13), independente do padrão do papel', async () => {
+    const created = await createPerson(pool, {
+      name: 'Técnico Ampliado',
+      role: 'tecnico',
+      institution: 'INC',
+      email: 'tecnico.ampliado@inc.pf.gov.br',
+      legalOriginAccess: true,
+      exportAccess: true
+    });
+    expect(created.legalOriginAccess).toBe(true);
+    expect(created.curationAccess).toBe(false);
+    expect(created.phaseSigningAccess).toBe(false);
+    expect(created.exportAccess).toBe(true);
+
+    const listed = await listPeople(pool);
+    const found = listed.find((p) => p.id === created.id);
+    expect(found?.legalOriginAccess).toBe(true);
+    expect(found?.exportAccess).toBe(true);
+
+    const updated = await updatePerson(pool, created.id, {
+      name: 'Técnico Ampliado',
+      role: 'tecnico',
+      institution: 'INC',
+      email: 'tecnico.ampliado@inc.pf.gov.br',
+      legalOriginAccess: false,
+      curationAccess: true
+    });
+    expect(updated?.legalOriginAccess).toBe(false);
+    expect(updated?.curationAccess).toBe(true);
+    expect(updated?.exportAccess).toBe(false);
   });
 
   it('permite preencher o e-mail de um registro antigo, sem e-mail (de antes do login real)', async () => {

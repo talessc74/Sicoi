@@ -39,7 +39,7 @@ export const Phase3Acondicionamento: React.FC<Phase3AcondicionamentoProps> = ({
   // tem acesso à Fase 3, mas sua participação é a confirmação opcional abaixo
   // (handleConfirmResearcherReview), nunca esta assinatura (decisão de acesso
   // out/2026, correção: "o técnico é obrigatório, o pesquisador pode ou não").
-  const canActAsTechnician = canSignAsTechnician(currentUser.role);
+  const canActAsTechnician = canSignAsTechnician(currentUser);
 
   const boxes = collection.phase1.preliminaryBoxes;
   const allBoxesPlaced = boxes.length > 0 && boxes.every(b => 

@@ -43,7 +43,7 @@ export const Phase2Limpeza: React.FC<Phase2LimpezaProps> = ({ collection, curren
   // tem acesso à Fase 2, mas sua participação é a confirmação opcional abaixo
   // (handleConfirmResearcherReview), nunca esta assinatura (decisão de acesso
   // out/2026, correção: "o técnico é obrigatório, o pesquisador pode ou não").
-  const canActAsTechnician = canSignAsTechnician(currentUser.role);
+  const canActAsTechnician = canSignAsTechnician(currentUser);
 
   const p2 = collection.phase2;
   // O status de limpeza/secagem vive em phase2.boxDryingStatus (não em

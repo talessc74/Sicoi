@@ -20,7 +20,26 @@ export interface UserProfile {
   // Funções de Administrador somadas ao papel principal (ex.: Curadora que
   // também administra o sistema). `role` segue sendo o que vai nas assinaturas.
   adminAccess?: boolean;
+
+  // Ajustes de acesso por pessoa (§13, out/2026) — cada um começa com o valor
+  // padrão do papel (ver utils/permissions.ts) no momento em que a pessoa é
+  // cadastrada ou tem o papel trocado, e pode ser ampliado ou reduzido
+  // individualmente depois, na tela de Configurações, sem mudar o papel dela
+  // nem afetar mais ninguém. Sempre um boolean explícito (nunca "herda do
+  // papel" em tempo de execução) — mesmo padrão já usado em adminAccess acima.
+  legalOriginAccess?: boolean; // Origem Legal / Cemitério (§7) — ver Fase 1
+  curationAccess?: boolean; // Montagem e Inventário / Curadoria — ver Fase 4 (canEdit)
+  phaseSigningAccess?: boolean; // Assinatura de Fases (Fases 0-3, Montagem da Fase 4, Física da Fase 5) — nunca o Inventário/Científica, exclusivos do Curador
+  exportAccess?: boolean; // Exportação Científica — ver Fase 7
 }
+
+// Os 5 ajustes de acesso por pessoa (§13) juntos — reutilizado pelo cadastro/
+// edição de pessoa (SettingsView, App.tsx, peopleService.ts) pra não repetir a
+// mesma lista de 5 campos em cada assinatura de função.
+export type PersonAccessOverrides = Pick<
+  UserProfile,
+  'adminAccess' | 'legalOriginAccess' | 'curationAccess' | 'phaseSigningAccess' | 'exportAccess'
+>;
 
 // Criptografia e Assinatura por Fase (§7)
 export interface PhaseSignature {

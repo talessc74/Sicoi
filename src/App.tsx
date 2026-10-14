@@ -4,7 +4,8 @@ import {
   UserProfile,
   UserRole,
   PhaseNumber,
-  ResearchAuthorization
+  ResearchAuthorization,
+  PersonAccessOverrides
 } from './types/sgccco';
 import {
   MOCK_RESEARCH_AUTHORIZATIONS
@@ -258,7 +259,7 @@ export default function App() {
   // Cadastra uma nova pessoa (papel de acesso) — só o Administrador logado pode
   // (o servidor reconfere). A pessoa criada ainda não tem senha: o Administrador
   // gera o link de definição de senha para ela em Configurações.
-  const handleCreatePerson = async (person: { name: string; role: UserRole; institution: string; email: string; adminAccess?: boolean }) => {
+  const handleCreatePerson = async (person: { name: string; role: UserRole; institution: string; email: string } & Partial<PersonAccessOverrides>) => {
     const created = await createPersonApi(person);
     setPeople((prev) => [...prev, created]);
     setSyncError(null);
@@ -269,7 +270,7 @@ export default function App() {
   // precisar recriar do zero e perder o histórico ligado ao id dela.
   const handleUpdatePerson = async (
     id: string,
-    person: { name: string; role: UserRole; institution: string; email: string; adminAccess?: boolean }
+    person: { name: string; role: UserRole; institution: string; email: string } & Partial<PersonAccessOverrides>
   ) => {
     const updated = await updatePersonApi(id, person);
     setPeople((prev) => prev.map((p) => (p.id === id ? updated : p)));

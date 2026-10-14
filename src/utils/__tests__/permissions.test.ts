@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canPerformRole, canSignAsTechnician, hasAdminAccess } from '../permissions';
+import { canPerformRole, canSignAsTechnician, hasAdminAccess, canViewLegalOrigin, canCurate, canExportScientificData } from '../permissions';
 import type { UserRole } from '../../types/sgccco';
 
 describe('permissões do Curador', () => {
@@ -28,19 +28,69 @@ describe('permissões do Curador', () => {
 });
 
 describe('canSignAsTechnician — quem pode SER a assinatura "técnico" (diferente de canPerformRole)', () => {
-  it('vale para Técnico e Curador', () => {
-    expect(canSignAsTechnician('tecnico')).toBe(true);
-    expect(canSignAsTechnician('curador')).toBe(true);
+  it('vale para Técnico e Curador, pelo padrão do papel', () => {
+    expect(canSignAsTechnician({ role: 'tecnico' })).toBe(true);
+    expect(canSignAsTechnician({ role: 'curador' })).toBe(true);
   });
 
-  it('nunca vale para o Pesquisador — mesmo tendo acesso de técnico via canPerformRole, não pode ser a assinatura obrigatória', () => {
-    expect(canSignAsTechnician('pesquisador')).toBe(false);
+  it('nunca vale para o Pesquisador por padrão — mesmo tendo acesso de técnico via canPerformRole, não pode ser a assinatura obrigatória', () => {
+    expect(canSignAsTechnician({ role: 'pesquisador' })).toBe(false);
     expect(canPerformRole('pesquisador', 'tecnico')).toBe(true); // acesso sim, assinatura não
   });
 
-  it('não vale para administrador nem estudante', () => {
-    expect(canSignAsTechnician('administrador')).toBe(false);
-    expect(canSignAsTechnician('estudante')).toBe(false);
+  it('não vale para administrador nem estudante por padrão', () => {
+    expect(canSignAsTechnician({ role: 'administrador' })).toBe(false);
+    expect(canSignAsTechnician({ role: 'estudante' })).toBe(false);
+  });
+
+  it('o ajuste por pessoa (§13) amplia ou reduz o padrão do papel', () => {
+    expect(canSignAsTechnician({ role: 'administrador', phaseSigningAccess: true })).toBe(true);
+    expect(canSignAsTechnician({ role: 'tecnico', phaseSigningAccess: false })).toBe(false);
+  });
+});
+
+describe('canViewLegalOrigin — Origem Legal/Cemitério (§7)', () => {
+  it('vale por padrão para Curador e Administrador, não para os demais', () => {
+    expect(canViewLegalOrigin({ role: 'curador' })).toBe(true);
+    expect(canViewLegalOrigin({ role: 'administrador' })).toBe(true);
+    expect(canViewLegalOrigin({ role: 'tecnico' })).toBe(false);
+    expect(canViewLegalOrigin({ role: 'pesquisador' })).toBe(false);
+    expect(canViewLegalOrigin({ role: 'estudante' })).toBe(false);
+  });
+
+  it('o ajuste por pessoa (§13) amplia ou reduz o padrão do papel', () => {
+    expect(canViewLegalOrigin({ role: 'tecnico', legalOriginAccess: true })).toBe(true);
+    expect(canViewLegalOrigin({ role: 'curador', legalOriginAccess: false })).toBe(false);
+  });
+});
+
+describe('canCurate — Montagem e Inventário/Curadoria (Fase 4)', () => {
+  it('vale por padrão para Curador e Estudante, não para os demais', () => {
+    expect(canCurate({ role: 'curador' })).toBe(true);
+    expect(canCurate({ role: 'estudante' })).toBe(true);
+    expect(canCurate({ role: 'tecnico' })).toBe(false);
+    expect(canCurate({ role: 'pesquisador' })).toBe(false);
+    expect(canCurate({ role: 'administrador' })).toBe(false);
+  });
+
+  it('o ajuste por pessoa (§13) amplia ou reduz o padrão do papel', () => {
+    expect(canCurate({ role: 'tecnico', curationAccess: true })).toBe(true);
+    expect(canCurate({ role: 'estudante', curationAccess: false })).toBe(false);
+  });
+});
+
+describe('canExportScientificData — Exportação Científica (Fase 7)', () => {
+  it('vale por padrão para Curador, Administrador e Pesquisador, não para Técnico/Estudante', () => {
+    expect(canExportScientificData({ role: 'curador' })).toBe(true);
+    expect(canExportScientificData({ role: 'administrador' })).toBe(true);
+    expect(canExportScientificData({ role: 'pesquisador' })).toBe(true);
+    expect(canExportScientificData({ role: 'tecnico' })).toBe(false);
+    expect(canExportScientificData({ role: 'estudante' })).toBe(false);
+  });
+
+  it('o ajuste por pessoa (§13) amplia ou reduz o padrão do papel', () => {
+    expect(canExportScientificData({ role: 'tecnico', exportAccess: true })).toBe(true);
+    expect(canExportScientificData({ role: 'pesquisador', exportAccess: false })).toBe(false);
   });
 });
 

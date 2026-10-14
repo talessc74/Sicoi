@@ -17,7 +17,7 @@ import {
 import { calculateSha256, generateSignaturePayload } from '../services/auditService';
 import { uploadCollectionPhoto } from '../services/photoService';
 import { getLatestPhaseSignature } from '../utils/signatures';
-import { canPerformRole, canSignAsTechnician } from '../utils/permissions';
+import { canPerformRole, canSignAsTechnician, canCurate } from '../utils/permissions';
 import {
   UserCheck,
   Search,
@@ -72,9 +72,14 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
   const phaseSignature = getLatestPhaseSignature(collection.signatures, 4);
   const isLocked = phaseSignature?.status === 'locked';
 
+  // isCurator fica exclusivo do papel Curador, literal — usado só pra
+  // assinatura do Inventário (canSignInventory abaixo) e pra atribuição de
+  // curatorAuthor, nunca ajustável por pessoa (decisão §13, out/2026: "quem
+  // identifica e decide é sempre o curador", sem exceção).
   const isCurator = currentUser.role === 'curador';
-  const isStudent = currentUser.role === 'estudante';
-  const canEdit = isCurator || isStudent;
+  // Editar indivíduos/perfil biológico/odontograma (Montagem e Inventário) —
+  // padrão Curador + Estudante, ajustável por pessoa (canCurate, §13).
+  const canEdit = canCurate(currentUser);
   // Aba Montagem (e aprovação da foto oficial): mesmo acesso de Técnico já
   // usado nas demais fases (Fase 1, 2, 3 e 5) — Curador, Técnico e
   // Pesquisador. Indivíduos/Inventário/Odontograma continuam exclusivos de
@@ -86,7 +91,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
   // o Pesquisador tem acesso à aba, mas sua participação é a confirmação
   // opcional (handleConfirmResearcherReview), nunca esta assinatura (correção:
   // "o técnico é obrigatório, o pesquisador pode ou não").
-  const canSignAsTechnicianRole = canSignAsTechnician(currentUser.role);
+  const canSignAsTechnicianRole = canSignAsTechnician(currentUser);
 
   const individuals = collection.phase4.individuals || [];
   const currentInd = individuals.find(i => i.id === selectedIndividualId) || individuals[0];
