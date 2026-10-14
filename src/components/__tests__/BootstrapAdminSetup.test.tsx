@@ -3,6 +3,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BootstrapAdminSetup } from '../BootstrapAdminSetup';
+import { friendlyMessage } from '../../utils/errorMessages';
 
 function mockFetchOnce(status: number, body: unknown) {
   vi.stubGlobal(
@@ -81,12 +82,12 @@ describe('BootstrapAdminSetup', () => {
 
   it('mostra a mensagem de erro quando o bootstrap é recusado (ex.: já existe gente cadastrada)', async () => {
     const user = userEvent.setup();
-    mockFetchOnce(409, { error: 'Já existe gente cadastrada — o bootstrap só funciona com o sistema vazio.' });
+    mockFetchOnce(409, { error: 'Já existe gente cadastrada — o bootstrap só funciona com o sistema vazio.', code: 'AUTH_BOOTSTRAP_JA_FEITO' });
 
     render(<BootstrapAdminSetup onLoggedIn={vi.fn()} />);
     await fillValidForm(user);
     await user.click(screen.getByRole('button', { name: /criar administrador e entrar/i }));
 
-    expect(await screen.findByText('Já existe gente cadastrada — o bootstrap só funciona com o sistema vazio.')).toBeInTheDocument();
+    expect(await screen.findByText(friendlyMessage('AUTH_BOOTSTRAP_JA_FEITO'))).toBeInTheDocument();
   });
 });

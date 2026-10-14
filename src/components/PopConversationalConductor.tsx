@@ -33,6 +33,21 @@ import {
   Cpu
 } from 'lucide-react';
 
+// Razões cruas do SpeechRecognition do navegador (nunca passam por `code`
+// do servidor — são erro de API do próprio browser) traduzidas pra uma frase
+// que a pessoa que usa entenda, em vez do "no-speech"/"not-allowed" cru.
+function friendlySpeechRecognitionError(reason: string): string {
+  const known: Record<string, string> = {
+    'no-speech': 'nenhuma fala detectada',
+    'audio-capture': 'não foi possível acessar o microfone',
+    'not-allowed': 'permissão de microfone negada',
+    'service-not-allowed': 'permissão de microfone negada',
+    network: 'falha de conexão',
+    aborted: 'gravação interrompida',
+  };
+  return known[reason] || 'erro desconhecido';
+}
+
 interface PopConversationalConductorProps {
   collection: OsteologicalCollection;
   currentUser: UserProfile;
@@ -368,10 +383,10 @@ export const PopConversationalConductor: React.FC<PopConversationalConductorProp
       },
       (err) => {
         setIsListening(false);
-        console.warn('Microphone fallback/error:', err);
         const reason = typeof err === 'string' ? err : err?.error || err?.message || 'erro desconhecido';
+        console.warn('Microphone fallback/error:', reason);
         pushSystemMessage(
-          `Não consegui captar sua fala (${reason}). Confira se a permissão de microfone foi concedida ao navegador, ou responda pelo campo de texto abaixo.`
+          `Não consegui captar sua fala (${friendlySpeechRecognitionError(reason)}). Confira se a permissão de microfone foi concedida ao navegador, ou responda pelo campo de texto abaixo.`
         );
       }
     );

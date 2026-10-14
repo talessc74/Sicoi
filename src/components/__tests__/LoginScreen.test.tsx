@@ -3,6 +3,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { LoginScreen } from '../LoginScreen';
+import { friendlyMessage } from '../../utils/errorMessages';
 
 function mockFetchOnce(status: number, body: unknown) {
   vi.stubGlobal(
@@ -50,14 +51,14 @@ describe('LoginScreen', () => {
 
   it('mostra a mensagem de erro em caso de e-mail ou senha inválida, sem travar o formulário', async () => {
     const user = userEvent.setup();
-    mockFetchOnce(401, { error: 'E-mail ou senha inválidos.' });
+    mockFetchOnce(401, { error: 'E-mail ou senha inválidos.', code: 'AUTH_CREDENCIAIS_INVALIDAS' });
 
     render(<LoginScreen onLoggedIn={vi.fn()} />);
     await user.type(screen.getByPlaceholderText(/nome@instituicao/i), 'perito.x@inc.pf.gov.br');
     await user.type(screen.getByPlaceholderText('••••••••'), 'senha-errada');
     await user.click(screen.getByRole('button', { name: /entrar/i }));
 
-    expect(await screen.findByText('E-mail ou senha inválidos.')).toBeInTheDocument();
+    expect(await screen.findByText(friendlyMessage('AUTH_CREDENCIAIS_INVALIDAS'))).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /entrar/i })).toBeEnabled();
   });
 

@@ -2,6 +2,8 @@ import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { GraphNode, GraphNodeType, GraphEdge } from '../types/sgccco';
 import { Network, Search, Info, Route, Loader2, RefreshCw, Bone, X, Move } from 'lucide-react';
 import { searchSimilarBones, BoneSimilaritySearchResult } from '../services/geminiService';
+import { ErrorNotice } from './ErrorNotice';
+import { toAppError, AppError } from '../utils/errorMessages';
 
 interface KnowledgeGraphViewerProps {
   selectedNic?: string;
@@ -69,14 +71,14 @@ const NODE_EDGE_MARGIN = 40;
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
   const data = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(data?.error || `Falha ao consultar ${url} (HTTP ${res.status})`);
+  if (!res.ok) throw Object.assign(new Error(data?.error || `Falha ao consultar ${url} (HTTP ${res.status})`), { code: data?.code });
   return data as T;
 }
 
 export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ selectedNic }) => {
   const [graphData, setGraphData] = useState<{ nodes: GraphNode[]; edges: GraphEdge[] }>({ nodes: [], edges: [] });
   const [isLoadingGraph, setIsLoadingGraph] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<AppError | null>(null);
   const [filterType, setFilterType] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
 
@@ -87,7 +89,7 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
   const [pathFrom, setPathFrom] = useState('');
   const [pathTo, setPathTo] = useState('');
   const [pathResult, setPathResult] = useState<PathStep[] | null>(null);
-  const [pathError, setPathError] = useState<string | null>(null);
+  const [pathError, setPathError] = useState<AppError | null>(null);
   const [isFindingPath, setIsFindingPath] = useState(false);
 
   const [globalQuery, setGlobalQuery] = useState('');
@@ -96,7 +98,7 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
 
   const [boneFreeText, setBoneFreeText] = useState('');
   const [boneSearchResult, setBoneSearchResult] = useState<BoneSimilaritySearchResult | null>(null);
-  const [boneSearchError, setBoneSearchError] = useState<string | null>(null);
+  const [boneSearchError, setBoneSearchError] = useState<AppError | null>(null);
   const [isSearchingBones, setIsSearchingBones] = useState(false);
 
   // Posições que a pessoa arrastou manualmente — sobrescrevem o layout radial
@@ -135,7 +137,7 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
         if (!cancelled) setGraphData(data);
       })
       .catch((err) => {
-        if (!cancelled) setLoadError(err.message || 'Erro ao carregar o grafo.');
+        if (!cancelled) setLoadError(toAppError(err, 'Erro ao carregar o grafo.'));
       })
       .finally(() => {
         if (!cancelled) setIsLoadingGraph(false);
@@ -223,7 +225,7 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
       );
       setPathResult(data.path);
     } catch (err: any) {
-      setPathError(err.message || 'Nenhum caminho encontrado.');
+      setPathError(toAppError(err, 'Nenhum caminho encontrado.'));
     } finally {
       setIsFindingPath(false);
     }
@@ -251,7 +253,7 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
       setBoneSearchResult(result);
     } catch (err: any) {
       setBoneSearchResult(null);
-      setBoneSearchError(err.message || 'Erro ao buscar ossos parecidos.');
+      setBoneSearchError(toAppError(err, 'Erro ao buscar ossos parecidos.'));
     } finally {
       setIsSearchingBones(false);
     }
@@ -464,7 +466,11 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
           <Loader2 className="w-4 h-4 animate-spin" /> Carregando grafo do banco de dados...
         </div>
       )}
-      {loadError && <div className="p-4 text-sm text-rose-600 dark:text-rose-400">{loadError}</div>}
+      {loadError && (
+        <div className="p-4">
+          <ErrorNotice code={loadError.code} message={loadError.message} />
+        </div>
+      )}
 
       {!isLoadingGraph && !loadError && (
         <div className="grid grid-cols-1 lg:grid-cols-4 min-h-[520px]">
@@ -695,7 +701,7 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
                 >
                   {isFindingPath ? 'Calculando...' : 'Traçar caminho'}
                 </button>
-                {pathError && <p className="text-rose-500 text-[11px]">{pathError}</p>}
+                {pathError && <ErrorNotice code={pathError.code} message={pathError.message} />}
                 {pathResult && (
                   <ol className="text-[11px] font-mono space-y-1 mt-1">
                     {pathResult.map((step, idx) => (
@@ -785,7 +791,9 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
                 )}
               </div>
 
-              {boneSearchError && <p className="text-rose-500 text-[11px] mt-2">{boneSearchError}</p>}
+              {boneSearchError && (
+                <ErrorNotice className="mt-2" code={boneSearchError.code} message={boneSearchError.message} />
+              )}
 
               {boneSearchResult && (
                 <div className="mt-2 space-y-2">

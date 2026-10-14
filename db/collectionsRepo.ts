@@ -122,7 +122,7 @@ export async function createCollection(
   }
 
   const current = await getCollection(pool, collection.nic);
-  if (!current) throw new Error(`Falha ao criar/recuperar o conjunto ${collection.nic} após o insert.`);
+  if (!current) throw Object.assign(new Error(`Falha ao criar/recuperar o conjunto ${collection.nic} após o insert.`), { code: 'CONJUNTO_ERRO_INTERNO' });
   return current;
 }
 
@@ -150,11 +150,12 @@ export async function saveCollection(
     );
     const previous = rows[0]?.full_state;
     if (!previous) {
-      throw new Error(`Conjunto ${collection.nic} não encontrado para atualização.`);
+      throw Object.assign(new Error(`Conjunto ${collection.nic} não encontrado para atualização.`), { code: 'CONJUNTO_NAO_ENCONTRADO' });
     }
     if (rows[0].deleted_at) {
       throw new HistoryViolationError(
-        `Conjunto ${collection.nic} está excluído — restaure-o na Zona de Risco (Configurações) antes de editar.`
+        `Conjunto ${collection.nic} está excluído — restaure-o na Zona de Risco (Configurações) antes de editar.`,
+        'CONJUNTO_EXCLUIDO'
       );
     }
 

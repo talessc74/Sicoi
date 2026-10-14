@@ -9,6 +9,8 @@ import {
 } from '../types/sgccco';
 import { OdontogramViewer } from './OdontogramViewer';
 import { PhotoSourceModal } from './PhotoSourceModal';
+import { ErrorNotice } from './ErrorNotice';
+import { toAppError, AppError } from '../utils/errorMessages';
 import {
   CONTROLLED_BIOLOGICAL_METHODS,
   STANDARD_SKELETAL_INVENTORY_TEMPLATES,
@@ -59,7 +61,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
   const [signing, setSigning] = useState(false);
   const [signatureTarget, setSignatureTarget] = useState<'curador' | 'tecnico'>('curador');
   const [uploadingAssemblyPhoto, setUploadingAssemblyPhoto] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<AppError | null>(null);
   const [showNoPhotoModal, setShowNoPhotoModal] = useState(false);
   const [noPhotoJustification, setNoPhotoJustification] = useState('');
   const [showPhotoSourceModal, setShowPhotoSourceModal] = useState(false);
@@ -225,7 +227,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
       );
       onUpdateCollection(saved);
     } catch (err: any) {
-      setUploadError(err?.message || 'Erro ao registrar a fotografia.');
+      setUploadError(toAppError(err, 'Erro ao registrar a fotografia.'));
     } finally {
       setUploadingAssemblyPhoto(false);
     }
@@ -813,11 +815,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
             )}
           </div>
 
-          {uploadError && (
-            <div className="p-2.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300">
-              {uploadError}
-            </div>
-          )}
+          {uploadError && <ErrorNotice code={uploadError.code} message={uploadError.message} />}
           <input
             ref={assemblyCameraInputRef}
             type="file"

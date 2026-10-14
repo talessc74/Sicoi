@@ -11,6 +11,7 @@ import { getLatestPhaseSignature } from '../utils/signatures';
 import { CollectionHistoryPanel } from './CollectionHistoryPanel';
 import { fetchCollectionHistory } from '../services/collectionsService';
 import { checkSignatureSnapshots } from '../utils/historyVerification';
+import { friendlyMessage } from '../utils/errorMessages';
 import {
   ShieldCheck,
   ShieldAlert,
@@ -74,6 +75,7 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
   const [copiedHash, setCopiedHash] = useState<string | null>(null);
   const [inspectingEvent, setInspectingEvent] = useState<AuditEvent | null>(null);
   const [isVerifyingIntegrity, setIsVerifyingIntegrity] = useState(false);
+  const [showVerificationErrorDetail, setShowVerificationErrorDetail] = useState(false);
   const [verificationResult, setVerificationResult] = useState<{
     verified: boolean;
     totalEvents: number;
@@ -82,6 +84,7 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
     signaturesWithoutCopy: number;
     chainBrokenAtId: number | null;
     error?: string;
+    errorCode?: string;
     verifiedAt: string;
   } | null>(null);
 
@@ -238,6 +241,7 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
   const handleVerifyIntegrity = async () => {
     if (!currentCollection) return;
     setIsVerifyingIntegrity(true);
+    setShowVerificationErrorDetail(false);
     const verifiedAt = new Date().toLocaleTimeString('pt-BR');
     try {
       const history = await fetchCollectionHistory(currentCollection.nic);
@@ -261,6 +265,7 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
         signaturesWithoutCopy: 0,
         chainBrokenAtId: null,
         error: err?.message || 'Não foi possível consultar o histórico no servidor.',
+        errorCode: err?.code,
         verifiedAt
       });
     } finally {
@@ -558,7 +563,16 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
                 {verificationResult.error ? (
                   <span>
                     <span className="font-semibold">Não foi possível conferir: </span>
-                    {verificationResult.error}
+                    {friendlyMessage(verificationResult.errorCode)}
+                    <button
+                      onClick={() => setShowVerificationErrorDetail((v) => !v)}
+                      className="ml-1.5 underline opacity-80 hover:opacity-100 text-[11px]"
+                    >
+                      {showVerificationErrorDetail ? 'ocultar detalhes técnicos' : 'ver detalhes técnicos'}
+                    </button>
+                    {showVerificationErrorDetail && (
+                      <div className="mt-1 font-mono text-[10px] opacity-80">{verificationResult.error}</div>
+                    )}
                   </span>
                 ) : (
                   <>

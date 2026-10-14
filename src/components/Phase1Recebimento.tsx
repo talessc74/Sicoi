@@ -13,6 +13,8 @@ import {
 } from '../types/sgccco';
 import { PopConversationalConductor } from './PopConversationalConductor';
 import { PhotoSourceModal } from './PhotoSourceModal';
+import { ErrorNotice } from './ErrorNotice';
+import { toAppError, AppError } from '../utils/errorMessages';
 import { calculateSha256, generateSignaturePayload } from '../services/auditService';
 import { uploadCollectionPhoto } from '../services/photoService';
 import { getLatestPhaseSignature } from '../utils/signatures';
@@ -132,7 +134,7 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
   const [signing, setSigning] = useState(false);
   const [showPrintLabel, setShowPrintLabel] = useState(false);
   const [uploadingCategory, setUploadingCategory] = useState<string | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<AppError | null>(null);
   const [noPhotoTarget, setNoPhotoTarget] = useState<MandatoryPhotoFieldKey | null>(null);
   const [noPhotoJustification, setNoPhotoJustification] = useState('');
   const [showPhotoSourceModal, setShowPhotoSourceModal] = useState(false);
@@ -218,7 +220,7 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
       const fieldValue: FieldWithAiSuggestion<any> = { value: 'sim', isAiSuggested: false };
       onUpdateCollection({ ...saved, phase1: { ...saved.phase1, [pending.fieldKey]: fieldValue } });
     } catch (err: any) {
-      setUploadError(err?.message || 'Erro ao registrar a foto.');
+      setUploadError(toAppError(err, 'Erro ao registrar a foto.'));
     } finally {
       setUploadingCategory(null);
     }
@@ -595,9 +597,7 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
               {/* Checklist de fotos */}
               <FormSection title="Checklist Fotográfico (POP-03)">
                 {uploadError && (
-                  <div className="p-2.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-[11px]">
-                    {uploadError}
-                  </div>
+                  <ErrorNotice code={uploadError.code} message={uploadError.message} />
                 )}
                 <input
                   ref={cameraInputRef}

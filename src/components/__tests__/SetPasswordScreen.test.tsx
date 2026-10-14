@@ -3,6 +3,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SetPasswordScreen } from '../SetPasswordScreen';
+import { friendlyMessage } from '../../utils/errorMessages';
 
 function mockFetchOnce(status: number, body: unknown) {
   vi.stubGlobal(
@@ -63,14 +64,14 @@ describe('SetPasswordScreen', () => {
 
   it('mostra a mensagem de erro quando o token é inválido/expirado, sem travar o formulário', async () => {
     const user = userEvent.setup();
-    mockFetchOnce(400, { error: 'Link inválido, expirado ou já utilizado.' });
+    mockFetchOnce(400, { error: 'Link inválido, expirado ou já utilizado.', code: 'AUTH_LINK_INVALIDO' });
 
     render(<SetPasswordScreen token="abc123" />);
     await user.type(screen.getByLabelText(/^Nova senha/i), 'senha-nova-123');
     await user.type(screen.getByLabelText(/Confirmar nova senha/i), 'senha-nova-123');
     await user.click(screen.getByRole('button', { name: /^definir senha$/i }));
 
-    expect(await screen.findByText('Link inválido, expirado ou já utilizado.')).toBeInTheDocument();
+    expect(await screen.findByText(friendlyMessage('AUTH_LINK_INVALIDO'))).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^definir senha$/i })).toBeEnabled();
   });
 

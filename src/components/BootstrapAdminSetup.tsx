@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { UserProfile } from '../types/sgccco';
 import { bootstrapAdminApi } from '../services/authService';
+import { ErrorNotice } from './ErrorNotice';
+import { toAppError, AppError } from '../utils/errorMessages';
 import { ShieldCheck, Loader2 } from 'lucide-react';
 
 interface BootstrapAdminSetupProps {
@@ -21,7 +23,7 @@ export const BootstrapAdminSetup: React.FC<BootstrapAdminSetupProps> = ({ onLogg
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<AppError | null>(null);
 
   const isValid =
     name.trim() &&
@@ -44,7 +46,7 @@ export const BootstrapAdminSetup: React.FC<BootstrapAdminSetupProps> = ({ onLogg
       });
       onLoggedIn(person);
     } catch (err: any) {
-      setError(err?.message || 'Não foi possível criar o primeiro Administrador.');
+      setError(toAppError(err, 'Não foi possível criar o primeiro Administrador.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -132,7 +134,7 @@ export const BootstrapAdminSetup: React.FC<BootstrapAdminSetupProps> = ({ onLogg
           </div>
         </div>
 
-        {error && <p className="text-xs text-rose-600 dark:text-rose-400 font-mono">{error}</p>}
+        {error && <ErrorNotice code={error.code} message={error.message} />}
 
         <button
           type="submit"

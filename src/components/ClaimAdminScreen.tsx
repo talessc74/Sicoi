@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { UserProfile } from '../types/sgccco';
 import { claimAdminApi } from '../services/authService';
+import { ErrorNotice } from './ErrorNotice';
+import { toAppError, AppError } from '../utils/errorMessages';
 import { ShieldCheck, Loader2 } from 'lucide-react';
 
 interface ClaimAdminScreenProps {
@@ -22,7 +24,7 @@ export const ClaimAdminScreen: React.FC<ClaimAdminScreenProps> = ({ onLoggedIn, 
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<AppError | null>(null);
 
   const isValid =
     email.trim() &&
@@ -39,7 +41,7 @@ export const ClaimAdminScreen: React.FC<ClaimAdminScreenProps> = ({ onLoggedIn, 
       const person = await claimAdminApi(email.trim(), bootstrapSecret.trim(), password);
       onLoggedIn(person);
     } catch (err: any) {
-      setError(err?.message || 'Não foi possível ativar a conta.');
+      setError(toAppError(err, 'Não foi possível ativar a conta.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -117,7 +119,7 @@ export const ClaimAdminScreen: React.FC<ClaimAdminScreenProps> = ({ onLoggedIn, 
           </div>
         </div>
 
-        {error && <p className="text-xs text-rose-600 dark:text-rose-400 font-mono">{error}</p>}
+        {error && <ErrorNotice code={error.code} message={error.message} />}
 
         <button
           type="submit"

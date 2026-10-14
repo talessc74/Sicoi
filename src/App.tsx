@@ -39,6 +39,8 @@ import { PublicQRInspectionModal } from './components/PublicQRInspectionModal';
 import { AuditTimelineView } from './components/AuditTimelineView';
 import { GeminiForensicChatModal } from './components/GeminiForensicChatModal';
 import { NewCollectionModal } from './components/NewCollectionModal';
+import { ErrorNotice } from './components/ErrorNotice';
+import { toAppError, AppError } from './utils/errorMessages';
 import { Plus, ShieldCheck, Bot, Sparkles, Loader2, CheckCircle2 } from 'lucide-react';
 
 // Link de "definir senha" (gerado pelo Administrador, entregue por fora do
@@ -108,7 +110,7 @@ export default function App() {
   const [isQrModalOpen, setIsQrModalOpen] = useState<boolean>(false);
   const [isGeminiChatOpen, setIsGeminiChatOpen] = useState<boolean>(false);
   const [isLoadingCollections, setIsLoadingCollections] = useState<boolean>(true);
-  const [syncError, setSyncError] = useState<string | null>(null);
+  const [syncError, setSyncError] = useState<AppError | null>(null);
   // Todo campo do formulário já salva sozinho a cada mudança (ver handleUpdateCollection) —
   // mas isso nunca aparecia na tela, então não havia como o operador confirmar que o
   // preenchimento estava sendo salvo. Só o erro era visível; o sucesso ficava silencioso.
@@ -147,7 +149,7 @@ export default function App() {
       setSyncError(null);
     } catch (err: any) {
       console.error('Falha ao carregar dados após login:', err);
-      setSyncError(err?.message || 'Não foi possível conectar ao banco de dados.');
+      setSyncError(toAppError(err, 'Não foi possível conectar ao banco de dados.'));
       setInitialLoadFailed(true);
     } finally {
       setIsLoadingCollections(false);
@@ -195,7 +197,7 @@ export default function App() {
         await loadAppData(me);
       } catch (err: any) {
         console.error('Falha ao carregar dados iniciais do banco:', err);
-        setSyncError(err?.message || 'Não foi possível conectar ao banco de dados.');
+        setSyncError(toAppError(err, 'Não foi possível conectar ao banco de dados.'));
         setInitialLoadFailed(true);
       } finally {
         setIsLoadingCollections(false);
@@ -287,7 +289,7 @@ export default function App() {
       setSyncError(null);
     } catch (err: any) {
       console.error('Falha ao remover pessoa:', err);
-      setSyncError(err?.message || 'Não foi possível remover a pessoa.');
+      setSyncError(toAppError(err, 'Não foi possível remover a pessoa.'));
     }
   };
 
@@ -319,7 +321,7 @@ export default function App() {
         console.error('Falha ao salvar conjunto:', err);
         setCollections(previous);
         setSaveStatus('idle');
-        setSyncError(err?.message || 'Não foi possível salvar a alteração no banco de dados.');
+        setSyncError(toAppError(err, 'Não foi possível salvar a alteração no banco de dados.'));
       });
   };
 
@@ -413,7 +415,7 @@ export default function App() {
       setShowNewCollectionModal(false);
     } catch (err: any) {
       console.error('Falha ao criar conjunto:', err);
-      setSyncError(err?.message || 'Não foi possível criar o conjunto no banco de dados.');
+      setSyncError(toAppError(err, 'Não foi possível criar o conjunto no banco de dados.'));
     }
   };
 
@@ -473,7 +475,9 @@ export default function App() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-slate-100 dark:bg-slate-950 text-slate-700 dark:text-slate-300 text-sm text-center p-6">
         <p className="font-semibold">Não foi possível carregar os conjuntos do banco de dados.</p>
-        {syncError && <p className="font-mono text-xs text-rose-600 dark:text-rose-400">{syncError}</p>}
+        {syncError && (
+          <ErrorNotice code={syncError.code} message={syncError.message} className="max-w-md" />
+        )}
         <button
           onClick={() => window.location.reload()}
           className="px-4 py-2 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-semibold"
@@ -497,10 +501,12 @@ export default function App() {
   return (
     <div className={`min-h-screen flex flex-col font-sans transition-colors ${laboratoryMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-100/70 dark:bg-slate-950 text-slate-900 dark:text-slate-100'}`}>
       {syncError && (
-        <div className="bg-rose-600 text-white text-xs font-mono px-4 py-2 flex items-center justify-between gap-3">
-          <span>⚠ {syncError}</span>
-          <button onClick={() => setSyncError(null)} className="underline shrink-0">Dispensar</button>
-        </div>
+        <ErrorNotice
+          variant="banner"
+          code={syncError.code}
+          message={syncError.message}
+          onDismiss={() => setSyncError(null)}
+        />
       )}
       {/* Top Header with Main Navigation Menu (§User Request) */}
       <Header
