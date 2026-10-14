@@ -331,13 +331,13 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Top Banner Curadoria */}
+      {/* Top Banner Montagem e Inventário */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 font-mono text-xs font-semibold uppercase">
               <UserCheck className="w-4 h-4" />
-              <span>Fase 4 · Curadoria Bioantropológica & Versão Científica (§8)</span>
+              <span>Fase 4 · Montagem e Inventário — Bioantropológico & Versão Científica (§8)</span>
             </div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-0.5">
               {collection.nic} · Versão v{collection.phase4.curationVersionNumber} ({collection.phase4.curationVersionStatus.toUpperCase()})
@@ -388,7 +388,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
           </div>
         </div>
 
-        {/* Tab Navigation Dentro da Curadoria */}
+        {/* Tab Navigation Dentro de Montagem e Inventário */}
         <div className="flex items-center gap-2 mt-4 pt-3 border-t border-slate-200 dark:border-slate-800 text-xs overflow-x-auto">
           <button
             onClick={() => setActiveTab('individuos')}
@@ -879,7 +879,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
                 Fotografia de Montagem Completa Pendente
               </p>
               <p className="text-slate-500 text-[11px] max-w-md mx-auto">
-                Para fechar a curadoria científica, capture e aprove uma foto nítida do esqueleto articulado em norma anatômica com escala métrica.
+                Para fechar a Montagem e Inventário, capture e aprove uma foto nítida do esqueleto articulado em norma anatômica com escala métrica.
               </p>
               {canApprove && (
                 <div className="flex items-center justify-center gap-2 mt-2">

@@ -245,7 +245,7 @@ export const Phase5Patologias: React.FC<Phase5PatologiasProps> = ({
           <div>
             <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-mono text-xs font-semibold uppercase">
               <Activity className="w-4 h-4" />
-              <span>Fase 5 · Patologias, Exames Complementares & Marcação Física</span>
+              <span>Fase 5 · Alterações Ósseas, Exames Complementares & Marcação Física</span>
             </div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-0.5">
               {collection.nic}
@@ -306,7 +306,7 @@ export const Phase5Patologias: React.FC<Phase5PatologiasProps> = ({
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
             }`}
           >
-            Patologias & Traumas ({pathologies.length})
+            Alterações Ósseas & Traumas ({pathologies.length})
           </button>
           <button
             onClick={() => setActiveTab('exames')}
@@ -348,14 +348,14 @@ export const Phase5Patologias: React.FC<Phase5PatologiasProps> = ({
         </div>
       )}
 
-      {/* Aba 1: Patologias & Traumas */}
+      {/* Aba 1: Alterações Ósseas & Traumas */}
       {activeTab === 'patologias' && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
             <div>
               <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                 <Activity className="w-4 h-4 text-rose-600" />
-                Catálogo de Patologias, Traumas e Alterações Tafonômicas (§9)
+                Catálogo de Alterações Ósseas, Traumas e Alterações Tafonômicas (§9)
               </h3>
               <p className="text-xs text-slate-500">
                 Taxonomia controlada DITEC com suporte a registro não catalogado justificado.

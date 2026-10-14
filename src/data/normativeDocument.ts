@@ -26,7 +26,7 @@ export const NORMATIVE_DOCUMENT_SECTIONS: DocumentSection[] = [
     phaseApplicable: 'todas',
     regulatoryReference: 'Portaria DITEC/PF nº 1415/2024, Art. 1º',
     keywords: ['finalidade', 'âmbito', 'coi-inc', 'biobanco', 'portaria 1415', 'ditec', 'antropologia forense', 'pesquisa', 'ensino', 'diretrizes'],
-    content: `O Sistema de Gestão da Coleção Osteológica Identificada (SIGCOI) tem por finalidade estabelecer as diretrizes técnicas, científicas e operacionais para a recepção, higienização, acondicionamento provisório, curadoria bioantropológica, catalogação de patologias, guarda definitiva em galpão e disponibilização para pesquisa de remanescentes ósseos humanos da Coleção Osteológica Identificada do Instituto Nacional de Criminalística (COI-INC).
+    content: `O Sistema de Gestão da Coleção Osteológica Identificada (SIGCOI) tem por finalidade estabelecer as diretrizes técnicas, científicas e operacionais para a recepção, higienização, acondicionamento provisório, montagem e inventário bioantropológico, catalogação de alterações ósseas, guarda definitiva em galpão e disponibilização para pesquisa de remanescentes ósseos humanos da Coleção Osteológica Identificada do Instituto Nacional de Criminalística (COI-INC).
 A COI-INC é um biobanco de remanescentes humanos brasileiros, com inserção orientada pela representatividade das cinco regiões do país, e tem a finalidade de ser uma coleção osteológica de referência para a construção de conhecimento da antropologia forense nacional. Destina-se especificamente a apoiar: (I) pesquisas aplicadas em antropologia forense e áreas correlatas; (II) ações de capacitação e ensino; e (III) cooperação interinstitucional, estágios e intercâmbios com instituições de perícia oficial, de ensino e de pesquisa (Portaria DITEC/PF nº 1415/2024, art. 1º, §§1º e 2º).
 Todos os procedimentos devem observar o princípio da dignidade da pessoa humana, o respeito aos restos mortais e o rigor metodológico científico.`
   },
@@ -75,26 +75,26 @@ A transição para a Fase 3 exige atestado formal de secura completa pelo técni
   {
     id: 'sec-5-acondicionamento-provisorio',
     chapterNumber: 4,
-    chapterTitle: 'Capítulo IV — Acondicionamento Provisório e Fila de Curadoria (Fase 3)',
+    chapterTitle: 'Capítulo IV — Acondicionamento Provisório e Fila de Montagem e Inventário (Fase 3)',
     sectionNumber: 'Art. 5º',
     title: 'Endereçamento Físico em Estantes de Laboratório e Gestão da Fila',
     phaseApplicable: 3,
     regulatoryReference: 'POP-OSTEO-03 (Armazenamento Transitório)',
-    keywords: ['acondicionamento provisório', 'estante de laboratório', 'endereçamento', 'sala b-10', 'leitura qr', 'fila de curadoria'],
+    keywords: ['acondicionamento provisório', 'estante de laboratório', 'endereçamento', 'sala b-10', 'leitura qr', 'fila de montagem e inventário'],
     content: `As caixas contendo material limpo e seco serão alocadas na Sala de Armazenamento Provisório do Laboratório Central, em estantes identificadas por prateleira e vão.
 O operador deverá obrigatoriamente escanear o QR Code afixado na prateleira para confirmar a localização física no sistema.
-O sistema registrará o conjunto na Fila de Curadoria Antropológica segundo critérios objetivos de ordem de entrada, prioridades de pesquisa e ensino da COI-INC e necessidades de conservação do material.`
+O sistema registrará o conjunto na Fila de Montagem e Inventário segundo critérios objetivos de ordem de entrada, prioridades de pesquisa e ensino da COI-INC e necessidades de conservação do material.`
   },
   {
     id: 'sec-6-curadoria-nmi-perfil',
     chapterNumber: 5,
-    chapterTitle: 'Capítulo V — Curadoria Científica, Pareamento e Perfil Biológico (Fase 4)',
+    chapterTitle: 'Capítulo V — Montagem e Inventário, Pareamento e Perfil Biológico (Fase 4)',
     sectionNumber: 'Art. 6º',
     title: 'Determinação do Número Mínimo de Indivíduos (NMI) e Métodos Diagnósticos',
     phaseApplicable: 4,
     regulatoryReference: 'Protocolo Científico DITEC de Antropologia Forense (ALFA)',
-    keywords: ['nmi', 'número mínimo de indivíduos', 'curadoria', 'pareamento ósseo', 'duplicação', 'dimorfismo', 'phenice', 'suchey-brooks'],
-    content: `A curadoria científica — limpeza, documentação, exames antropológicos e catalogação dos esqueletos — é coordenada pelo curador da COI-INC, perito criminal federal designado pelo Diretor do INC (Portaria DITEC/PF nº 1415/2024, art. 4º). A inserção de esqueletos e de dados de catalogação é efetivada por peritos criminais federais (art. 1º, §3º).
+    keywords: ['nmi', 'número mínimo de indivíduos', 'montagem e inventário', 'pareamento ósseo', 'duplicação', 'dimorfismo', 'phenice', 'suchey-brooks'],
+    content: `A etapa de Montagem e Inventário — limpeza, documentação, exames antropológicos e catalogação dos esqueletos — é coordenada pelo curador da COI-INC, perito criminal federal designado pelo Diretor do INC (Portaria DITEC/PF nº 1415/2024, art. 4º). A inserção de esqueletos e de dados de catalogação é efetivada por peritos criminais federais (art. 1º, §3º).
 O diagnóstico de NMI deve fundamentar-se em elementos anatômicos inequívocos, tais como: duplicação de estruturas homólogas (ex: dois terceiros molares inferiores esquerdos, duas patelas direitas), incompatibilidade biológica de desenvolvimento e maturação etária, ou acentuada discrepância métrica/morfológica de robustez.
 Para cada indivíduo segregado (IND-01, IND-02), o curador aplicará métodos consolidados na literatura internacional:
 1. Estimativa de Sexo: Phenice (1969) para morfologia da bacia e Walker (2008) para caracteres craniométricos;
@@ -106,12 +106,12 @@ Para cada indivíduo segregado (IND-01, IND-02), o curador aplicará métodos co
   {
     id: 'sec-7-patologias-dicom-marcacao',
     chapterNumber: 6,
-    chapterTitle: 'Capítulo VI — Patologias, Exames Complementares e Marcação Óssea (Fase 5)',
+    chapterTitle: 'Capítulo VI — Alterações Ósseas, Exames Complementares e Marcação Óssea (Fase 5)',
     sectionNumber: 'Art. 7º',
     title: 'Catálogo de Lesões, Integração DICOM e Marcação Museológica Indelével',
     phaseApplicable: 5,
     regulatoryReference: 'POP-OSTEO-05 (Marcação e Exames)',
-    keywords: ['patologias', 'trauma ante-mortem', 'trauma peri-mortem', 'dicom', 'tomografia', 'nanquim', 'paraloid b-72', 'checklist'],
+    keywords: ['alterações ósseas', 'trauma ante-mortem', 'trauma peri-mortem', 'dicom', 'tomografia', 'nanquim', 'paraloid b-72', 'checklist'],
     content: `O registro de lesões patológicas, anomalias de desenvolvimento e traumatismos obedecerá à taxonomia controlada oficial da DITEC.
 Caso seja identificada condição não catalogada, o curador poderá inseri-la mediante justificativa técnica formal.
 Em casos de exames complementares de Tomografia Computadorizada (TC) ou Radiografia Digital, as imagens no formato DICOM devem ser acopladas ao registro com extração automática dos parâmetros radiológicos (kVp, espessura de corte milimétrica e unidades Hounsfield médias).
@@ -159,7 +159,7 @@ Saídas temporárias de peças para análises externas destrutivas (ex: dataçã
     keywords: ['criptografia', 'sha-256', 'assinatura digital', 'imutabilidade', 'bloqueio sequencial', 'reabertura justificada', 'auditoria'],
     content: `Cada fase do fluxo de trabalho é estritamente sequencial. A transição para a fase N+1 depende incondicionalmente da validação e bloqueio criptográfico da fase N.
 A assinatura da fase consolida o payload canônico dos dados em um hash criptográfico SHA-256 registrado na trilha de auditoria indelével.
-Caso seja detectada necessidade científica superveniente de retificação (ex: nova evidência morfológica durante curadoria que altera estimativa prévia), o sistema permite reabertura exclusivamente pelo perfil de Curador ou Administrador.
+Caso seja detectada necessidade científica superveniente de retificação (ex: nova evidência morfológica durante a montagem e o inventário que altera estimativa prévia), o sistema permite reabertura exclusivamente pelo perfil de Curador ou Administrador.
 A reabertura exige o preenchimento de justificativa técnica pormenorizada, sendo registrada na trilha de custódia com identificador, horário e histórico da versão anterior.`
   }
 ];

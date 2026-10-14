@@ -119,7 +119,7 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
         filter.sex = 'feminino';
       }
 
-      if (lower.includes('trauma') || lower.includes('fratura') || lower.includes('lesão') || lower.includes('patologia')) {
+      if (lower.includes('trauma') || lower.includes('fratura') || lower.includes('lesão') || lower.includes('patologia') || lower.includes('alteração óssea')) {
         filter.hasTrauma = true;
       }
 
@@ -357,7 +357,7 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
                 onChange={(e) => setFilterHasPathology(e.target.checked)}
                 className="rounded"
               />
-              <span className="text-slate-700 dark:text-slate-300">Apenas com Patologias/Traumas</span>
+              <span className="text-slate-700 dark:text-slate-300">Apenas com Alterações Ósseas/Traumas</span>
             </label>
 
             <label className="flex items-center gap-1.5 cursor-pointer">
@@ -426,9 +426,9 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
                     ))}
                   </div>
 
-                  {/* Patologias e Exames */}
+                  {/* Alterações Ósseas e Exames */}
                   <div className="flex flex-wrap items-center gap-2 pt-1 font-mono text-[11px]">
-                    <span className="text-slate-400">Patologias:</span>
+                    <span className="text-slate-400">Alterações Ósseas:</span>
                     {pathologies.length > 0 ? (
                       pathologies.map(p => (
                         <span key={p.id} className="px-2 py-0.5 rounded bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900">
@@ -515,7 +515,7 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
                 Gestão de Empréstimos e Saída de Material Ósseo (§14)
               </h3>
               <p className="text-slate-500">
-                Formalização com termo de responsabilidade, conferência física na devolução e hash da curadoria.
+                Formalização com termo de responsabilidade, conferência física na devolução e hash da montagem e inventário.
               </p>
             </div>
           </div>
@@ -545,12 +545,12 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
           </div>
 
           <p className="text-slate-500 leading-relaxed">
-            O agente de IA analisa as diferenças criptográficas entre versões científicas (ex: rascunho de estudante vs curadoria homologada) e produz uma narrativa clara e reprodutível das alterações:
+            O agente de IA analisa as diferenças criptográficas entre versões científicas (ex: rascunho de estudante vs montagem e inventário homologados) e produz uma narrativa clara e reprodutível das alterações:
           </p>
 
           <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3 font-mono">
             <div className="flex justify-between text-slate-500 text-[11px]">
-              <span>Comparação: v1 (Rascunho de Bancada) ➔ v2 (Curadoria Homologada)</span>
+              <span>Comparação: v1 (Rascunho de Bancada) ➔ v2 (Montagem e Inventário Homologados)</span>
               <span>COI: COI-001</span>
             </div>
             <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 space-y-2 text-slate-700 dark:text-slate-300 font-sans leading-relaxed">

@@ -245,7 +245,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 Modo Laboratório / Luvas Estéreis
               </span>
               <p className="text-slate-500 text-[11px] mt-0.5 leading-snug">
-                Amplia a área de toque dos botões na tela e ativa alertas com retorno de contraste para operação na bancada de lavagem e curadoria.
+                Amplia a área de toque dos botões na tela e ativa alertas com retorno de contraste para operação na bancada de lavagem e de montagem e inventário.
               </p>
             </div>
             <button
@@ -700,7 +700,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <th className="px-5 py-3 font-semibold">Papel (Role)</th>
                 <th className="px-5 py-3 font-semibold">Descrição Funcional</th>
                 <th className="px-5 py-3 font-semibold text-center">Origem Legal / Cemitério (§7)</th>
-                <th className="px-5 py-3 font-semibold text-center">Curadoria Científica</th>
+                <th className="px-5 py-3 font-semibold text-center">Montagem e Inventário</th>
                 <th className="px-5 py-3 font-semibold text-center">Assinatura de Fases</th>
                 <th className="px-5 py-3 font-semibold text-center">Exportação Científica</th>
               </tr>

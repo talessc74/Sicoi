@@ -42,7 +42,7 @@ export const GeminiForensicChatModal: React.FC<GeminiForensicChatModalProps> = (
       {
         id: 'msg-init',
         role: 'assistant',
-        content: `Olá, ${currentUser.name}! Sou o Assistente com IA do SIGCOI, de apoio à curadoria, à pesquisa e ao ensino na COI-INC. Posso apoiar na interpretação de parâmetros osteológicos (estimativa de sexo, idade pelo método Suchey-Brooks, NMI, tafonomia), rastreabilidade das caixas e do acervo e transcrição de anotações de laboratório por voz. Em que posso ajudar?`,
+        content: `Olá, ${currentUser.name}! Sou o Assistente com IA do SIGCOI, de apoio à montagem e inventário, à pesquisa e ao ensino na COI-INC. Posso apoiar na interpretação de parâmetros osteológicos (estimativa de sexo, idade pelo método Suchey-Brooks, NMI, tafonomia), rastreabilidade das caixas e do acervo e transcrição de anotações de laboratório por voz. Em que posso ajudar?`,
         timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
         modelUsed: 'gemini-3.5-flash',
       },
@@ -321,7 +321,7 @@ export const GeminiForensicChatModal: React.FC<GeminiForensicChatModalProps> = (
             >
               <option value="perito">Antropologia Forense & Pesquisa</option>
               <option value="custodia">Controle & Rastreabilidade do Acervo</option>
-              <option value="antropologo">Curadoria & Conservação Física</option>
+              <option value="antropologo">Montagem e Inventário & Conservação Física</option>
             </select>
           </div>
         </div>

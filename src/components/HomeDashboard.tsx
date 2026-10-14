@@ -53,8 +53,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     1: 'Recebimento & Triagem',
     2: 'Limpeza & Secagem',
     3: 'Acondicionamento Provisório',
-    4: 'Curadoria Científica & NMI',
-    5: 'Patologias & Marcação',
+    4: 'Montagem e Inventário & NMI',
+    5: 'Alterações Ósseas & Marcação',
     6: 'Galpão Definitivo & QR',
     7: 'Consulta & Pesquisa'
   };
@@ -309,8 +309,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                       {!nmiNotDetermined ? (
                         <>{col.phase4.individuals.length} {col.phase4.individuals.length === 1 ? 'indivíduo (NMI)' : 'indivíduos (NMI)'}</>
                       ) : (
-                        // Sem curadoria concluída, o número de caixas não informa o NMI.
-                        <span className="text-slate-400" title="Fase 4 (Curadoria) ainda não realizada — nenhum indivíduo confirmado">
+                        // Sem Montagem e Inventário concluídos, o número de caixas não informa o NMI.
+                        <span className="text-slate-400" title="Fase 4 (Montagem e Inventário) ainda não realizada — nenhum indivíduo confirmado">
                           Não determinado
                         </span>
                       )}
