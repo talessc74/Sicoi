@@ -28,11 +28,38 @@ export const canPerformRole = (currentRole: UserRole, requiredRole: UserRole): b
 // Curador, agindo como técnico) continua sendo a única que conta — o
 // Pesquisador pode registrar sua própria confirmação separada, sempre
 // opcional, mas nunca substitui esta (decisão de acesso out/2026, correção).
-export const canSignAsTechnician = (currentRole: UserRole): boolean =>
-  currentRole === 'curador' || currentRole === 'tecnico';
+//
+// Recebe a pessoa inteira (não só o papel) desde §13 (out/2026): quem cadastra
+// pode ampliar ou reduzir este acesso por pessoa (phaseSigningAccess), sem
+// mudar o papel dela. Cobre as fases 0-3, a Montagem da Fase 4 e a Física da
+// Fase 5 — NUNCA o Inventário (Fase 4) nem a Científica (Fase 5), que
+// continuam exclusivas do papel Curador em código, sem exceção por pessoa
+// (ver canEdit/isCurator em Phase4Curadoria.tsx e Phase5Patologias.tsx).
+export const canSignAsTechnician = (person: Pick<UserProfile, 'role' | 'phaseSigningAccess'>): boolean =>
+  person.phaseSigningAccess ?? (person.role === 'curador' || person.role === 'tecnico');
 
 // Funções de Administrador (cadastro de pessoas, links de acesso, Zona de
 // Risco): quem tem o papel Administrador, ou outro papel com o acesso de
 // Administrador somado (ex.: a Curadora que também administra o sistema).
 export const hasAdminAccess = (person: Pick<UserProfile, 'role' | 'adminAccess'> | null | undefined): boolean =>
   Boolean(person && (person.role === 'administrador' || person.adminAccess === true));
+
+// Ver dados de Origem Legal/Cemitério (§7, Fase 1) — restrito por padrão a
+// Curador e Administrador; ajustável por pessoa (legalOriginAccess, §13).
+export const canViewLegalOrigin = (person: Pick<UserProfile, 'role' | 'legalOriginAccess'>): boolean =>
+  person.legalOriginAccess ?? (person.role === 'curador' || person.role === 'administrador');
+
+// Editar indivíduos/perfil biológico/odontograma na Fase 4 (Montagem e
+// Inventário/Curadoria) — hoje Curador e Estudante por padrão; ajustável por
+// pessoa (curationAccess, §13). Diferente de canSignInventory (Phase4Curadoria.tsx),
+// que é a assinatura do Inventário em si — essa continua exclusiva do papel
+// Curador, nunca ajustável por pessoa.
+export const canCurate = (person: Pick<UserProfile, 'role' | 'curationAccess'>): boolean =>
+  person.curationAccess ?? (person.role === 'curador' || person.role === 'estudante');
+
+// Exportar dados científicos (Fase 7) — por padrão Curador, Administrador e
+// Pesquisador; ajustável por pessoa (exportAccess, §13). Até out/2026 esta
+// exportação não tinha trava nenhuma — esta é a primeira vez que algum papel
+// fica de fato sem acesso a ela.
+export const canExportScientificData = (person: Pick<UserProfile, 'role' | 'exportAccess'>): boolean =>
+  person.exportAccess ?? (person.role === 'curador' || person.role === 'administrador' || person.role === 'pesquisador');

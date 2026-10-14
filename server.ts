@@ -1241,8 +1241,19 @@ app.post('/api/people', requireAdminSession, async (req: Request, res: Response)
     // Acesso de Administrador somado só faz sentido para outro papel — quem já
     // é Administrador tem essas funções pelo próprio papel.
     const adminAccess = role !== 'administrador' && req.body?.adminAccess === true;
+    // Os 4 ajustes de acesso (§13) são sempre explícitos, sem forçar por papel —
+    // o Administrador pode ampliar OU reduzir qualquer um deles por pessoa,
+    // mesmo pra quem já teria aquele acesso pelo papel (o cliente já manda o
+    // valor pré-calculado a partir do papel escolhido, mas o editor pode mudar).
+    const legalOriginAccess = req.body?.legalOriginAccess === true;
+    const curationAccess = req.body?.curationAccess === true;
+    const phaseSigningAccess = req.body?.phaseSigningAccess === true;
+    const exportAccess = req.body?.exportAccess === true;
     const pool = getPool();
-    const person = await createPerson(pool, { name, role, institution, email, adminAccess });
+    const person = await createPerson(pool, {
+      name, role, institution, email, adminAccess,
+      legalOriginAccess, curationAccess, phaseSigningAccess, exportAccess
+    });
     return res.status(201).json({ person });
   } catch (error: any) {
     console.error('Erro ao cadastrar pessoa:', error);
@@ -1273,6 +1284,10 @@ app.put('/api/people/:id', requireAdminSession, async (req: Request, res: Respon
       return res.status(400).json({ error: 'Papel inválido. Use tecnico, curador, administrador, pesquisador ou estudante.' });
     }
     const adminAccess = role !== 'administrador' && req.body?.adminAccess === true;
+    const legalOriginAccess = req.body?.legalOriginAccess === true;
+    const curationAccess = req.body?.curationAccess === true;
+    const phaseSigningAccess = req.body?.phaseSigningAccess === true;
+    const exportAccess = req.body?.exportAccess === true;
     // Trava contra se trancar do lado de fora: quem edita o próprio cadastro
     // não pode sair dele sem as funções de Administrador (senão ninguém
     // consegue desfazer o erro se for o único Administrador).
@@ -1280,7 +1295,10 @@ app.put('/api/people/:id', requireAdminSession, async (req: Request, res: Respon
       return res.status(400).json({ error: 'Você não pode tirar o seu próprio acesso de Administrador. Peça a outro Administrador para fazer isso.' });
     }
     const pool = getPool();
-    const person = await updatePerson(pool, req.params.id, { name, role, institution, email, adminAccess });
+    const person = await updatePerson(pool, req.params.id, {
+      name, role, institution, email, adminAccess,
+      legalOriginAccess, curationAccess, phaseSigningAccess, exportAccess
+    });
     if (!person) {
       return res.status(404).json({ error: 'Pessoa não encontrada.' });
     }

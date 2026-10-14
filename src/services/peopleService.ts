@@ -4,8 +4,10 @@
  * reconfere (ver _local-adr-policy-202). A senha de cada pessoa é definida
  * separadamente, pelo link gerado em authService.generateSetupLinkApi.
  */
-import { UserProfile } from '../types/sgccco';
+import { UserProfile, PersonAccessOverrides } from '../types/sgccco';
 import { csrfHeaders } from './csrf';
+
+type PersonInput = { name: string; role: UserProfile['role']; institution: string; email: string } & Partial<PersonAccessOverrides>;
 
 async function parseJsonOrThrow(res: Response, fallbackMessage: string) {
   let data: any = null;
@@ -26,13 +28,7 @@ export async function fetchPeople(): Promise<UserProfile[]> {
   return data.people;
 }
 
-export async function createPersonApi(person: {
-  name: string;
-  role: UserProfile['role'];
-  institution: string;
-  email: string;
-  adminAccess?: boolean;
-}): Promise<UserProfile> {
+export async function createPersonApi(person: PersonInput): Promise<UserProfile> {
   const res = await fetch('/api/people', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
@@ -42,10 +38,7 @@ export async function createPersonApi(person: {
   return data.person;
 }
 
-export async function updatePersonApi(
-  id: string,
-  person: { name: string; role: UserProfile['role']; institution: string; email: string; adminAccess?: boolean }
-): Promise<UserProfile> {
+export async function updatePersonApi(id: string, person: PersonInput): Promise<UserProfile> {
   const res = await fetch(`/api/people/${encodeURIComponent(id)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...csrfHeaders() },

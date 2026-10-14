@@ -61,7 +61,7 @@ export const Phase5Patologias: React.FC<Phase5PatologiasProps> = ({
   // Curador — o Pesquisador pode registrar sua própria confirmação separada
   // (ver handleConfirmResearcherReview), nunca esta assinatura (correção: "o
   // técnico é obrigatório, o pesquisador pode ou não").
-  const canSignPhysical = canSignAsTechnician(currentUser.role) && !collection.phase5.technicianPhysicalSign;
+  const canSignPhysical = canSignAsTechnician(currentUser) && !collection.phase5.technicianPhysicalSign;
 
   const pathologies = collection.phase5.pathologies || [];
   const exams = collection.phase5.complementaryExams || collection.phase5.exams || [];

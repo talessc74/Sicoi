@@ -38,8 +38,19 @@ interface PersonAuthRow {
   institution: string;
   email: string;
   admin_access: boolean;
+  legal_origin_access: boolean;
+  curation_access: boolean;
+  phase_signing_access: boolean;
+  export_access: boolean;
   password_hash: string | null;
 }
+
+// Mesmas colunas de ajuste de acesso por pessoa de db/peopleRepo.ts (§13) —
+// duplicado aqui porque este arquivo faz suas próprias consultas a `people`
+// (login não passa por peopleRepo.ts). Qualquer coluna nova de acesso
+// precisa ser adicionada nos dois lugares.
+const PERSON_AUTH_COLUMNS =
+  'id, name, role, institution, email, admin_access, legal_origin_access, curation_access, phase_signing_access, export_access';
 
 function toUserProfile(row: PersonAuthRow): UserProfile {
   return {
@@ -48,7 +59,11 @@ function toUserProfile(row: PersonAuthRow): UserProfile {
     role: row.role as UserProfile['role'],
     institution: row.institution,
     email: row.email,
-    adminAccess: row.admin_access === true
+    adminAccess: row.admin_access === true,
+    legalOriginAccess: row.legal_origin_access === true,
+    curationAccess: row.curation_access === true,
+    phaseSigningAccess: row.phase_signing_access === true,
+    exportAccess: row.export_access === true
   };
 }
 
@@ -68,7 +83,7 @@ export async function hashPassword(plainPassword: string): Promise<string> {
  */
 export async function verifyLogin(pool: Pool, email: string, plainPassword: string): Promise<UserProfile | null> {
   const { rows } = await pool.query<PersonAuthRow>(
-    'SELECT id, name, role, institution, email, admin_access, password_hash FROM people WHERE lower(email) = lower($1)',
+    'SELECT id, name, role, institution, email, admin_access, legal_origin_access, curation_access, phase_signing_access, export_access, password_hash FROM people WHERE lower(email) = lower($1)',
     [email]
   );
   const row = rows[0];
@@ -144,7 +159,7 @@ export async function clearLoginAttempts(pool: Pool, email: string): Promise<voi
 
 export async function getPersonWithAuthStatus(pool: Pool, id: string): Promise<(UserProfile & { hasPassword: boolean }) | null> {
   const { rows } = await pool.query<PersonAuthRow>(
-    'SELECT id, name, role, institution, email, admin_access, password_hash FROM people WHERE id = $1',
+    'SELECT id, name, role, institution, email, admin_access, legal_origin_access, curation_access, phase_signing_access, export_access, password_hash FROM people WHERE id = $1',
     [id]
   );
   if (!rows[0]) return null;
@@ -177,7 +192,7 @@ export async function hasUnactivatedAdministrator(pool: Pool): Promise<boolean> 
  */
 export async function claimAdministratorAccount(pool: Pool, email: string, newPassword: string): Promise<UserProfile> {
   const { rows } = await pool.query<PersonAuthRow>(
-    'SELECT id, name, role, institution, email, admin_access, password_hash FROM people WHERE lower(email) = lower($1)',
+    'SELECT id, name, role, institution, email, admin_access, legal_origin_access, curation_access, phase_signing_access, export_access, password_hash FROM people WHERE lower(email) = lower($1)',
     [email]
   );
   const row = rows[0];
@@ -187,7 +202,7 @@ export async function claimAdministratorAccount(pool: Pool, email: string, newPa
   const passwordHash = await hashPassword(newPassword);
   const { rows: updated } = await pool.query<PersonAuthRow>(
     `UPDATE people SET password_hash = $1 WHERE id = $2
-     RETURNING id, name, role, institution, email, admin_access, password_hash`,
+     RETURNING id, name, role, institution, email, admin_access, legal_origin_access, curation_access, phase_signing_access, export_access, password_hash`,
     [passwordHash, row.id]
   );
   return toUserProfile(updated[0]);
@@ -200,7 +215,7 @@ export async function claimAdministratorAccount(pool: Pool, email: string, newPa
  */
 export async function changeOwnPassword(pool: Pool, personId: string, currentPassword: string, newPassword: string): Promise<void> {
   const { rows } = await pool.query<PersonAuthRow>(
-    'SELECT id, name, role, institution, email, admin_access, password_hash FROM people WHERE id = $1',
+    'SELECT id, name, role, institution, email, admin_access, legal_origin_access, curation_access, phase_signing_access, export_access, password_hash FROM people WHERE id = $1',
     [personId]
   );
   const row = rows[0];
@@ -262,7 +277,7 @@ export async function createFirstAdmin(
     const { rows } = await client.query<PersonAuthRow>(
       `INSERT INTO people (name, role, institution, email, password_hash)
        VALUES ($1, 'administrador', $2, $3, $4)
-       RETURNING id, name, role, institution, email, admin_access, password_hash`,
+       RETURNING id, name, role, institution, email, admin_access, legal_origin_access, curation_access, phase_signing_access, export_access, password_hash`,
       [person.name, person.institution, person.email, passwordHash]
     );
     await client.query('COMMIT');
@@ -356,7 +371,7 @@ export async function consumePasswordSetupToken(pool: Pool, token: string, newPa
     const passwordHash = await hashPassword(newPassword);
     const updated = await client.query<PersonAuthRow>(
       `UPDATE people SET password_hash = $1 WHERE id = $2
-       RETURNING id, name, role, institution, email, admin_access, password_hash`,
+       RETURNING id, name, role, institution, email, admin_access, legal_origin_access, curation_access, phase_signing_access, export_access, password_hash`,
       [passwordHash, rows[0].person_id]
     );
     await client.query('UPDATE password_setup_tokens SET used_at = now() WHERE id = $1', [rows[0].id]);

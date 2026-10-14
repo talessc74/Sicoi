@@ -16,7 +16,7 @@ import { PhotoSourceModal } from './PhotoSourceModal';
 import { calculateSha256, generateSignaturePayload } from '../services/auditService';
 import { uploadCollectionPhoto } from '../services/photoService';
 import { getLatestPhaseSignature } from '../utils/signatures';
-import { canSignAsTechnician } from '../utils/permissions';
+import { canSignAsTechnician, canViewLegalOrigin } from '../utils/permissions';
 import { Shield, Lock, FileText, Camera, CheckCircle2, AlertCircle, Sparkles, Printer, Bot, Save, HelpCircle, UserCheck } from 'lucide-react';
 
 // As duas fotos sempre esperadas do checklist (campos 5 e 8 do A.1) — a diferença
@@ -146,12 +146,12 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
   const phaseSignature = getLatestPhaseSignature(collection.signatures, 1);
   const isLocked = phaseSignature?.status === 'locked';
 
-  const canViewRestrictedLegal = currentUser.role === 'curador' || currentUser.role === 'administrador';
+  const canViewRestrictedLegal = canViewLegalOrigin(currentUser);
   // A assinatura que trava a fase é exclusiva de Técnico/Curador — o Pesquisador
   // tem acesso à Fase 1, mas sua participação é a confirmação opcional abaixo
   // (handleConfirmResearcherReview), nunca esta assinatura (decisão de acesso
   // out/2026, correção: "o técnico é obrigatório, o pesquisador pode ou não").
-  const canActAsTechnician = canSignAsTechnician(currentUser.role);
+  const canActAsTechnician = canSignAsTechnician(currentUser);
 
   const p1 = collection.phase1;
 

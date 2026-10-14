@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { OsteologicalCollection, UserProfile, UserRole } from '../types/sgccco';
+import { OsteologicalCollection, UserProfile, UserRole, PersonAccessOverrides } from '../types/sgccco';
 import { AdminDangerZone } from './AdminDangerZone';
 import { getRoleTheme } from '../utils/roleTheme';
-import { hasAdminAccess } from '../utils/permissions';
+import { hasAdminAccess, canViewLegalOrigin, canCurate, canSignAsTechnician, canExportScientificData } from '../utils/permissions';
 import { generateSetupLinkApi, fetchPendingPasswordResetRequestsApi, PendingPasswordResetRequest } from '../services/authService';
 import {
   Settings,
@@ -35,11 +35,58 @@ const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
   { value: 'estudante', label: 'Estudante' }
 ];
 
+type AccessOverridesOnly = Pick<PersonAccessOverrides, 'legalOriginAccess' | 'curationAccess' | 'phaseSigningAccess' | 'exportAccess'>;
+
+// Os 4 ajustes de acesso por pessoa (§13, out/2026) — "default" é o padrão do
+// papel (mesma função usada de verdade em utils/permissions.ts, chamada só com
+// `{ role }`, sem override, pra nunca duplicar a regra em dois lugares).
+// Pré-marca o checklist ao escolher/trocar o papel; o Administrador pode então
+// ampliar ou reduzir cada um individualmente, sem mudar o papel da pessoa.
+const ACCESS_PERMISSIONS: {
+  key: keyof AccessOverridesOnly;
+  label: string;
+  description: string;
+  defaultForRole: (role: UserRole) => boolean;
+}[] = [
+  {
+    key: 'legalOriginAccess',
+    label: 'Origem Legal / Cemitério (§7)',
+    description: 'Ver cemitério, jazigo e nº da Declaração de Óbito na Fase 1.',
+    defaultForRole: (role) => canViewLegalOrigin({ role })
+  },
+  {
+    key: 'curationAccess',
+    label: 'Montagem e Inventário / Curadoria',
+    description: 'Editar indivíduos, perfil biológico e odontograma na Fase 4.',
+    defaultForRole: (role) => canCurate({ role })
+  },
+  {
+    key: 'phaseSigningAccess',
+    label: 'Assinatura de Fases',
+    description: 'Assinar Fases 0-3, a Montagem da Fase 4 e a Física da Fase 5. Nunca o Inventário (Fase 4) nem a Científica (Fase 5) — exclusivas do Curador, sem exceção.',
+    defaultForRole: (role) => canSignAsTechnician({ role })
+  },
+  {
+    key: 'exportAccess',
+    label: 'Exportação Científica',
+    description: 'Exportar o acervo com hash de reprodutibilidade na Fase 7.',
+    defaultForRole: (role) => canExportScientificData({ role })
+  }
+];
+
+function defaultAccessForRole(role: UserRole): AccessOverridesOnly {
+  const access = {} as AccessOverridesOnly;
+  for (const perm of ACCESS_PERMISSIONS) {
+    access[perm.key] = perm.defaultForRole(role);
+  }
+  return access;
+}
+
 interface SettingsViewProps {
   currentUser: UserProfile;
   people: UserProfile[];
-  onCreatePerson: (person: { name: string; role: UserRole; institution: string; email: string; adminAccess?: boolean }) => Promise<void>;
-  onUpdatePerson: (id: string, person: { name: string; role: UserRole; institution: string; email: string; adminAccess?: boolean }) => Promise<void>;
+  onCreatePerson: (person: { name: string; role: UserRole; institution: string; email: string } & Partial<PersonAccessOverrides>) => Promise<void>;
+  onUpdatePerson: (id: string, person: { name: string; role: UserRole; institution: string; email: string } & Partial<PersonAccessOverrides>) => Promise<void>;
   onDeletePerson: (id: string) => Promise<void>;
   laboratoryMode: boolean;
   onToggleLaboratoryMode: () => void;
@@ -61,13 +108,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [cryptographicSalt, setCryptographicSalt] = useState('INC-DITEC-PF-2026-PROD-V3');
   const [autoDryingHours, setAutoDryingHours] = useState(48);
   const [requireDualSignOnPhase5, setRequireDualSignOnPhase5] = useState(true);
-  const [showSaveAlert, setShowSaveAlert] = useState(false);
   const [showAddPersonForm, setShowAddPersonForm] = useState(false);
   const [newPersonName, setNewPersonName] = useState('');
   const [newPersonRole, setNewPersonRole] = useState<UserRole>('tecnico');
   const [newPersonInstitution, setNewPersonInstitution] = useState('');
   const [newPersonEmail, setNewPersonEmail] = useState('');
   const [newPersonAdminAccess, setNewPersonAdminAccess] = useState(false);
+  const [newPersonAccess, setNewPersonAccess] = useState<AccessOverridesOnly>(() => defaultAccessForRole('tecnico'));
   const [isCreatingPerson, setIsCreatingPerson] = useState(false);
   const [createPersonError, setCreatePersonError] = useState<string | null>(null);
   const [personPendingDeletion, setPersonPendingDeletion] = useState<UserProfile | null>(null);
@@ -81,6 +128,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [editPersonInstitution, setEditPersonInstitution] = useState('');
   const [editPersonEmail, setEditPersonEmail] = useState('');
   const [editPersonAdminAccess, setEditPersonAdminAccess] = useState(false);
+  const [editPersonAccess, setEditPersonAccess] = useState<AccessOverridesOnly>(() => defaultAccessForRole('tecnico'));
   const [isSavingPerson, setIsSavingPerson] = useState(false);
   const [editPersonError, setEditPersonError] = useState<string | null>(null);
 
@@ -146,10 +194,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         role: newPersonRole,
         institution: newPersonInstitution.trim(),
         email: newPersonEmail.trim(),
-        adminAccess: newPersonRole !== 'administrador' && newPersonAdminAccess
+        adminAccess: newPersonRole !== 'administrador' && newPersonAdminAccess,
+        ...newPersonAccess
       });
       setNewPersonName('');
       setNewPersonAdminAccess(false);
+      setNewPersonAccess(defaultAccessForRole('tecnico'));
       setNewPersonInstitution('');
       setNewPersonEmail('');
       setShowAddPersonForm(false);
@@ -160,6 +210,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
   };
 
+  // Troca de papel no cadastro/edição recalcula o checklist pro padrão do
+  // papel novo — o Administrador ainda pode ajustar cada checkbox depois.
+  const handleNewPersonRoleChange = (role: UserRole) => {
+    setNewPersonRole(role);
+    setNewPersonAccess(defaultAccessForRole(role));
+  };
+
+  const handleEditPersonRoleChange = (role: UserRole) => {
+    setEditPersonRole(role);
+    setEditPersonAccess(defaultAccessForRole(role));
+  };
+
   const handleStartEditPerson = (person: UserProfile) => {
     setEditingPersonId(person.id);
     setEditPersonName(person.name);
@@ -167,6 +229,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setEditPersonInstitution(person.institution);
     setEditPersonEmail(person.email || '');
     setEditPersonAdminAccess(person.adminAccess === true);
+    setEditPersonAccess({
+      legalOriginAccess: person.legalOriginAccess === true,
+      curationAccess: person.curationAccess === true,
+      phaseSigningAccess: person.phaseSigningAccess === true,
+      exportAccess: person.exportAccess === true
+    });
     setEditPersonError(null);
   };
 
@@ -185,7 +253,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         role: editPersonRole,
         institution: editPersonInstitution.trim(),
         email: editPersonEmail.trim(),
-        adminAccess: editPersonRole !== 'administrador' && editPersonAdminAccess
+        adminAccess: editPersonRole !== 'administrador' && editPersonAdminAccess,
+        ...editPersonAccess
       });
       setEditingPersonId(null);
     } catch (err: any) {
@@ -195,18 +264,24 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
   };
 
-  const handleSavePreferences = () => {
-    setShowSaveAlert(true);
-    setTimeout(() => setShowSaveAlert(false), 2500);
+  // Calculada a partir das mesmas funções reais de utils/permissions.ts (nunca
+  // mais hardcoded à parte) — por isso é só o PADRÃO por papel; cada pessoa
+  // pode ter isso ampliado ou reduzido individualmente em "Editar" (§13, acima).
+  const ROLE_TITLES: Record<UserRole, string> = {
+    curador: 'Curador da COI-INC — acesso a todas as funções',
+    administrador: 'Administrador do Sistema / DITEC',
+    tecnico: 'Técnico de Laboratório',
+    pesquisador: 'Pesquisador Externo (CEP)',
+    estudante: 'Estudante Supervisionado'
   };
-
-  const abacRolesMatrix: { role: UserRole; title: string; canViewLegal: boolean; canCurate: boolean; canSignPhases: boolean; canExport: boolean }[] = [
-    { role: 'curador', title: 'Curador da COI-INC — acesso a todas as funções', canViewLegal: true, canCurate: true, canSignPhases: true, canExport: true },
-    { role: 'administrador', title: 'Administrador do Sistema / DITEC', canViewLegal: true, canCurate: true, canSignPhases: true, canExport: true },
-    { role: 'tecnico', title: 'Técnico de Laboratório', canViewLegal: false, canCurate: false, canSignPhases: true, canExport: false },
-    { role: 'pesquisador', title: 'Pesquisador Externo (CEP)', canViewLegal: false, canCurate: false, canSignPhases: false, canExport: true },
-    { role: 'estudante', title: 'Estudante Supervisionado', canViewLegal: false, canCurate: false, canSignPhases: false, canExport: false }
-  ];
+  const abacRolesMatrix = (['curador', 'administrador', 'tecnico', 'pesquisador', 'estudante'] as UserRole[]).map((role) => ({
+    role,
+    title: ROLE_TITLES[role],
+    canViewLegal: canViewLegalOrigin({ role }),
+    canCurate: canCurate({ role }),
+    canSignPhases: canSignAsTechnician({ role }),
+    canExport: canExportScientificData({ role })
+  }));
 
   return (
     <div className="space-y-6">
@@ -223,13 +298,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           Ajustes de segurança criptográfica, matriz ABAC de atribuição de papéis, preferências laboratoriais e conformidade LGPD.
         </p>
       </div>
-
-      {showSaveAlert && (
-        <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 flex items-center gap-2 text-xs font-mono text-emerald-800 dark:text-emerald-200">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          <span>Parâmetros de configuração salvos com sucesso na sessão do laboratório.</span>
-        </div>
-      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Modo Laboratório e Interface */}
@@ -410,7 +478,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             />
             <select
               value={newPersonRole}
-              onChange={(e) => setNewPersonRole(e.target.value as UserRole)}
+              onChange={(e) => handleNewPersonRoleChange(e.target.value as UserRole)}
               className="p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
             >
               {ROLE_OPTIONS.map((opt) => (
@@ -430,6 +498,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               onChange={(e) => setNewPersonEmail(e.target.value)}
               placeholder="E-mail (login)"
               className="p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+            />
+            <AccessChecklist
+              access={newPersonAccess}
+              onChange={(key, value) => setNewPersonAccess((prev) => ({ ...prev, [key]: value }))}
             />
             {newPersonRole !== 'administrador' && (
               <label className="sm:col-span-2 flex items-start gap-2 cursor-pointer text-slate-700 dark:text-slate-300">
@@ -520,7 +592,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   />
                   <select
                     value={editPersonRole}
-                    onChange={(e) => setEditPersonRole(e.target.value as UserRole)}
+                    onChange={(e) => handleEditPersonRoleChange(e.target.value as UserRole)}
                     className="p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                   >
                     {ROLE_OPTIONS.map((opt) => (
@@ -540,6 +612,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     onChange={(e) => setEditPersonEmail(e.target.value)}
                     placeholder="E-mail (login)"
                     className="p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                  />
+                  <AccessChecklist
+                    access={editPersonAccess}
+                    onChange={(key, value) => setEditPersonAccess((prev) => ({ ...prev, [key]: value }))}
                   />
                   {editPersonRole !== 'administrador' && (
                     <label className="sm:col-span-2 flex items-start gap-2 cursor-pointer text-slate-700 dark:text-slate-300">
@@ -683,14 +759,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </h3>
             <p className="text-slate-500 mt-0.5">
               O Curador pode executar as funções de todos os papéis; suas ações continuam registradas com o papel Curador.
+              Esta tabela mostra só o <strong>padrão por papel</strong> — cada pessoa pode ter isso ampliado ou reduzido
+              individualmente em "Editar", na lista de Pessoas Cadastradas acima.
             </p>
           </div>
-          <button
-            onClick={handleSavePreferences}
-            className="px-3.5 py-1.5 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-semibold hover:opacity-95 transition-opacity"
-          >
-            Salvar Preferências
-          </button>
         </div>
 
         <div className="overflow-x-auto">
@@ -760,3 +832,31 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     </div>
   );
 };
+
+// Checklist de ajustes de acesso por pessoa (§13) — reutilizado no cadastro e
+// na edição. Pré-marcado pelo padrão do papel (ver defaultAccessForRole); cada
+// checkbox aqui grava um valor explícito, ampliando ou reduzindo o padrão só
+// para esta pessoa, sem mudar o papel dela nem afetar mais ninguém.
+const AccessChecklist: React.FC<{
+  access: AccessOverridesOnly;
+  onChange: (key: keyof AccessOverridesOnly, value: boolean) => void;
+}> = ({ access, onChange }) => (
+  <div className="sm:col-span-2 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 space-y-2">
+    <p className="text-[11px] font-mono uppercase font-bold text-slate-500 dark:text-slate-400">
+      Permissões desta pessoa (§13)
+    </p>
+    {ACCESS_PERMISSIONS.map((perm) => (
+      <label key={perm.key} className="flex items-start gap-2 cursor-pointer text-slate-700 dark:text-slate-300">
+        <input
+          type="checkbox"
+          checked={access[perm.key] === true}
+          onChange={(e) => onChange(perm.key, e.target.checked)}
+          className="rounded mt-0.5"
+        />
+        <span>
+          <strong>{perm.label}</strong> — {perm.description}
+        </span>
+      </label>
+    ))}
+  </div>
+);

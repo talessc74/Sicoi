@@ -6,6 +6,7 @@ import {
   ComplementaryExam
 } from '../types/sgccco';
 import { calculateSha256 } from '../services/auditService';
+import { canExportScientificData } from '../utils/permissions';
 import { useAppVersion } from '../hooks/useAppVersion';
 import {
   Search,
@@ -57,6 +58,10 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
   const [exportJsonPreview, setExportJsonPreview] = useState('');
 
   const isResearcher = currentUser.role === 'pesquisador';
+  // Exportação Científica (§13, out/2026): até esta decisão, qualquer papel
+  // autenticado exportava livremente — padrão Curador/Administrador/
+  // Pesquisador, ajustável por pessoa (canExportScientificData).
+  const canExport = canExportScientificData(currentUser);
 
   // ABAC Scope enforcement (§13): If user is Pesquisador, filter strictly by active research authorization
   const activeUserAuth = authorizations.find(a =>
@@ -139,6 +144,7 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
 
   // Reproducible Export Generation (§7)
   const handleGenerateExport = async () => {
+    if (!canExport) return;
     const timestamp = new Date().toISOString();
     const exportDataset = {
       reproducibilityHeader: {
@@ -198,7 +204,9 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={handleGenerateExport}
-              className="px-3 py-2 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-semibold hover:opacity-95 transition-all flex items-center gap-1.5 shadow-xs"
+              disabled={!canExport}
+              title={!canExport ? `A pessoa ativa agora ("${currentUser.name}") não tem acesso de Exportação Científica. Peça a um Administrador para ajustar isso em Configurações.` : undefined}
+              className="px-3 py-2 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-semibold hover:opacity-95 disabled:opacity-40 transition-all flex items-center gap-1.5 shadow-xs"
             >
               <Download className="w-3.5 h-3.5" />
               <span>Exportação Reprodutível (§7)</span>
