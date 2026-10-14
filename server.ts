@@ -41,6 +41,14 @@ import {
   BoneSimilarityCandidate,
   BoneSimilarityExplanation
 } from './db/boneSimilarity';
+import {
+  validateChatMessages,
+  validateChatSystemInstruction,
+  validateChatModel,
+  validatePopStepInput,
+  validatePopStepModel,
+  validateTranscribeInput
+} from './db/aiInputValidation';
 import { findSimilarIndividuals } from './db/individualReferenceSearch';
 import { listPeople, createPerson, updatePerson, deletePerson, countPeople } from './db/peopleRepo';
 import { hasAdminAccess } from './src/utils/permissions';
@@ -377,7 +385,7 @@ app.post('/api/chat', async (req: Request, res: Response) => {
     if (!apiKey) {
       return res.status(401).json({
         error: 'Chave GEMINI_API_KEY não foi encontrada no ambiente do servidor. Verifique o painel Settings > Secrets no AI Studio.',
-        code: 401,
+        code: 'IA_CHAVE_AUSENTE',
       });
     }
 
@@ -389,8 +397,17 @@ app.post('/api/chat', async (req: Request, res: Response) => {
       systemInstruction = 'Você é o assistente de curadoria do SIGCOI, sistema de gestão da Coleção Osteológica Identificada do INC (COI-INC/DITEC/PF) — biobanco e coleção de referência para pesquisa aplicada, capacitação e ensino em antropologia forense, instituída pela Portaria DITEC/PF nº 1415/2024, sem finalidade de resolução de casos criminais. Auxilie com precisão científica e técnica na análise de remanescentes ósseos, controle e rastreabilidade do acervo, estimativa de sexo, idade, estatura, ancestralidade, traumatologia e patologias ósseas segundo os protocolos científicos da coleção.',
     } = req.body;
 
-    if (!Array.isArray(messages) || messages.length === 0) {
-      return res.status(400).json({ error: 'Nenhuma mensagem fornecida para a conversa.', code: 'IA_ENTRADA_VAZIA' });
+    const messagesError = validateChatMessages(messages);
+    if (messagesError) {
+      return res.status(400).json({ error: messagesError, code: 'IA_ENTRADA_INVALIDA' });
+    }
+    const systemInstructionError = validateChatSystemInstruction(systemInstruction);
+    if (systemInstructionError) {
+      return res.status(400).json({ error: systemInstructionError, code: 'IA_ENTRADA_INVALIDA' });
+    }
+    const modelError = validateChatModel(model);
+    if (modelError) {
+      return res.status(400).json({ error: modelError, code: 'IA_MODELO_INVALIDO' });
     }
 
     // Validação e seleção de modelo conforme especificação
@@ -418,7 +435,7 @@ app.post('/api/chat', async (req: Request, res: Response) => {
       if (modelError?.status === 401 || (modelError?.message && modelError.message.includes('401'))) {
         return res.status(401).json({
           error: 'Erro 401: Chave de API não autorizada ou expirada. Gere uma nova chave no Google AI Studio (Settings > Secrets).',
-          code: 401,
+          code: 'IA_CHAVE_AUSENTE',
           details: modelError.message,
         });
       }
@@ -480,8 +497,13 @@ app.post('/api/pop-step', async (req: Request, res: Response) => {
     }
 
     const { transcript, stepContext, model = 'gemini-3.1-flash-lite' } = req.body;
-    if (!transcript || !stepContext) {
-      return res.status(400).json({ error: 'Requisição deve conter { transcript, stepContext }.', code: 'IA_ERRO_INTERNO' });
+    const popStepError = validatePopStepInput(transcript, stepContext);
+    if (popStepError) {
+      return res.status(400).json({ error: popStepError, code: 'IA_ENTRADA_INVALIDA' });
+    }
+    const popStepModelError = validatePopStepModel(model);
+    if (popStepModelError) {
+      return res.status(400).json({ error: popStepModelError, code: 'IA_MODELO_INVALIDO' });
     }
 
     const ai = getGeminiClient();
@@ -543,15 +565,18 @@ app.post('/api/transcribe', async (req: Request, res: Response) => {
     if (!apiKey) {
       return res.status(401).json({
         error: 'Chave GEMINI_API_KEY não configurada no servidor (401).',
-        code: 401,
+        code: 'IA_CHAVE_AUSENTE',
       });
     }
 
     const ai = getGeminiClient();
     const { audioBase64, mimeType = 'audio/webm' } = req.body;
-
     if (!audioBase64) {
       return res.status(400).json({ error: 'Nenhum áudio codificado em base64 foi enviado.', code: 'IA_AUDIO_AUSENTE' });
+    }
+    const transcribeValidationError = validateTranscribeInput(audioBase64, mimeType);
+    if (transcribeValidationError) {
+      return res.status(400).json({ error: transcribeValidationError, code: 'IA_ENTRADA_INVALIDA' });
     }
 
     // Limpar prefixo data: se presente
@@ -611,7 +636,7 @@ app.post('/api/transcribe', async (req: Request, res: Response) => {
     if (error?.status === 401) {
       return res.status(401).json({
         error: 'Erro 401: Chave de API não autorizada para transcrição.',
-        code: 401,
+        code: 'IA_CHAVE_AUSENTE',
       });
     }
     return res.status(500).json({

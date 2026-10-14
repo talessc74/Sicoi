@@ -69,7 +69,10 @@ export type ErrorCode =
   // IA (Gemini) — chat, condutor por voz, extração de D.O., busca por semelhança
   | 'IA_CHAVE_AUSENTE'
   | 'IA_ENTRADA_VAZIA'
+  | 'IA_ENTRADA_INVALIDA'
   | 'IA_AUDIO_AUSENTE'
+  | 'IA_AUDIO_MUITO_GRANDE'
+  | 'IA_MODELO_INVALIDO'
   | 'IA_TEXTO_MUITO_LONGO'
   | 'IA_IMAGEM_MUITO_GRANDE'
   | 'IA_RESPOSTA_VAZIA'
@@ -139,7 +142,10 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
 
   IA_CHAVE_AUSENTE: 'O assistente de IA não está configurado neste servidor no momento. Avise um Administrador.',
   IA_ENTRADA_VAZIA: 'Escreva ou grave algo antes de enviar.',
+  IA_ENTRADA_INVALIDA: 'Não foi possível entender o que foi enviado. Tente de novo.',
   IA_AUDIO_AUSENTE: 'Não foi possível captar o áudio gravado. Tente gravar de novo.',
+  IA_AUDIO_MUITO_GRANDE: 'Este áudio é longo demais para enviar. Grave uma mensagem mais curta.',
+  IA_MODELO_INVALIDO: 'Houve um problema de configuração ao escolher o modelo de IA. Tente de novo.',
   IA_TEXTO_MUITO_LONGO: 'O texto é longo demais. Resuma um pouco e tente de novo.',
   IA_IMAGEM_MUITO_GRANDE: 'Esta imagem é grande demais para enviar. Tente uma foto com menos resolução.',
   IA_RESPOSTA_VAZIA: 'O assistente de IA não conseguiu responder desta vez. Tente de novo.',
