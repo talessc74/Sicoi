@@ -43,7 +43,7 @@ const PHASE_META: Record<PhaseNumber, { subtitle: string; signerRole: string }> 
   1: { subtitle: 'Recebimento & A.1', signerRole: 'Técnico' },
   2: { subtitle: 'Limpeza & Secagem A.2', signerRole: 'Técnico' },
   3: { subtitle: 'Acondic. Provisório', signerRole: 'Técnico' },
-  4: { subtitle: 'Montagem e Inventário & Perfil', signerRole: 'Curador / Técnico' },
+  4: { subtitle: 'Montagem e Inventário & Perfil', signerRole: 'Técnico / Curador' },
   5: { subtitle: 'Alterações Ósseas & Exames', signerRole: 'Curador / Técnico' },
   6: { subtitle: 'Galpão Definitivo', signerRole: 'Dupla Custódia' },
   7: { subtitle: 'Pesquisa & Grafo', signerRole: 'Admin / Livre' }
