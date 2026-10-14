@@ -6,15 +6,15 @@ import {
   MicOff,
   Sparkles,
   X,
-  AlertTriangle,
   RotateCcw,
   CheckCircle2,
   Cpu,
   ShieldCheck,
   KeyRound,
   ExternalLink,
-  ChevronDown
 } from 'lucide-react';
+import { ErrorNotice } from './ErrorNotice';
+import { toAppError, AppError } from '../utils/errorMessages';
 import {
   ChatMessage,
   sendChatMessage,
@@ -42,7 +42,7 @@ export const GeminiForensicChatModal: React.FC<GeminiForensicChatModalProps> = (
       {
         id: 'msg-init',
         role: 'assistant',
-        content: `Olá, ${currentUser.name}! Sou o Assistente com IA do SIGCOI, de apoio à curadoria, à pesquisa e ao ensino na COI-INC. Posso apoiar na interpretação de parâmetros osteológicos (estimativa de sexo, idade pelo método Suchey-Brooks, NMI, tafonomia), rastreabilidade das caixas e do acervo e transcrição de anotações de laboratório por voz. Em que posso ajudar?`,
+        content: `Olá, ${currentUser.name}! Sou o Assistente com IA do SIGCOI, de apoio à montagem e inventário, à pesquisa e ao ensino na COI-INC. Posso apoiar na interpretação de parâmetros osteológicos (estimativa de sexo, idade pelo método Suchey-Brooks, NMI, tafonomia), rastreabilidade das caixas e do acervo e transcrição de anotações de laboratório por voz. Em que posso ajudar?`,
         timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
         modelUsed: 'gemini-3.5-flash',
       },
@@ -56,7 +56,7 @@ export const GeminiForensicChatModal: React.FC<GeminiForensicChatModalProps> = (
   const [isRecording, setIsRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const [apiStatus, setApiStatus] = useState<ApiStatus | null>(null);
-  const [errorNotice, setErrorNotice] = useState<string | null>(null);
+  const [errorNotice, setErrorNotice] = useState<AppError | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -68,9 +68,11 @@ export const GeminiForensicChatModal: React.FC<GeminiForensicChatModalProps> = (
       checkGeminiStatus().then((status) => {
         setApiStatus(status);
         if (status && !status.hasApiKey) {
-          setErrorNotice(
-            'Aviso de Configuração: GEMINI_API_KEY não foi detectada. Verifique se o seu segredo está adicionado no menu Settings > Secrets do Google AI Studio para evitar erro 401.'
-          );
+          setErrorNotice({
+            code: 'IA_CHAVE_AUSENTE',
+            message:
+              'Aviso de Configuração: GEMINI_API_KEY não foi detectada. Verifique se o seu segredo está adicionado no menu Settings > Secrets do Google AI Studio para evitar erro 401.'
+          });
         }
       });
     }
@@ -130,15 +132,15 @@ export const GeminiForensicChatModal: React.FC<GeminiForensicChatModalProps> = (
       setMessages((prev) => [...prev, botMsg]);
     } catch (err: any) {
       console.error('Erro no envio do chat:', err);
-      const errMsg = err?.message || 'Falha na comunicação com o Gemini.';
-      setErrorNotice(errMsg);
+      const appErr = toAppError(err, 'Falha na comunicação com o Gemini.');
+      setErrorNotice(appErr);
 
       setMessages((prev) => [
         ...prev,
         {
           id: `bot-err-${Date.now()}`,
           role: 'assistant',
-          content: `⚠️ Não foi possível processar a consulta:\n\n${errMsg}\n\n💡 Dica sobre o Erro 401: Certifique-se de que a sua chave GEMINI_API_KEY no Google AI Studio (menu lateral > Settings > Secrets) está ativa e com saldo de requisições.`,
+          content: `⚠️ Não foi possível processar a consulta:\n\n${appErr.message}\n\n💡 Dica sobre o Erro 401: Certifique-se de que a sua chave GEMINI_API_KEY no Google AI Studio (menu lateral > Settings > Secrets) está ativa e com saldo de requisições.`,
           timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
           modelUsed: 'Falha de Autenticação / Conexão',
         },
@@ -177,11 +179,11 @@ export const GeminiForensicChatModal: React.FC<GeminiForensicChatModalProps> = (
             if (transcript) {
               setInputPrompt((prev) => (prev ? `${prev} ${transcript}` : transcript));
             } else {
-              setErrorNotice('Áudio recebido, mas nenhuma fala clara foi detectada.');
+              setErrorNotice({ code: 'IA_AUDIO_NAO_DETECTADO', message: 'Áudio recebido, mas nenhuma fala clara foi detectada.' });
             }
           } catch (transcribeErr: any) {
             setErrorNotice(
-              `Erro na transcrição por voz (gemini-3.5-transcribe): ${transcribeErr.message}`
+              toAppError(transcribeErr, 'Erro na transcrição por voz (gemini-3.5-transcribe).')
             );
           } finally {
             setTranscribing(false);
@@ -194,9 +196,10 @@ export const GeminiForensicChatModal: React.FC<GeminiForensicChatModalProps> = (
       setIsRecording(true);
     } catch (err: any) {
       console.error('Erro ao acessar microfone:', err);
-      setErrorNotice(
-        'Permissão de microfone negada ou não suportada. Conceda acesso ao microfone no navegador.'
-      );
+      setErrorNotice({
+        code: 'IA_MICROFONE_NEGADO',
+        message: 'Permissão de microfone negada ou não suportada. Conceda acesso ao microfone no navegador.'
+      });
     }
   };
 
@@ -321,27 +324,18 @@ export const GeminiForensicChatModal: React.FC<GeminiForensicChatModalProps> = (
             >
               <option value="perito">Antropologia Forense & Pesquisa</option>
               <option value="custodia">Controle & Rastreabilidade do Acervo</option>
-              <option value="antropologo">Curadoria & Conservação Física</option>
+              <option value="antropologo">Montagem e Inventário & Conservação Física</option>
             </select>
           </div>
         </div>
 
         {/* Diagnóstico de Erro 401 / Status da Chave */}
         {errorNotice && (
-          <div className="px-4 py-2.5 bg-amber-50 dark:bg-amber-950/60 border-b border-amber-200 dark:border-amber-800/80 flex items-start gap-3 text-xs text-amber-900 dark:text-amber-200">
-            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-            <div className="flex-1 space-y-1">
-              <p className="font-semibold">{errorNotice}</p>
-              <p className="text-[11px] text-amber-700 dark:text-amber-300">
-                Se você visualizou erro 401 no painel ou no navegador, isso ocorre quando: 1) A chave GEMINI_API_KEY no AI Studio expirou; 2) Foi acessado o link privado de dev sem login com a conta Google autorizada do desenvolvedor; ou 3) Os cookies de terceiros estão bloqueados no navegador.
-              </p>
-            </div>
-            <button
-              onClick={() => setErrorNotice(null)}
-              className="text-amber-700 hover:text-amber-900 text-xs font-bold"
-            >
-              ✕
-            </button>
+          <div className="px-4 py-2.5 border-b border-amber-200 dark:border-amber-800/80 space-y-1.5">
+            <ErrorNotice code={errorNotice.code} message={errorNotice.message} onDismiss={() => setErrorNotice(null)} />
+            <p className="text-[11px] text-amber-700 dark:text-amber-300">
+              Se você visualizou erro 401 no painel ou no navegador, isso ocorre quando: 1) A chave GEMINI_API_KEY no AI Studio expirou; 2) Foi acessado o link privado de dev sem login com a conta Google autorizada do desenvolvedor; ou 3) Os cookies de terceiros estão bloqueados no navegador.
+            </p>
           </div>
         )}
 

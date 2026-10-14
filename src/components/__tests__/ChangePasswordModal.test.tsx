@@ -3,6 +3,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ChangePasswordModal } from '../ChangePasswordModal';
+import { friendlyMessage } from '../../utils/errorMessages';
 
 function mockFetchOnce(status: number, body: unknown) {
   vi.stubGlobal(
@@ -60,13 +61,13 @@ describe('ChangePasswordModal', () => {
 
   it('mostra erro quando a senha atual está incorreta, sem travar o formulário', async () => {
     const user = userEvent.setup();
-    mockFetchOnce(400, { error: 'Senha atual incorreta.' });
+    mockFetchOnce(400, { error: 'Senha atual incorreta.', code: 'AUTH_SENHA_ATUAL_INCORRETA' });
 
     render(<ChangePasswordModal onClose={vi.fn()} />);
     await fillForm(user, 'senha-errada', 'senha-nova-456', 'senha-nova-456');
     await user.click(screen.getByRole('button', { name: /^trocar senha$/i }));
 
-    expect(await screen.findByText('Senha atual incorreta.')).toBeInTheDocument();
+    expect(await screen.findByText(friendlyMessage('AUTH_SENHA_ATUAL_INCORRETA'))).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^trocar senha$/i })).toBeEnabled();
   });
 

@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { OsteologicalCollection, UserProfile, StorageLocation, CustodyMovement } from '../types/sgccco';
 import { calculateSha256, generateSignaturePayload } from '../services/auditService';
 import { getLatestPhaseSignature } from '../utils/signatures';
-import { canPerformRole } from '../utils/permissions';
+import { canSignAsTechnician } from '../utils/permissions';
 import { WAREHOUSE_STRUCTURE } from '../data/mockData';
-import { MapPin, QrCode, CheckCircle2, Clock, Box, ShieldCheck, ArrowRight, Pencil, X } from 'lucide-react';
+import { MapPin, QrCode, CheckCircle2, Clock, Box, ShieldCheck, ArrowRight, Pencil, X, UserCheck } from 'lucide-react';
 
 interface Phase3AcondicionamentoProps {
   collection: OsteologicalCollection;
@@ -35,7 +35,11 @@ export const Phase3Acondicionamento: React.FC<Phase3AcondicionamentoProps> = ({
 
   const phaseSignature = getLatestPhaseSignature(collection.signatures, 3);
   const isLocked = phaseSignature?.status === 'locked';
-  const canActAsTechnician = canPerformRole(currentUser.role, 'tecnico');
+  // A assinatura que trava a fase é exclusiva de Técnico/Curador — o Pesquisador
+  // tem acesso à Fase 3, mas sua participação é a confirmação opcional abaixo
+  // (handleConfirmResearcherReview), nunca esta assinatura (decisão de acesso
+  // out/2026, correção: "o técnico é obrigatório, o pesquisador pode ou não").
+  const canActAsTechnician = canSignAsTechnician(currentUser);
 
   const boxes = collection.phase1.preliminaryBoxes;
   const allBoxesPlaced = boxes.length > 0 && boxes.every(b => 
@@ -149,7 +153,21 @@ export const Phase3Acondicionamento: React.FC<Phase3AcondicionamentoProps> = ({
     onUpdateCollection(updated);
   };
 
-  // Fila de Curadoria (esperando Fase 4)
+  // Confirmação opcional do Pesquisador — nunca trava nem destrava nada, nunca
+  // substitui a assinatura do Técnico/Curador acima.
+  const handleConfirmResearcherReview = async () => {
+    const timestamp = new Date().toISOString();
+    const hash = await calculateSha256(`researcher-review|phase3|${collection.nic}|${currentUser.id}|${timestamp}`);
+    onUpdateCollection({
+      ...collection,
+      phase3: {
+        ...collection.phase3,
+        researcherConfirmation: { confirmedByName: currentUser.name, confirmedAt: timestamp, sha256Hash: hash }
+      }
+    });
+  };
+
+  // Fila de Montagem e Inventário (esperando Fase 4)
   const curationQueue = allCollections.filter(c => {
     const isP3Signed = c.signatures.some(s => s.phaseNumber === 3 && s.status === 'locked');
     const isP4Signed = c.signatures.some(s => s.phaseNumber === 4 && s.status === 'locked');
@@ -175,6 +193,24 @@ export const Phase3Acondicionamento: React.FC<Phase3AcondicionamentoProps> = ({
           </div>
 
           <div className="flex items-center gap-3">
+            {currentUser.role === 'pesquisador' && !isLocked && (
+              collection.phase3.researcherConfirmation ? (
+                <div className="px-3 py-2 rounded-xl bg-sky-50 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-900 flex items-center gap-2 text-xs font-mono text-sky-700 dark:text-sky-300 font-semibold">
+                  <UserCheck className="w-4 h-4 text-sky-600" />
+                  <span>Revisão do Pesquisador confirmada</span>
+                </div>
+              ) : (
+                <button
+                  onClick={handleConfirmResearcherReview}
+                  title="Confirmação opcional — não trava nem substitui a assinatura do Técnico/Curador."
+                  className="px-3 py-2 rounded-xl border border-sky-300 dark:border-sky-800 bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 text-xs font-semibold flex items-center gap-1.5 hover:bg-sky-100 dark:hover:bg-sky-900/60 transition-colors"
+                >
+                  <UserCheck className="w-4 h-4" />
+                  <span>Confirmar Revisão (Pesquisador)</span>
+                </button>
+              )
+            )}
+
             {isLocked ? (
               <div className="px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-900 flex items-center gap-2 text-xs font-mono text-emerald-700 dark:text-emerald-300 font-semibold">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
@@ -194,7 +230,7 @@ export const Phase3Acondicionamento: React.FC<Phase3AcondicionamentoProps> = ({
         </div>
       </div>
 
-      {/* Grid: Registro de Localização + Fila da Curadoria */}
+      {/* Grid: Registro de Localização + Fila de Montagem e Inventário */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Atribuição de Local das Caixas */}
         <div className="lg:col-span-2 space-y-6">
@@ -338,13 +374,13 @@ export const Phase3Acondicionamento: React.FC<Phase3AcondicionamentoProps> = ({
           </div>
         </div>
 
-        {/* Coluna Direita: Fila de Curadoria (§6, §12) */}
+        {/* Coluna Direita: Fila de Montagem e Inventário (§6, §12) */}
         <div className="space-y-6">
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs text-xs space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
               <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <Clock className="w-4 h-4 text-amber-500" />
-                Fila de Espera para Curadoria
+                Fila de Espera para Montagem e Inventário
               </h4>
               <span className="font-mono text-slate-400 font-semibold">
                 {curationQueue.length} aguardando
@@ -398,7 +434,7 @@ export const Phase3Acondicionamento: React.FC<Phase3AcondicionamentoProps> = ({
               Assinatura Técnica de Acondicionamento — Fase 3
             </h3>
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
-              Ao assinar, você confirma que todas as caixas de {collection.nic} estão fisicamente acomodadas nos locais registrados, liberando o conjunto para a fila de Curadoria da Fase 4.
+              Ao assinar, você confirma que todas as caixas de {collection.nic} estão fisicamente acomodadas nos locais registrados, liberando o conjunto para a fila de Montagem e Inventário (Fase 4).
             </p>
 
             <div className="flex justify-end gap-2 text-xs">

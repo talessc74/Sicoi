@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { UserProfile } from '../types/sgccco';
 import { loginApi } from '../services/authService';
 import { ForgotPasswordScreen } from './ForgotPasswordScreen';
+import { ErrorNotice } from './ErrorNotice';
+import { toAppError, AppError } from '../utils/errorMessages';
 import { LogIn, Loader2, ShieldCheck } from 'lucide-react';
 
 interface LoginScreenProps {
@@ -17,7 +19,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoggedIn }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<AppError | null>(null);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   const isValid = email.trim() && password;
@@ -35,7 +37,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoggedIn }) => {
       const person = await loginApi(email.trim(), password);
       onLoggedIn(person);
     } catch (err: any) {
-      setError(err?.message || 'Não foi possível entrar.');
+      setError(toAppError(err, 'Não foi possível entrar.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -86,7 +88,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoggedIn }) => {
           </div>
         </div>
 
-        {error && <p className="text-xs text-rose-600 dark:text-rose-400 font-mono">{error}</p>}
+        {error && <ErrorNotice code={error.code} message={error.message} />}
 
         <button
           type="submit"

@@ -56,7 +56,7 @@ export function generateExportHeader(data: {
 ================================================================================
 SIGCOI ALFA - INC/DITEC/PF - RELATÓRIO CIENTÍFICO COM TRILHA DE REPRODUTIBILIDADE
 --------------------------------------------------------------------------------
-NIC: ${data.nic}
+COI: ${data.nic}
 INDIVÍDUO: ${data.individualCode || 'CONJUNTO GERAL'}
 VERSÃO CIENTÍFICA: v${data.curationVersion} (APROVADA)
 CURADOR RESPONSÁVEL: ${data.curatorName}

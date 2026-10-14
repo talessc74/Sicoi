@@ -3,6 +3,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ClaimAdminScreen } from '../ClaimAdminScreen';
+import { friendlyMessage } from '../../utils/errorMessages';
 
 function mockFetchOnce(status: number, body: unknown) {
   vi.stubGlobal(
@@ -66,24 +67,24 @@ describe('ClaimAdminScreen', () => {
 
   it('mostra a mensagem de erro quando o código de ativação é inválido', async () => {
     const user = userEvent.setup();
-    mockFetchOnce(403, { error: 'Código de ativação inválido.' });
+    mockFetchOnce(403, { error: 'Código de ativação inválido.', code: 'AUTH_CODIGO_ATIVACAO_INVALIDO' });
 
     render(<ClaimAdminScreen onLoggedIn={vi.fn()} onUseLoginInstead={vi.fn()} />);
     await fillValidForm(user);
     await user.click(screen.getByRole('button', { name: /ativar e entrar/i }));
 
-    expect(await screen.findByText('Código de ativação inválido.')).toBeInTheDocument();
+    expect(await screen.findByText(friendlyMessage('AUTH_CODIGO_ATIVACAO_INVALIDO'))).toBeInTheDocument();
   });
 
   it('mostra a mensagem de erro quando não há Administrador pendente com esse e-mail', async () => {
     const user = userEvent.setup();
-    mockFetchOnce(400, { error: 'Não há Administrador pendente de ativação com esse e-mail.' });
+    mockFetchOnce(400, { error: 'Não há Administrador pendente de ativação com esse e-mail.', code: 'AUTH_ADMIN_PENDENTE_NAO_ENCONTRADO' });
 
     render(<ClaimAdminScreen onLoggedIn={vi.fn()} onUseLoginInstead={vi.fn()} />);
     await fillValidForm(user);
     await user.click(screen.getByRole('button', { name: /ativar e entrar/i }));
 
-    expect(await screen.findByText('Não há Administrador pendente de ativação com esse e-mail.')).toBeInTheDocument();
+    expect(await screen.findByText(friendlyMessage('AUTH_ADMIN_PENDENTE_NAO_ENCONTRADO'))).toBeInTheDocument();
   });
 
   it('chama onUseLoginInstead ao clicar em "Já tem uma senha? Fazer login"', async () => {

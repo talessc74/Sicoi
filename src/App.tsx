@@ -4,13 +4,15 @@ import {
   UserProfile,
   UserRole,
   PhaseNumber,
-  ResearchAuthorization
+  ResearchAuthorization,
+  PersonAccessOverrides
 } from './types/sgccco';
-import { createEmptyPhase1Data, createEmptyPhase2Data } from './data/phaseDefaults';
+import { createEmptyPhase0Data, createEmptyPhase1Data, createEmptyPhase2Data } from './data/phaseDefaults';
 import { fetchCollections, createCollectionApi, saveCollectionApi } from './services/collectionsService';
 import { fetchPeople, createPersonApi, updatePersonApi, deletePersonApi } from './services/peopleService';
 import { fetchAuthorizations } from './services/authorizationsService';
 import { fetchCurrentUser, fetchBootstrapStatus, logoutApi } from './services/authService';
+import { hasAdminAccess } from './utils/permissions';
 import { Header } from './components/Header';
 import { LoginScreen } from './components/LoginScreen';
 import { BootstrapAdminSetup } from './components/BootstrapAdminSetup';
@@ -21,6 +23,7 @@ import { DocumentSearchViewer } from './components/DocumentSearchViewer';
 import { SettingsView } from './components/SettingsView';
 import { HelpView } from './components/HelpView';
 import { PhaseProgressRibbon } from './components/PhaseProgressRibbon';
+import { Phase0Recebimento } from './components/Phase0Recebimento';
 import { Phase1Recebimento } from './components/Phase1Recebimento';
 import { Phase2Limpeza } from './components/Phase2Limpeza';
 import { Phase3Acondicionamento } from './components/Phase3Acondicionamento';
@@ -34,6 +37,8 @@ import { PublicQRInspectionModal } from './components/PublicQRInspectionModal';
 import { AuditTimelineView } from './components/AuditTimelineView';
 import { GeminiForensicChatModal } from './components/GeminiForensicChatModal';
 import { NewCollectionModal } from './components/NewCollectionModal';
+import { ErrorNotice } from './components/ErrorNotice';
+import { toAppError, AppError } from './utils/errorMessages';
 import { Plus, ShieldCheck, Bot, Sparkles, Loader2, CheckCircle2 } from 'lucide-react';
 
 // Link de "definir senha" (gerado pelo Administrador, entregue por fora do
@@ -71,7 +76,7 @@ function parseNavStateFromPath(pathname: string): { activeTab: NavigableTab; act
   if (!isNavigableTab(tab)) return null;
   if (tab === 'fases') {
     const phase = Number(phaseSegment);
-    return { activeTab: 'fases', activePhase: phase >= 1 && phase <= 7 ? phase : 1 };
+    return { activeTab: 'fases', activePhase: phase >= 0 && phase <= 7 ? phase : 1 };
   }
   return { activeTab: tab, activePhase: 1 };
 }
@@ -103,7 +108,7 @@ export default function App() {
   const [isQrModalOpen, setIsQrModalOpen] = useState<boolean>(false);
   const [isGeminiChatOpen, setIsGeminiChatOpen] = useState<boolean>(false);
   const [isLoadingCollections, setIsLoadingCollections] = useState<boolean>(true);
-  const [syncError, setSyncError] = useState<string | null>(null);
+  const [syncError, setSyncError] = useState<AppError | null>(null);
   // Todo campo do formulário já salva sozinho a cada mudança (ver handleUpdateCollection) —
   // mas isso nunca aparecia na tela, então não havia como o operador confirmar que o
   // preenchimento estava sendo salvo. Só o erro era visível; o sucesso ficava silencioso.
@@ -123,10 +128,10 @@ export default function App() {
   // buscada para quem está logado como Administrador — o servidor recusa (403)
   // pedidos de qualquer outro papel, e não há razão para um Técnico ou Estudante
   // ver o e-mail (o identificador de login) de todas as outras pessoas.
-  const loadAppData = async (role: UserRole) => {
+  const loadAppData = async (person: UserProfile) => {
     const [loadedCollections, loadedPeople, loadedAuthorizations] = await Promise.all([
       fetchCollections(),
-      role === 'administrador' ? fetchPeople() : Promise.resolve([]),
+      hasAdminAccess(person) ? fetchPeople() : Promise.resolve([]),
       fetchAuthorizations()
     ]);
     setCollections(loadedCollections);
@@ -140,11 +145,11 @@ export default function App() {
     setCurrentUser(person);
     setIsLoadingCollections(true);
     try {
-      await loadAppData(person.role);
+      await loadAppData(person);
       setSyncError(null);
     } catch (err: any) {
       console.error('Falha ao carregar dados após login:', err);
-      setSyncError(err?.message || 'Não foi possível conectar ao banco de dados.');
+      setSyncError(toAppError(err, 'Não foi possível conectar ao banco de dados.'));
       setInitialLoadFailed(true);
     } finally {
       setIsLoadingCollections(false);
@@ -190,10 +195,10 @@ export default function App() {
           return;
         }
         setCurrentUser(me);
-        await loadAppData(me.role);
+        await loadAppData(me);
       } catch (err: any) {
         console.error('Falha ao carregar dados iniciais do banco:', err);
-        setSyncError(err?.message || 'Não foi possível conectar ao banco de dados.');
+        setSyncError(toAppError(err, 'Não foi possível conectar ao banco de dados.'));
         setInitialLoadFailed(true);
       } finally {
         setIsLoadingCollections(false);
@@ -257,7 +262,7 @@ export default function App() {
   // Cadastra uma nova pessoa (papel de acesso) — só o Administrador logado pode
   // (o servidor reconfere). A pessoa criada ainda não tem senha: o Administrador
   // gera o link de definição de senha para ela em Configurações.
-  const handleCreatePerson = async (person: { name: string; role: UserRole; institution: string; email: string }) => {
+  const handleCreatePerson = async (person: { name: string; role: UserRole; institution: string; email: string } & Partial<PersonAccessOverrides>) => {
     const created = await createPersonApi(person);
     setPeople((prev) => [...prev, created]);
     setSyncError(null);
@@ -268,10 +273,13 @@ export default function App() {
   // precisar recriar do zero e perder o histórico ligado ao id dela.
   const handleUpdatePerson = async (
     id: string,
-    person: { name: string; role: UserRole; institution: string; email: string }
+    person: { name: string; role: UserRole; institution: string; email: string } & Partial<PersonAccessOverrides>
   ) => {
     const updated = await updatePersonApi(id, person);
     setPeople((prev) => prev.map((p) => (p.id === id ? updated : p)));
+    // Quem editou o próprio cadastro (ex.: Administradora que passa a ser
+    // Curadora com acesso de Administrador) já vê o papel novo, sem novo login.
+    if (currentUser?.id === id) setCurrentUser(updated);
     setSyncError(null);
   };
 
@@ -282,7 +290,7 @@ export default function App() {
       setSyncError(null);
     } catch (err: any) {
       console.error('Falha ao remover pessoa:', err);
-      setSyncError(err?.message || 'Não foi possível remover a pessoa.');
+      setSyncError(toAppError(err, 'Não foi possível remover a pessoa.'));
     }
   };
 
@@ -314,35 +322,33 @@ export default function App() {
         console.error('Falha ao salvar conjunto:', err);
         setCollections(previous);
         setSaveStatus('idle');
-        setSyncError(err?.message || 'Não foi possível salvar a alteração no banco de dados.');
+        setSyncError(toAppError(err, 'Não foi possível salvar a alteração no banco de dados.'));
       });
   };
 
-  // O NIC é digitado por quem cadastra (janela NewCollectionModal), não gerado em sequência.
+  // O número do conjunto (COI-XXX) é digitado por quem cadastra (janela NewCollectionModal), não gerado em sequência.
   const [showNewCollectionModal, setShowNewCollectionModal] = useState(false);
   const handleCreateNewCollection = () => setShowNewCollectionModal(true);
 
-  const createCollectionWithNic = async (newNic: string, nextNum: string) => {
+  const createCollectionWithNic = async (newNic: string) => {
     if (!currentUser) return;
     const newCol: OsteologicalCollection = {
       id: `col-${Date.now()}`,
       nic: newNic,
-      currentPhase: 1,
+      currentPhase: 0,
       createdAt: new Date().toISOString(),
       createdByTechnician: currentUser.name,
       signatures: [],
-      legalOrigin: {
-        deliveryDocumentNumber: `GUIA-REMESSA-INC-DITEC-PF-2026/${nextNum}`,
-        originInstitution: 'IML Regional Metropolitano',
-        cemeteryName: 'Cemitério Municipal São João',
-        cemeteryPlot: `Quadra 12 - Jazigo ${nextNum}`,
-        deathDeclarationNumber: `DO-2026-88${nextNum}`
-      },
+      // Dados restritos de origem começam vazios: antes vinham preenchidos com
+      // valores de exemplo (cemitério, guia, declaração de óbito inventados) que
+      // apareciam na Fase 1 como se fossem do conjunto real.
+      legalOrigin: {},
+      phase0: createEmptyPhase0Data(),
       phase1: {
         ...createEmptyPhase1Data(),
         preliminaryBoxes: [{
           id: `CX-${newNic}`,
-          boxCode: `CX-${nextNum}`,
+          boxCode: newNic,
           presumedIndividualLabel: 'Caixa do conjunto',
           currentLocation: 'Bancada de Recepção',
           qrCode: `SIGCOI://BOX/CX-${newNic}`
@@ -404,13 +410,13 @@ export default function App() {
       const created = await createCollectionApi(newCol);
       setCollections(prev => [created, ...prev]);
       setSelectedNic(newNic);
-      setActivePhase(1);
+      setActivePhase(0);
       setActiveTab('fases');
       setSyncError(null);
       setShowNewCollectionModal(false);
     } catch (err: any) {
       console.error('Falha ao criar conjunto:', err);
-      setSyncError(err?.message || 'Não foi possível criar o conjunto no banco de dados.');
+      setSyncError(toAppError(err, 'Não foi possível criar o conjunto no banco de dados.'));
     }
   };
 
@@ -470,7 +476,9 @@ export default function App() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-slate-100 dark:bg-slate-950 text-slate-700 dark:text-slate-300 text-sm text-center p-6">
         <p className="font-semibold">Não foi possível carregar os conjuntos do banco de dados.</p>
-        {syncError && <p className="font-mono text-xs text-rose-600 dark:text-rose-400">{syncError}</p>}
+        {syncError && (
+          <ErrorNotice code={syncError.code} message={syncError.message} className="max-w-md" />
+        )}
         <button
           onClick={() => window.location.reload()}
           className="px-4 py-2 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-semibold"
@@ -494,10 +502,12 @@ export default function App() {
   return (
     <div className={`min-h-screen flex flex-col font-sans transition-colors ${laboratoryMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-100/70 dark:bg-slate-950 text-slate-900 dark:text-slate-100'}`}>
       {syncError && (
-        <div className="bg-rose-600 text-white text-xs font-mono px-4 py-2 flex items-center justify-between gap-3">
-          <span>⚠ {syncError}</span>
-          <button onClick={() => setSyncError(null)} className="underline shrink-0">Dispensar</button>
-        </div>
+        <ErrorNotice
+          variant="banner"
+          code={syncError.code}
+          message={syncError.message}
+          onDismiss={() => setSyncError(null)}
+        />
       )}
       {/* Top Header with Main Navigation Menu (§User Request) */}
       <Header
@@ -564,7 +574,7 @@ export default function App() {
                 title="Cadastrar nova entrada de conjunto osteológico no acervo"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Novo Conjunto (NIC)</span>
+                <span>Novo Conjunto (COI)</span>
               </button>
             </div>
           </div>
@@ -645,18 +655,26 @@ export default function App() {
         {activeTab === 'fases' && !currentCollection && (
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-10 text-center space-y-3">
             <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Nenhum conjunto osteológico cadastrado ainda.</p>
-            <p className="text-xs text-slate-500">Crie um novo conjunto (NIC) para começar.</p>
+            <p className="text-xs text-slate-500">Crie um novo conjunto (COI) para começar.</p>
             <button
               onClick={handleCreateNewCollection}
               className="px-4 py-2 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-semibold inline-flex items-center gap-1.5"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Novo Conjunto (NIC)</span>
+              <span>Novo Conjunto (COI)</span>
             </button>
           </div>
         )}
         {activeTab === 'fases' && currentCollection && (
           <>
+            {activePhase === 0 && (
+              <Phase0Recebimento
+                collection={currentCollection}
+                currentUser={currentUser}
+                onUpdateCollection={handleUpdateCollection}
+                laboratoryMode={laboratoryMode}
+              />
+            )}
             {activePhase === 1 && (
               <Phase1Recebimento
                 collection={currentCollection}

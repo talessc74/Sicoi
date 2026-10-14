@@ -2,7 +2,7 @@
  * Cliente HTTP para persistência de conjuntos osteológicos (PostgreSQL via /api/collections).
  * Substitui o estado local em memória (mockData) como fonte de verdade do App.
  */
-import { OsteologicalCollection } from '../types/sgccco';
+import { IndividualHypothesis, OsteologicalCollection } from '../types/sgccco';
 import { csrfHeaders } from './csrf';
 
 async function parseJsonOrThrow(res: Response, fallbackMessage: string) {
@@ -13,7 +13,7 @@ async function parseJsonOrThrow(res: Response, fallbackMessage: string) {
     // resposta sem corpo JSON (ex.: erro de rede bruto)
   }
   if (!res.ok) {
-    throw new Error(data?.error || `${fallbackMessage} (HTTP ${res.status})`);
+    throw Object.assign(new Error(data?.error || `${fallbackMessage} (HTTP ${res.status})`), { code: data?.code });
   }
   return data;
 }
@@ -67,4 +67,25 @@ export interface CollectionHistory {
 export async function fetchCollectionHistory(nic: string): Promise<CollectionHistory> {
   const res = await fetch(`/api/collections/${encodeURIComponent(nic)}/history`);
   return parseJsonOrThrow(res, 'Erro ao carregar o histórico do conjunto');
+}
+
+export interface IndividualReferenceMatch {
+  nic: string;
+  individual: IndividualHypothesis;
+  sharedTraits: string[];
+}
+
+// Fase 4 (§15): busca indivíduos com perfil biológico comparável em outros
+// conjuntos do acervo, a partir de um indivíduo já registrado neste conjunto.
+export async function searchIndividualReferences(
+  nic: string,
+  individualId: string
+): Promise<IndividualReferenceMatch[]> {
+  const res = await fetch('/api/phase4/individuals/reference-search', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
+    body: JSON.stringify({ nic, individualId })
+  });
+  const data = await parseJsonOrThrow(res, 'Erro na busca de referência entre conjuntos');
+  return data.matches;
 }

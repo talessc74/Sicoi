@@ -11,6 +11,7 @@ import { getLatestPhaseSignature } from '../utils/signatures';
 import { CollectionHistoryPanel } from './CollectionHistoryPanel';
 import { fetchCollectionHistory } from '../services/collectionsService';
 import { checkSignatureSnapshots } from '../utils/historyVerification';
+import { friendlyMessage } from '../utils/errorMessages';
 import {
   ShieldCheck,
   ShieldAlert,
@@ -40,11 +41,12 @@ import {
 } from 'lucide-react';
 
 const PHASE_META: Record<PhaseNumber, { subtitle: string; signerRole: string }> = {
+  0: { subtitle: 'Recebimento', signerRole: 'Técnico' },
   1: { subtitle: 'Recebimento & A.1', signerRole: 'Técnico' },
   2: { subtitle: 'Limpeza & Secagem A.2', signerRole: 'Técnico' },
   3: { subtitle: 'Acondic. Provisório', signerRole: 'Técnico' },
-  4: { subtitle: 'Curadoria & Perfil', signerRole: 'Curador' },
-  5: { subtitle: 'Patologias & Exames', signerRole: 'Curador / Técnico' },
+  4: { subtitle: 'Montagem e Inventário & Perfil', signerRole: 'Técnico / Curador' },
+  5: { subtitle: 'Alterações Ósseas & Exames', signerRole: 'Curador / Técnico' },
   6: { subtitle: 'Galpão Definitivo', signerRole: 'Dupla Custódia' },
   7: { subtitle: 'Pesquisa & Grafo', signerRole: 'Admin / Livre' }
 };
@@ -73,6 +75,7 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
   const [copiedHash, setCopiedHash] = useState<string | null>(null);
   const [inspectingEvent, setInspectingEvent] = useState<AuditEvent | null>(null);
   const [isVerifyingIntegrity, setIsVerifyingIntegrity] = useState(false);
+  const [showVerificationErrorDetail, setShowVerificationErrorDetail] = useState(false);
   const [verificationResult, setVerificationResult] = useState<{
     verified: boolean;
     totalEvents: number;
@@ -81,6 +84,7 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
     signaturesWithoutCopy: number;
     chainBrokenAtId: number | null;
     error?: string;
+    errorCode?: string;
     verifiedAt: string;
   } | null>(null);
 
@@ -94,19 +98,23 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
     return getAuditTrailForCollection(currentCollection);
   }, [currentCollection]);
 
-  // Completude de cada uma das 7 fases — base do Laudo de Auditoria. Funciona
-  // para QUALQUER conjunto, completo ou não: uma fase sem assinatura aparece
-  // como "Em Aberto" (ou "Bloqueada" se as fases anteriores não fecharam),
-  // nunca é omitida do relatório.
+  // Completude de cada uma das 8 fases (0 a 7) — base do Laudo de Auditoria.
+  // Funciona para QUALQUER conjunto, completo ou não: uma fase sem assinatura
+  // aparece como "Em Aberto" (ou "Bloqueada" se as fases anteriores não
+  // fecharam), nunca é omitida do relatório.
   const phaseReport = useMemo(() => {
     if (!currentCollection) return [];
-    const phases: PhaseNumber[] = [1, 2, 3, 4, 5, 6, 7];
+    const phases: PhaseNumber[] = [0, 1, 2, 3, 4, 5, 6, 7];
     return phases.map((num) => {
       const sig = getLatestPhaseSignature(currentCollection.signatures, num);
       const meta = PHASE_META[num];
       let status: 'assinada' | 'reaberta' | 'em_aberto' | 'bloqueada';
       if (sig?.status === 'locked') status = 'assinada';
       else if (sig?.status === 'unlocked_for_revision') status = 'reaberta';
+      // Conjunto criado antes da Fase 0 existir (out/2026): não tem phase0,
+      // então ela nunca esteve "em aberto" pra ele — mostra bloqueada, não um
+      // pendente fantasma.
+      else if (num === 0 && !currentCollection.phase0) status = 'bloqueada';
       else if (num <= currentCollection.currentPhase) status = 'em_aberto';
       else status = 'bloqueada';
       return { num, meta, sig, status };
@@ -148,11 +156,11 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-12 text-center">
         <ShieldCheck className="w-10 h-10 text-slate-300 mx-auto mb-3" />
         <h3 className="text-base font-semibold text-slate-800 dark:text-slate-200">
-          Nenhum conjunto (NIC) cadastrado ainda
+          Nenhum conjunto (COI) cadastrado ainda
         </h3>
         <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
           A Linha do Tempo de Auditoria mostra o histórico de um conjunto específico.
-          Cadastre um Novo Conjunto (NIC) para começar a gerar eventos de auditoria.
+          Cadastre um Novo Conjunto (COI) para começar a gerar eventos de auditoria.
         </p>
       </div>
     );
@@ -233,6 +241,7 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
   const handleVerifyIntegrity = async () => {
     if (!currentCollection) return;
     setIsVerifyingIntegrity(true);
+    setShowVerificationErrorDetail(false);
     const verifiedAt = new Date().toLocaleTimeString('pt-BR');
     try {
       const history = await fetchCollectionHistory(currentCollection.nic);
@@ -256,6 +265,7 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
         signaturesWithoutCopy: 0,
         chainBrokenAtId: null,
         error: err?.message || 'Não foi possível consultar o histórico no servidor.',
+        errorCode: err?.code,
         verifiedAt
       });
     } finally {
@@ -497,7 +507,7 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">
             {/* NIC Selector Dropdown */}
             <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5">
-              <span className="text-xs font-mono text-slate-500 font-medium">NIC:</span>
+              <span className="text-xs font-mono text-slate-500 font-medium">COI:</span>
               <select
                 value={selectedNic}
                 onChange={(e) => onSelectNic(e.target.value)}
@@ -553,7 +563,16 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
                 {verificationResult.error ? (
                   <span>
                     <span className="font-semibold">Não foi possível conferir: </span>
-                    {verificationResult.error}
+                    {friendlyMessage(verificationResult.errorCode)}
+                    <button
+                      onClick={() => setShowVerificationErrorDetail((v) => !v)}
+                      className="ml-1.5 underline opacity-80 hover:opacity-100 text-[11px]"
+                    >
+                      {showVerificationErrorDetail ? 'ocultar detalhes técnicos' : 'ver detalhes técnicos'}
+                    </button>
+                    {showVerificationErrorDetail && (
+                      <div className="mt-1 font-mono text-[10px] opacity-80">{verificationResult.error}</div>
+                    )}
                   </span>
                 ) : (
                   <>
@@ -642,12 +661,13 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
               onChange={(e) => setSelectedPhaseFilter(e.target.value)}
               className="w-full py-2 px-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-700 dark:text-slate-200 focus:outline-hidden"
             >
-              <option value="all">Todas as Fases (1 a 7)</option>
+              <option value="all">Todas as Fases (0 a 7)</option>
+              <option value="0">Fase 0: Recebimento</option>
               <option value="1">Fase 1: Entrada / Recebimento</option>
               <option value="2">Fase 2: Limpeza e Secagem</option>
               <option value="3">Fase 3: Acondicionamento Prov.</option>
-              <option value="4">Fase 4: Curadoria / NMI</option>
-              <option value="5">Fase 5: Patologias e Embalagem</option>
+              <option value="4">Fase 4: Montagem e Inventário / NMI</option>
+              <option value="5">Fase 5: Alterações Ósseas e Embalagem</option>
               <option value="6">Fase 6: Galpão Definitivo</option>
               <option value="7">Fase 7: Consulta / Pesquisa</option>
             </select>
@@ -661,15 +681,15 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
               className="w-full py-2 px-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-700 dark:text-slate-200 focus:outline-hidden"
             >
               <option value="all">Todos os Tipos de Ação</option>
-              <option value="criacao_nic">Abertura de NIC</option>
+              <option value="criacao_nic">Abertura de conjunto (COI)</option>
               <option value="recebimento_triagem">Triagem e Lacres</option>
               <option value="limpeza_higienizacao">Higienização e Limpeza</option>
               <option value="secagem_concluida">Secagem e Umidade</option>
               <option value="acondicionamento_provisorio">Estante Provisória</option>
-              <option value="curadoria_nmi">Curadoria e NMI</option>
+              <option value="curadoria_nmi">Montagem e Inventário e NMI</option>
               <option value="pareamento_anatomico">Pareamento Anatômico</option>
               <option value="perfil_biologico">Perfil Biológico</option>
-              <option value="patologia_registrada">Patologias Ósseas</option>
+              <option value="patologia_registrada">Alterações Ósseas</option>
               <option value="exame_dicom_anexado">Exame DICOM 3.0</option>
               <option value="marcacao_ossea">Marcação com Paraloid B-72</option>
               <option value="embalagem_inerte">Embalagem Inerte</option>

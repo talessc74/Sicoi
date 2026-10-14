@@ -19,6 +19,7 @@ import {
   verifyChangeLogChain,
   attachPhotoBytes,
   getPhotoFile,
+  insertPhase4AssemblyPhotoMetadata,
   Actor
 } from './db/collectionsRepo';
 import { HistoryViolationError } from './db/historyGuard';
@@ -40,7 +41,18 @@ import {
   BoneSimilarityCandidate,
   BoneSimilarityExplanation
 } from './db/boneSimilarity';
+import {
+  validateChatMessages,
+  validateChatSystemInstruction,
+  validateChatModel,
+  validatePopStepInput,
+  validatePopStepModel,
+  validateTranscribeInput
+} from './db/aiInputValidation';
+import { findSimilarIndividuals } from './db/individualReferenceSearch';
 import { listPeople, createPerson, updatePerson, deletePerson, countPeople } from './db/peopleRepo';
+import { hasAdminAccess } from './src/utils/permissions';
+import type { Phase0Data } from './src/types/sgccco';
 import {
   listAuthorizations,
   createAuthorization,
@@ -209,7 +221,7 @@ function csrfProtection(req: Request, res: Response, next: NextFunction): void {
   }
   const headerToken = req.headers['x-csrf-token'];
   if (typeof headerToken !== 'string' || !req.session.csrfToken || headerToken !== req.session.csrfToken) {
-    res.status(403).json({ error: 'Token CSRF ausente ou inválido. Recarregue a página e tente de novo.' });
+    res.status(403).json({ error: 'Token CSRF ausente ou inválido. Recarregue a página e tente de novo.', code: 'AUTH_CSRF_INVALIDO' });
     return;
   }
   next();
@@ -226,13 +238,13 @@ app.use(csrfProtection);
 async function requireAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
   const personId = req.session.personId;
   if (!personId) {
-    res.status(401).json({ error: 'Sessão expirada ou inexistente. Faça login novamente.' });
+    res.status(401).json({ error: 'Sessão expirada ou inexistente. Faça login novamente.', code: 'AUTH_SESSAO_EXPIRADA' });
     return;
   }
   const person = await getPersonWithAuthStatus(getPool(), personId);
   if (!person) {
     req.session.personId = undefined;
-    res.status(401).json({ error: 'Sessão inválida. Faça login novamente.' });
+    res.status(401).json({ error: 'Sessão inválida. Faça login novamente.', code: 'AUTH_SESSAO_EXPIRADA' });
     return;
   }
   (req as any).currentPerson = person;
@@ -242,8 +254,12 @@ async function requireAuth(req: Request, res: Response, next: NextFunction): Pro
 function requireSessionRole(role: string) {
   return (req: Request, res: Response, next: NextFunction) => {
     const person = (req as any).currentPerson;
-    if (!person || person.role !== role) {
-      res.status(403).json({ error: `Esta ação exige o papel ${role}.` });
+    // Funções de Administrador também valem para quem tem o acesso de
+    // Administrador somado a outro papel (people.admin_access — ex.: Curadora
+    // que administra o sistema). Os demais papéis seguem a comparação exata.
+    const allowed = role === 'administrador' ? hasAdminAccess(person) : person?.role === role;
+    if (!person || !allowed) {
+      res.status(403).json({ error: `Esta ação exige o papel ${role}.`, code: 'AUTH_PAPEL_INSUFICIENTE' });
       return;
     }
     next();
@@ -376,7 +392,7 @@ app.post('/api/chat', async (req: Request, res: Response) => {
     if (!apiKey) {
       return res.status(401).json({
         error: 'Chave GEMINI_API_KEY não foi encontrada no ambiente do servidor. Verifique o painel Settings > Secrets no AI Studio.',
-        code: 401,
+        code: 'IA_CHAVE_AUSENTE',
       });
     }
 
@@ -388,8 +404,17 @@ app.post('/api/chat', async (req: Request, res: Response) => {
       systemInstruction = 'Você é o assistente de curadoria do SIGCOI, sistema de gestão da Coleção Osteológica Identificada do INC (COI-INC/DITEC/PF) — biobanco e coleção de referência para pesquisa aplicada, capacitação e ensino em antropologia forense, instituída pela Portaria DITEC/PF nº 1415/2024, sem finalidade de resolução de casos criminais. Auxilie com precisão científica e técnica na análise de remanescentes ósseos, controle e rastreabilidade do acervo, estimativa de sexo, idade, estatura, ancestralidade, traumatologia e patologias ósseas segundo os protocolos científicos da coleção.',
     } = req.body;
 
-    if (!Array.isArray(messages) || messages.length === 0) {
-      return res.status(400).json({ error: 'Nenhuma mensagem fornecida para a conversa.' });
+    const messagesError = validateChatMessages(messages);
+    if (messagesError) {
+      return res.status(400).json({ error: messagesError, code: 'IA_ENTRADA_INVALIDA' });
+    }
+    const systemInstructionError = validateChatSystemInstruction(systemInstruction);
+    if (systemInstructionError) {
+      return res.status(400).json({ error: systemInstructionError, code: 'IA_ENTRADA_INVALIDA' });
+    }
+    const modelError = validateChatModel(model);
+    if (modelError) {
+      return res.status(400).json({ error: modelError, code: 'IA_MODELO_INVALIDO' });
     }
 
     // Validação e seleção de modelo conforme especificação
@@ -417,7 +442,7 @@ app.post('/api/chat', async (req: Request, res: Response) => {
       if (modelError?.status === 401 || (modelError?.message && modelError.message.includes('401'))) {
         return res.status(401).json({
           error: 'Erro 401: Chave de API não autorizada ou expirada. Gere uma nova chave no Google AI Studio (Settings > Secrets).',
-          code: 401,
+          code: 'IA_CHAVE_AUSENTE',
           details: modelError.message,
         });
       }
@@ -475,12 +500,17 @@ app.post('/api/pop-step', async (req: Request, res: Response) => {
   try {
     const apiKey = getCleanApiKey();
     if (!apiKey) {
-      return res.status(401).json({ error: 'Chave GEMINI_API_KEY não configurada no servidor.', code: 401 });
+      return res.status(401).json({ error: 'Chave GEMINI_API_KEY não configurada no servidor.', code: 'IA_CHAVE_AUSENTE' });
     }
 
     const { transcript, stepContext, model = 'gemini-3.1-flash-lite' } = req.body;
-    if (!transcript || !stepContext) {
-      return res.status(400).json({ error: 'Requisição deve conter { transcript, stepContext }.' });
+    const popStepError = validatePopStepInput(transcript, stepContext);
+    if (popStepError) {
+      return res.status(400).json({ error: popStepError, code: 'IA_ENTRADA_INVALIDA' });
+    }
+    const popStepModelError = validatePopStepModel(model);
+    if (popStepModelError) {
+      return res.status(400).json({ error: popStepModelError, code: 'IA_MODELO_INVALIDO' });
     }
 
     const ai = getGeminiClient();
@@ -502,14 +532,14 @@ ${stepContext}`;
 
     const raw = response.text?.trim();
     if (!raw) {
-      return res.status(502).json({ error: 'Resposta vazia do Gemini para o passo do POP.' });
+      return res.status(502).json({ error: 'Resposta vazia do Gemini para o passo do POP.', code: 'IA_RESPOSTA_VAZIA' });
     }
 
     let parsed: any;
     try {
       parsed = JSON.parse(raw);
     } catch {
-      return res.status(502).json({ error: 'Resposta do Gemini não é um JSON válido conforme o schema pedido.' });
+      return res.status(502).json({ error: 'Resposta do Gemini não é um JSON válido conforme o schema pedido.', code: 'IA_RESPOSTA_INVALIDA' });
     }
 
     let extractedFields: Record<string, any> = {};
@@ -529,9 +559,9 @@ ${stepContext}`;
   } catch (error: any) {
     console.error('Erro na rota /api/pop-step:', error);
     if (error?.status === 401 || (error?.message && error.message.includes('401'))) {
-      return res.status(401).json({ error: 'Erro 401: Chave de API não autorizada.', code: 401 });
+      return res.status(401).json({ error: 'Erro 401: Chave de API não autorizada.', code: 'IA_CHAVE_AUSENTE' });
     }
-    return res.status(502).json({ error: error?.message || 'Erro ao consultar o Gemini para o passo do POP.' });
+    return res.status(502).json({ error: error?.message || 'Erro ao consultar o Gemini para o passo do POP.', code: error?.code || 'IA_ERRO_INTERNO' });
   }
 });
 
@@ -542,15 +572,18 @@ app.post('/api/transcribe', async (req: Request, res: Response) => {
     if (!apiKey) {
       return res.status(401).json({
         error: 'Chave GEMINI_API_KEY não configurada no servidor (401).',
-        code: 401,
+        code: 'IA_CHAVE_AUSENTE',
       });
     }
 
     const ai = getGeminiClient();
     const { audioBase64, mimeType = 'audio/webm' } = req.body;
-
     if (!audioBase64) {
-      return res.status(400).json({ error: 'Nenhum áudio codificado em base64 foi enviado.' });
+      return res.status(400).json({ error: 'Nenhum áudio codificado em base64 foi enviado.', code: 'IA_AUDIO_AUSENTE' });
+    }
+    const transcribeValidationError = validateTranscribeInput(audioBase64, mimeType);
+    if (transcribeValidationError) {
+      return res.status(400).json({ error: transcribeValidationError, code: 'IA_ENTRADA_INVALIDA' });
     }
 
     // Limpar prefixo data: se presente
@@ -610,7 +643,7 @@ app.post('/api/transcribe', async (req: Request, res: Response) => {
     if (error?.status === 401) {
       return res.status(401).json({
         error: 'Erro 401: Chave de API não autorizada para transcrição.',
-        code: 401,
+        code: 'IA_CHAVE_AUSENTE',
       });
     }
     return res.status(500).json({
@@ -631,7 +664,7 @@ app.get('/api/collections', requireAuth, async (_req: Request, res: Response) =>
     return res.json({ collections });
   } catch (error: any) {
     console.error('Erro ao listar conjuntos:', error);
-    return res.status(500).json({ error: error?.message || 'Erro ao listar conjuntos.' });
+    return res.status(500).json({ error: error?.message || 'Erro ao listar conjuntos.', code: error?.code || 'CONJUNTO_ERRO_INTERNO' });
   }
 });
 
@@ -641,12 +674,12 @@ app.get('/api/collections/:nic', requireAuth, async (req: Request, res: Response
     const pool = getPool();
     const collection = await getCollection(pool, req.params.nic);
     if (!collection) {
-      return res.status(404).json({ error: `Conjunto ${req.params.nic} não encontrado.` });
+      return res.status(404).json({ error: `Conjunto ${req.params.nic} não encontrado.`, code: 'CONJUNTO_NAO_ENCONTRADO' });
     }
     return res.json({ collection });
   } catch (error: any) {
     console.error('Erro ao carregar conjunto:', error);
-    return res.status(500).json({ error: error?.message || 'Erro ao carregar conjunto.' });
+    return res.status(500).json({ error: error?.message || 'Erro ao carregar conjunto.', code: error?.code || 'CONJUNTO_ERRO_INTERNO' });
   }
 });
 
@@ -655,14 +688,14 @@ app.post('/api/collections', requireAuth, async (req: Request, res: Response) =>
   try {
     const collection = req.body?.collection;
     if (!collection?.nic) {
-      return res.status(400).json({ error: 'Corpo da requisição deve conter { collection } com um NIC válido.' });
+      return res.status(400).json({ error: 'Corpo da requisição deve conter { collection } com um número de conjunto (COI) válido.', code: 'CONJUNTO_ERRO_INTERNO' });
     }
     const pool = getPool();
     const persisted = await createCollection(pool, collection, actorFromSession(req));
     return res.status(201).json({ collection: persisted });
   } catch (error: any) {
     console.error('Erro ao criar conjunto:', error);
-    return res.status(500).json({ error: error?.message || 'Erro ao criar conjunto.' });
+    return res.status(500).json({ error: error?.message || 'Erro ao criar conjunto.', code: error?.code || 'CONJUNTO_ERRO_INTERNO' });
   }
 });
 
@@ -672,7 +705,7 @@ app.put('/api/collections/:nic', requireAuth, async (req: Request, res: Response
   try {
     const collection = req.body?.collection;
     if (!collection || collection.nic !== req.params.nic) {
-      return res.status(400).json({ error: 'NIC do corpo da requisição não confere com o NIC da URL.' });
+      return res.status(400).json({ error: 'O número do conjunto (COI) no corpo da requisição não confere com o da URL.', code: 'CONJUNTO_ERRO_INTERNO' });
     }
     const pool = getPool();
     const saved = await saveCollection(pool, collection, actorFromSession(req));
@@ -682,9 +715,9 @@ app.put('/api/collections/:nic', requireAuth, async (req: Request, res: Response
     // Tentativa de mexer no histórico (ou hash de assinatura nova que não confere) é
     // recusa do servidor, não falha dele.
     if (error instanceof HistoryViolationError) {
-      return res.status(409).json({ error: error.message });
+      return res.status(409).json({ error: error.message, code: error.code || 'HIST_FASE_TRAVADA' });
     }
-    return res.status(500).json({ error: error?.message || 'Erro ao salvar conjunto.' });
+    return res.status(500).json({ error: error?.message || 'Erro ao salvar conjunto.', code: error?.code || 'CONJUNTO_ERRO_INTERNO' });
   }
 });
 
@@ -697,7 +730,7 @@ app.get('/api/collections/:nic/history', requireAuth, async (req: Request, res: 
     const pool = getPool();
     const collection = await getCollection(pool, req.params.nic);
     if (!collection) {
-      return res.status(404).json({ error: `Conjunto ${req.params.nic} não encontrado.` });
+      return res.status(404).json({ error: `Conjunto ${req.params.nic} não encontrado.`, code: 'CONJUNTO_NAO_ENCONTRADO' });
     }
     const changes = await listChangeLog(pool, req.params.nic);
     return res.json({
@@ -707,20 +740,23 @@ app.get('/api/collections/:nic/history', requireAuth, async (req: Request, res: 
     });
   } catch (error: any) {
     console.error('Erro ao carregar histórico:', error);
-    return res.status(500).json({ error: error?.message || 'Erro ao carregar histórico.' });
+    return res.status(500).json({ error: error?.message || 'Erro ao carregar histórico.', code: error?.code || 'CONJUNTO_ERRO_INTERNO' });
   }
 });
 
-// --- Fotos reais (Fase 1 e 2) — captura pela câmera, bytes guardados direto no
+// --- Fotos reais (Fase 1, 2 e 4) — captura pela câmera, bytes guardados direto no
 // Postgres já existente, sem conta de armazenamento externa (_local-adr-policy-301).
 // Convive com o caminho antigo (full_state.phase{1,2}.photos + syncPhotos, que só
 // grava metadados) — a aposentadoria dele é um PR futuro, só depois do uso real.
+// Fase 4 é diferente das outras duas: não tem um array de fotos, só uma foto única
+// oficial (completeAssemblyPhotoApproved) — ver o tratamento especial na rota abaixo.
 
 const photoUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
-function photoTableFor(phase: unknown): 'phase1_photos' | 'phase2_photos' | null {
+function photoTableFor(phase: unknown): 'phase1_photos' | 'phase2_photos' | 'phase4_photos' | null {
   if (phase === 'phase1') return 'phase1_photos';
   if (phase === 'phase2') return 'phase2_photos';
+  if (phase === 'phase4') return 'phase4_photos';
   return null;
 }
 
@@ -730,10 +766,9 @@ function photoTableFor(phase: unknown): 'phase1_photos' | 'phase2_photos' | null
 function handlePhotoUpload(req: Request, res: Response, next: NextFunction): void {
   photoUpload.single('photo')(req, res, (err: unknown) => {
     if (err) {
-      const message = err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE'
-        ? 'Foto maior que o limite de 20MB.'
-        : 'Falha ao processar o arquivo enviado.';
-      res.status(400).json({ error: message });
+      const isTooLarge = err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE';
+      const message = isTooLarge ? 'Foto maior que o limite de 20MB.' : 'Falha ao processar o arquivo enviado.';
+      res.status(400).json({ error: message, code: isTooLarge ? 'FOTO_MUITO_GRANDE' : 'FOTO_ARQUIVO_INVALIDO' });
       return;
     }
     next();
@@ -749,19 +784,19 @@ app.post('/api/collections/:nic/photos', requireAuth, handlePhotoUpload, async (
   try {
     const file = req.file;
     if (!file) {
-      return res.status(400).json({ error: 'Nenhum arquivo de foto enviado (campo "photo").' });
+      return res.status(400).json({ error: 'Nenhum arquivo de foto enviado (campo "photo").', code: 'FOTO_ARQUIVO_AUSENTE' });
     }
     if (!file.mimetype.startsWith('image/')) {
-      return res.status(400).json({ error: 'Arquivo enviado não é uma imagem.' });
+      return res.status(400).json({ error: 'Arquivo enviado não é uma imagem.', code: 'FOTO_ARQUIVO_INVALIDO' });
     }
     const phase = req.body?.phase;
     const table = photoTableFor(phase);
     if (!table) {
-      return res.status(400).json({ error: 'Campo "phase" deve ser "phase1" ou "phase2".' });
+      return res.status(400).json({ error: 'Campo "phase" deve ser "phase1", "phase2" ou "phase4".', code: 'FOTO_FASE_INVALIDA' });
     }
     const category = typeof req.body?.category === 'string' ? req.body.category.trim() : '';
     if (!category) {
-      return res.status(400).json({ error: 'Campo "category" é obrigatório.' });
+      return res.status(400).json({ error: 'Campo "category" é obrigatório.', code: 'FOTO_CATEGORIA_OBRIGATORIA' });
     }
     const caption = typeof req.body?.caption === 'string' && req.body.caption.trim() ? req.body.caption.trim() : undefined;
     const width = Number.isFinite(Number(req.body?.width)) && req.body?.width !== undefined ? Math.round(Number(req.body.width)) : null;
@@ -770,7 +805,7 @@ app.post('/api/collections/:nic/photos', requireAuth, handlePhotoUpload, async (
     const pool = getPool();
     const collection = await getCollection(pool, req.params.nic);
     if (!collection) {
-      return res.status(404).json({ error: `Conjunto ${req.params.nic} não encontrado.` });
+      return res.status(404).json({ error: `Conjunto ${req.params.nic} não encontrado.`, code: 'CONJUNTO_NAO_ENCONTRADO' });
     }
 
     const actor = actorFromSession(req);
@@ -787,11 +822,38 @@ app.post('/api/collections/:nic/photos', requireAuth, handlePhotoUpload, async (
     };
 
     const phaseData = (collection as any)[phase];
-    const next = {
-      ...collection,
-      [phase]: { ...phaseData, photos: [...phaseData.photos, photo] }
-    };
+    // Fase 4 não tem array de fotos — é uma foto única oficial (visível na
+    // leitura do QR Code, §11). A nova sempre substitui a anterior (nunca há
+    // duas "fotos oficiais de montagem" ao mesmo tempo); o registro antigo em
+    // phase4_photos fica órfão, mas mantém seus bytes pra auditoria.
+    const next = phase === 'phase4'
+      ? {
+          ...collection,
+          phase4: {
+            ...phaseData,
+            completeAssemblyPhotoApproved: {
+              photoUrl: photo.url,
+              capturedAt: photo.timestamp,
+              approvedBy: photo.author,
+              approvedAt: photo.timestamp,
+              sha256Hash: photo.sha256Hash,
+              resolution: width && height ? `${width}x${height}` : ''
+            },
+            assemblyPhotoJustification: undefined
+          }
+        }
+      : {
+          ...collection,
+          [phase]: { ...phaseData, photos: [...phaseData.photos, photo] }
+        };
     const saved = await saveCollection(pool, next, actor);
+
+    // Fase 4 não passa por syncPhotos (não tem array de fotos) — o metadado
+    // precisa ser inserido explicitamente aqui antes do attachPhotoBytes achar a
+    // linha pra gravar os bytes.
+    if (phase === 'phase4') {
+      await insertPhase4AssemblyPhotoMetadata(pool, photo, req.params.nic);
+    }
 
     // Só grava os bytes depois do save ter passado por todo o histórico protegido —
     // se saveCollection recusar (fase travada, etc.), nada fica gravado.
@@ -801,9 +863,9 @@ app.post('/api/collections/:nic/photos', requireAuth, handlePhotoUpload, async (
   } catch (error: any) {
     console.error('Erro ao registrar foto:', error);
     if (error instanceof HistoryViolationError) {
-      return res.status(409).json({ error: error.message });
+      return res.status(409).json({ error: error.message, code: error.code || 'HIST_FASE_TRAVADA' });
     }
-    return res.status(500).json({ error: error?.message || 'Erro ao registrar foto.' });
+    return res.status(500).json({ error: error?.message || 'Erro ao registrar foto.', code: error?.code || 'FOTO_ERRO_INTERNO' });
   }
 });
 
@@ -815,16 +877,17 @@ app.get('/api/collections/:nic/photos/:photoId/file', requireAuth, async (req: R
     const pool = getPool();
     const file =
       (await getPhotoFile(pool, 'phase1_photos', req.params.nic, req.params.photoId)) ||
-      (await getPhotoFile(pool, 'phase2_photos', req.params.nic, req.params.photoId));
+      (await getPhotoFile(pool, 'phase2_photos', req.params.nic, req.params.photoId)) ||
+      (await getPhotoFile(pool, 'phase4_photos', req.params.nic, req.params.photoId));
     if (!file) {
-      return res.status(404).json({ error: 'Foto não encontrada.' });
+      return res.status(404).json({ error: 'Foto não encontrada.', code: 'FOTO_NAO_ENCONTRADA' });
     }
     res.setHeader('Content-Type', file.mimetype);
     res.setHeader('Cache-Control', 'private, max-age=86400');
     return res.send(file.data);
   } catch (error: any) {
     console.error('Erro ao carregar foto:', error);
-    return res.status(500).json({ error: error?.message || 'Erro ao carregar foto.' });
+    return res.status(500).json({ error: error?.message || 'Erro ao carregar foto.', code: error?.code || 'FOTO_ERRO_INTERNO' });
   }
 });
 
@@ -837,7 +900,7 @@ app.get('/api/collections/:nic/photos/:photoId/file', requireAuth, async (req: R
 
 function handleAdminError(res: Response, error: any, fallbackMessage: string) {
   const status = error?.statusCode || (error instanceof HistoryViolationError ? 409 : 500);
-  return res.status(status).json({ error: error?.message || fallbackMessage });
+  return res.status(status).json({ error: error?.message || fallbackMessage, code: error?.code || 'ADMIN_ERRO_INTERNO' });
 }
 
 const requireAdminSession = [requireAuth, requireSessionRole('administrador')];
@@ -868,7 +931,7 @@ app.post('/api/admin/collections/:nic/delete', requireAdminSession, async (req: 
     const pool = getPool();
     const actor = actorFromSession(req);
     const reason = String(req.body?.reason || '').trim();
-    if (!reason) return res.status(400).json({ error: 'Justificativa obrigatória para excluir um conjunto.' });
+    if (!reason) return res.status(400).json({ error: 'Justificativa obrigatória para excluir um conjunto.', code: 'ADMIN_JUSTIFICATIVA_OBRIGATORIA' });
     await softDeleteCollection(pool, req.params.nic, actor, reason);
     return res.status(204).send();
   } catch (error: any) {
@@ -894,7 +957,7 @@ app.post('/api/admin/collections/delete-all', requireAdminSession, async (req: R
     const pool = getPool();
     const actor = actorFromSession(req);
     const reason = String(req.body?.reason || '').trim();
-    if (!reason) return res.status(400).json({ error: 'Justificativa obrigatória para excluir todos os dados.' });
+    if (!reason) return res.status(400).json({ error: 'Justificativa obrigatória para excluir todos os dados.', code: 'ADMIN_JUSTIFICATIVA_OBRIGATORIA' });
     const affectedCount = await softDeleteAllCollections(pool, actor, reason);
     return res.json({ affectedCount });
   } catch (error: any) {
@@ -920,7 +983,7 @@ app.post('/api/admin/collections/:nic/boxes/:boxId/delete', requireAdminSession,
     const pool = getPool();
     const actor = actorFromSession(req);
     const reason = String(req.body?.reason || '').trim();
-    if (!reason) return res.status(400).json({ error: 'Justificativa obrigatória para excluir uma caixa.' });
+    if (!reason) return res.status(400).json({ error: 'Justificativa obrigatória para excluir uma caixa.', code: 'ADMIN_JUSTIFICATIVA_OBRIGATORIA' });
     const collection = await adminDeleteBox(pool, req.params.nic, req.params.boxId, actor, reason);
     return res.json({ collection });
   } catch (error: any) {
@@ -950,7 +1013,7 @@ function startSession(req: Request, res: Response, person: Awaited<ReturnType<ty
   req.session.regenerate((err) => {
     if (err) {
       console.error('Erro ao criar sessão de login:', err);
-      return res.status(500).json({ error: 'Erro ao criar sessão de login.' });
+      return res.status(500).json({ error: 'Erro ao criar sessão de login.', code: 'AUTH_ERRO_INTERNO' });
     }
     req.session.personId = person!.id;
     const csrfToken = ensureCsrfToken(req);
@@ -975,7 +1038,7 @@ app.get('/api/auth/bootstrap-status', async (_req: Request, res: Response) => {
     return res.json({ needsBootstrap: total === 0, needsAdminClaim });
   } catch (error: any) {
     console.error('Erro ao conferir status de bootstrap:', error);
-    return res.status(500).json({ error: 'Erro ao conferir status de bootstrap.' });
+    return res.status(500).json({ error: 'Erro ao conferir status de bootstrap.', code: 'AUTH_ERRO_INTERNO' });
   }
 });
 
@@ -986,19 +1049,19 @@ app.post('/api/auth/bootstrap-admin', async (req: Request, res: Response) => {
     const email = String(req.body?.email || '').trim();
     const password = String(req.body?.password || '');
     if (!name || !institution || !email || !password) {
-      return res.status(400).json({ error: 'Nome, instituição, e-mail e senha são obrigatórios.' });
+      return res.status(400).json({ error: 'Nome, instituição, e-mail e senha são obrigatórios.', code: 'AUTH_CAMPOS_OBRIGATORIOS' });
     }
     if (!isValidEmail(email)) {
-      return res.status(400).json({ error: 'Informe um e-mail válido.' });
+      return res.status(400).json({ error: 'Informe um e-mail válido.', code: 'PESSOA_EMAIL_INVALIDO' });
     }
     if (password.length < 8) {
-      return res.status(400).json({ error: 'A senha deve ter pelo menos 8 caracteres.' });
+      return res.status(400).json({ error: 'A senha deve ter pelo menos 8 caracteres.', code: 'AUTH_SENHA_CURTA' });
     }
     const person = await createFirstAdmin(getPool(), { name, institution, email, password });
     return startSession(req, res, person, 201);
   } catch (error: any) {
     console.error('Erro no bootstrap do primeiro Administrador:', error);
-    return res.status(409).json({ error: error?.message || 'Erro no bootstrap do primeiro Administrador.' });
+    return res.status(409).json({ error: error?.message || 'Erro no bootstrap do primeiro Administrador.', code: error?.code || 'AUTH_ERRO_INTERNO' });
   }
 });
 
@@ -1010,28 +1073,28 @@ app.post('/api/auth/bootstrap-admin', async (req: Request, res: Response) => {
 app.post('/api/auth/claim-admin', async (req: Request, res: Response) => {
   try {
     if (!adminBootstrapSecret) {
-      return res.status(404).json({ error: 'Recurso não disponível.' });
+      return res.status(404).json({ error: 'Recurso não disponível.', code: 'AUTH_ERRO_INTERNO' });
     }
     const providedSecret = String(req.body?.bootstrapSecret || '');
     const email = String(req.body?.email || '').trim();
     const newPassword = String(req.body?.newPassword || '');
     if (!providedSecret || !email || !newPassword) {
-      return res.status(400).json({ error: 'E-mail, código de ativação e nova senha são obrigatórios.' });
+      return res.status(400).json({ error: 'E-mail, código de ativação e nova senha são obrigatórios.', code: 'AUTH_CAMPOS_OBRIGATORIOS' });
     }
     if (newPassword.length < 8) {
-      return res.status(400).json({ error: 'A senha deve ter pelo menos 8 caracteres.' });
+      return res.status(400).json({ error: 'A senha deve ter pelo menos 8 caracteres.', code: 'AUTH_SENHA_CURTA' });
     }
     const expected = Buffer.from(adminBootstrapSecret);
     const provided = Buffer.from(providedSecret);
     const secretMatches = expected.length === provided.length && crypto.timingSafeEqual(expected, provided);
     if (!secretMatches) {
-      return res.status(403).json({ error: 'Código de ativação inválido.' });
+      return res.status(403).json({ error: 'Código de ativação inválido.', code: 'AUTH_CODIGO_ATIVACAO_INVALIDO' });
     }
     const person = await claimAdministratorAccount(getPool(), email, newPassword);
     return startSession(req, res, person, 200);
   } catch (error: any) {
     console.error('Erro ao ativar conta de Administrador:', error);
-    return res.status(400).json({ error: error?.message || 'Erro ao ativar conta de Administrador.' });
+    return res.status(400).json({ error: error?.message || 'Erro ao ativar conta de Administrador.', code: error?.code || 'AUTH_ERRO_INTERNO' });
   }
 });
 
@@ -1040,22 +1103,22 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
     const email = String(req.body?.email || '').trim();
     const password = String(req.body?.password || '');
     if (!email || !password) {
-      return res.status(400).json({ error: 'E-mail e senha são obrigatórios.' });
+      return res.status(400).json({ error: 'E-mail e senha são obrigatórios.', code: 'AUTH_CAMPOS_OBRIGATORIOS' });
     }
     const pool = getPool();
     if (await isLoginLocked(pool, email)) {
-      return res.status(429).json({ error: 'Muitas tentativas de login. Aguarde alguns minutos e tente novamente.' });
+      return res.status(429).json({ error: 'Muitas tentativas de login. Aguarde alguns minutos e tente novamente.', code: 'AUTH_MUITAS_TENTATIVAS' });
     }
     const person = await verifyLogin(pool, email, password);
     if (!person) {
       await recordFailedLogin(pool, email);
-      return res.status(401).json({ error: 'E-mail ou senha inválidos.' });
+      return res.status(401).json({ error: 'E-mail ou senha inválidos.', code: 'AUTH_CREDENCIAIS_INVALIDAS' });
     }
     await clearLoginAttempts(pool, email);
     return startSession(req, res, person);
   } catch (error: any) {
     console.error('Erro no login:', error);
-    return res.status(500).json({ error: 'Erro interno no login.' });
+    return res.status(500).json({ error: 'Erro interno no login.', code: 'AUTH_ERRO_INTERNO' });
   }
 });
 
@@ -1063,7 +1126,7 @@ app.post('/api/auth/logout', (req: Request, res: Response) => {
   req.session.destroy((err) => {
     if (err) {
       console.error('Erro ao encerrar sessão:', err);
-      return res.status(500).json({ error: 'Erro ao encerrar sessão.' });
+      return res.status(500).json({ error: 'Erro ao encerrar sessão.', code: 'AUTH_ERRO_INTERNO' });
     }
     res.clearCookie('connect.sid');
     return res.status(204).send();
@@ -1072,11 +1135,11 @@ app.post('/api/auth/logout', (req: Request, res: Response) => {
 
 app.get('/api/auth/me', async (req: Request, res: Response) => {
   const personId = req.session.personId;
-  if (!personId) return res.status(401).json({ error: 'Não autenticado.' });
+  if (!personId) return res.status(401).json({ error: 'Não autenticado.', code: 'AUTH_SESSAO_EXPIRADA' });
   const person = await getPersonWithAuthStatus(getPool(), personId);
   if (!person) {
     req.session.personId = undefined;
-    return res.status(401).json({ error: 'Sessão inválida.' });
+    return res.status(401).json({ error: 'Sessão inválida.', code: 'AUTH_SESSAO_EXPIRADA' });
   }
   // Recarregar a página não passa pelo login de novo — quem já está logado
   // (sessão restaurada pelo cookie) também precisa do token anti-CSRF para
@@ -1093,17 +1156,17 @@ app.post('/api/auth/change-password', requireAuth, async (req: Request, res: Res
     const currentPassword = String(req.body?.currentPassword || '');
     const newPassword = String(req.body?.newPassword || '');
     if (!currentPassword || !newPassword) {
-      return res.status(400).json({ error: 'Senha atual e nova senha são obrigatórias.' });
+      return res.status(400).json({ error: 'Senha atual e nova senha são obrigatórias.', code: 'AUTH_CAMPOS_OBRIGATORIOS' });
     }
     if (newPassword.length < 8) {
-      return res.status(400).json({ error: 'A nova senha deve ter pelo menos 8 caracteres.' });
+      return res.status(400).json({ error: 'A nova senha deve ter pelo menos 8 caracteres.', code: 'AUTH_SENHA_CURTA' });
     }
     const personId = (req as any).currentPerson.id;
     await changeOwnPassword(getPool(), personId, currentPassword, newPassword);
     return res.status(204).send();
   } catch (error: any) {
     console.error('Erro ao trocar a própria senha:', error);
-    return res.status(400).json({ error: error?.message || 'Erro ao trocar a senha.' });
+    return res.status(400).json({ error: error?.message || 'Erro ao trocar a senha.', code: error?.code || 'AUTH_ERRO_INTERNO' });
   }
 });
 
@@ -1113,14 +1176,14 @@ app.post('/api/auth/change-password', requireAuth, async (req: Request, res: Res
 app.post('/api/auth/setup-links', requireAuth, requireSessionRole('administrador'), async (req: Request, res: Response) => {
   try {
     const personId = String(req.body?.personId || '').trim();
-    if (!personId) return res.status(400).json({ error: 'personId é obrigatório.' });
+    if (!personId) return res.status(400).json({ error: 'personId é obrigatório.', code: 'PESSOA_CAMPOS_OBRIGATORIOS' });
     const createdBy = (req as any).currentPerson?.name || null;
     const result = await createPasswordSetupToken(getPool(), personId, createdBy);
     await resolvePendingPasswordResetRequests(getPool(), personId, createdBy);
     return res.json(result);
   } catch (error: any) {
     console.error('Erro ao gerar link de definição de senha:', error);
-    return res.status(500).json({ error: error?.message || 'Erro ao gerar link de definição de senha.' });
+    return res.status(500).json({ error: error?.message || 'Erro ao gerar link de definição de senha.', code: error?.code || 'AUTH_ERRO_INTERNO' });
   }
 });
 
@@ -1130,16 +1193,16 @@ app.post('/api/auth/setup-password', async (req: Request, res: Response) => {
     const token = String(req.body?.token || '').trim();
     const newPassword = String(req.body?.newPassword || '');
     if (!token || !newPassword) {
-      return res.status(400).json({ error: 'Token e nova senha são obrigatórios.' });
+      return res.status(400).json({ error: 'Token e nova senha são obrigatórios.', code: 'AUTH_CAMPOS_OBRIGATORIOS' });
     }
     if (newPassword.length < 8) {
-      return res.status(400).json({ error: 'A senha deve ter pelo menos 8 caracteres.' });
+      return res.status(400).json({ error: 'A senha deve ter pelo menos 8 caracteres.', code: 'AUTH_SENHA_CURTA' });
     }
     const person = await consumePasswordSetupToken(getPool(), token, newPassword);
     return res.json({ person });
   } catch (error: any) {
     console.error('Erro ao definir senha:', error);
-    return res.status(400).json({ error: error?.message || 'Erro ao definir senha.' });
+    return res.status(400).json({ error: error?.message || 'Erro ao definir senha.', code: error?.code || 'AUTH_LINK_INVALIDO' });
   }
 });
 
@@ -1150,7 +1213,7 @@ app.post('/api/auth/forgot-password', async (req: Request, res: Response) => {
   try {
     const email = String(req.body?.email || '').trim();
     if (!email) {
-      return res.status(400).json({ error: 'E-mail é obrigatório.' });
+      return res.status(400).json({ error: 'E-mail é obrigatório.', code: 'AUTH_CAMPOS_OBRIGATORIOS' });
     }
     await requestPasswordReset(getPool(), email);
     return res.json({
@@ -1158,7 +1221,7 @@ app.post('/api/auth/forgot-password', async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('Erro ao registrar pedido de redefinição de senha:', error);
-    return res.status(500).json({ error: 'Erro ao registrar o pedido. Tente novamente.' });
+    return res.status(500).json({ error: 'Erro ao registrar o pedido. Tente novamente.', code: 'AUTH_ERRO_INTERNO' });
   }
 });
 
@@ -1169,7 +1232,7 @@ app.get('/api/auth/password-reset-requests', requireAuth, requireSessionRole('ad
     return res.json({ requests });
   } catch (error: any) {
     console.error('Erro ao listar pedidos de redefinição de senha:', error);
-    return res.status(500).json({ error: 'Erro ao listar pedidos de redefinição de senha.' });
+    return res.status(500).json({ error: 'Erro ao listar pedidos de redefinição de senha.', code: 'AUTH_ERRO_INTERNO' });
   }
 });
 
@@ -1188,7 +1251,7 @@ app.get('/api/people', requireAdminSession, async (_req: Request, res: Response)
     return res.json({ people });
   } catch (error: any) {
     console.error('Erro ao listar pessoas:', error);
-    return res.status(500).json({ error: error?.message || 'Erro ao listar pessoas.' });
+    return res.status(500).json({ error: error?.message || 'Erro ao listar pessoas.', code: error?.code || 'PESSOA_ERRO_INTERNO' });
   }
 });
 
@@ -1199,16 +1262,30 @@ app.post('/api/people', requireAdminSession, async (req: Request, res: Response)
     const { name, role, institution } = req.body || {};
     const email = String(req.body?.email || '').trim();
     if (!name || !role || !institution || !email) {
-      return res.status(400).json({ error: 'Informe name, role, institution e email.' });
+      return res.status(400).json({ error: 'Informe name, role, institution e email.', code: 'PESSOA_CAMPOS_OBRIGATORIOS' });
     }
     if (!isValidEmail(email)) {
-      return res.status(400).json({ error: 'Informe um e-mail válido.' });
+      return res.status(400).json({ error: 'Informe um e-mail válido.', code: 'PESSOA_EMAIL_INVALIDO' });
     }
     if (!VALID_PEOPLE_ROLES.has(role)) {
-      return res.status(400).json({ error: 'Papel inválido. Use tecnico, curador, administrador, pesquisador ou estudante.' });
+      return res.status(400).json({ error: 'Papel inválido. Use tecnico, curador, administrador, pesquisador ou estudante.', code: 'PESSOA_PAPEL_INVALIDO' });
     }
+    // Acesso de Administrador somado só faz sentido para outro papel — quem já
+    // é Administrador tem essas funções pelo próprio papel.
+    const adminAccess = role !== 'administrador' && req.body?.adminAccess === true;
+    // Os 4 ajustes de acesso (§13) são sempre explícitos, sem forçar por papel —
+    // o Administrador pode ampliar OU reduzir qualquer um deles por pessoa,
+    // mesmo pra quem já teria aquele acesso pelo papel (o cliente já manda o
+    // valor pré-calculado a partir do papel escolhido, mas o editor pode mudar).
+    const legalOriginAccess = req.body?.legalOriginAccess === true;
+    const curationAccess = req.body?.curationAccess === true;
+    const phaseSigningAccess = req.body?.phaseSigningAccess === true;
+    const exportAccess = req.body?.exportAccess === true;
     const pool = getPool();
-    const person = await createPerson(pool, { name, role, institution, email });
+    const person = await createPerson(pool, {
+      name, role, institution, email, adminAccess,
+      legalOriginAccess, curationAccess, phaseSigningAccess, exportAccess
+    });
     return res.status(201).json({ person });
   } catch (error: any) {
     console.error('Erro ao cadastrar pessoa:', error);
@@ -1216,9 +1293,9 @@ app.post('/api/people', requireAdminSession, async (req: Request, res: Response)
     // Postgres (revelaria nome de índice/constraint); devolve 409 com uma
     // mensagem que a pessoa cadastrando de fato consegue agir.
     if (error?.code === '23505') {
-      return res.status(409).json({ error: 'Já existe uma pessoa cadastrada com esse e-mail.' });
+      return res.status(409).json({ error: 'Já existe uma pessoa cadastrada com esse e-mail.', code: 'PESSOA_EMAIL_DUPLICADO' });
     }
-    return res.status(500).json({ error: 'Erro ao cadastrar pessoa.' });
+    return res.status(500).json({ error: 'Erro ao cadastrar pessoa.', code: 'PESSOA_ERRO_INTERNO' });
   }
 });
 
@@ -1230,26 +1307,40 @@ app.put('/api/people/:id', requireAdminSession, async (req: Request, res: Respon
     const { name, role, institution } = req.body || {};
     const email = String(req.body?.email || '').trim();
     if (!name || !role || !institution || !email) {
-      return res.status(400).json({ error: 'Informe name, role, institution e email.' });
+      return res.status(400).json({ error: 'Informe name, role, institution e email.', code: 'PESSOA_CAMPOS_OBRIGATORIOS' });
     }
     if (!isValidEmail(email)) {
-      return res.status(400).json({ error: 'Informe um e-mail válido.' });
+      return res.status(400).json({ error: 'Informe um e-mail válido.', code: 'PESSOA_EMAIL_INVALIDO' });
     }
     if (!VALID_PEOPLE_ROLES.has(role)) {
-      return res.status(400).json({ error: 'Papel inválido. Use tecnico, curador, administrador, pesquisador ou estudante.' });
+      return res.status(400).json({ error: 'Papel inválido. Use tecnico, curador, administrador, pesquisador ou estudante.', code: 'PESSOA_PAPEL_INVALIDO' });
+    }
+    const adminAccess = role !== 'administrador' && req.body?.adminAccess === true;
+    const legalOriginAccess = req.body?.legalOriginAccess === true;
+    const curationAccess = req.body?.curationAccess === true;
+    const phaseSigningAccess = req.body?.phaseSigningAccess === true;
+    const exportAccess = req.body?.exportAccess === true;
+    // Trava contra se trancar do lado de fora: quem edita o próprio cadastro
+    // não pode sair dele sem as funções de Administrador (senão ninguém
+    // consegue desfazer o erro se for o único Administrador).
+    if (req.params.id === (req as any).currentPerson.id && !hasAdminAccess({ role, adminAccess })) {
+      return res.status(400).json({ error: 'Você não pode tirar o seu próprio acesso de Administrador. Peça a outro Administrador para fazer isso.', code: 'PESSOA_AUTOBLOQUEIO_ADMIN' });
     }
     const pool = getPool();
-    const person = await updatePerson(pool, req.params.id, { name, role, institution, email });
+    const person = await updatePerson(pool, req.params.id, {
+      name, role, institution, email, adminAccess,
+      legalOriginAccess, curationAccess, phaseSigningAccess, exportAccess
+    });
     if (!person) {
-      return res.status(404).json({ error: 'Pessoa não encontrada.' });
+      return res.status(404).json({ error: 'Pessoa não encontrada.', code: 'PESSOA_NAO_ENCONTRADA' });
     }
     return res.json({ person });
   } catch (error: any) {
     console.error('Erro ao editar pessoa:', error);
     if (error?.code === '23505') {
-      return res.status(409).json({ error: 'Já existe uma pessoa cadastrada com esse e-mail.' });
+      return res.status(409).json({ error: 'Já existe uma pessoa cadastrada com esse e-mail.', code: 'PESSOA_EMAIL_DUPLICADO' });
     }
-    return res.status(500).json({ error: 'Erro ao editar pessoa.' });
+    return res.status(500).json({ error: 'Erro ao editar pessoa.', code: 'PESSOA_ERRO_INTERNO' });
   }
 });
 
@@ -1260,7 +1351,7 @@ app.delete('/api/people/:id', requireAdminSession, async (req: Request, res: Res
     return res.json({ ok: true });
   } catch (error: any) {
     console.error('Erro ao remover pessoa:', error);
-    return res.status(500).json({ error: error?.message || 'Erro ao remover pessoa.' });
+    return res.status(500).json({ error: error?.message || 'Erro ao remover pessoa.', code: error?.code || 'PESSOA_ERRO_INTERNO' });
   }
 });
 
@@ -1281,7 +1372,7 @@ app.get('/api/research-authorizations', requireAuth, async (req: Request, res: R
     return res.json({ authorizations: visibleAuthorizationsFor(authorizations, currentPerson) });
   } catch (error: any) {
     console.error('Erro ao listar autorizações de pesquisa:', error);
-    return res.status(500).json({ error: error?.message || 'Erro ao listar autorizações de pesquisa.' });
+    return res.status(500).json({ error: error?.message || 'Erro ao listar autorizações de pesquisa.', code: error?.code || 'AUTORIZACAO_ERRO_INTERNO' });
   }
 });
 
@@ -1289,7 +1380,7 @@ app.post('/api/research-authorizations', requireAdminSession, async (req: Reques
   try {
     const validationError = validateAuthorizationBody(req.body, isValidEmail);
     if (validationError) {
-      return res.status(400).json({ error: validationError });
+      return res.status(400).json({ error: validationError, code: 'AUTORIZACAO_CAMPOS_INVALIDOS' });
     }
     const pool = getPool();
     const authorization = await createAuthorization(pool, req.body);
@@ -1297,9 +1388,9 @@ app.post('/api/research-authorizations', requireAdminSession, async (req: Reques
   } catch (error: any) {
     console.error('Erro ao criar autorização de pesquisa:', error);
     if (error?.code === '23505') {
-      return res.status(409).json({ error: 'Já existe uma autorização com esse id.' });
+      return res.status(409).json({ error: 'Já existe uma autorização com esse id.', code: 'AUTORIZACAO_ID_DUPLICADO' });
     }
-    return res.status(500).json({ error: error?.message || 'Erro ao criar autorização de pesquisa.' });
+    return res.status(500).json({ error: error?.message || 'Erro ao criar autorização de pesquisa.', code: 'AUTORIZACAO_ERRO_INTERNO' });
   }
 });
 
@@ -1309,21 +1400,21 @@ app.post('/api/research-authorizations', requireAdminSession, async (req: Reques
 app.put('/api/research-authorizations/:id', requireAdminSession, async (req: Request, res: Response) => {
   try {
     if (req.body?.id !== req.params.id) {
-      return res.status(400).json({ error: 'id do corpo da requisição não confere com o id da URL.' });
+      return res.status(400).json({ error: 'id do corpo da requisição não confere com o id da URL.', code: 'AUTORIZACAO_CAMPOS_INVALIDOS' });
     }
     const validationError = validateAuthorizationBody(req.body, isValidEmail);
     if (validationError) {
-      return res.status(400).json({ error: validationError });
+      return res.status(400).json({ error: validationError, code: 'AUTORIZACAO_CAMPOS_INVALIDOS' });
     }
     const pool = getPool();
     const authorization = await updateAuthorization(pool, req.params.id, req.body);
     if (!authorization) {
-      return res.status(404).json({ error: 'Autorização não encontrada.' });
+      return res.status(404).json({ error: 'Autorização não encontrada.', code: 'AUTORIZACAO_NAO_ENCONTRADA' });
     }
     return res.json({ authorization });
   } catch (error: any) {
     console.error('Erro ao editar autorização de pesquisa:', error);
-    return res.status(500).json({ error: error?.message || 'Erro ao editar autorização de pesquisa.' });
+    return res.status(500).json({ error: error?.message || 'Erro ao editar autorização de pesquisa.', code: 'AUTORIZACAO_ERRO_INTERNO' });
   }
 });
 
@@ -1338,7 +1429,7 @@ app.get('/api/graph', requireAuth, async (req: Request, res: Response) => {
     return res.json(graph);
   } catch (error: any) {
     console.error('Erro ao carregar grafo:', error);
-    return res.status(500).json({ error: error?.message || 'Erro ao carregar grafo.' });
+    return res.status(500).json({ error: error?.message || 'Erro ao carregar grafo.', code: error?.code || 'GRAFO_ERRO_INTERNO' });
   }
 });
 
@@ -1349,12 +1440,12 @@ app.get('/api/graph/node/:id', requireAuth, async (req: Request, res: Response) 
     const pool = getPool();
     const result = await getNodeWithEdges(pool, req.params.id);
     if (!result) {
-      return res.status(404).json({ error: `Nó ${req.params.id} não encontrado no grafo.` });
+      return res.status(404).json({ error: `Nó ${req.params.id} não encontrado no grafo.`, code: 'GRAFO_NO_NAO_ENCONTRADO' });
     }
     return res.json(result);
   } catch (error: any) {
     console.error('Erro ao explicar nó do grafo:', error);
-    return res.status(500).json({ error: error?.message || 'Erro ao explicar nó do grafo.' });
+    return res.status(500).json({ error: error?.message || 'Erro ao explicar nó do grafo.', code: error?.code || 'GRAFO_ERRO_INTERNO' });
   }
 });
 
@@ -1364,17 +1455,17 @@ app.get('/api/graph/path', requireAuth, async (req: Request, res: Response) => {
     const from = typeof req.query.from === 'string' ? req.query.from : '';
     const to = typeof req.query.to === 'string' ? req.query.to : '';
     if (!from || !to) {
-      return res.status(400).json({ error: 'Informe os parâmetros de consulta "from" e "to".' });
+      return res.status(400).json({ error: 'Informe os parâmetros de consulta "from" e "to".', code: 'GRAFO_PARAMETRO_OBRIGATORIO' });
     }
     const pool = getPool();
     const path = await findPath(pool, from, to);
     if (!path) {
-      return res.status(404).json({ error: `Nenhum caminho encontrado entre ${from} e ${to}.` });
+      return res.status(404).json({ error: `Nenhum caminho encontrado entre ${from} e ${to}.`, code: 'GRAFO_CAMINHO_NAO_ENCONTRADO' });
     }
     return res.json({ path });
   } catch (error: any) {
     console.error('Erro ao calcular caminho no grafo:', error);
-    return res.status(500).json({ error: error?.message || 'Erro ao calcular caminho no grafo.' });
+    return res.status(500).json({ error: error?.message || 'Erro ao calcular caminho no grafo.', code: error?.code || 'GRAFO_ERRO_INTERNO' });
   }
 });
 
@@ -1383,14 +1474,14 @@ app.get('/api/graph/search', requireAuth, async (req: Request, res: Response) =>
   try {
     const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
     if (!q) {
-      return res.status(400).json({ error: 'Informe o parâmetro de consulta "q".' });
+      return res.status(400).json({ error: 'Informe o parâmetro de consulta "q".', code: 'GRAFO_PARAMETRO_OBRIGATORIO' });
     }
     const pool = getPool();
     const nodes = await searchNodes(pool, q);
     return res.json({ nodes });
   } catch (error: any) {
     console.error('Erro ao buscar no grafo:', error);
-    return res.status(500).json({ error: error?.message || 'Erro ao buscar no grafo.' });
+    return res.status(500).json({ error: error?.message || 'Erro ao buscar no grafo.', code: error?.code || 'GRAFO_ERRO_INTERNO' });
   }
 });
 
@@ -1585,20 +1676,20 @@ app.post('/api/bone-similarity/search', requireAuth, async (req: Request, res: R
 
     if (freeText !== undefined && freeText !== null) {
       if (typeof freeText !== 'string' || !freeText.trim()) {
-        return res.status(400).json({ error: '"freeText" deve ser um texto não vazio.' });
+        return res.status(400).json({ error: '"freeText" deve ser um texto não vazio.', code: 'IA_ENTRADA_VAZIA' });
       }
       if (freeText.length > MAX_FREE_TEXT_LENGTH) {
-        return res.status(400).json({ error: `"freeText" deve ter até ${MAX_FREE_TEXT_LENGTH} caracteres.` });
+        return res.status(400).json({ error: `"freeText" deve ter até ${MAX_FREE_TEXT_LENGTH} caracteres.`, code: 'IA_TEXTO_MUITO_LONGO' });
       }
       const apiKey = getCleanApiKey();
       if (!apiKey) {
-        return res.status(401).json({ error: 'Chave GEMINI_API_KEY não configurada no servidor.', code: 401 });
+        return res.status(401).json({ error: 'Chave GEMINI_API_KEY não configurada no servidor.', code: 'IA_CHAVE_AUSENTE' });
       }
       criteria = await extractBoneCriteriaFromFreeText(freeText);
     } else {
       const result = parseBoneSimilarityCriteria(req.body?.criteria || {});
       if ('error' in result) {
-        return res.status(400).json({ error: result.error });
+        return res.status(400).json({ error: result.error, code: 'GRAFO_PARAMETRO_OBRIGATORIO' });
       }
       criteria = result.criteria;
     }
@@ -1627,7 +1718,228 @@ app.post('/api/bone-similarity/search', requireAuth, async (req: Request, res: R
   } catch (error: any) {
     console.error('Erro na busca de ossos parecidos:', error);
     const status = error?.statusCode || 500;
-    return res.status(status).json({ error: error?.message || 'Erro na busca de ossos parecidos.' });
+    return res.status(status).json({ error: error?.message || 'Erro na busca de ossos parecidos.', code: error?.code || 'IA_ERRO_INTERNO' });
+  }
+});
+
+// --- Fase 0: extração de campos da Declaração de Óbito (D.O.) por foto ---
+// Exige sessão (requireAuth), como /api/bone-similarity/search — diferente das
+// rotas de IA mais antigas (/api/chat, /api/pop-step, /api/transcribe), que são
+// públicas. A IA só extrai o que está escrito e legível na imagem: campo
+// ausente ou ilegível vem omitido, nunca inventado (mesmo princípio de
+// extractBoneCriteriaFromFreeText acima). O Técnico sempre revisa e confirma
+// manualmente no formulário antes de assinar a fase — a extração nunca grava
+// nada sozinha, e a foto em si não é armazenada (só usada nesta chamada).
+const MAX_DEATH_CERTIFICATE_IMAGE_BYTES = 15 * 1024 * 1024; // 15MB decodificados
+
+const PHASE0_UF_ENUM = [
+  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG',
+  'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
+];
+const PHASE0_SEXO_ENUM = ['M', 'F', 'Ignorado'];
+const PHASE0_COR_ENUM = ['Branca', 'Preta', 'Parda', 'Amarela', 'Indígena', 'Ignorada'];
+const PHASE0_ESTADO_CIVIL_ENUM = ['Solteiro(a)', 'Casado(a)', 'Divorciado(a)', 'Viúvo(a)', 'Separado(a) judicialmente', 'Ignorado'];
+
+const PHASE0_EXTRACTION_RESPONSE_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    nome: { type: 'STRING' },
+    sexo: { type: 'STRING', enum: PHASE0_SEXO_ENUM },
+    cor: { type: 'STRING', enum: PHASE0_COR_ENUM },
+    nacionalidade: { type: 'STRING' },
+    naturalCidade: { type: 'STRING' },
+    naturalUf: { type: 'STRING', enum: PHASE0_UF_ENUM },
+    nascimento: { type: 'STRING', description: 'Data no formato AAAA-MM-DD.' },
+    idade: { type: 'NUMBER' },
+    estadoCivil: { type: 'STRING', enum: PHASE0_ESTADO_CIVIL_ENUM },
+    profissao: { type: 'STRING' },
+    cpf: { type: 'STRING' },
+    rg: { type: 'STRING' },
+    paiNome: { type: 'STRING' },
+    paiFalecido: { type: 'BOOLEAN' },
+    paiNatural: { type: 'STRING' },
+    paiEstadoCivil: { type: 'STRING' },
+    paiProfissao: { type: 'STRING' },
+    maeNome: { type: 'STRING' },
+    maeFalecida: { type: 'BOOLEAN' },
+    maeNatural: { type: 'STRING' },
+    maeEstadoCivil: { type: 'STRING' },
+    maeProfissao: { type: 'STRING' },
+    conjugeNome: { type: 'STRING' },
+    conjugeNatural: { type: 'STRING' },
+    conjugeProfissao: { type: 'STRING' },
+    localFalecimento: { type: 'STRING' },
+    obitoCidade: { type: 'STRING' },
+    obitoUf: { type: 'STRING', enum: PHASE0_UF_ENUM },
+    dataFalecimento: { type: 'STRING', description: 'Data no formato AAAA-MM-DD.' },
+    horaFalecimento: { type: 'STRING', description: 'Hora no formato HH:MM.' },
+    medicoNome: { type: 'STRING' },
+    medicoCrm: { type: 'STRING' },
+    causaMorte: { type: 'STRING' },
+    cemiterio: { type: 'STRING' },
+    dataInumacao: { type: 'STRING', description: 'Data no formato AAAA-MM-DD.' },
+    dataExumacao: { type: 'STRING', description: 'Data no formato AAAA-MM-DD.' },
+    filhos: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: { nome: { type: 'STRING' }, idade: { type: 'STRING' } },
+        required: ['nome']
+      }
+    },
+    observacoes: { type: 'STRING' }
+  }
+};
+
+const PHASE0_STRING_FIELDS = [
+  'nome', 'nacionalidade', 'naturalCidade', 'nascimento', 'profissao', 'cpf', 'rg',
+  'paiNome', 'paiNatural', 'paiEstadoCivil', 'paiProfissao',
+  'maeNome', 'maeNatural', 'maeEstadoCivil', 'maeProfissao',
+  'conjugeNome', 'conjugeNatural', 'conjugeProfissao',
+  'localFalecimento', 'obitoCidade', 'dataFalecimento', 'horaFalecimento',
+  'medicoNome', 'medicoCrm', 'causaMorte', 'cemiterio', 'dataInumacao', 'dataExumacao', 'observacoes'
+] as const;
+const PHASE0_BOOLEAN_FIELDS = ['paiFalecido', 'maeFalecida'] as const;
+const MAX_PHASE0_STRING_LENGTH = 2000;
+
+// Defesa contra resposta do Gemini fora do schema pedido (mesmo princípio de
+// parseBoneSimilarityCriteria acima) — nunca repassa um valor de tipo ou
+// vocabulário errado pro formulário do Técnico revisar.
+function sanitizePhase0Extraction(raw: any): Partial<Phase0Data> {
+  const out: Partial<Phase0Data> = {};
+  if (!raw || typeof raw !== 'object') return out;
+
+  for (const key of PHASE0_STRING_FIELDS) {
+    const value = raw[key];
+    if (typeof value === 'string' && value.trim()) {
+      (out as any)[key] = value.trim().slice(0, MAX_PHASE0_STRING_LENGTH);
+    }
+  }
+  for (const key of PHASE0_BOOLEAN_FIELDS) {
+    const value = raw[key];
+    if (typeof value === 'boolean') {
+      (out as any)[key] = value;
+    }
+  }
+  if (typeof raw.idade === 'number' && Number.isFinite(raw.idade) && raw.idade >= 0 && raw.idade <= 130) {
+    out.idade = Math.round(raw.idade);
+  }
+  if (PHASE0_SEXO_ENUM.includes(raw.sexo)) out.sexo = raw.sexo;
+  if (PHASE0_COR_ENUM.includes(raw.cor)) out.cor = raw.cor;
+  if (PHASE0_ESTADO_CIVIL_ENUM.includes(raw.estadoCivil)) out.estadoCivil = raw.estadoCivil;
+  if (PHASE0_UF_ENUM.includes(raw.naturalUf)) out.naturalUf = raw.naturalUf;
+  if (PHASE0_UF_ENUM.includes(raw.obitoUf)) out.obitoUf = raw.obitoUf;
+  if (Array.isArray(raw.filhos)) {
+    const filhos = raw.filhos
+      .filter((f: any) => f && typeof f.nome === 'string' && f.nome.trim())
+      .slice(0, 30)
+      .map((f: any) => ({
+        id: crypto.randomUUID(),
+        nome: String(f.nome).trim().slice(0, 200),
+        idade: typeof f.idade === 'string' ? f.idade.trim().slice(0, 20) : ''
+      }));
+    if (filhos.length > 0) out.filhos = filhos;
+  }
+  return out;
+}
+
+app.post('/api/phase0/extract-death-certificate', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { imageBase64, mimeType } = req.body || {};
+    if (!imageBase64 || typeof imageBase64 !== 'string') {
+      return res.status(400).json({ error: 'Nenhuma imagem codificada em base64 foi enviada.', code: 'IA_ENTRADA_VAZIA' });
+    }
+    const cleanMimeType = typeof mimeType === 'string' && mimeType.startsWith('image/')
+      ? mimeType.split(';')[0]
+      : 'image/jpeg';
+    const cleanBase64 = imageBase64.replace(/^data:image\/[a-zA-Z0-9.+_-]+;base64,/, '');
+    const approxBytes = Math.ceil((cleanBase64.length * 3) / 4);
+    if (approxBytes > MAX_DEATH_CERTIFICATE_IMAGE_BYTES) {
+      return res.status(400).json({
+        error: `Imagem muito grande (máx. ${Math.round(MAX_DEATH_CERTIFICATE_IMAGE_BYTES / (1024 * 1024))}MB).`,
+        code: 'IA_IMAGEM_MUITO_GRANDE'
+      });
+    }
+
+    const apiKey = getCleanApiKey();
+    if (!apiKey) {
+      return res.status(401).json({ error: 'Chave GEMINI_API_KEY não configurada no servidor.', code: 'IA_CHAVE_AUSENTE' });
+    }
+
+    let response;
+    try {
+      response = await getGeminiClient().models.generateContent({
+        model: 'gemini-3.1-flash-lite',
+        contents: {
+          parts: [
+            { inlineData: { mimeType: cleanMimeType, data: cleanBase64 } },
+            {
+              text:
+                'Extraia os dados desta Declaração de Óbito (D.O.) brasileira. Devolva só o que está ' +
+                'realmente escrito e legível no documento — nunca invente, deduza ou complete um valor ' +
+                'que não aparece com clareza (campo em branco, "XXX" ou "IGN." no documento fica ' +
+                'omitido na resposta). Datas no formato AAAA-MM-DD, hora no formato HH:MM.'
+            }
+          ]
+        },
+        config: {
+          temperature: 0.1,
+          responseMimeType: 'application/json',
+          responseSchema: PHASE0_EXTRACTION_RESPONSE_SCHEMA as any
+        }
+      });
+    } catch (err: any) {
+      const status = err?.status === 401 || (err?.message && err.message.includes('401')) ? 401 : 502;
+      return res.status(status).json({
+        error: err?.message || 'Erro ao consultar o Gemini para extrair os dados da Declaração de Óbito.'
+      });
+    }
+
+    const raw = response.text?.trim();
+    if (!raw) {
+      return res.status(502).json({ error: 'Resposta vazia do Gemini ao ler a Declaração de Óbito.', code: 'IA_RESPOSTA_VAZIA' });
+    }
+    let parsed: any;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return res.status(502).json({ error: 'Resposta do Gemini não é um JSON válido conforme o schema pedido.', code: 'IA_RESPOSTA_INVALIDA' });
+    }
+
+    return res.json({ fields: sanitizePhase0Extraction(parsed) });
+  } catch (error: any) {
+    console.error('Erro na extração de campos da Declaração de Óbito:', error);
+    return res.status(500).json({ error: error?.message || 'Erro ao extrair campos da Declaração de Óbito.', code: error?.code || 'IA_ERRO_INTERNO' });
+  }
+});
+
+// Fase 4 (§15): busca indivíduos com perfil biológico comparável em outros
+// conjuntos do acervo, a partir de um indivíduo já registrado — nunca de
+// texto livre do cliente, para não confiar em valores de perfil biológico
+// que o navegador poderia forjar. Investigação, não gravação: não altera
+// nenhum conjunto.
+app.post('/api/phase4/individuals/reference-search', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { nic, individualId } = req.body || {};
+    if (typeof nic !== 'string' || !nic.trim() || typeof individualId !== 'string' || !individualId.trim()) {
+      return res.status(400).json({ error: '"nic" e "individualId" são obrigatórios.' });
+    }
+
+    const pool = getPool();
+    const collection = await getCollection(pool, nic);
+    if (!collection) {
+      return res.status(404).json({ error: 'Conjunto não encontrado.' });
+    }
+    const referenceIndividual = collection.phase4.individuals.find((i) => i.id === individualId);
+    if (!referenceIndividual) {
+      return res.status(404).json({ error: 'Indivíduo não encontrado neste conjunto.' });
+    }
+
+    const matches = await findSimilarIndividuals(pool, nic, referenceIndividual.biologicalProfile);
+    return res.json({ matches });
+  } catch (error: any) {
+    console.error('Erro na busca de referência entre conjuntos (Fase 4):', error);
+    return res.status(500).json({ error: error?.message || 'Erro na busca de referência entre conjuntos.' });
   }
 });
 

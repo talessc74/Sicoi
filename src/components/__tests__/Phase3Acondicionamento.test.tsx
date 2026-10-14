@@ -144,7 +144,7 @@ describe('Phase3Acondicionamento', () => {
     ).toBeDisabled();
   });
 
-  it('desabilita a assinatura para papel sem permissão (pesquisador), mesmo com tudo alocado', () => {
+  it('desabilita a assinatura para papel sem permissão (estudante), mesmo com tudo alocado', () => {
     const collection = baseCollection('NIC-0003', [makeBox('box-1', 'CX-001')]);
     collection.phase3.boxLocations = [
       {
@@ -155,7 +155,7 @@ describe('Phase3Acondicionamento', () => {
         shelfQrScanned: true
       }
     ];
-    const user = makeUser('pesquisador');
+    const user = makeUser('estudante');
 
     render(
       <Phase3Acondicionamento
@@ -169,6 +169,40 @@ describe('Phase3Acondicionamento', () => {
     expect(
       screen.getByRole('button', { name: /assinar acondicionamento provisório/i })
     ).toBeDisabled();
+  });
+
+  it('desabilita a assinatura para o Pesquisador mesmo com tudo alocado — sua participação é a confirmação opcional', async () => {
+    const userEv = userEvent.setup();
+    const collection = baseCollection('NIC-0003B', [makeBox('box-1', 'CX-001')]);
+    collection.phase3.boxLocations = [
+      {
+        boxId: 'box-1',
+        location: { facility: 'Laboratório Central', room: 'Sala B-10', rack: 'Estante 04', shelf: 'Prateleira 02', boxSlot: 'Vão 01' },
+        placedAt: new Date().toISOString(),
+        technicianName: 'Fulano Técnico',
+        shelfQrScanned: true
+      }
+    ];
+    const user = makeUser('pesquisador');
+    const onUpdateCollection = vi.fn();
+
+    render(
+      <Phase3Acondicionamento
+        collection={collection}
+        allCollections={[collection]}
+        currentUser={user}
+        onUpdateCollection={onUpdateCollection}
+      />
+    );
+
+    expect(
+      screen.getByRole('button', { name: /assinar acondicionamento provisório/i })
+    ).toBeDisabled();
+
+    const confirmButton = screen.getByRole('button', { name: /confirmar revisão \(pesquisador\)/i });
+    await userEv.click(confirmButton);
+    const updated = onUpdateCollection.mock.calls.at(-1)?.[0];
+    expect(updated.phase3.researcherConfirmation?.confirmedByName).toBeTruthy();
   });
 
   it('confirma a leitura dupla de QR e chama onUpdateCollection com o local alocado', async () => {

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { changePasswordApi } from '../services/authService';
+import { ErrorNotice } from './ErrorNotice';
+import { toAppError, AppError } from '../utils/errorMessages';
 import { KeyRound, X, Loader2, CheckCircle2 } from 'lucide-react';
 
 interface ChangePasswordModalProps {
@@ -18,7 +20,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ onClos
   const [newPassword, setNewPassword] = useState('');
   const [newPasswordConfirm, setNewPasswordConfirm] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<AppError | null>(null);
   const [done, setDone] = useState(false);
 
   const isValid = currentPassword.length > 0 && newPassword.length >= 8 && newPassword === newPasswordConfirm;
@@ -32,7 +34,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ onClos
       await changePasswordApi(currentPassword, newPassword);
       setDone(true);
     } catch (err: any) {
-      setError(err?.message || 'Não foi possível trocar a senha.');
+      setError(toAppError(err, 'Não foi possível trocar a senha.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -108,7 +110,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ onClos
               )}
             </div>
 
-            {error && <p className="text-rose-600 dark:text-rose-400 font-mono">{error}</p>}
+            {error && <ErrorNotice code={error.code} message={error.message} />}
 
             <div className="flex justify-end gap-2 pt-1">
               <button

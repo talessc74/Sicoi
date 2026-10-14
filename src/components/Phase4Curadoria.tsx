@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   OsteologicalCollection,
   UserProfile,
@@ -8,13 +8,19 @@ import {
   BiologicalConfidence
 } from '../types/sgccco';
 import { OdontogramViewer } from './OdontogramViewer';
+import { PhotoSourceModal } from './PhotoSourceModal';
+import { ErrorNotice } from './ErrorNotice';
+import { toAppError, AppError } from '../utils/errorMessages';
 import {
   CONTROLLED_BIOLOGICAL_METHODS,
   STANDARD_SKELETAL_INVENTORY_TEMPLATES,
   generateInitialOdontogram
 } from '../data/mockData';
 import { calculateSha256, generateSignaturePayload } from '../services/auditService';
+import { searchIndividualReferences, IndividualReferenceMatch } from '../services/collectionsService';
+import { uploadCollectionPhoto } from '../services/photoService';
 import { getLatestPhaseSignature } from '../utils/signatures';
+import { canPerformRole, canSignAsTechnician, canCurate } from '../utils/permissions';
 import {
   UserCheck,
   Search,
@@ -49,19 +55,47 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
     collection.phase4.individuals[0]?.id || ''
   );
   const [showRefSearchModal, setShowRefSearchModal] = useState(false);
-  const [refSearchQuery, setRefSearchQuery] = useState('');
-  const [refSearchResults, setRefSearchResults] = useState<string[]>([]);
+  const [refSearchLoading, setRefSearchLoading] = useState(false);
+  const [refSearchError, setRefSearchError] = useState<string | null>(null);
+  const [refSearchResults, setRefSearchResults] = useState<IndividualReferenceMatch[]>([]);
   const [showMergeModal, setShowMergeModal] = useState(false);
   const [showSignModal, setShowSignModal] = useState(false);
   const [signing, setSigning] = useState(false);
+  const [signatureTarget, setSignatureTarget] = useState<'curador' | 'tecnico'>('curador');
+  const [uploadingAssemblyPhoto, setUploadingAssemblyPhoto] = useState(false);
+  const [uploadError, setUploadError] = useState<AppError | null>(null);
+  const [showNoPhotoModal, setShowNoPhotoModal] = useState(false);
+  const [noPhotoJustification, setNoPhotoJustification] = useState('');
+  const [showPhotoSourceModal, setShowPhotoSourceModal] = useState(false);
+  // Dois inputs ocultos: um com capture="environment" (força a câmera) e um
+  // sem capture (seletor comum do dispositivo, que pode incluir a galeria) —
+  // o PhotoSourceModal decide qual deles clicar (pedido do Tales, out/2026).
+  const assemblyCameraInputRef = useRef<HTMLInputElement>(null);
+  const assemblyGalleryInputRef = useRef<HTMLInputElement>(null);
 
   const phaseSignature = getLatestPhaseSignature(collection.signatures, 4);
   const isLocked = phaseSignature?.status === 'locked';
 
+  // isCurator fica exclusivo do papel Curador, literal — usado só pra
+  // assinatura do Inventário (canSignInventory abaixo) e pra atribuição de
+  // curatorAuthor, nunca ajustável por pessoa (decisão §13, out/2026: "quem
+  // identifica e decide é sempre o curador", sem exceção).
   const isCurator = currentUser.role === 'curador';
-  const isStudent = currentUser.role === 'estudante';
-  const canEdit = isCurator || isStudent;
-  const canApprove = isCurator;
+  // Editar indivíduos/perfil biológico/odontograma (Montagem e Inventário) —
+  // padrão Curador + Estudante, ajustável por pessoa (canCurate, §13).
+  const canEdit = canCurate(currentUser);
+  // Aba Montagem (e aprovação da foto oficial): mesmo acesso de Técnico já
+  // usado nas demais fases (Fase 1, 2, 3 e 5) — Curador, Técnico e
+  // Pesquisador. Indivíduos/Inventário/Odontograma continuam exclusivos de
+  // Curador e Estudante, como já eram.
+  const canAccessMontagem = canPerformRole(currentUser.role, 'tecnico');
+  const canApprove = canAccessMontagem;
+  // A assinatura "Montagem" (technicianAssemblySign) que trava a fase é
+  // diferente do acesso à aba acima — continua exclusiva de Técnico/Curador;
+  // o Pesquisador tem acesso à aba, mas sua participação é a confirmação
+  // opcional (handleConfirmResearcherReview), nunca esta assinatura (correção:
+  // "o técnico é obrigatório, o pesquisador pode ou não").
+  const canSignAsTechnicianRole = canSignAsTechnician(currentUser);
 
   const individuals = collection.phase4.individuals || [];
   const currentInd = individuals.find(i => i.id === selectedIndividualId) || individuals[0];
@@ -150,62 +184,135 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
     onUpdateCollection(updated);
   };
 
-  const handleSearchReference = (query: string) => {
-    setRefSearchQuery(query);
-    // Simulates consultation to Graph + Anthropological Literature Catalog (§15)
-    setRefSearchResults([
-      `Ortner (2003) Identification of Pathological Conditions in Human Skeletal Remains, p. 120-145: Variações morfológicas compatíveis com "${query}".`,
-      `Buikstra & Ubelaker (1994) Standards for Data Collection from Human Skeletal Remains: Protocolo de pontuação osteométrica.`,
-      `Caso do Grafo SIGCOI (NIC-2025-0419 / IND-01): Calo ósseo remodelado em diáfise femoral sob método Trotter & Gleser.`
-    ]);
+  const handleSearchReference = async (individualId: string) => {
     setShowRefSearchModal(true);
+    setRefSearchLoading(true);
+    setRefSearchError(null);
+    setRefSearchResults([]);
+    try {
+      const matches = await searchIndividualReferences(collection.nic, individualId);
+      setRefSearchResults(matches);
+    } catch (err: any) {
+      setRefSearchError(err?.message || 'Erro ao buscar referências no acervo.');
+    } finally {
+      setRefSearchLoading(false);
+    }
   };
 
-  const handleApprovePhoto = async () => {
-    const hash = await calculateSha256(`ASSEMBLY-PHOTO-${collection.nic}-${Date.now()}`);
-    const updated = { ...collection };
-    updated.phase4.completeAssemblyPhotoApproved = {
-      photoUrl: 'https://images.unsplash.com/photo-1530210124550-912dc1381cb8?w=1000&auto=format&fit=crop&q=80',
-      capturedAt: new Date().toISOString(),
-      approvedBy: currentUser.name,
-      approvedAt: new Date().toISOString(),
-      sha256Hash: hash,
-      resolution: '4032x3024'
+  // Pergunta explicitamente câmera ou galeria antes de abrir qualquer
+  // seletor — nunca mais aprova a mesma imagem fixa de um banco de
+  // terceiros. O upload de verdade só acontece depois que o usuário escolhe
+  // o arquivo, em handleAssemblyPhotoFileSelected.
+  const handleRequestAssemblyPhoto = () => {
+    setUploadError(null);
+    setShowPhotoSourceModal(true);
+  };
+
+  const handleChoosePhotoSource = (source: 'camera' | 'gallery') => {
+    setShowPhotoSourceModal(false);
+    (source === 'camera' ? assemblyCameraInputRef : assemblyGalleryInputRef).current?.click();
+  };
+
+  // Só grava o metadado (e marca como aprovada) depois que o upload real
+  // confirma — bytes e hash calculados pelo servidor sobre o arquivo de
+  // verdade, nunca sobre um texto qualquer.
+  const handleAssemblyPhotoFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // permite selecionar o mesmo arquivo de novo depois
+    if (!file) return;
+
+    setUploadingAssemblyPhoto(true);
+    setUploadError(null);
+    try {
+      const { collection: saved } = await uploadCollectionPhoto(
+        collection.nic,
+        'phase4',
+        'montagem_completa',
+        file,
+        'Fotografia Oficial de Montagem Completa'
+      );
+      onUpdateCollection(saved);
+    } catch (err: any) {
+      setUploadError(toAppError(err, 'Erro ao registrar a fotografia.'));
+    } finally {
+      setUploadingAssemblyPhoto(false);
+    }
+  };
+
+  // Confirma explicitamente a ausência da foto, com justificativa obrigatória
+  // — nunca silenciosa, nunca travada pra sempre (mesmo padrão da Fase 1).
+  const handleConfirmNoAssemblyPhoto = () => {
+    if (!noPhotoJustification.trim()) return;
+    const updated = {
+      ...collection,
+      phase4: {
+        ...collection.phase4,
+        completeAssemblyPhotoApproved: undefined,
+        assemblyPhotoJustification: {
+          justifiedByName: currentUser.name,
+          justifiedAt: new Date().toISOString(),
+          reason: noPhotoJustification.trim()
+        }
+      }
     };
     onUpdateCollection(updated);
+    setShowNoPhotoModal(false);
+    setNoPhotoJustification('');
   };
 
   const handleSignPhase = async () => {
+    if ((signatureTarget === 'curador' && !canSignInventory) || (signatureTarget === 'tecnico' && !canSignAssembly)) return;
     setSigning(true);
     const timestamp = new Date().toISOString();
-    // O lacre é calculado sobre o estado FINAL da fase (já aprovada), que é o que
-    // fica gravado — antes era calculado antes de marcar "aprovada" e nunca conferia.
-    const finalPhase4 = { ...collection.phase4, curationVersionStatus: 'aprovada' as const, curatorAuthor: currentUser.name };
-    const payload = generateSignaturePayload({
-      nic: collection.nic,
-      phaseNumber: 4,
-      signedBy: currentUser.id,
-      role: currentUser.role,
-      timestamp,
-      dataSnapshotJson: JSON.stringify(finalPhase4)
-    });
-    const hash = await calculateSha256(payload);
-
-    const updated = { ...collection, phase4: finalPhase4 };
-    updated.signatures = [
-      ...updated.signatures.map((s) => (s.phaseNumber === 4 ? { ...s, status: 'unlocked_for_revision' as const } : s)),
-      {
+    const signPayload = (phase4Data: typeof collection.phase4) =>
+      generateSignaturePayload({
+        nic: collection.nic,
         phaseNumber: 4,
         signedBy: currentUser.id,
-        signedByName: currentUser.name,
-        signedByRole: currentUser.role,
-        signedAt: timestamp,
-        sha256Hash: hash,
-        status: 'locked'
+        role: currentUser.role,
+        timestamp,
+        dataSnapshotJson: JSON.stringify(phase4Data)
+      });
+    // Hash da confirmação individual (técnico ou curador), sobre a fase antes dela.
+    const hash = await calculateSha256(signPayload(collection.phase4));
+
+    const partialSign = { signedByName: currentUser.name, signedAt: timestamp, sha256Hash: hash };
+    const updated = {
+      ...collection,
+      phase4: {
+        ...collection.phase4,
+        ...(signatureTarget === 'curador'
+          ? { curatorInventorySign: partialSign }
+          : { technicianAssemblySign: partialSign })
       }
-    ];
-    if (updated.currentPhase < 5) {
-      updated.currentPhase = 5;
+    };
+
+    // A fase só trava depois das duas confirmações (Montagem e Inventário), inclusive
+    // quando o Curador faz as duas — mesmo mecanismo já usado na Fase 5.
+    const hasAssemblySign = Boolean(updated.phase4.technicianAssemblySign);
+    const hasInventorySign = Boolean(updated.phase4.curatorInventorySign);
+
+    if (hasAssemblySign && hasInventorySign) {
+      // O lacre é calculado sobre o estado FINAL da fase, já com as duas confirmações
+      // e já aprovada, que é o que fica gravado.
+      updated.phase4.curationVersionStatus = 'aprovada';
+      updated.phase4.curatorAuthor = currentUser.role === 'curador' ? currentUser.name : updated.phase4.curatorAuthor;
+      const phaseHash = await calculateSha256(signPayload(updated.phase4));
+      updated.signatures = [
+        ...updated.signatures.map((s) => (s.phaseNumber === 4 ? { ...s, status: 'unlocked_for_revision' as const } : s)),
+        {
+          phaseNumber: 4,
+          signedBy: currentUser.id,
+          signedByName: currentUser.name,
+          signedByRole: currentUser.role,
+          signedAt: timestamp,
+          sha256Hash: phaseHash,
+          status: 'locked'
+        }
+      ];
+      if (updated.currentPhase < 5) {
+        updated.currentPhase = 5;
+      }
     }
 
     setSigning(false);
@@ -213,17 +320,37 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
     onUpdateCollection(updated);
   };
 
-  const canSignCuration = isCurator && individuals.length > 0 && Boolean(collection.phase4.completeAssemblyPhotoApproved);
+  // completeAssemblyPhotoApproved real OU a justificativa de ausência (mesmo
+  // padrão da Fase 1 — handleConfirmNoAssemblyPhoto) libera a assinatura de
+  // Montagem; nunca as duas ao mesmo tempo (registrar uma sempre limpa a outra).
+  const hasAssemblyPhotoOrJustification =
+    Boolean(collection.phase4.completeAssemblyPhotoApproved) || Boolean(collection.phase4.assemblyPhotoJustification);
+  const canSignAssembly = canSignAsTechnicianRole && hasAssemblyPhotoOrJustification && !collection.phase4.technicianAssemblySign;
+  const canSignInventory = isCurator && individuals.length > 0 && !collection.phase4.curatorInventorySign;
+
+  // Confirmação opcional do Pesquisador — nunca trava nem destrava nada, nunca
+  // substitui a assinatura de Montagem do Técnico/Curador acima.
+  const handleConfirmResearcherReview = async () => {
+    const timestamp = new Date().toISOString();
+    const hash = await calculateSha256(`researcher-review|phase4|${collection.nic}|${currentUser.id}|${timestamp}`);
+    onUpdateCollection({
+      ...collection,
+      phase4: {
+        ...collection.phase4,
+        researcherConfirmation: { confirmedByName: currentUser.name, confirmedAt: timestamp, sha256Hash: hash }
+      }
+    });
+  };
 
   return (
     <div className="space-y-6">
-      {/* Top Banner Curadoria */}
+      {/* Top Banner Montagem e Inventário */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 font-mono text-xs font-semibold uppercase">
               <UserCheck className="w-4 h-4" />
-              <span>Fase 4 · Curadoria Bioantropológica & Versão Científica (§8)</span>
+              <span>Fase 4 · Montagem e Inventário — Bioantropológico & Versão Científica (§8)</span>
             </div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-0.5">
               {collection.nic} · Versão v{collection.phase4.curationVersionNumber} ({collection.phase4.curationVersionStatus.toUpperCase()})
@@ -234,26 +361,47 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
           </div>
 
           <div className="flex items-center gap-3">
+            {currentUser.role === 'pesquisador' && !isLocked && (
+              collection.phase4.researcherConfirmation ? (
+                <div className="px-3 py-2 rounded-xl bg-sky-50 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-900 flex items-center gap-2 text-xs font-mono text-sky-700 dark:text-sky-300 font-semibold">
+                  <UserCheck className="w-4 h-4 text-sky-600" />
+                  <span>Revisão do Pesquisador confirmada</span>
+                </div>
+              ) : (
+                <button
+                  onClick={handleConfirmResearcherReview}
+                  title="Confirmação opcional — não trava nem substitui a assinatura de Montagem do Técnico/Curador."
+                  className="px-3 py-2 rounded-xl border border-sky-300 dark:border-sky-800 bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 text-xs font-semibold flex items-center gap-1.5 hover:bg-sky-100 dark:hover:bg-sky-900/60 transition-colors"
+                >
+                  <UserCheck className="w-4 h-4" />
+                  <span>Confirmar Revisão (Pesquisador)</span>
+                </button>
+              )
+            )}
+
             {isLocked ? (
               <div className="px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-900 flex items-center gap-2 text-xs font-mono text-emerald-700 dark:text-emerald-300 font-semibold">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>Versão Científica Aprovada & Assinada</span>
+                <span>Fase 4 Duplamente Assinada & Travada</span>
               </div>
             ) : (
               <button
-                onClick={() => setShowSignModal(true)}
-                disabled={!canSignCuration}
+                onClick={() => {
+                  setSignatureTarget(canSignInventory ? 'curador' : 'tecnico');
+                  setShowSignModal(true);
+                }}
+                disabled={!canSignAssembly && !canSignInventory}
                 className="px-4 py-2 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-semibold hover:opacity-95 disabled:opacity-40 transition-all flex items-center gap-2 shadow-xs"
-                title={!canSignCuration ? 'Exige perfil de Curador, ao menos 1 indivíduo e foto de montagem completa aprovada.' : ''}
+                title={!canSignAssembly && !canSignInventory ? 'Exige foto de montagem (ou confirmar que não há foto) para a Montagem (Técnico/Curador) ou ao menos 1 indivíduo para o Inventário (Curador) — a confirmação que falta pra você.' : ''}
               >
                 <FileCheck className="w-4 h-4" />
-                <span>Aprovar & Assinar Versão Científica</span>
+                <span>Assinar Fechamento da Fase 4</span>
               </button>
             )}
           </div>
         </div>
 
-        {/* Tab Navigation Dentro da Curadoria */}
+        {/* Tab Navigation Dentro de Montagem e Inventário */}
         <div className="flex items-center gap-2 mt-4 pt-3 border-t border-slate-200 dark:border-slate-800 text-xs overflow-x-auto">
           <button
             onClick={() => setActiveTab('individuos')}
@@ -377,7 +525,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
 
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => handleSearchReference(`Morfologia craniométrica e pélvica de ${currentInd.code}`)}
+                      onClick={() => handleSearchReference(currentInd.id)}
                       className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-sky-700 dark:text-sky-300 font-medium flex items-center gap-1 hover:bg-sky-50 transition-colors"
                     >
                       <Sparkles className="w-3.5 h-3.5 text-amber-500" />
@@ -663,14 +811,32 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
             </div>
             {!collection.phase4.completeAssemblyPhotoApproved && canApprove && (
               <button
-                onClick={handleApprovePhoto}
-                className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium flex items-center gap-1.5"
+                onClick={handleRequestAssemblyPhoto}
+                disabled={uploadingAssemblyPhoto}
+                className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-medium flex items-center gap-1.5"
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Aprovar Fotografia Oficial</span>
+                <span>{uploadingAssemblyPhoto ? 'Enviando...' : 'Aprovar Fotografia Oficial'}</span>
               </button>
             )}
           </div>
+
+          {uploadError && <ErrorNotice code={uploadError.code} message={uploadError.message} />}
+          <input
+            ref={assemblyCameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={handleAssemblyPhotoFileSelected}
+          />
+          <input
+            ref={assemblyGalleryInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleAssemblyPhotoFileSelected}
+          />
 
           {collection.phase4.completeAssemblyPhotoApproved ? (
             <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 relative bg-black">
@@ -682,7 +848,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
               />
               <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 text-white text-xs flex justify-between font-mono">
                 <div>
-                  <span className="font-bold block">Status: APROVADA PELO CURADOR</span>
+                  <span className="font-bold block">Status: APROVADA</span>
                   <span>Aprovada por: {collection.phase4.completeAssemblyPhotoApproved.approvedBy}</span>
                 </div>
                 <div className="text-right">
@@ -693,6 +859,28 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
                 </div>
               </div>
             </div>
+          ) : collection.phase4.assemblyPhotoJustification ? (
+            <div className="p-6 text-center border-2 border-dashed border-amber-300 dark:border-amber-800 rounded-2xl space-y-2 bg-amber-50 dark:bg-amber-950/30">
+              <AlertCircle className="w-8 h-8 mx-auto text-amber-500" />
+              <p className="font-semibold text-amber-700 dark:text-amber-300">
+                Sem foto oficial — justificado
+              </p>
+              <p className="text-slate-600 dark:text-slate-300 text-[11px] max-w-md mx-auto">
+                {collection.phase4.assemblyPhotoJustification.reason}
+              </p>
+              <p className="text-slate-400 text-[10px]">
+                Confirmado por {collection.phase4.assemblyPhotoJustification.justifiedByName}
+              </p>
+              {canApprove && (
+                <button
+                  onClick={handleRequestAssemblyPhoto}
+                  disabled={uploadingAssemblyPhoto}
+                  className="mt-2 px-4 py-2 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 disabled:opacity-50 font-semibold"
+                >
+                  {uploadingAssemblyPhoto ? 'Enviando...' : 'Registrar Foto Agora'}
+                </button>
+              )}
+            </div>
           ) : (
             <div className="p-8 text-center border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl space-y-2">
               <Camera className="w-8 h-8 mx-auto text-slate-400" />
@@ -700,18 +888,80 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
                 Fotografia de Montagem Completa Pendente
               </p>
               <p className="text-slate-500 text-[11px] max-w-md mx-auto">
-                Para fechar a curadoria científica, capture e aprove uma foto nítida do esqueleto articulado em norma anatômica com escala métrica.
+                Para fechar a Montagem e Inventário, capture e aprove uma foto nítida do esqueleto articulado em norma anatômica com escala métrica.
               </p>
               {canApprove && (
-                <button
-                  onClick={handleApprovePhoto}
-                  className="mt-2 px-4 py-2 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-semibold"
-                >
-                  Capturar & Aprovar Foto Agora
-                </button>
+                <div className="flex items-center justify-center gap-2 mt-2">
+                  <button
+                    onClick={handleRequestAssemblyPhoto}
+                    disabled={uploadingAssemblyPhoto}
+                    className="px-4 py-2 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 disabled:opacity-50 font-semibold"
+                  >
+                    {uploadingAssemblyPhoto ? 'Enviando...' : 'Capturar & Aprovar Foto Agora'}
+                  </button>
+                  <button
+                    onClick={() => setShowNoPhotoModal(true)}
+                    disabled={uploadingAssemblyPhoto}
+                    className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 disabled:opacity-50 font-semibold"
+                  >
+                    Não há foto
+                  </button>
+                </div>
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Escolha entre câmera e galeria antes de abrir qualquer seletor de arquivo. */}
+      {showPhotoSourceModal && (
+        <PhotoSourceModal
+          onChooseCamera={() => handleChoosePhotoSource('camera')}
+          onChooseGallery={() => handleChoosePhotoSource('gallery')}
+          onCancel={() => setShowPhotoSourceModal(false)}
+        />
+      )}
+
+      {/* Modal de Confirmação de Ausência de Foto — pergunta explícita antes de
+          aceitar seguir sem a fotografia oficial de montagem (nunca silencioso,
+          nunca travado pra sempre: exige justificativa escrita). */}
+      {showNoPhotoModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 text-xs">
+            <div className="flex items-center gap-2 text-amber-600 font-bold text-sm">
+              <AlertCircle className="w-5 h-5" />
+              <h4>Confirmar ausência de foto</h4>
+            </div>
+            <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+              Esta fotografia normalmente é obrigatória para fechar a curadoria científica. Antes de continuar sem ela, descreva por que não há uma foto pra guardar neste caso — a justificativa fica registrada no histórico do conjunto.
+            </p>
+            <textarea
+              rows={3}
+              autoFocus
+              value={noPhotoJustification}
+              onChange={(e) => setNoPhotoJustification(e.target.value)}
+              placeholder="Ex.: câmera indisponível no momento da montagem, esqueleto incompleto não permite a foto padrão..."
+              className="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+            />
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                onClick={() => {
+                  setShowNoPhotoModal(false);
+                  setNoPhotoJustification('');
+                }}
+                className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmNoAssemblyPhoto}
+                disabled={!noPhotoJustification.trim()}
+                className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-medium disabled:opacity-50"
+              >
+                Confirmar sem foto
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -722,22 +972,35 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
             <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
               <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-amber-500" />
-                Agente de Busca de Referências & Grafo
+                Busca de Referência entre Conjuntos
               </h4>
               <button onClick={() => setShowRefSearchModal(false)} className="text-slate-400 hover:text-white">
                 Fechar
               </button>
             </div>
             <p className="text-slate-600 dark:text-slate-400">
-              O agente localiza literatura comparativa e conjuntos de referência no grafo. Ele <strong>nunca toma a decisão</strong>; cabe à curadora avaliar as referências:
+              Compara o perfil biológico deste indivíduo com os demais já cadastrados no acervo (mesmo valor estimado <strong>e</strong> mesmo método). Ele <strong>nunca toma a decisão</strong>; cabe à curadora avaliar se o caso serve de referência.
             </p>
+            {refSearchLoading && <p className="text-slate-500">Buscando no acervo...</p>}
+            {refSearchError && (
+              <p className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300">
+                {refSearchError}
+              </p>
+            )}
+            {!refSearchLoading && !refSearchError && refSearchResults.length === 0 && (
+              <p className="text-slate-500">Nenhum outro indivíduo do acervo compartilha sexo ou idade estimados pelo mesmo método.</p>
+            )}
             <div className="space-y-2.5">
-              {refSearchResults.map((ref, idx) => (
-                <div key={idx} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+              {refSearchResults.map((match, idx) => (
+                <div key={`${match.nic}-${match.individual.id}-${idx}`} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
                   <span className="font-mono text-[10px] uppercase font-bold text-sky-600 block mb-1">
-                    Referência #{idx + 1}:
+                    {match.nic} / {match.individual.code}
                   </span>
-                  <p className="text-slate-800 dark:text-slate-200 leading-relaxed font-sans">{ref}</p>
+                  <ul className="text-slate-800 dark:text-slate-200 leading-relaxed font-sans list-disc list-inside">
+                    {match.sharedTraits.map((trait, traitIdx) => (
+                      <li key={traitIdx}>{trait}</li>
+                    ))}
+                  </ul>
                 </div>
               ))}
             </div>
@@ -788,15 +1051,41 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl text-xs space-y-4">
             <h3 className="font-bold text-base text-slate-900 dark:text-white">
-              Assinatura Científica Curatorial — Fase 4
+              Assinatura de Fechamento — Fase 4
             </h3>
             <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
-              Eu, {currentUser.name}, na condição de curadora da COI-INC, assumo a responsabilidade científica pela estimativa do perfil biológico, inventário anatômico, odontograma e montagem fotográfica do conjunto {collection.nic}.
+              Você está assinando como <strong>{currentUser.name} ({currentUser.role.toUpperCase()})</strong>. A Fase 4 exige confirmação de Montagem e confirmação de Inventário. O Curador pode realizar as duas, uma de cada vez.
+            </p>
+            {canSignAssembly && canSignInventory && (
+              <div className="space-y-2">
+                <label className="block font-semibold text-slate-700 dark:text-slate-300" htmlFor="phase4-signature-target">
+                  Qual responsabilidade deseja confirmar agora?
+                </label>
+                <select
+                  id="phase4-signature-target"
+                  value={signatureTarget}
+                  onChange={(event) => setSignatureTarget(event.target.value as 'curador' | 'tecnico')}
+                  className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+                >
+                  <option value="curador">Inventário (Curador)</option>
+                  <option value="tecnico">Montagem (Técnico, Pesquisador ou Curador)</option>
+                </select>
+              </div>
+            )}
+            <p className="font-semibold text-slate-700 dark:text-slate-300">
+              Confirmação atual: {signatureTarget === 'curador' ? 'inventário' : 'montagem'}.
             </p>
             <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl font-mono text-[11px] space-y-1">
-              <div>NIC: {collection.nic}</div>
-              <div>Versão Científica: v{collection.phase4.curationVersionNumber} (Aprovada)</div>
-              <div>Foto de Montagem: {collection.phase4.completeAssemblyPhotoApproved?.sha256Hash.substring(0, 16)}...</div>
+              <div>COI: {collection.nic}</div>
+              <div>Versão Científica: v{collection.phase4.curationVersionNumber}</div>
+              <div>
+                Foto de Montagem:{' '}
+                {collection.phase4.completeAssemblyPhotoApproved
+                  ? `${collection.phase4.completeAssemblyPhotoApproved.sha256Hash.substring(0, 16)}...`
+                  : collection.phase4.assemblyPhotoJustification
+                  ? 'sem foto (justificado)'
+                  : 'pendente'}
+              </div>
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <button onClick={() => setShowSignModal(false)} className="px-4 py-2 rounded-lg border">
@@ -808,7 +1097,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
                 className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium flex items-center gap-1.5"
               >
                 <CheckCircle2 className="w-4 h-4" />
-                <span>Confirmar e Liberar Fase 5</span>
+                <span>Confirmar Minha Assinatura</span>
               </button>
             </div>
           </div>

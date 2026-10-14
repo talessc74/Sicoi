@@ -24,11 +24,12 @@ export const PhaseProgressRibbon: React.FC<PhaseProgressRibbonProps> = ({
   const [justification, setJustification] = React.useState('');
 
   const phasesInfo: { number: PhaseNumber; title: string; subtitle: string; signerRole: string }[] = [
+    { number: 0, title: 'Fase 0', subtitle: 'Recebimento', signerRole: 'Técnico' },
     { number: 1, title: 'Fase 1', subtitle: 'Recebimento & A.1', signerRole: 'Técnico' },
     { number: 2, title: 'Fase 2', subtitle: 'Limpeza & Secagem A.2', signerRole: 'Técnico' },
     { number: 3, title: 'Fase 3', subtitle: 'Acondic. Provisório', signerRole: 'Técnico' },
-    { number: 4, title: 'Fase 4', subtitle: 'Curadoria & Perfil', signerRole: 'Curador' },
-    { number: 5, title: 'Fase 5', subtitle: 'Patologias & Exames', signerRole: 'Curador / Técnico' },
+    { number: 4, title: 'Fase 4', subtitle: 'Montagem e Inventário & Perfil', signerRole: 'Técnico / Curador' },
+    { number: 5, title: 'Fase 5', subtitle: 'Alterações Ósseas & Exames', signerRole: 'Curador / Técnico' },
     { number: 6, title: 'Fase 6', subtitle: 'Galpão Definitivo', signerRole: 'Dupla Custódia' },
     { number: 7, title: 'Fase 7', subtitle: 'Pesquisa & Grafo', signerRole: 'Admin / Livre' }
   ];
@@ -41,8 +42,14 @@ export const PhaseProgressRibbon: React.FC<PhaseProgressRibbonProps> = ({
     return getLatestPhaseSignature(collection.signatures, p);
   };
 
+  // Conjuntos criados antes da Fase 0 existir (out/2026) nunca tiveram phase0 —
+  // nasceram direto na Fase 1 e continuam liberados nela, sem ficar retroativamente
+  // bloqueados por uma fase que não existia quando foram criados.
+  const hasPhase0 = Boolean(collection.phase0);
+
   const isPhaseAccessible = (p: PhaseNumber): boolean => {
-    if (p === 1) return true;
+    if (p === 0) return true;
+    if (p === 1) return !hasPhase0 || isPhaseSigned(0);
     if (p === 7) return true; // Consulta sempre aberta
     // Bloqueio sequencial: fase P exige fase P-1 assinada
     return isPhaseSigned((p - 1) as PhaseNumber);
@@ -134,7 +141,7 @@ export const PhaseProgressRibbon: React.FC<PhaseProgressRibbonProps> = ({
             <button
               onClick={onNavigateToAudit}
               className="min-w-[110px] p-2 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/30 hover:bg-emerald-100/70 dark:hover:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 flex flex-col justify-center items-center gap-0.5 transition-all group shrink-0 shadow-2xs"
-              title="Abrir linha do tempo de auditoria com histórico completo do NIC"
+              title="Abrir linha do tempo de auditoria com histórico completo do conjunto"
             >
               <div className="flex items-center gap-1.5 text-xs font-bold group-hover:text-emerald-700 transition-colors">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />

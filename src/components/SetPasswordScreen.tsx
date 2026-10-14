@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { setupPasswordApi } from '../services/authService';
+import { ErrorNotice } from './ErrorNotice';
+import { toAppError, AppError } from '../utils/errorMessages';
 import { KeyRound, Loader2, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 
 interface SetPasswordScreenProps {
@@ -16,7 +18,7 @@ export const SetPasswordScreen: React.FC<SetPasswordScreenProps> = ({ token }) =
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<AppError | null>(null);
   const [done, setDone] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -31,7 +33,7 @@ export const SetPasswordScreen: React.FC<SetPasswordScreenProps> = ({ token }) =
       await setupPasswordApi(token, password);
       setDone(true);
     } catch (err: any) {
-      setError(err?.message || 'Não foi possível definir a senha.');
+      setError(toAppError(err, 'Não foi possível definir a senha.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -132,7 +134,7 @@ export const SetPasswordScreen: React.FC<SetPasswordScreenProps> = ({ token }) =
           </div>
         </div>
 
-        {error && <p className="text-xs text-rose-600 dark:text-rose-400 font-mono">{error}</p>}
+        {error && <ErrorNotice code={error.code} message={error.message} />}
 
         <button
           type="submit"

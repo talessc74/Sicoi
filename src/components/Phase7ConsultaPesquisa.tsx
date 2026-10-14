@@ -6,8 +6,11 @@ import {
   ComplementaryExam
 } from '../types/sgccco';
 import { calculateSha256 } from '../services/auditService';
+import { canExportScientificData } from '../utils/permissions';
 import { useAppVersion } from '../hooks/useAppVersion';
 import { createAuthorizationApi, updateAuthorizationApi } from '../services/authorizationsService';
+import { ErrorNotice } from './ErrorNotice';
+import { toAppError, AppError } from '../utils/errorMessages';
 import {
   Search,
   Sparkles,
@@ -66,7 +69,7 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
   // restritos ao Administrador — o servidor reconfere (requireAdminSession).
   const [showNewAuthForm, setShowNewAuthForm] = useState(false);
   const [newAuthSaving, setNewAuthSaving] = useState(false);
-  const [newAuthError, setNewAuthError] = useState<string | null>(null);
+  const [newAuthError, setNewAuthError] = useState<AppError | null>(null);
   const [revokingAuthId, setRevokingAuthId] = useState<string | null>(null);
   const [newAuthForm, setNewAuthForm] = useState({
     title: '',
@@ -118,7 +121,7 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
       });
       setShowNewAuthForm(false);
     } catch (err: any) {
-      setNewAuthError(err?.message || 'Erro ao criar autorização.');
+      setNewAuthError(toAppError(err, 'Erro ao criar autorização.'));
     } finally {
       setNewAuthSaving(false);
     }
@@ -131,11 +134,16 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
       const revoked = await updateAuthorizationApi({ ...authorization, status: 'revogada' });
       onUpdateAuthorizations(authorizations.map((a) => (a.id === revoked.id ? revoked : a)));
     } catch (err: any) {
-      setNewAuthError(err?.message || 'Erro ao revogar autorização.');
+      setNewAuthError(toAppError(err, 'Erro ao revogar autorização.'));
     } finally {
       setRevokingAuthId(null);
     }
   };
+
+  // Exportação Científica (§13, out/2026): até esta decisão, qualquer papel
+  // autenticado exportava livremente — padrão Curador/Administrador/
+  // Pesquisador, ajustável por pessoa (canExportScientificData).
+  const canExport = canExportScientificData(currentUser);
 
   // ABAC Scope enforcement (§13): If user is Pesquisador, filter strictly by active research authorization
   const activeUserAuth = authorizations.find(a =>
@@ -198,7 +206,7 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
         filter.sex = 'feminino';
       }
 
-      if (lower.includes('trauma') || lower.includes('fratura') || lower.includes('lesão') || lower.includes('patologia')) {
+      if (lower.includes('trauma') || lower.includes('fratura') || lower.includes('lesão') || lower.includes('patologia') || lower.includes('alteração óssea')) {
         filter.hasTrauma = true;
       }
 
@@ -218,6 +226,7 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
 
   // Reproducible Export Generation (§7)
   const handleGenerateExport = async () => {
+    if (!canExport) return;
     const timestamp = new Date().toISOString();
     const exportDataset = {
       reproducibilityHeader: {
@@ -277,7 +286,9 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={handleGenerateExport}
-              className="px-3 py-2 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-semibold hover:opacity-95 transition-all flex items-center gap-1.5 shadow-xs"
+              disabled={!canExport}
+              title={!canExport ? `A pessoa ativa agora ("${currentUser.name}") não tem acesso de Exportação Científica. Peça a um Administrador para ajustar isso em Configurações.` : undefined}
+              className="px-3 py-2 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-semibold hover:opacity-95 disabled:opacity-40 transition-all flex items-center gap-1.5 shadow-xs"
             >
               <Download className="w-3.5 h-3.5" />
               <span>Exportação Reprodutível (§7)</span>
@@ -436,7 +447,7 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
                 onChange={(e) => setFilterHasPathology(e.target.checked)}
                 className="rounded"
               />
-              <span className="text-slate-700 dark:text-slate-300">Apenas com Patologias/Traumas</span>
+              <span className="text-slate-700 dark:text-slate-300">Apenas com Alterações Ósseas/Traumas</span>
             </label>
 
             <label className="flex items-center gap-1.5 cursor-pointer">
@@ -505,9 +516,9 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
                     ))}
                   </div>
 
-                  {/* Patologias e Exames */}
+                  {/* Alterações Ósseas e Exames */}
                   <div className="flex flex-wrap items-center gap-2 pt-1 font-mono text-[11px]">
-                    <span className="text-slate-400">Patologias:</span>
+                    <span className="text-slate-400">Alterações Ósseas:</span>
                     {pathologies.length > 0 ? (
                       pathologies.map(p => (
                         <span key={p.id} className="px-2 py-0.5 rounded bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900">
@@ -546,7 +557,7 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
                 Controle de Acesso Baseado em Atributos (ABAC) — Autorizações de Pesquisa
               </h3>
               <p className="text-slate-500">
-                O Administrador define exatamente quais NICs cada pesquisador credenciado pode visualizar.
+                O Administrador define exatamente quais conjuntos (COI) cada pesquisador credenciado pode visualizar.
               </p>
             </div>
             {isAdmin && (
@@ -560,11 +571,7 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
             )}
           </div>
 
-          {newAuthError && (
-            <p className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300">
-              {newAuthError}
-            </p>
-          )}
+          {newAuthError && <ErrorNotice code={newAuthError.code} message={newAuthError.message} />}
 
           {isAdmin && showNewAuthForm && (
             <div className="p-4 rounded-xl border border-sky-200 dark:border-sky-800 bg-sky-50 dark:bg-sky-950/30 space-y-3">
@@ -689,7 +696,7 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
                 </div>
 
                 <div className="p-2.5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 space-y-1 font-mono text-[11px]">
-                  <div className="text-slate-500">NICs Autorizados no Escopo:</div>
+                  <div className="text-slate-500">Conjuntos (COI) autorizados no escopo:</div>
                   <div className="flex flex-wrap gap-1.5">
                     {(auth.scope?.allowedCollectionsNic || auth.authorizedNics || []).map((nic: string) => (
                       <span key={nic} className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-bold">
@@ -717,7 +724,7 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
                 Gestão de Empréstimos e Saída de Material Ósseo (§14)
               </h3>
               <p className="text-slate-500">
-                Formalização com termo de responsabilidade, conferência física na devolução e hash da curadoria.
+                Formalização com termo de responsabilidade, conferência física na devolução e hash da montagem e inventário.
               </p>
             </div>
           </div>
@@ -732,7 +739,7 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
               </span>
             </div>
             <p className="text-slate-600 dark:text-slate-300">
-              Conjunto: <strong>NIC-2026-0841</strong> (Caixa CX-0841-A) cedido temporariamente para análise tomográfica na USP com termo de guarda assinado por Dra. Helena Rios (Curadora) e Dr. Marcos Toledo.
+              Conjunto: <strong>COI-001</strong> (Caixa COI-001) cedido temporariamente para análise tomográfica na USP com termo de guarda assinado por Dra. Helena Rios (Curadora) e Dr. Marcos Toledo.
             </p>
           </div>
         </div>
@@ -747,13 +754,13 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
           </div>
 
           <p className="text-slate-500 leading-relaxed">
-            O agente de IA analisa as diferenças criptográficas entre versões científicas (ex: rascunho de estudante vs curadoria homologada) e produz uma narrativa clara e reprodutível das alterações:
+            O agente de IA analisa as diferenças criptográficas entre versões científicas (ex: rascunho de estudante vs montagem e inventário homologados) e produz uma narrativa clara e reprodutível das alterações:
           </p>
 
           <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3 font-mono">
             <div className="flex justify-between text-slate-500 text-[11px]">
-              <span>Comparação: v1 (Rascunho de Bancada) ➔ v2 (Curadoria Homologada)</span>
-              <span>NIC: NIC-2026-0841</span>
+              <span>Comparação: v1 (Rascunho de Bancada) ➔ v2 (Montagem e Inventário Homologados)</span>
+              <span>COI: COI-001</span>
             </div>
             <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 space-y-2 text-slate-700 dark:text-slate-300 font-sans leading-relaxed">
               <p>

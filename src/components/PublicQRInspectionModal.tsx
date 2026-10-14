@@ -59,7 +59,7 @@ export const PublicQRInspectionModal: React.FC<PublicQRInspectionModalProps> = (
           <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
             <div>
               <span className="text-[10px] font-mono text-slate-400 uppercase font-semibold block">
-                Número de Identificação do Conjunto (NIC)
+                Número do Conjunto (COI)
               </span>
               <span className="text-xl font-bold font-mono text-slate-900 dark:text-white">
                 {collection.nic}
@@ -138,7 +138,7 @@ export const PublicQRInspectionModal: React.FC<PublicQRInspectionModalProps> = (
                 ))}
               </div>
             ) : (
-              <p className="text-slate-400 italic">Curadoria biológica em andamento.</p>
+              <p className="text-slate-400 italic">Montagem e inventário em andamento.</p>
             )}
           </div>
 

@@ -10,6 +10,7 @@ import {
   ResearchAuthorization,
   IndividualHypothesis
 } from '../../types/sgccco';
+import { friendlyMessage } from '../../utils/errorMessages';
 
 function mockFetchOnce() {
   vi.stubGlobal(
@@ -130,6 +131,17 @@ function administradorUser(): UserProfile {
     role: 'administrador',
     institution: 'INC/DITEC/PF',
     email: 'admin@inc.pf.gov.br'
+  };
+}
+
+function tecnicoUser(overrides: Partial<UserProfile> = {}): UserProfile {
+  return {
+    id: 'u4',
+    name: 'Técnico de Laboratório',
+    role: 'tecnico',
+    institution: 'INC/DITEC/PF',
+    email: 'tecnico@inc.pf.gov.br',
+    ...overrides
   };
 }
 
@@ -265,7 +277,7 @@ describe('Phase7ConsultaPesquisa', () => {
           return Promise.resolve({ ok: true, status: 200, json: async () => ({ commit: null }) });
         }
         if (url === '/api/research-authorizations' && init?.method === 'POST') {
-          return Promise.resolve({ ok: false, status: 409, json: async () => ({ error: 'Já existe uma autorização com esse id.' }) });
+          return Promise.resolve({ ok: false, status: 409, json: async () => ({ error: 'Já existe uma autorização com esse id.', code: 'AUTORIZACAO_ID_DUPLICADO' }) });
         }
         if (url === `/api/research-authorizations/${authToRevoke.id}` && init?.method === 'PUT') {
           return Promise.resolve({ ok: true, status: 200, json: async () => ({ authorization: { ...authToRevoke, status: 'revogada' } }) });
@@ -297,11 +309,66 @@ describe('Phase7ConsultaPesquisa', () => {
     await user.type(screen.getByLabelText('Válida até:'), '2026-12-31');
     await user.click(screen.getByRole('button', { name: /Criar Autorização/i }));
 
-    expect(await screen.findByText('Já existe uma autorização com esse id.')).toBeInTheDocument();
+    expect(await screen.findByText(friendlyMessage('AUTORIZACAO_ID_DUPLICADO'))).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /Revogar/i }));
 
     await screen.findByText('Revogar');
-    expect(screen.queryByText('Já existe uma autorização com esse id.')).not.toBeInTheDocument();
+    expect(screen.queryByText(friendlyMessage('AUTORIZACAO_ID_DUPLICADO'))).not.toBeInTheDocument();
+  });
+
+  it('Técnico sem acesso de Exportação Científica (padrão do papel, §13) vê o botão desabilitado', () => {
+    mockFetchOnce();
+    const collections = [baseCollection('NIC-2026-0001')];
+
+    render(
+      <Phase7ConsultaPesquisa
+        collections={collections}
+        currentUser={tecnicoUser()}
+        authorizations={[]}
+        onUpdateAuthorizations={vi.fn()}
+        onUpdateCollections={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: /Exportação Reprodutível/i })).toBeDisabled();
+  });
+
+  it('Técnico com o ajuste de acesso ligado (§13) consegue exportar mesmo sem ser Curador/Administrador/Pesquisador', async () => {
+    mockFetchOnce();
+    const user = userEvent.setup();
+    const collections = [baseCollection('NIC-2026-0001')];
+
+    render(
+      <Phase7ConsultaPesquisa
+        collections={collections}
+        currentUser={tecnicoUser({ exportAccess: true })}
+        authorizations={[]}
+        onUpdateAuthorizations={vi.fn()}
+        onUpdateCollections={vi.fn()}
+      />
+    );
+
+    const exportButton = screen.getByRole('button', { name: /Exportação Reprodutível/i });
+    expect(exportButton).not.toBeDisabled();
+    await user.click(exportButton);
+    expect(screen.getByText(/Exportação Reprodutível do Acervo/i)).toBeInTheDocument();
+  });
+
+  it('Curador continua com Exportação Científica liberada por padrão', () => {
+    mockFetchOnce();
+    const collections = [baseCollection('NIC-2026-0001')];
+
+    render(
+      <Phase7ConsultaPesquisa
+        collections={collections}
+        currentUser={curadorUser()}
+        authorizations={[]}
+        onUpdateAuthorizations={vi.fn()}
+        onUpdateCollections={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: /Exportação Reprodutível/i })).not.toBeDisabled();
   });
 });
