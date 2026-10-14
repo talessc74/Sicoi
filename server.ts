@@ -19,6 +19,7 @@ import {
   verifyChangeLogChain,
   attachPhotoBytes,
   getPhotoFile,
+  insertPhase4AssemblyPhotoMetadata,
   Actor
 } from './db/collectionsRepo';
 import { HistoryViolationError } from './db/historyGuard';
@@ -709,16 +710,19 @@ app.get('/api/collections/:nic/history', requireAuth, async (req: Request, res: 
   }
 });
 
-// --- Fotos reais (Fase 1 e 2) — captura pela câmera, bytes guardados direto no
+// --- Fotos reais (Fase 1, 2 e 4) — captura pela câmera, bytes guardados direto no
 // Postgres já existente, sem conta de armazenamento externa (_local-adr-policy-301).
 // Convive com o caminho antigo (full_state.phase{1,2}.photos + syncPhotos, que só
 // grava metadados) — a aposentadoria dele é um PR futuro, só depois do uso real.
+// Fase 4 é diferente das outras duas: não tem um array de fotos, só uma foto única
+// oficial (completeAssemblyPhotoApproved) — ver o tratamento especial na rota abaixo.
 
 const photoUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
-function photoTableFor(phase: unknown): 'phase1_photos' | 'phase2_photos' | null {
+function photoTableFor(phase: unknown): 'phase1_photos' | 'phase2_photos' | 'phase4_photos' | null {
   if (phase === 'phase1') return 'phase1_photos';
   if (phase === 'phase2') return 'phase2_photos';
+  if (phase === 'phase4') return 'phase4_photos';
   return null;
 }
 
@@ -755,7 +759,7 @@ app.post('/api/collections/:nic/photos', requireAuth, handlePhotoUpload, async (
     const phase = req.body?.phase;
     const table = photoTableFor(phase);
     if (!table) {
-      return res.status(400).json({ error: 'Campo "phase" deve ser "phase1" ou "phase2".' });
+      return res.status(400).json({ error: 'Campo "phase" deve ser "phase1", "phase2" ou "phase4".' });
     }
     const category = typeof req.body?.category === 'string' ? req.body.category.trim() : '';
     if (!category) {
@@ -785,11 +789,38 @@ app.post('/api/collections/:nic/photos', requireAuth, handlePhotoUpload, async (
     };
 
     const phaseData = (collection as any)[phase];
-    const next = {
-      ...collection,
-      [phase]: { ...phaseData, photos: [...phaseData.photos, photo] }
-    };
+    // Fase 4 não tem array de fotos — é uma foto única oficial (visível na
+    // leitura do QR Code, §11). A nova sempre substitui a anterior (nunca há
+    // duas "fotos oficiais de montagem" ao mesmo tempo); o registro antigo em
+    // phase4_photos fica órfão, mas mantém seus bytes pra auditoria.
+    const next = phase === 'phase4'
+      ? {
+          ...collection,
+          phase4: {
+            ...phaseData,
+            completeAssemblyPhotoApproved: {
+              photoUrl: photo.url,
+              capturedAt: photo.timestamp,
+              approvedBy: photo.author,
+              approvedAt: photo.timestamp,
+              sha256Hash: photo.sha256Hash,
+              resolution: width && height ? `${width}x${height}` : ''
+            },
+            assemblyPhotoJustification: undefined
+          }
+        }
+      : {
+          ...collection,
+          [phase]: { ...phaseData, photos: [...phaseData.photos, photo] }
+        };
     const saved = await saveCollection(pool, next, actor);
+
+    // Fase 4 não passa por syncPhotos (não tem array de fotos) — o metadado
+    // precisa ser inserido explicitamente aqui antes do attachPhotoBytes achar a
+    // linha pra gravar os bytes.
+    if (phase === 'phase4') {
+      await insertPhase4AssemblyPhotoMetadata(pool, photo, req.params.nic);
+    }
 
     // Só grava os bytes depois do save ter passado por todo o histórico protegido —
     // se saveCollection recusar (fase travada, etc.), nada fica gravado.
@@ -813,7 +844,8 @@ app.get('/api/collections/:nic/photos/:photoId/file', requireAuth, async (req: R
     const pool = getPool();
     const file =
       (await getPhotoFile(pool, 'phase1_photos', req.params.nic, req.params.photoId)) ||
-      (await getPhotoFile(pool, 'phase2_photos', req.params.nic, req.params.photoId));
+      (await getPhotoFile(pool, 'phase2_photos', req.params.nic, req.params.photoId)) ||
+      (await getPhotoFile(pool, 'phase4_photos', req.params.nic, req.params.photoId));
     if (!file) {
       return res.status(404).json({ error: 'Foto não encontrada.' });
     }

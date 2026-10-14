@@ -158,12 +158,17 @@ export interface Phase1Data {
   dataAnalise: FieldWithAiSuggestion<string>; // ISO 8601 (data)
   horaAnalise: FieldWithAiSuggestion<string>; // ex.: "11h20min"
 
-  // Checklist de fotos (campos 5-9) — obrigatoriedade de cada categoria conforme o A.1:
-  // foto1 e foto4.1 são sempre obrigatórias; foto2, foto3 e foto4.2 são "se aplicável".
-  foto1SacoFechado: FieldWithAiSuggestion<boolean>;
+  // Checklist de fotos (campos 5-9) — foto2, foto3 e foto4.2 são "se aplicável" (podem
+  // não existir no caso). foto1 e foto4.1 são sempre esperadas, mas não travam a fase
+  // pra sempre se não houver foto real: o operador pode registrar a foto de verdade
+  // (value: 'sim') ou, perguntado explicitamente pelo sistema, confirmar que não há
+  // foto pra guardar com justificativa obrigatória (value: 'sem_foto_justificado').
+  foto1SacoFechado: FieldWithAiSuggestion<'sim' | 'sem_foto_justificado'>;
+  foto1SacoFechadoJustificativaAusencia?: FieldWithAiSuggestion<string>;
   foto2PlacaCemiterio: FieldWithAiSuggestion<'sim' | 'nao_se_aplica'>;
   foto3RemanescentesMateriais: FieldWithAiSuggestion<'sim' | 'nao_se_aplica'>;
-  foto4_1RemanescentesIsolados: FieldWithAiSuggestion<boolean>;
+  foto4_1RemanescentesIsolados: FieldWithAiSuggestion<'sim' | 'sem_foto_justificado'>;
+  foto4_1RemanescentesIsoladosJustificativaAusencia?: FieldWithAiSuggestion<string>;
   foto4_2MateriaisIsolados: FieldWithAiSuggestion<'sim' | 'nao_se_aplica'>;
 
   // Tipo de material (campo 10) + descrições condicionais (11-15)
@@ -211,6 +216,10 @@ export interface Phase1Data {
 
   preliminaryBoxes: PreliminaryBox[];
   photos: Phase1Photo[];
+
+  // Não é campo do A.1 — confirmação opcional do Pesquisador (ver
+  // ResearcherReviewConfirmation), nunca a assinatura que destrava a fase.
+  researcherConfirmation?: ResearcherReviewConfirmation;
 }
 
 export interface PreliminaryBox {
@@ -291,6 +300,10 @@ export interface Phase2Data {
   dryingConfirmedBy?: string;
 
   photos: Phase1Photo[];
+
+  // Não é campo do A.2 — confirmação opcional do Pesquisador (ver
+  // ResearcherReviewConfirmation), nunca a assinatura que destrava a fase.
+  researcherConfirmation?: ResearcherReviewConfirmation;
 }
 
 // Fase 3: Acondicionamento Provisório e Fila de Curadoria
@@ -306,6 +319,10 @@ export interface Phase3Data {
     qrScannedConfirmation?: boolean;
   }[];
   enteredQueueAt?: string;
+
+  // Confirmação opcional do Pesquisador (ver ResearcherReviewConfirmation),
+  // nunca a assinatura/ação que destrava a fase.
+  researcherConfirmation?: ResearcherReviewConfirmation;
 }
 
 // Grau de Certeza Biológica (§8)
@@ -392,6 +409,37 @@ export interface Phase4Data {
     approvedAt: string;
     sha256Hash: string;
     resolution: string;
+  };
+  // Confirmação do Técnico de que a Montagem está completa — precisa existir
+  // junto com curatorInventorySign pra fase travar e avançar (mesmo padrão
+  // de duas confirmações já usado em phase5.technicianPhysicalSign/
+  // curatorScientificSign). Nenhuma das duas sozinha avança a fase.
+  technicianAssemblySign?: {
+    signedByName: string;
+    signedAt: string;
+    sha256Hash: string;
+  };
+  curatorInventorySign?: {
+    signedByName: string;
+    signedAt: string;
+    sha256Hash: string;
+  };
+
+  // Confirmação opcional do Pesquisador (ver ResearcherReviewConfirmation) —
+  // nunca substitui technicianAssemblySign, que continua sendo a assinatura
+  // exclusiva de Técnico/Curador.
+  researcherConfirmation?: ResearcherReviewConfirmation;
+
+  // Confirmação explícita de que não há fotografia oficial de montagem pra
+  // guardar agora — a câmera normalmente é obrigatória pra fechar a Fase 4,
+  // mas o sistema pergunta em vez de travar pra sempre quando ela não está
+  // disponível (mesmo padrão da Fase 1 — ver _local-adr-policy-301). Nunca
+  // coexiste com completeAssemblyPhotoApproved: registrar uma foto real
+  // sempre limpa esta justificativa (e vice-versa).
+  assemblyPhotoJustification?: {
+    justifiedByName: string;
+    justifiedAt: string;
+    reason: string;
   };
 }
 

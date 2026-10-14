@@ -170,6 +170,32 @@ describe('Phase5Patologias', () => {
     expect(screen.getByRole('button', { name: /Assinar Fechamento da Fase 5/i })).toBeDisabled();
   });
 
+  it('Pesquisador não pode assinar a parte física (exclusiva de Técnico/Curador) — sua participação é a confirmação opcional', async () => {
+    const user = userEvent.setup();
+    const collection = baseCollection({ phase5Checklist: fullChecklist });
+    const onUpdateCollection = vi.fn();
+
+    render(
+      <Phase5Patologias
+        collection={collection}
+        currentUser={userWithRole('pesquisador')}
+        onUpdateCollection={onUpdateCollection}
+        laboratoryMode={false}
+      />
+    );
+
+    const signButton = screen.getByRole('button', { name: /Assinar Fechamento da Fase 5/i });
+    expect(signButton).toBeDisabled();
+
+    const confirmButton = screen.getByRole('button', { name: /confirmar revisão \(pesquisador\)/i });
+    await user.click(confirmButton);
+    const updated = onUpdateCollection.mock.calls.at(-1)?.[0] as OsteologicalCollection;
+    expect(updated.phase5.researcherConfirmation?.confirmedByName).toBeTruthy();
+    // A confirmação do Pesquisador nunca grava as assinaturas reais.
+    expect(updated.phase5.technicianPhysicalSign).toBeUndefined();
+    expect(updated.phase5.curatorScientificSign).toBeUndefined();
+  });
+
   it('chama onUpdateCollection ao marcar um item do checklist', async () => {
     const collection = baseCollection();
     const onUpdateCollection = vi.fn();

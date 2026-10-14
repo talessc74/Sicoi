@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { OsteologicalCollection, UserProfile, StorageLocation, CustodyMovement } from '../types/sgccco';
 import { calculateSha256, generateSignaturePayload } from '../services/auditService';
 import { getLatestPhaseSignature } from '../utils/signatures';
-import { canPerformRole } from '../utils/permissions';
+import { canSignAsTechnician } from '../utils/permissions';
 import { WAREHOUSE_STRUCTURE } from '../data/mockData';
-import { MapPin, QrCode, CheckCircle2, Clock, Box, ShieldCheck, ArrowRight, Pencil, X } from 'lucide-react';
+import { MapPin, QrCode, CheckCircle2, Clock, Box, ShieldCheck, ArrowRight, Pencil, X, UserCheck } from 'lucide-react';
 
 interface Phase3AcondicionamentoProps {
   collection: OsteologicalCollection;
@@ -35,7 +35,11 @@ export const Phase3Acondicionamento: React.FC<Phase3AcondicionamentoProps> = ({
 
   const phaseSignature = getLatestPhaseSignature(collection.signatures, 3);
   const isLocked = phaseSignature?.status === 'locked';
-  const canActAsTechnician = canPerformRole(currentUser.role, 'tecnico');
+  // A assinatura que trava a fase é exclusiva de Técnico/Curador — o Pesquisador
+  // tem acesso à Fase 3, mas sua participação é a confirmação opcional abaixo
+  // (handleConfirmResearcherReview), nunca esta assinatura (decisão de acesso
+  // out/2026, correção: "o técnico é obrigatório, o pesquisador pode ou não").
+  const canActAsTechnician = canSignAsTechnician(currentUser.role);
 
   const boxes = collection.phase1.preliminaryBoxes;
   const allBoxesPlaced = boxes.length > 0 && boxes.every(b => 
@@ -149,6 +153,20 @@ export const Phase3Acondicionamento: React.FC<Phase3AcondicionamentoProps> = ({
     onUpdateCollection(updated);
   };
 
+  // Confirmação opcional do Pesquisador — nunca trava nem destrava nada, nunca
+  // substitui a assinatura do Técnico/Curador acima.
+  const handleConfirmResearcherReview = async () => {
+    const timestamp = new Date().toISOString();
+    const hash = await calculateSha256(`researcher-review|phase3|${collection.nic}|${currentUser.id}|${timestamp}`);
+    onUpdateCollection({
+      ...collection,
+      phase3: {
+        ...collection.phase3,
+        researcherConfirmation: { confirmedByName: currentUser.name, confirmedAt: timestamp, sha256Hash: hash }
+      }
+    });
+  };
+
   // Fila de Curadoria (esperando Fase 4)
   const curationQueue = allCollections.filter(c => {
     const isP3Signed = c.signatures.some(s => s.phaseNumber === 3 && s.status === 'locked');
@@ -175,6 +193,24 @@ export const Phase3Acondicionamento: React.FC<Phase3AcondicionamentoProps> = ({
           </div>
 
           <div className="flex items-center gap-3">
+            {currentUser.role === 'pesquisador' && !isLocked && (
+              collection.phase3.researcherConfirmation ? (
+                <div className="px-3 py-2 rounded-xl bg-sky-50 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-900 flex items-center gap-2 text-xs font-mono text-sky-700 dark:text-sky-300 font-semibold">
+                  <UserCheck className="w-4 h-4 text-sky-600" />
+                  <span>Revisão do Pesquisador confirmada</span>
+                </div>
+              ) : (
+                <button
+                  onClick={handleConfirmResearcherReview}
+                  title="Confirmação opcional — não trava nem substitui a assinatura do Técnico/Curador."
+                  className="px-3 py-2 rounded-xl border border-sky-300 dark:border-sky-800 bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 text-xs font-semibold flex items-center gap-1.5 hover:bg-sky-100 dark:hover:bg-sky-900/60 transition-colors"
+                >
+                  <UserCheck className="w-4 h-4" />
+                  <span>Confirmar Revisão (Pesquisador)</span>
+                </button>
+              )
+            )}
+
             {isLocked ? (
               <div className="px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-900 flex items-center gap-2 text-xs font-mono text-emerald-700 dark:text-emerald-300 font-semibold">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />

@@ -44,19 +44,24 @@ describe('POP-01 · Fase 1 (Formulário A.1) — trava de avanço por passo', ()
     expect(result.isComplete).toBe(true); // equipe já vem do context, data e hora vieram agora
   });
 
-  it('Passo 2 (checklist fotográfico): incompleto enquanto alguma foto obrigatória não foi confirmada', () => {
+  it('Passo 2 (checklist fotográfico): narração nunca confirma foto1/foto4.1 — só o botão de captura real faz isso', () => {
+    // "Foto do saco fechado feita" é só o usuário dizendo isso de boca — sem uma foto
+    // real por trás, não pode marcar o campo (ver handleCaptureChecklistPhoto em
+    // PopConversationalConductor.tsx, único caminho real pra essas duas).
     const result = step(phase1Steps, 2).extractData('Foto do saco fechado feita.', {} as any);
     expect(result.isComplete).toBe(false);
-    expect(result.data.foto1SacoFechado).toBe(true);
+    expect(result.data.foto1SacoFechado).toBeUndefined();
     expect(result.data.foto4_1RemanescentesIsolados).toBeUndefined();
   });
 
-  it('Passo 2: completo quando todas as 5 fotos (ou "não se aplica") foram confirmadas', () => {
+  it('Passo 2: "todas as fotos" só confirma por narração as 3 tri-state — nunca completa sem foto1/foto4.1 já capturadas de verdade', () => {
     const result = step(phase1Steps, 2).extractData('Todas as fotos obrigatórias feitas.', {} as any);
-    expect(result.isComplete).toBe(true);
-    expect(result.data.foto1SacoFechado).toBe(true);
-    expect(result.data.foto4_1RemanescentesIsolados).toBe(true);
+    expect(result.isComplete).toBe(false);
+    expect(result.data.foto1SacoFechado).toBeUndefined();
+    expect(result.data.foto4_1RemanescentesIsolados).toBeUndefined();
     expect(result.data.foto2PlacaCemiterio).toBe('sim');
+    expect(result.data.foto3RemanescentesMateriais).toBe('sim');
+    expect(result.data.foto4_2MateriaisIsolados).toBe('sim');
   });
 
   it('Passo 3 (tipo de material): incompleto sem nenhum tipo reconhecido', () => {
