@@ -4,6 +4,8 @@ import { AdminDangerZone } from './AdminDangerZone';
 import { getRoleTheme } from '../utils/roleTheme';
 import { hasAdminAccess, canViewLegalOrigin, canCurate, canSignAsTechnician, canExportScientificData } from '../utils/permissions';
 import { generateSetupLinkApi, fetchPendingPasswordResetRequestsApi, PendingPasswordResetRequest } from '../services/authService';
+import { ErrorNotice } from './ErrorNotice';
+import { toAppError, AppError } from '../utils/errorMessages';
 import {
   Settings,
   Volume2,
@@ -116,7 +118,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [newPersonAdminAccess, setNewPersonAdminAccess] = useState(false);
   const [newPersonAccess, setNewPersonAccess] = useState<AccessOverridesOnly>(() => defaultAccessForRole('tecnico'));
   const [isCreatingPerson, setIsCreatingPerson] = useState(false);
-  const [createPersonError, setCreatePersonError] = useState<string | null>(null);
+  const [createPersonError, setCreatePersonError] = useState<AppError | null>(null);
   const [personPendingDeletion, setPersonPendingDeletion] = useState<UserProfile | null>(null);
   const isAdmin = hasAdminAccess(currentUser);
 
@@ -130,13 +132,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [editPersonAdminAccess, setEditPersonAdminAccess] = useState(false);
   const [editPersonAccess, setEditPersonAccess] = useState<AccessOverridesOnly>(() => defaultAccessForRole('tecnico'));
   const [isSavingPerson, setIsSavingPerson] = useState(false);
-  const [editPersonError, setEditPersonError] = useState<string | null>(null);
+  const [editPersonError, setEditPersonError] = useState<AppError | null>(null);
 
   // Link de definição de senha gerado por último — mostrado uma única vez (o
   // token só existe em texto puro nesta resposta; depois só o hash fica no banco).
   const [generatingLinkForId, setGeneratingLinkForId] = useState<string | null>(null);
   const [generatedLink, setGeneratedLink] = useState<{ personId: string; url: string; expiresAt: string } | null>(null);
-  const [linkError, setLinkError] = useState<string | null>(null);
+  const [linkError, setLinkError] = useState<AppError | null>(null);
   const [copyFeedback, setCopyFeedback] = useState(false);
 
   // Fila de "esqueci a senha" — só o Administrador vê; gerar o link (abaixo)
@@ -166,7 +168,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       setGeneratedLink({ personId: person.id, url, expiresAt });
       setPendingResetRequests((prev) => prev.filter((r) => r.personId !== person.id));
     } catch (err: any) {
-      setLinkError(err?.message || 'Não foi possível gerar o link.');
+      setLinkError(toAppError(err, 'Não foi possível gerar o link.'));
     } finally {
       setGeneratingLinkForId(null);
     }
@@ -204,7 +206,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       setNewPersonEmail('');
       setShowAddPersonForm(false);
     } catch (err: any) {
-      setCreatePersonError(err?.message || 'Não foi possível cadastrar a pessoa.');
+      setCreatePersonError(toAppError(err, 'Não foi possível cadastrar a pessoa.'));
     } finally {
       setIsCreatingPerson(false);
     }
@@ -258,7 +260,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       });
       setEditingPersonId(null);
     } catch (err: any) {
-      setEditPersonError(err?.message || 'Não foi possível salvar as alterações.');
+      setEditPersonError(toAppError(err, 'Não foi possível salvar as alterações.'));
     } finally {
       setIsSavingPerson(false);
     }
@@ -518,7 +520,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </label>
             )}
             {createPersonError && (
-              <p className="sm:col-span-2 text-xs text-rose-600 dark:text-rose-400 font-mono">{createPersonError}</p>
+              <ErrorNotice
+                className="sm:col-span-2"
+                code={createPersonError.code}
+                message={createPersonError.message}
+              />
             )}
 
             <div className="sm:col-span-2 flex justify-end gap-2">
@@ -540,9 +546,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         )}
 
         {isAdmin && linkError && (
-          <div className="mx-5 mt-4 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 font-mono">
-            {linkError}
-          </div>
+          <ErrorNotice className="mx-5 mt-4" code={linkError.code} message={linkError.message} />
         )}
 
         {isAdmin && generatedLink && (
@@ -632,7 +636,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     </label>
                   )}
                   {editPersonError && (
-                    <p className="sm:col-span-2 text-xs text-rose-600 dark:text-rose-400 font-mono">{editPersonError}</p>
+                    <ErrorNotice
+                      className="sm:col-span-2"
+                      code={editPersonError.code}
+                      message={editPersonError.message}
+                    />
                   )}
                   <div className="sm:col-span-2 flex justify-end gap-2">
                     <button

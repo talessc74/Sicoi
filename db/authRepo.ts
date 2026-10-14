@@ -197,7 +197,7 @@ export async function claimAdministratorAccount(pool: Pool, email: string, newPa
   );
   const row = rows[0];
   if (!row || row.role !== 'administrador' || row.password_hash !== null) {
-    throw new Error('Não há Administrador pendente de ativação com esse e-mail.');
+    throw Object.assign(new Error('Não há Administrador pendente de ativação com esse e-mail.'), { code: 'AUTH_ADMIN_PENDENTE_NAO_ENCONTRADO' });
   }
   const passwordHash = await hashPassword(newPassword);
   const { rows: updated } = await pool.query<PersonAuthRow>(
@@ -220,11 +220,11 @@ export async function changeOwnPassword(pool: Pool, personId: string, currentPas
   );
   const row = rows[0];
   if (!row || !row.password_hash) {
-    throw new Error('Pessoa não encontrada.');
+    throw Object.assign(new Error('Pessoa não encontrada.'), { code: 'PESSOA_NAO_ENCONTRADA' });
   }
   const matches = await bcrypt.compare(currentPassword, row.password_hash);
   if (!matches) {
-    throw new Error('Senha atual incorreta.');
+    throw Object.assign(new Error('Senha atual incorreta.'), { code: 'AUTH_SENHA_ATUAL_INCORRETA' });
   }
   const newHash = await hashPassword(newPassword);
   await pool.query('UPDATE people SET password_hash = $1 WHERE id = $2', [newHash, personId]);
@@ -271,7 +271,7 @@ export async function createFirstAdmin(
     await client.query('SELECT pg_advisory_xact_lock($1)', [BOOTSTRAP_ADVISORY_LOCK_KEY]);
     const { rows: existing } = await client.query('SELECT 1 FROM people LIMIT 1');
     if (existing.length > 0) {
-      throw new Error('Já existe gente cadastrada — o bootstrap só funciona com o sistema vazio.');
+      throw Object.assign(new Error('Já existe gente cadastrada — o bootstrap só funciona com o sistema vazio.'), { code: 'AUTH_BOOTSTRAP_JA_FEITO' });
     }
     const passwordHash = await hashPassword(person.password);
     const { rows } = await client.query<PersonAuthRow>(
@@ -366,7 +366,7 @@ export async function consumePasswordSetupToken(pool: Pool, token: string, newPa
       [tokenHash]
     );
     if (!rows[0]) {
-      throw new Error('Link inválido, expirado ou já utilizado.');
+      throw Object.assign(new Error('Link inválido, expirado ou já utilizado.'), { code: 'AUTH_LINK_INVALIDO' });
     }
     const passwordHash = await hashPassword(newPassword);
     const updated = await client.query<PersonAuthRow>(

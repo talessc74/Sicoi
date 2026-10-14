@@ -6,6 +6,8 @@ import { calculateSha256, generateSignaturePayload } from '../services/auditServ
 import { extractDeathCertificateFields } from '../services/geminiService';
 import { getLatestPhaseSignature } from '../utils/signatures';
 import { canSignAsTechnician, canPerformRole } from '../utils/permissions';
+import { ErrorNotice } from './ErrorNotice';
+import { toAppError, AppError } from '../utils/errorMessages';
 import { Shield, FileText, Camera, CheckCircle2, AlertCircle, UserCheck, Plus, X } from 'lucide-react';
 
 interface Phase0RecebimentoProps {
@@ -33,7 +35,7 @@ export const Phase0Recebimento: React.FC<Phase0RecebimentoProps> = ({
   const [reviewConfirmed, setReviewConfirmed] = useState(false);
   const [signing, setSigning] = useState(false);
   const [extracting, setExtracting] = useState(false);
-  const [extractionError, setExtractionError] = useState<string | null>(null);
+  const [extractionError, setExtractionError] = useState<AppError | null>(null);
   const [extractedCount, setExtractedCount] = useState<number | null>(null);
   // Campos preenchidos pela extração por foto, até o Técnico editar cada um —
   // só efeito visual (dashed + etiqueta "IA"), nunca persistido no phase0.
@@ -93,7 +95,7 @@ export const Phase0Recebimento: React.FC<Phase0RecebimentoProps> = ({
       const fields = await extractDeathCertificateFields(file);
       const keys = Object.keys(fields);
       if (keys.length === 0) {
-        setExtractionError('Não foi possível identificar nenhum campo nesta imagem. Preencha manualmente ou tente outra foto.');
+        setExtractionError({ message: 'Não foi possível identificar nenhum campo nesta imagem. Preencha manualmente ou tente outra foto.' });
       } else {
         set(fields as Partial<Phase0Data>);
         const nextFromIA: Record<string, boolean> = {};
@@ -105,7 +107,7 @@ export const Phase0Recebimento: React.FC<Phase0RecebimentoProps> = ({
         setMode('manual');
       }
     } catch (err: any) {
-      setExtractionError(err?.message || 'Erro ao extrair dados da Declaração de Óbito.');
+      setExtractionError(toAppError(err, 'Erro ao extrair dados da Declaração de Óbito.'));
     } finally {
       setExtracting(false);
     }
@@ -267,9 +269,11 @@ export const Phase0Recebimento: React.FC<Phase0RecebimentoProps> = ({
             Tire uma foto ou envie a imagem da Declaração de Óbito
           </p>
           {extractionError && (
-            <div className="max-w-md mx-auto p-2.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-[11px]">
-              {extractionError}
-            </div>
+            <ErrorNotice
+              className="max-w-md mx-auto"
+              code={extractionError.code}
+              message={extractionError.message}
+            />
           )}
           <button
             type="button"
