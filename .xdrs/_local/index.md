@@ -9,12 +9,15 @@ sobrescrevem `_core` quando os dois se sobrepõem.
 
 ## Content
 
-### EDRs — Engineering Decisions (2 documentos)
+### EDRs — Engineering Decisions (3 documentos)
 
 Manutenção dos Manuais do Usuário (`public/manuais/`) sincronizada com
-mudanças no site. CORS restrito a origens conhecidas.
+mudanças no site. CORS restrito a origens conhecidas. Tradutor de
+erros: código estável do servidor + dicionário de tradução no cliente —
+nunca casamento de texto, frase amigável por padrão com detalhe técnico
+expansível.
 
-### ADRs — Architectural Decisions (9 documentos)
+### ADRs — Architectural Decisions (15 documentos)
 
 Histórico protegido de conjuntos: servidor como fonte de verdade,
 assinaturas travadas, registro de alterações encadeado por hash.
@@ -33,6 +36,14 @@ histórico e grafo exige sessão autenticada: nenhuma dessas rotas é
 pública, e `/api/status` não devolve mais fragmento real de chave.
 Navegação sincronizada com a URL (sem roteador): o botão "voltar" do
 navegador/celular volta uma tela dentro do app, em vez de sair do site.
+Fase 0 (Recebimento): transcrição da Declaração de Óbito com assinatura
+única, nunca o padrão dual-sign de Fase 4/5. Busca de referência real
+entre indivíduos (Fase 4, §15): determinística, sem IA. ABAC por
+pessoa: acesso ajustável além do padrão do papel, exceto as assinaturas
+de Inventário e Científica. Autorizações de pesquisa reais (Fase 7,
+§13): escopo granular por projeto, revogação nunca é delete. Validação
+de forma/tamanho nas rotas públicas de IA — gap de autenticação
+permanece deliberadamente fora do escopo.
 
 ### BDRs — Business Decisions (0 documentos)
 

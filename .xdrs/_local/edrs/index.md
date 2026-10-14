@@ -15,3 +15,4 @@ Decisões de workflow e ferramental de engenharia deste projeto, criadas por del
 
 - [_local-edr-policy-101](application/101-manter-manuais-usuario-atualizados.md) - Manter os Manuais do Usuário atualizados
 - [_local-edr-policy-102](application/102-cors-restrito-a-origens-conhecidas.md) - CORS restrito a origens conhecidas (nunca mais '*')
+- [_local-edr-policy-103](application/103-tradutor-de-erros.md) - Tradutor de erros: código estável do servidor + dicionário no cliente — nunca casamento de texto
