@@ -54,6 +54,13 @@ import { listPeople, createPerson, updatePerson, deletePerson, countPeople } fro
 import { hasAdminAccess } from './src/utils/permissions';
 import type { Phase0Data } from './src/types/sgccco';
 import {
+  listAuthorizations,
+  createAuthorization,
+  updateAuthorization,
+  validateAuthorizationBody,
+  visibleAuthorizationsFor
+} from './db/authorizationsRepo';
+import {
   verifyLogin,
   getPersonWithAuthStatus,
   createPasswordSetupToken,
@@ -1345,6 +1352,69 @@ app.delete('/api/people/:id', requireAdminSession, async (req: Request, res: Res
   } catch (error: any) {
     console.error('Erro ao remover pessoa:', error);
     return res.status(500).json({ error: error?.message || 'Erro ao remover pessoa.', code: error?.code || 'PESSOA_ERRO_INTERNO' });
+  }
+});
+
+// --- Autorizações de pesquisa (Fase 7, §13 — ABAC) ---
+// Listar exige só sessão autenticada (o Pesquisador precisa ver a própria
+// autorização pra filtrar sua consulta via ABAC em Phase7ConsultaPesquisa.tsx),
+// mas só o Administrador recebe a lista inteira — qualquer outro papel
+// recebe só as autorizações cujo e-mail bate com o da própria sessão (nunca
+// o e-mail/instituição/CEP de outro pesquisador: minimização de dados,
+// mesmo espírito de GET /api/people exigir requireAdminSession).
+// Criar e editar (inclusive revogar) exigem sessão de Administrador.
+
+app.get('/api/research-authorizations', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const pool = getPool();
+    const authorizations = await listAuthorizations(pool);
+    const currentPerson = (req as any).currentPerson;
+    return res.json({ authorizations: visibleAuthorizationsFor(authorizations, currentPerson) });
+  } catch (error: any) {
+    console.error('Erro ao listar autorizações de pesquisa:', error);
+    return res.status(500).json({ error: error?.message || 'Erro ao listar autorizações de pesquisa.', code: error?.code || 'AUTORIZACAO_ERRO_INTERNO' });
+  }
+});
+
+app.post('/api/research-authorizations', requireAdminSession, async (req: Request, res: Response) => {
+  try {
+    const validationError = validateAuthorizationBody(req.body, isValidEmail);
+    if (validationError) {
+      return res.status(400).json({ error: validationError, code: 'AUTORIZACAO_CAMPOS_INVALIDOS' });
+    }
+    const pool = getPool();
+    const authorization = await createAuthorization(pool, req.body);
+    return res.status(201).json({ authorization });
+  } catch (error: any) {
+    console.error('Erro ao criar autorização de pesquisa:', error);
+    if (error?.code === '23505') {
+      return res.status(409).json({ error: 'Já existe uma autorização com esse id.', code: 'AUTORIZACAO_ID_DUPLICADO' });
+    }
+    return res.status(500).json({ error: error?.message || 'Erro ao criar autorização de pesquisa.', code: 'AUTORIZACAO_ERRO_INTERNO' });
+  }
+});
+
+// Também usada para revogar: a curadoria do estado ("status": "revogada") é
+// decisão do Administrador, nunca um delete — mesmo espírito de
+// _local-adr-policy-201 (reversível, com trilha de quem mudou e quando).
+app.put('/api/research-authorizations/:id', requireAdminSession, async (req: Request, res: Response) => {
+  try {
+    if (req.body?.id !== req.params.id) {
+      return res.status(400).json({ error: 'id do corpo da requisição não confere com o id da URL.', code: 'AUTORIZACAO_CAMPOS_INVALIDOS' });
+    }
+    const validationError = validateAuthorizationBody(req.body, isValidEmail);
+    if (validationError) {
+      return res.status(400).json({ error: validationError, code: 'AUTORIZACAO_CAMPOS_INVALIDOS' });
+    }
+    const pool = getPool();
+    const authorization = await updateAuthorization(pool, req.params.id, req.body);
+    if (!authorization) {
+      return res.status(404).json({ error: 'Autorização não encontrada.', code: 'AUTORIZACAO_NAO_ENCONTRADA' });
+    }
+    return res.json({ authorization });
+  } catch (error: any) {
+    console.error('Erro ao editar autorização de pesquisa:', error);
+    return res.status(500).json({ error: error?.message || 'Erro ao editar autorização de pesquisa.', code: 'AUTORIZACAO_ERRO_INTERNO' });
   }
 });
 

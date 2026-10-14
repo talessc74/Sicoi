@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Phase4Curadoria } from '../Phase4Curadoria';
 import { createEmptyPhase1Data, createEmptyPhase2Data } from '../../data/phaseDefaults';
@@ -600,6 +600,7 @@ describe('Phase4Curadoria', () => {
 
     const confirmButton = screen.getByRole('button', { name: /confirmar revisão \(pesquisador\)/i });
     await user.click(confirmButton);
+    await waitFor(() => expect(onUpdateCollection).toHaveBeenCalled());
     const updated = onUpdateCollection.mock.calls.at(-1)?.[0];
     expect(updated.phase4.researcherConfirmation?.confirmedByName).toBeTruthy();
     // A confirmação do Pesquisador nunca grava as assinaturas reais.

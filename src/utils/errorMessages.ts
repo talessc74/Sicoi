@@ -61,6 +61,11 @@ export type ErrorCode =
   | 'FOTO_CATEGORIA_OBRIGATORIA'
   | 'FOTO_NAO_ENCONTRADA'
   | 'FOTO_ERRO_INTERNO'
+  // Autorizações de pesquisa (Fase 7, §13)
+  | 'AUTORIZACAO_CAMPOS_INVALIDOS'
+  | 'AUTORIZACAO_ID_DUPLICADO'
+  | 'AUTORIZACAO_NAO_ENCONTRADA'
+  | 'AUTORIZACAO_ERRO_INTERNO'
   // Grafo de conhecimento
   | 'GRAFO_ERRO_INTERNO'
   | 'GRAFO_NO_NAO_ENCONTRADO'
@@ -134,6 +139,11 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   FOTO_CATEGORIA_OBRIGATORIA: 'Não foi possível identificar a que a foto se refere. Recarregue a página e tente de novo.',
   FOTO_NAO_ENCONTRADA: 'Não foi possível encontrar esta foto.',
   FOTO_ERRO_INTERNO: 'Não foi possível salvar a foto agora. Verifique sua conexão e tente de novo.',
+
+  AUTORIZACAO_CAMPOS_INVALIDOS: 'Alguns campos da autorização de pesquisa estão incompletos ou inválidos. Revise e tente de novo.',
+  AUTORIZACAO_ID_DUPLICADO: 'Já existe uma autorização de pesquisa com esse identificador.',
+  AUTORIZACAO_NAO_ENCONTRADA: 'Esta autorização de pesquisa não foi encontrada.',
+  AUTORIZACAO_ERRO_INTERNO: 'Não foi possível salvar a autorização de pesquisa agora. Tente de novo.',
 
   GRAFO_ERRO_INTERNO: 'Não foi possível carregar o grafo de conhecimento agora. Tente de novo em instantes.',
   GRAFO_NO_NAO_ENCONTRADO: 'Não foi possível encontrar este item no grafo.',

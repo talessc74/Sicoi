@@ -7,12 +7,10 @@ import {
   ResearchAuthorization,
   PersonAccessOverrides
 } from './types/sgccco';
-import {
-  MOCK_RESEARCH_AUTHORIZATIONS
-} from './data/mockData';
 import { createEmptyPhase0Data, createEmptyPhase1Data, createEmptyPhase2Data } from './data/phaseDefaults';
 import { fetchCollections, createCollectionApi, saveCollectionApi } from './services/collectionsService';
 import { fetchPeople, createPersonApi, updatePersonApi, deletePersonApi } from './services/peopleService';
+import { fetchAuthorizations } from './services/authorizationsService';
 import { fetchCurrentUser, fetchBootstrapStatus, logoutApi } from './services/authService';
 import { hasAdminAccess } from './utils/permissions';
 import { Header } from './components/Header';
@@ -101,7 +99,7 @@ export default function App() {
   const [preferLoginOverClaim, setPreferLoginOverClaim] = useState<boolean>(false);
   const [people, setPeople] = useState<UserProfile[]>([]);
   const [collections, setCollections] = useState<OsteologicalCollection[]>([]);
-  const [authorizations, setAuthorizations] = useState<ResearchAuthorization[]>(MOCK_RESEARCH_AUTHORIZATIONS);
+  const [authorizations, setAuthorizations] = useState<ResearchAuthorization[]>([]);
   const [selectedNic, setSelectedNic] = useState<string>('');
   const [activePhase, setActivePhase] = useState<PhaseNumber>(1);
   const [activeTab, setActiveTab] = useState<string>('inicio');
@@ -131,14 +129,16 @@ export default function App() {
   // pedidos de qualquer outro papel, e não há razão para um Técnico ou Estudante
   // ver o e-mail (o identificador de login) de todas as outras pessoas.
   const loadAppData = async (person: UserProfile) => {
-    const [loadedCollections, loadedPeople] = await Promise.all([
+    const [loadedCollections, loadedPeople, loadedAuthorizations] = await Promise.all([
       fetchCollections(),
-      hasAdminAccess(person) ? fetchPeople() : Promise.resolve([])
+      hasAdminAccess(person) ? fetchPeople() : Promise.resolve([]),
+      fetchAuthorizations()
     ]);
     setCollections(loadedCollections);
     setSelectedNic(loadedCollections[0]?.nic || '');
     setActivePhase(loadedCollections[0]?.currentPhase || 1);
     setPeople(loadedPeople);
+    setAuthorizations(loadedAuthorizations);
   };
 
   const handleLoggedIn = async (person: UserProfile) => {
@@ -160,6 +160,7 @@ export default function App() {
     await logoutApi();
     setCurrentUser(null);
     setPeople([]);
+    setAuthorizations([]);
     setActiveTab('inicio');
   };
 
