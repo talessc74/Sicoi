@@ -17,6 +17,7 @@ import {
   generateInitialOdontogram
 } from '../data/mockData';
 import { calculateSha256, generateSignaturePayload } from '../services/auditService';
+import { searchIndividualReferences, IndividualReferenceMatch } from '../services/collectionsService';
 import { uploadCollectionPhoto } from '../services/photoService';
 import { getLatestPhaseSignature } from '../utils/signatures';
 import { canPerformRole, canSignAsTechnician, canCurate } from '../utils/permissions';
@@ -54,8 +55,9 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
     collection.phase4.individuals[0]?.id || ''
   );
   const [showRefSearchModal, setShowRefSearchModal] = useState(false);
-  const [refSearchQuery, setRefSearchQuery] = useState('');
-  const [refSearchResults, setRefSearchResults] = useState<string[]>([]);
+  const [refSearchLoading, setRefSearchLoading] = useState(false);
+  const [refSearchError, setRefSearchError] = useState<string | null>(null);
+  const [refSearchResults, setRefSearchResults] = useState<IndividualReferenceMatch[]>([]);
   const [showMergeModal, setShowMergeModal] = useState(false);
   const [showSignModal, setShowSignModal] = useState(false);
   const [signing, setSigning] = useState(false);
@@ -182,15 +184,19 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
     onUpdateCollection(updated);
   };
 
-  const handleSearchReference = (query: string) => {
-    setRefSearchQuery(query);
-    // Simulates consultation to Graph + Anthropological Literature Catalog (§15)
-    setRefSearchResults([
-      `Ortner (2003) Identification of Pathological Conditions in Human Skeletal Remains, p. 120-145: Variações morfológicas compatíveis com "${query}".`,
-      `Buikstra & Ubelaker (1994) Standards for Data Collection from Human Skeletal Remains: Protocolo de pontuação osteométrica.`,
-      `Caso do Grafo SIGCOI (COI-002 / IND-01): Calo ósseo remodelado em diáfise femoral sob método Trotter & Gleser.`
-    ]);
+  const handleSearchReference = async (individualId: string) => {
     setShowRefSearchModal(true);
+    setRefSearchLoading(true);
+    setRefSearchError(null);
+    setRefSearchResults([]);
+    try {
+      const matches = await searchIndividualReferences(collection.nic, individualId);
+      setRefSearchResults(matches);
+    } catch (err: any) {
+      setRefSearchError(err?.message || 'Erro ao buscar referências no acervo.');
+    } finally {
+      setRefSearchLoading(false);
+    }
   };
 
   // Pergunta explicitamente câmera ou galeria antes de abrir qualquer
@@ -519,7 +525,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
 
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => handleSearchReference(`Morfologia craniométrica e pélvica de ${currentInd.code}`)}
+                      onClick={() => handleSearchReference(currentInd.id)}
                       className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-sky-700 dark:text-sky-300 font-medium flex items-center gap-1 hover:bg-sky-50 transition-colors"
                     >
                       <Sparkles className="w-3.5 h-3.5 text-amber-500" />
@@ -966,22 +972,35 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
             <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
               <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-amber-500" />
-                Agente de Busca de Referências & Grafo
+                Busca de Referência entre Conjuntos
               </h4>
               <button onClick={() => setShowRefSearchModal(false)} className="text-slate-400 hover:text-white">
                 Fechar
               </button>
             </div>
             <p className="text-slate-600 dark:text-slate-400">
-              O agente localiza literatura comparativa e conjuntos de referência no grafo. Ele <strong>nunca toma a decisão</strong>; cabe à curadora avaliar as referências:
+              Compara o perfil biológico deste indivíduo com os demais já cadastrados no acervo (mesmo valor estimado <strong>e</strong> mesmo método). Ele <strong>nunca toma a decisão</strong>; cabe à curadora avaliar se o caso serve de referência.
             </p>
+            {refSearchLoading && <p className="text-slate-500">Buscando no acervo...</p>}
+            {refSearchError && (
+              <p className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300">
+                {refSearchError}
+              </p>
+            )}
+            {!refSearchLoading && !refSearchError && refSearchResults.length === 0 && (
+              <p className="text-slate-500">Nenhum outro indivíduo do acervo compartilha sexo ou idade estimados pelo mesmo método.</p>
+            )}
             <div className="space-y-2.5">
-              {refSearchResults.map((ref, idx) => (
-                <div key={idx} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+              {refSearchResults.map((match, idx) => (
+                <div key={`${match.nic}-${match.individual.id}-${idx}`} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
                   <span className="font-mono text-[10px] uppercase font-bold text-sky-600 block mb-1">
-                    Referência #{idx + 1}:
+                    {match.nic} / {match.individual.code}
                   </span>
-                  <p className="text-slate-800 dark:text-slate-200 leading-relaxed font-sans">{ref}</p>
+                  <ul className="text-slate-800 dark:text-slate-200 leading-relaxed font-sans list-disc list-inside">
+                    {match.sharedTraits.map((trait, traitIdx) => (
+                      <li key={traitIdx}>{trait}</li>
+                    ))}
+                  </ul>
                 </div>
               ))}
             </div>

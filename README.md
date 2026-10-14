@@ -122,9 +122,11 @@ consulte o índice `.xdrs/_local/index.md` daquele repositório.
   Inventário Odontológico, Formulário de Patologias), que ainda não foram
   entregues. Até lá, o conteúdo dos formulários dessas fases é a melhor
   aproximação possível, não uma cópia fiel confirmada de um documento oficial.
-  Dentro da Fase 4, a busca de referência para comparação entre conjuntos (um dos
-  dois agentes de apoio previstos em `_local-adr-policy-001`) é só a interface
-  — o modal existe mas a busca em si ainda não está implementada.
+  Dentro da Fase 4, a busca de referência para comparação entre conjuntos já
+  consulta o acervo de verdade: compara o perfil biológico do indivíduo (sexo
+  e idade estimados, incluindo o método usado) com os demais indivíduos já
+  cadastrados em outros conjuntos, e mostra os casos reais que batem — nunca
+  texto fixo de exemplo.
 - **Pendências conhecidas, fora do escopo até agora:** validação de entrada
   mais rígida no backend. CSRF (double-submit token, `csrfProtection` em
   `server.ts`) e rate-limit de login persistente em Postgres (tabela
