@@ -32,7 +32,7 @@ export class HistoryViolationError extends Error {
   }
 }
 
-const SIGNABLE_PHASES = [1, 2, 3, 4, 5, 6] as const;
+const SIGNABLE_PHASES = [0, 1, 2, 3, 4, 5, 6] as const;
 const ACCEPTED_PREFIXES = [SIGNATURE_PAYLOAD_PREFIX, ...LEGACY_SIGNATURE_PAYLOAD_PREFIXES];
 
 export function signatureKey(sig: Pick<PhaseSignature, 'phaseNumber' | 'signedAt' | 'sha256Hash'>): string {

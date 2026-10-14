@@ -11,7 +11,7 @@ import {
   verifyChangeLogChain,
   Actor
 } from '../collectionsRepo';
-import { createEmptyPhase1Data, createEmptyPhase2Data } from '../../src/data/phaseDefaults';
+import { createEmptyPhase0Data, createEmptyPhase1Data, createEmptyPhase2Data } from '../../src/data/phaseDefaults';
 import type { OsteologicalCollection, PhaseSignature } from '../../src/types/sgccco';
 import { generateSignaturePayload } from '../../src/services/auditService';
 
@@ -45,7 +45,7 @@ function baseCollection(nic: string): OsteologicalCollection {
 }
 
 /** Assina a fase como o navegador faz: hash sobre JSON.stringify da fase, na ordem em memória. */
-function sign(col: OsteologicalCollection, phaseNumber: 1 | 2 | 3 | 4 | 5 | 6, actor: Actor): PhaseSignature {
+function sign(col: OsteologicalCollection, phaseNumber: 0 | 1 | 2 | 3 | 4 | 5 | 6, actor: Actor): PhaseSignature {
   const signedAt = new Date(Date.now() + Math.floor(Math.random() * 1000)).toISOString();
   const payload = generateSignaturePayload({
     nic: col.nic,
@@ -293,5 +293,34 @@ describe('proteção no próprio banco (gatilhos)', () => {
     await wipeAllCollections(pool);
     const { rows } = await pool.query(`SELECT count(*)::int AS n FROM change_log`);
     expect(rows[0].n).toBe(0);
+  });
+});
+
+// Reprodução exata do bug real encontrado em produção (COI-146, out/2026): a
+// Fase 0 nasceu embutindo um campo de assinatura dentro de phase0 (como
+// Fase 4/5 fazem), mas sendo de assinatura única (como Fase 1/2/3), o hash
+// calculado ANTES de embutir esse campo nunca batia com o conteúdo salvo DEPOIS
+// de embutido — "Assinatura inválida... hash não confere" ao assinar qualquer
+// conjunto na Fase 0. Corrigido removendo o campo embutido (a assinatura mora
+// só em signatures, igual Fase 1/2/3) e incluindo a Fase 0 em SIGNABLE_PHASES.
+describe('Fase 0: assinatura única, sem campo embutido em phase0', () => {
+  it('assina a Fase 0 de verdade (criar, assinar, salvar, recarregar) sem "Assinatura inválida"', async () => {
+    const col = baseCollection('NIC-HIST-0040');
+    col.currentPhase = 0;
+    col.phase0 = createEmptyPhase0Data();
+    await createCollection(pool, col, TECNICO);
+
+    col.signatures = [sign(col, 0, TECNICO)];
+    col.currentPhase = 1;
+    const saved = await saveCollection(pool, col, TECNICO);
+    expect(saved.signatures.find((s) => s.phaseNumber === 0)?.status).toBe('locked');
+
+    const reloaded = await getCollection(pool, 'NIC-HIST-0040');
+    expect(reloaded?.signatures.find((s) => s.phaseNumber === 0)?.status).toBe('locked');
+
+    // Fase 0 assinada e travada: alterar o conteúdo sem reabrir é recusado —
+    // prova que checkLockedPhases agora também cobre a Fase 0.
+    const tentativa = { ...reloaded!, phase0: { ...reloaded!.phase0, nome: 'Nome Alterado Sem Reabrir' } };
+    await expect(saveCollection(pool, tentativa as OsteologicalCollection, TECNICO)).rejects.toThrow(/está assinada e travada/);
   });
 });

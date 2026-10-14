@@ -6,6 +6,7 @@ import userEvent from '@testing-library/user-event';
 import { Phase0Recebimento } from '../Phase0Recebimento';
 import { createEmptyPhase0Data, createEmptyPhase1Data, createEmptyPhase2Data } from '../../data/phaseDefaults';
 import { OsteologicalCollection, UserProfile, UserRole } from '../../types/sgccco';
+import { calculateSha256, generateSignaturePayload } from '../../services/auditService';
 
 function baseCollection(overrides: Partial<OsteologicalCollection> = {}): OsteologicalCollection {
   return {
@@ -108,10 +109,24 @@ describe('Phase0Recebimento', () => {
     await user.click(screen.getByRole('button', { name: /Confirmar e Gerar Hash SHA-256/i }));
 
     const finalUpdate = onUpdateCollection.mock.calls.at(-1)?.[0];
-    expect(finalUpdate.phase0.technicianReceivalSign?.signedByName).toBe('Fulano de Tal');
     expect(finalUpdate.currentPhase).toBe(1);
     const sig = finalUpdate.signatures.find((s: any) => s.phaseNumber === 0);
     expect(sig.status).toBe('locked');
+    expect(sig.signedByName).toBe('Fulano de Tal');
+
+    // Mesma checagem que o servidor faz de verdade (db/historyGuard.ts
+    // verifyNewSignature): o hash tem que bater com o conteúdo de phase0
+    // EXATAMENTE como foi salvo — nunca com uma versão de antes ou de depois
+    // de embutir algo a mais nela (bug real encontrado em produção, COI-146).
+    const payload = generateSignaturePayload({
+      nic: finalUpdate.nic,
+      phaseNumber: 0,
+      signedBy: sig.signedBy,
+      role: sig.signedByRole,
+      timestamp: sig.signedAt,
+      dataSnapshotJson: JSON.stringify(finalUpdate.phase0)
+    });
+    expect(await calculateSha256(payload)).toBe(sig.sha256Hash);
   });
 
   it('pesquisador pode preencher mas não pode assinar a Fase 0 (botão desabilitado)', async () => {
