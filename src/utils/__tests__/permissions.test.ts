@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canPerformRole, hasAdminAccess } from '../permissions';
+import { canPerformRole, canSignAsTechnician, hasAdminAccess } from '../permissions';
 import type { UserRole } from '../../types/sgccco';
 
 describe('permissões do Curador', () => {
@@ -9,12 +9,38 @@ describe('permissões do Curador', () => {
     for (const role of roles) expect(canPerformRole('curador', role)).toBe(true);
   });
 
-  it('mantém os demais papéis limitados às próprias ações', () => {
+  it('mantém os demais papéis limitados às próprias ações, exceto a exceção Pesquisador → Técnico', () => {
     for (const current of roles.filter(role => role !== 'curador')) {
       for (const required of roles) {
-        expect(canPerformRole(current, required)).toBe(current === required);
+        const expected = current === required || (current === 'pesquisador' && required === 'tecnico');
+        expect(canPerformRole(current, required)).toBe(expected);
       }
     }
+  });
+
+  it('permite ao Pesquisador agir como Técnico (decisão de acesso, out/2026)', () => {
+    expect(canPerformRole('pesquisador', 'tecnico')).toBe(true);
+  });
+
+  it('não deixa o Técnico agir como Pesquisador (a exceção é de mão única)', () => {
+    expect(canPerformRole('tecnico', 'pesquisador')).toBe(false);
+  });
+});
+
+describe('canSignAsTechnician — quem pode SER a assinatura "técnico" (diferente de canPerformRole)', () => {
+  it('vale para Técnico e Curador', () => {
+    expect(canSignAsTechnician('tecnico')).toBe(true);
+    expect(canSignAsTechnician('curador')).toBe(true);
+  });
+
+  it('nunca vale para o Pesquisador — mesmo tendo acesso de técnico via canPerformRole, não pode ser a assinatura obrigatória', () => {
+    expect(canSignAsTechnician('pesquisador')).toBe(false);
+    expect(canPerformRole('pesquisador', 'tecnico')).toBe(true); // acesso sim, assinatura não
+  });
+
+  it('não vale para administrador nem estudante', () => {
+    expect(canSignAsTechnician('administrador')).toBe(false);
+    expect(canSignAsTechnician('estudante')).toBe(false);
   });
 });
 
