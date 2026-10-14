@@ -295,8 +295,9 @@ export interface PopDefinition {
   completionMessage: string;
 }
 
-// Definições dos POPs INC/DITEC/PF
-export const INC_DITEC_PF_POPS: Record<PhaseNumber, PopDefinition> = {
+// Definições dos POPs INC/DITEC/PF — a Fase 0 (Recebimento da D.O.) não tem
+// condutor por voz, só o formulário manual + extração por foto.
+export const INC_DITEC_PF_POPS: Record<Exclude<PhaseNumber, 0>, PopDefinition> = {
   1: {
     phaseNumber: 1,
     popCode: 'POP-01',

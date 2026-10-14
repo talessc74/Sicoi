@@ -40,6 +40,7 @@ import {
 } from 'lucide-react';
 
 const PHASE_META: Record<PhaseNumber, { subtitle: string; signerRole: string }> = {
+  0: { subtitle: 'Recebimento', signerRole: 'Técnico' },
   1: { subtitle: 'Recebimento & A.1', signerRole: 'Técnico' },
   2: { subtitle: 'Limpeza & Secagem A.2', signerRole: 'Técnico' },
   3: { subtitle: 'Acondic. Provisório', signerRole: 'Técnico' },
@@ -94,19 +95,23 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
     return getAuditTrailForCollection(currentCollection);
   }, [currentCollection]);
 
-  // Completude de cada uma das 7 fases — base do Laudo de Auditoria. Funciona
-  // para QUALQUER conjunto, completo ou não: uma fase sem assinatura aparece
-  // como "Em Aberto" (ou "Bloqueada" se as fases anteriores não fecharam),
-  // nunca é omitida do relatório.
+  // Completude de cada uma das 8 fases (0 a 7) — base do Laudo de Auditoria.
+  // Funciona para QUALQUER conjunto, completo ou não: uma fase sem assinatura
+  // aparece como "Em Aberto" (ou "Bloqueada" se as fases anteriores não
+  // fecharam), nunca é omitida do relatório.
   const phaseReport = useMemo(() => {
     if (!currentCollection) return [];
-    const phases: PhaseNumber[] = [1, 2, 3, 4, 5, 6, 7];
+    const phases: PhaseNumber[] = [0, 1, 2, 3, 4, 5, 6, 7];
     return phases.map((num) => {
       const sig = getLatestPhaseSignature(currentCollection.signatures, num);
       const meta = PHASE_META[num];
       let status: 'assinada' | 'reaberta' | 'em_aberto' | 'bloqueada';
       if (sig?.status === 'locked') status = 'assinada';
       else if (sig?.status === 'unlocked_for_revision') status = 'reaberta';
+      // Conjunto criado antes da Fase 0 existir (out/2026): não tem phase0,
+      // então ela nunca esteve "em aberto" pra ele — mostra bloqueada, não um
+      // pendente fantasma.
+      else if (num === 0 && !currentCollection.phase0) status = 'bloqueada';
       else if (num <= currentCollection.currentPhase) status = 'em_aberto';
       else status = 'bloqueada';
       return { num, meta, sig, status };
@@ -642,7 +647,8 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
               onChange={(e) => setSelectedPhaseFilter(e.target.value)}
               className="w-full py-2 px-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-700 dark:text-slate-200 focus:outline-hidden"
             >
-              <option value="all">Todas as Fases (1 a 7)</option>
+              <option value="all">Todas as Fases (0 a 7)</option>
+              <option value="0">Fase 0: Recebimento</option>
               <option value="1">Fase 1: Entrada / Recebimento</option>
               <option value="2">Fase 2: Limpeza e Secagem</option>
               <option value="3">Fase 3: Acondicionamento Prov.</option>

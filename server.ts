@@ -43,6 +43,7 @@ import {
 } from './db/boneSimilarity';
 import { listPeople, createPerson, updatePerson, deletePerson, countPeople } from './db/peopleRepo';
 import { hasAdminAccess } from './src/utils/permissions';
+import type { Phase0Data } from './src/types/sgccco';
 import {
   verifyLogin,
   getPersonWithAuthStatus,
@@ -1605,6 +1606,196 @@ app.post('/api/bone-similarity/search', requireAuth, async (req: Request, res: R
     console.error('Erro na busca de ossos parecidos:', error);
     const status = error?.statusCode || 500;
     return res.status(status).json({ error: error?.message || 'Erro na busca de ossos parecidos.' });
+  }
+});
+
+// --- Fase 0: extração de campos da Declaração de Óbito (D.O.) por foto ---
+// Exige sessão (requireAuth), como /api/bone-similarity/search — diferente das
+// rotas de IA mais antigas (/api/chat, /api/pop-step, /api/transcribe), que são
+// públicas. A IA só extrai o que está escrito e legível na imagem: campo
+// ausente ou ilegível vem omitido, nunca inventado (mesmo princípio de
+// extractBoneCriteriaFromFreeText acima). O Técnico sempre revisa e confirma
+// manualmente no formulário antes de assinar a fase — a extração nunca grava
+// nada sozinha, e a foto em si não é armazenada (só usada nesta chamada).
+const MAX_DEATH_CERTIFICATE_IMAGE_BYTES = 15 * 1024 * 1024; // 15MB decodificados
+
+const PHASE0_UF_ENUM = [
+  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG',
+  'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
+];
+const PHASE0_SEXO_ENUM = ['M', 'F', 'Ignorado'];
+const PHASE0_COR_ENUM = ['Branca', 'Preta', 'Parda', 'Amarela', 'Indígena', 'Ignorada'];
+const PHASE0_ESTADO_CIVIL_ENUM = ['Solteiro(a)', 'Casado(a)', 'Divorciado(a)', 'Viúvo(a)', 'Separado(a) judicialmente', 'Ignorado'];
+
+const PHASE0_EXTRACTION_RESPONSE_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    nome: { type: 'STRING' },
+    sexo: { type: 'STRING', enum: PHASE0_SEXO_ENUM },
+    cor: { type: 'STRING', enum: PHASE0_COR_ENUM },
+    nacionalidade: { type: 'STRING' },
+    naturalCidade: { type: 'STRING' },
+    naturalUf: { type: 'STRING', enum: PHASE0_UF_ENUM },
+    nascimento: { type: 'STRING', description: 'Data no formato AAAA-MM-DD.' },
+    idade: { type: 'NUMBER' },
+    estadoCivil: { type: 'STRING', enum: PHASE0_ESTADO_CIVIL_ENUM },
+    profissao: { type: 'STRING' },
+    cpf: { type: 'STRING' },
+    rg: { type: 'STRING' },
+    paiNome: { type: 'STRING' },
+    paiFalecido: { type: 'BOOLEAN' },
+    paiNatural: { type: 'STRING' },
+    paiEstadoCivil: { type: 'STRING' },
+    paiProfissao: { type: 'STRING' },
+    maeNome: { type: 'STRING' },
+    maeFalecida: { type: 'BOOLEAN' },
+    maeNatural: { type: 'STRING' },
+    maeEstadoCivil: { type: 'STRING' },
+    maeProfissao: { type: 'STRING' },
+    conjugeNome: { type: 'STRING' },
+    conjugeNatural: { type: 'STRING' },
+    conjugeProfissao: { type: 'STRING' },
+    localFalecimento: { type: 'STRING' },
+    obitoCidade: { type: 'STRING' },
+    obitoUf: { type: 'STRING', enum: PHASE0_UF_ENUM },
+    dataFalecimento: { type: 'STRING', description: 'Data no formato AAAA-MM-DD.' },
+    horaFalecimento: { type: 'STRING', description: 'Hora no formato HH:MM.' },
+    medicoNome: { type: 'STRING' },
+    medicoCrm: { type: 'STRING' },
+    causaMorte: { type: 'STRING' },
+    cemiterio: { type: 'STRING' },
+    dataInumacao: { type: 'STRING', description: 'Data no formato AAAA-MM-DD.' },
+    dataExumacao: { type: 'STRING', description: 'Data no formato AAAA-MM-DD.' },
+    filhos: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: { nome: { type: 'STRING' }, idade: { type: 'STRING' } },
+        required: ['nome']
+      }
+    },
+    observacoes: { type: 'STRING' }
+  }
+};
+
+const PHASE0_STRING_FIELDS = [
+  'nome', 'nacionalidade', 'naturalCidade', 'nascimento', 'profissao', 'cpf', 'rg',
+  'paiNome', 'paiNatural', 'paiEstadoCivil', 'paiProfissao',
+  'maeNome', 'maeNatural', 'maeEstadoCivil', 'maeProfissao',
+  'conjugeNome', 'conjugeNatural', 'conjugeProfissao',
+  'localFalecimento', 'obitoCidade', 'dataFalecimento', 'horaFalecimento',
+  'medicoNome', 'medicoCrm', 'causaMorte', 'cemiterio', 'dataInumacao', 'dataExumacao', 'observacoes'
+] as const;
+const PHASE0_BOOLEAN_FIELDS = ['paiFalecido', 'maeFalecida'] as const;
+const MAX_PHASE0_STRING_LENGTH = 2000;
+
+// Defesa contra resposta do Gemini fora do schema pedido (mesmo princípio de
+// parseBoneSimilarityCriteria acima) — nunca repassa um valor de tipo ou
+// vocabulário errado pro formulário do Técnico revisar.
+function sanitizePhase0Extraction(raw: any): Partial<Phase0Data> {
+  const out: Partial<Phase0Data> = {};
+  if (!raw || typeof raw !== 'object') return out;
+
+  for (const key of PHASE0_STRING_FIELDS) {
+    const value = raw[key];
+    if (typeof value === 'string' && value.trim()) {
+      (out as any)[key] = value.trim().slice(0, MAX_PHASE0_STRING_LENGTH);
+    }
+  }
+  for (const key of PHASE0_BOOLEAN_FIELDS) {
+    const value = raw[key];
+    if (typeof value === 'boolean') {
+      (out as any)[key] = value;
+    }
+  }
+  if (typeof raw.idade === 'number' && Number.isFinite(raw.idade) && raw.idade >= 0 && raw.idade <= 130) {
+    out.idade = Math.round(raw.idade);
+  }
+  if (PHASE0_SEXO_ENUM.includes(raw.sexo)) out.sexo = raw.sexo;
+  if (PHASE0_COR_ENUM.includes(raw.cor)) out.cor = raw.cor;
+  if (PHASE0_ESTADO_CIVIL_ENUM.includes(raw.estadoCivil)) out.estadoCivil = raw.estadoCivil;
+  if (PHASE0_UF_ENUM.includes(raw.naturalUf)) out.naturalUf = raw.naturalUf;
+  if (PHASE0_UF_ENUM.includes(raw.obitoUf)) out.obitoUf = raw.obitoUf;
+  if (Array.isArray(raw.filhos)) {
+    const filhos = raw.filhos
+      .filter((f: any) => f && typeof f.nome === 'string' && f.nome.trim())
+      .slice(0, 30)
+      .map((f: any) => ({
+        id: crypto.randomUUID(),
+        nome: String(f.nome).trim().slice(0, 200),
+        idade: typeof f.idade === 'string' ? f.idade.trim().slice(0, 20) : ''
+      }));
+    if (filhos.length > 0) out.filhos = filhos;
+  }
+  return out;
+}
+
+app.post('/api/phase0/extract-death-certificate', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { imageBase64, mimeType } = req.body || {};
+    if (!imageBase64 || typeof imageBase64 !== 'string') {
+      return res.status(400).json({ error: 'Nenhuma imagem codificada em base64 foi enviada.' });
+    }
+    const cleanMimeType = typeof mimeType === 'string' && mimeType.startsWith('image/')
+      ? mimeType.split(';')[0]
+      : 'image/jpeg';
+    const cleanBase64 = imageBase64.replace(/^data:image\/[a-zA-Z0-9.+_-]+;base64,/, '');
+    const approxBytes = Math.ceil((cleanBase64.length * 3) / 4);
+    if (approxBytes > MAX_DEATH_CERTIFICATE_IMAGE_BYTES) {
+      return res.status(400).json({
+        error: `Imagem muito grande (máx. ${Math.round(MAX_DEATH_CERTIFICATE_IMAGE_BYTES / (1024 * 1024))}MB).`
+      });
+    }
+
+    const apiKey = getCleanApiKey();
+    if (!apiKey) {
+      return res.status(401).json({ error: 'Chave GEMINI_API_KEY não configurada no servidor.', code: 401 });
+    }
+
+    let response;
+    try {
+      response = await getGeminiClient().models.generateContent({
+        model: 'gemini-3.1-flash-lite',
+        contents: {
+          parts: [
+            { inlineData: { mimeType: cleanMimeType, data: cleanBase64 } },
+            {
+              text:
+                'Extraia os dados desta Declaração de Óbito (D.O.) brasileira. Devolva só o que está ' +
+                'realmente escrito e legível no documento — nunca invente, deduza ou complete um valor ' +
+                'que não aparece com clareza (campo em branco, "XXX" ou "IGN." no documento fica ' +
+                'omitido na resposta). Datas no formato AAAA-MM-DD, hora no formato HH:MM.'
+            }
+          ]
+        },
+        config: {
+          temperature: 0.1,
+          responseMimeType: 'application/json',
+          responseSchema: PHASE0_EXTRACTION_RESPONSE_SCHEMA as any
+        }
+      });
+    } catch (err: any) {
+      const status = err?.status === 401 || (err?.message && err.message.includes('401')) ? 401 : 502;
+      return res.status(status).json({
+        error: err?.message || 'Erro ao consultar o Gemini para extrair os dados da Declaração de Óbito.'
+      });
+    }
+
+    const raw = response.text?.trim();
+    if (!raw) {
+      return res.status(502).json({ error: 'Resposta vazia do Gemini ao ler a Declaração de Óbito.' });
+    }
+    let parsed: any;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return res.status(502).json({ error: 'Resposta do Gemini não é um JSON válido conforme o schema pedido.' });
+    }
+
+    return res.json({ fields: sanitizePhase0Extraction(parsed) });
+  } catch (error: any) {
+    console.error('Erro na extração de campos da Declaração de Óbito:', error);
+    return res.status(500).json({ error: error?.message || 'Erro ao extrair campos da Declaração de Óbito.' });
   }
 });
 

@@ -44,12 +44,13 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   const fullyCatalogedCount = collections.filter(c => c.currentPhase >= 7).length;
   const catalogedPercent = totalCollections > 0 ? Math.round((fullyCatalogedCount / totalCollections) * 100) : 0;
 
-  const phaseCounts = [1, 2, 3, 4, 5, 6, 7].map(ph => ({
+  const phaseCounts = [0, 1, 2, 3, 4, 5, 6, 7].map(ph => ({
     phase: ph,
     count: collections.filter(c => c.currentPhase === ph).length
   }));
 
   const phaseNames: Record<number, string> = {
+    0: 'Recebimento (D.O.)',
     1: 'Recebimento & Triagem',
     2: 'Limpeza & Secagem',
     3: 'Acondicionamento Provisório',
@@ -206,7 +207,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         </div>
 
         <div className="overflow-x-auto pb-1">
-          <div className="grid grid-cols-7 gap-2.5 min-w-[900px]">
+          <div className="grid grid-cols-8 gap-2.5 min-w-[1000px]">
             {phaseCounts.map(({ phase, count }) => {
               // A Fase 7 é consulta de conjuntos já concluídos, não uma fila pendente.
               const hasPending = count > 0 && phase < 7;

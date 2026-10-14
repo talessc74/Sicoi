@@ -36,7 +36,8 @@ import {
 interface PopConversationalConductorProps {
   collection: OsteologicalCollection;
   currentUser: UserProfile;
-  phaseNumber: PhaseNumber;
+  // A Fase 0 (Recebimento da D.O.) não tem condutor por voz — só Fases 1-7.
+  phaseNumber: Exclude<PhaseNumber, 0>;
   onUpdateCollection: (updated: OsteologicalCollection) => void;
   onStepPhotoCaptured?: (photo: any) => void;
   isLocked?: boolean;

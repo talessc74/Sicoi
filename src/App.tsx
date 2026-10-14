@@ -9,7 +9,7 @@ import {
 import {
   MOCK_RESEARCH_AUTHORIZATIONS
 } from './data/mockData';
-import { createEmptyPhase1Data, createEmptyPhase2Data } from './data/phaseDefaults';
+import { createEmptyPhase0Data, createEmptyPhase1Data, createEmptyPhase2Data } from './data/phaseDefaults';
 import { fetchCollections, createCollectionApi, saveCollectionApi } from './services/collectionsService';
 import { fetchPeople, createPersonApi, updatePersonApi, deletePersonApi } from './services/peopleService';
 import { fetchCurrentUser, fetchBootstrapStatus, logoutApi } from './services/authService';
@@ -24,6 +24,7 @@ import { DocumentSearchViewer } from './components/DocumentSearchViewer';
 import { SettingsView } from './components/SettingsView';
 import { HelpView } from './components/HelpView';
 import { PhaseProgressRibbon } from './components/PhaseProgressRibbon';
+import { Phase0Recebimento } from './components/Phase0Recebimento';
 import { Phase1Recebimento } from './components/Phase1Recebimento';
 import { Phase2Limpeza } from './components/Phase2Limpeza';
 import { Phase3Acondicionamento } from './components/Phase3Acondicionamento';
@@ -74,7 +75,7 @@ function parseNavStateFromPath(pathname: string): { activeTab: NavigableTab; act
   if (!isNavigableTab(tab)) return null;
   if (tab === 'fases') {
     const phase = Number(phaseSegment);
-    return { activeTab: 'fases', activePhase: phase >= 1 && phase <= 7 ? phase : 1 };
+    return { activeTab: 'fases', activePhase: phase >= 0 && phase <= 7 ? phase : 1 };
   }
   return { activeTab: tab, activePhase: 1 };
 }
@@ -330,7 +331,7 @@ export default function App() {
     const newCol: OsteologicalCollection = {
       id: `col-${Date.now()}`,
       nic: newNic,
-      currentPhase: 1,
+      currentPhase: 0,
       createdAt: new Date().toISOString(),
       createdByTechnician: currentUser.name,
       signatures: [],
@@ -338,6 +339,7 @@ export default function App() {
       // valores de exemplo (cemitério, guia, declaração de óbito inventados) que
       // apareciam na Fase 1 como se fossem do conjunto real.
       legalOrigin: {},
+      phase0: createEmptyPhase0Data(),
       phase1: {
         ...createEmptyPhase1Data(),
         preliminaryBoxes: [{
@@ -404,7 +406,7 @@ export default function App() {
       const created = await createCollectionApi(newCol);
       setCollections(prev => [created, ...prev]);
       setSelectedNic(newNic);
-      setActivePhase(1);
+      setActivePhase(0);
       setActiveTab('fases');
       setSyncError(null);
       setShowNewCollectionModal(false);
@@ -657,6 +659,14 @@ export default function App() {
         )}
         {activeTab === 'fases' && currentCollection && (
           <>
+            {activePhase === 0 && (
+              <Phase0Recebimento
+                collection={currentCollection}
+                currentUser={currentUser}
+                onUpdateCollection={handleUpdateCollection}
+                laboratoryMode={laboratoryMode}
+              />
+            )}
             {activePhase === 1 && (
               <Phase1Recebimento
                 collection={currentCollection}
