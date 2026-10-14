@@ -80,11 +80,11 @@ export interface FieldWithAiSuggestion<T> {
 }
 
 // Confirmação opcional do Pesquisador numa fase onde ele tem acesso (Fases 1, 2,
-// 3 e 5 — decisão de acesso out/2026). Nunca é a assinatura que destrava a fase:
-// essa continua sendo exclusiva do Técnico (ou do Curador, agindo como técnico) —
-// ver canSignAsTechnician em utils/permissions.ts. O Pesquisador pode ou não
-// registrar esta confirmação; ela é só um registro de que revisou a fase, nunca
-// bloqueia nem substitui a assinatura obrigatória.
+// 3, 4 e 5 — decisão de acesso out/2026). Nunca é a assinatura que destrava a
+// fase: essa continua sendo exclusiva do Técnico (ou do Curador, agindo como
+// técnico) — ver canSignAsTechnician em utils/permissions.ts. O Pesquisador
+// pode ou não registrar esta confirmação; ela é só um registro de que revisou
+// a fase, nunca bloqueia nem substitui a assinatura obrigatória.
 export interface ResearcherReviewConfirmation {
   confirmedByName: string;
   confirmedAt: string;
@@ -410,6 +410,25 @@ export interface Phase4Data {
     sha256Hash: string;
     resolution: string;
   };
+  // Confirmação do Técnico de que a Montagem está completa — precisa existir
+  // junto com curatorInventorySign pra fase travar e avançar (mesmo padrão
+  // de duas confirmações já usado em phase5.technicianPhysicalSign/
+  // curatorScientificSign). Nenhuma das duas sozinha avança a fase.
+  technicianAssemblySign?: {
+    signedByName: string;
+    signedAt: string;
+    sha256Hash: string;
+  };
+  curatorInventorySign?: {
+    signedByName: string;
+    signedAt: string;
+    sha256Hash: string;
+  };
+
+  // Confirmação opcional do Pesquisador (ver ResearcherReviewConfirmation) —
+  // nunca substitui technicianAssemblySign, que continua sendo a assinatura
+  // exclusiva de Técnico/Curador.
+  researcherConfirmation?: ResearcherReviewConfirmation;
 
   // Confirmação explícita de que não há fotografia oficial de montagem pra
   // guardar agora — a câmera normalmente é obrigatória pra fechar a Fase 4,
