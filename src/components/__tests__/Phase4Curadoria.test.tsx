@@ -407,7 +407,7 @@ describe('Phase4Curadoria', () => {
     expect(updated.phase4.assemblyPhotoJustification?.reason).toBe('Esqueleto incompleto não permite a foto padrão.');
     expect(updated.phase4.completeAssemblyPhotoApproved).toBeUndefined();
 
-    // A justificativa, por si só, já libera a assinatura (mesmo sem foto real).
+    // A justificativa, por si só, já libera a assinatura de Montagem (mesmo sem foto real).
     unmount();
     render(
       <Phase4Curadoria
@@ -417,7 +417,7 @@ describe('Phase4Curadoria', () => {
         laboratoryMode={false}
       />
     );
-    expect(screen.getByRole('button', { name: /Aprovar & Assinar Versão Científica/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /Assinar Fechamento da Fase 4/i })).toBeEnabled();
 
     vi.unstubAllGlobals();
   });
@@ -519,7 +519,28 @@ describe('Phase4Curadoria', () => {
       } as any
     });
 
-    render(
+    const savedCollection = {
+      ...collection,
+      phase4: {
+        ...collection.phase4,
+        completeAssemblyPhotoApproved: {
+          photoUrl: '/api/collections/NIC-2026-0001/photos/photo-real-2/file',
+          capturedAt: new Date().toISOString(),
+          approvedBy: 'Fulano Técnico',
+          approvedAt: new Date().toISOString(),
+          sha256Hash: 'hash-real-tecnico',
+          resolution: ''
+        }
+      }
+    };
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: async () => ({ collection: savedCollection, photo: { id: 'photo-real-2' } })
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { container } = render(
       <Phase4Curadoria
         collection={collection}
         currentUser={makeUser('tecnico')}
@@ -530,10 +551,17 @@ describe('Phase4Curadoria', () => {
 
     await user.click(screen.getByRole('button', { name: /Foto Montagem Completa/i }));
     await user.click(screen.getByRole('button', { name: /Capturar & Aprovar Foto Agora/i }));
+    await user.click(screen.getByRole('button', { name: /abrir câmera/i }));
+
+    const fileInput = container.querySelector('input[type="file"][capture]') as HTMLInputElement;
+    const file = new File(['bytes'], 'montagem.jpg', { type: 'image/jpeg' });
+    await user.upload(fileInput, file);
 
     expect(onUpdateCollection).toHaveBeenCalled();
-    const updated = onUpdateCollection.mock.calls[0][0];
+    const updated = onUpdateCollection.mock.calls.at(-1)?.[0];
     expect(updated.phase4.completeAssemblyPhotoApproved).toBeTruthy();
+
+    vi.unstubAllGlobals();
   });
 
   it('Pesquisador tem acesso à aba Montagem (pode aprovar a foto) mas não pode assinar — sua participação é a confirmação opcional', async () => {
