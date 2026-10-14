@@ -217,4 +217,82 @@ describe('Phase5Patologias', () => {
     const updated = onUpdateCollection.mock.calls[0][0] as OsteologicalCollection;
     expect(updated.phase5.phase5Checklist?.pathologiesReviewed).toBe(true);
   });
+
+  it('a confirmação física do Técnico, sozinha, trava a fase e avança pra Fase 6 (decisão de acesso, out/2026: Curador não é mais obrigatório)', async () => {
+    const user = userEvent.setup();
+    const onUpdateCollection = vi.fn();
+    const collection = baseCollection({ phase5Checklist: fullChecklist });
+
+    render(
+      <Phase5Patologias
+        collection={collection}
+        currentUser={userWithRole('tecnico')}
+        onUpdateCollection={onUpdateCollection}
+        laboratoryMode={false}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: /Assinar Fechamento da Fase 5/i }));
+    await user.click(screen.getByRole('button', { name: /Confirmar Minha Assinatura/i }));
+
+    expect(onUpdateCollection).toHaveBeenCalled();
+    const updated = onUpdateCollection.mock.calls[onUpdateCollection.mock.calls.length - 1][0] as OsteologicalCollection;
+    expect(updated.phase5.technicianPhysicalSign).toBeTruthy();
+    expect(updated.phase5.curatorScientificSign).toBeUndefined();
+    expect(updated.currentPhase).toBe(6);
+    expect(updated.signatures.find((s) => s.phaseNumber === 5)?.status).toBe('locked');
+  });
+
+  it('a confirmação científica do Curador, sozinha, não trava a fase nem avança (é opcional, não obrigatória)', async () => {
+    const user = userEvent.setup();
+    const onUpdateCollection = vi.fn();
+    const collection = baseCollection({ phase5Checklist: fullChecklist });
+
+    render(
+      <Phase5Patologias
+        collection={collection}
+        currentUser={userWithRole('curador')}
+        onUpdateCollection={onUpdateCollection}
+        laboratoryMode={false}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: /Assinar Fechamento da Fase 5/i }));
+    // Curador pode fazer as duas — escolhe explicitamente só a científica agora.
+    await user.selectOptions(screen.getByLabelText(/Qual responsabilidade deseja confirmar agora\?/i), 'curador');
+    await user.click(screen.getByRole('button', { name: /Confirmar Minha Assinatura/i }));
+
+    expect(onUpdateCollection).toHaveBeenCalled();
+    const updated = onUpdateCollection.mock.calls[onUpdateCollection.mock.calls.length - 1][0] as OsteologicalCollection;
+    expect(updated.phase5.curatorScientificSign).toBeTruthy();
+    expect(updated.phase5.technicianPhysicalSign).toBeUndefined();
+    expect(updated.currentPhase).toBe(5);
+    expect(updated.signatures.find((s) => s.phaseNumber === 5)).toBeUndefined();
+  });
+
+  it('o Pesquisador não pode travar a fase sozinho — agora que a física basta, é ainda mais crítico que ele nunca a produza', async () => {
+    const user = userEvent.setup();
+    const onUpdateCollection = vi.fn();
+    const collection = baseCollection({ phase5Checklist: fullChecklist });
+
+    render(
+      <Phase5Patologias
+        collection={collection}
+        currentUser={userWithRole('pesquisador')}
+        onUpdateCollection={onUpdateCollection}
+        laboratoryMode={false}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: /Assinar Fechamento da Fase 5/i })).toBeDisabled();
+
+    const confirmButton = screen.getByRole('button', { name: /confirmar revisão \(pesquisador\)/i });
+    await user.click(confirmButton);
+    const updated = onUpdateCollection.mock.calls.at(-1)?.[0] as OsteologicalCollection;
+    expect(updated.phase5.researcherConfirmation?.confirmedByName).toBeTruthy();
+    // A confirmação do Pesquisador nunca grava as assinaturas reais, nem trava/avança a fase.
+    expect(updated.phase5.technicianPhysicalSign).toBeUndefined();
+    expect(updated.phase5.curatorScientificSign).toBeUndefined();
+    expect(updated.currentPhase).toBe(5);
+  });
 });

@@ -53,13 +53,14 @@ export const Phase5Patologias: React.FC<Phase5PatologiasProps> = ({
   const isCurator = currentUser.role === 'curador';
   // Acesso aos checklists físicos (marcação, embalagem) — o Pesquisador tem o
   // mesmo acesso do Técnico aqui (decisão de acesso out/2026). Diferente da
-  // assinatura física abaixo, que continua exclusiva de Técnico/Curador.
+  // assinatura física abaixo, que continua exclusiva de Técnico/Curador —
+  // decisivo nesta fase, já que agora é ELA SOZINHA que trava e avança a fase.
   const canActAsTechnician = canPerformRole(currentUser.role, 'tecnico');
   const canSignScientific = isCurator && !collection.phase5.curatorScientificSign;
-  // A assinatura física que trava a fase é exclusiva de Técnico/Curador — o
-  // Pesquisador pode registrar sua própria confirmação separada (ver
-  // handleConfirmResearcherReview), nunca esta assinatura (correção: "o técnico
-  // é obrigatório, o pesquisador pode ou não").
+  // A assinatura física que trava e avança a fase é exclusiva de Técnico/
+  // Curador — o Pesquisador pode registrar sua própria confirmação separada
+  // (ver handleConfirmResearcherReview), nunca esta assinatura (correção: "o
+  // técnico é obrigatório, o pesquisador pode ou não").
   const canSignPhysical = canSignAsTechnician(currentUser.role) && !collection.phase5.technicianPhysicalSign;
 
   const pathologies = collection.phase5.pathologies || [];
@@ -187,11 +188,15 @@ export const Phase5Patologias: React.FC<Phase5PatologiasProps> = ({
       }
     };
 
-    // A fase só trava depois das duas confirmações, inclusive quando o Curador faz ambas.
-    const hasCuratorSign = Boolean(updated.phase5.curatorScientificSign);
+    // Decisão de acesso (out/2026): a Fase 5 não é mais travada pela ausência da
+    // confirmação do Curador — trava e avança com a confirmação física sozinha
+    // (Técnico, ou o próprio Curador atuando como técnico — nunca o Pesquisador,
+    // que tem acesso à fase mas não a esta assinatura; ver canSignAsTechnician).
+    // A confirmação científica do Curador continua podendo ser registrada, mas
+    // é opcional: nunca bloqueia o fechamento, e sozinha também não trava a fase.
     const hasTechSign = Boolean(updated.phase5.technicianPhysicalSign);
 
-    if (hasCuratorSign && hasTechSign) {
+    if (hasTechSign) {
       // O lacre da fase é calculado sobre o estado FINAL, já com as duas confirmações,
       // que é o que fica gravado.
       const phaseHash = await calculateSha256(signPayload(updated.phase5));
@@ -218,7 +223,8 @@ export const Phase5Patologias: React.FC<Phase5PatologiasProps> = ({
   };
 
   // Confirmação opcional do Pesquisador — nunca trava nem destrava nada, nunca
-  // substitui a assinatura física do Técnico/Curador acima.
+  // substitui a assinatura física do Técnico/Curador acima. Ainda mais
+  // decisivo nesta fase, já que a física sozinha agora trava e avança tudo.
   const handleConfirmResearcherReview = async () => {
     const timestamp = new Date().toISOString();
     const hash = await calculateSha256(`researcher-review|phase5|${collection.nic}|${currentUser.id}|${timestamp}`);
@@ -271,7 +277,7 @@ export const Phase5Patologias: React.FC<Phase5PatologiasProps> = ({
             {isLocked ? (
               <div className="px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-900 flex items-center gap-2 text-xs font-mono text-emerald-700 dark:text-emerald-300 font-semibold">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>Fase 5 Duplamente Assinada & Travada</span>
+                <span>Fase 5 Assinada & Travada</span>
               </div>
             ) : (
               <button
@@ -748,7 +754,7 @@ export const Phase5Patologias: React.FC<Phase5PatologiasProps> = ({
               Assinatura de Fechamento — Fase 5
             </h3>
             <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
-              Você está assinando como <strong>{currentUser.name} ({currentUser.role.toUpperCase()})</strong>. A Fase 5 exige confirmação científica e confirmação física. O Curador pode realizar as duas, uma de cada vez.
+              Você está assinando como <strong>{currentUser.name} ({currentUser.role.toUpperCase()})</strong>. A Fase 5 trava com a confirmação física (Técnico ou Curador). A confirmação científica do Curador é opcional e não bloqueia o fechamento.
             </p>
             {canSignScientific && canSignPhysical && (
               <div className="space-y-2">
