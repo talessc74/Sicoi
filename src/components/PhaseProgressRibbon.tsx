@@ -134,7 +134,7 @@ export const PhaseProgressRibbon: React.FC<PhaseProgressRibbonProps> = ({
             <button
               onClick={onNavigateToAudit}
               className="min-w-[110px] p-2 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/30 hover:bg-emerald-100/70 dark:hover:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 flex flex-col justify-center items-center gap-0.5 transition-all group shrink-0 shadow-2xs"
-              title="Abrir linha do tempo de auditoria com histórico completo do NIC"
+              title="Abrir linha do tempo de auditoria com histórico completo do conjunto"
             >
               <div className="flex items-center gap-1.5 text-xs font-bold group-hover:text-emerald-700 transition-colors">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />

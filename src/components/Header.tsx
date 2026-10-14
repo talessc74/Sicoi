@@ -341,7 +341,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 mb-1">
                   <p className="font-semibold text-slate-900 dark:text-white">{currentUser.name}</p>
                   <p className="text-slate-500 dark:text-slate-400 mt-0.5">
-                    {getRoleLabel(currentUser.role)} · {currentUser.institution}
+                    {getRoleLabel(currentUser.role)}{currentUser.adminAccess ? ' + Administração' : ''} · {currentUser.institution}
                   </p>
                   <p className="text-slate-400 mt-0.5 font-mono">{currentUser.email}</p>
                 </div>

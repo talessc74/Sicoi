@@ -412,7 +412,7 @@
 
   <div class="cover">
     <div class="cover-inner">
-      <span class="eyebrow"><span class="dot"></span>Manual do usuário · v8</span>
+      <span class="eyebrow"><span class="dot"></span>Manual do usuário · v9</span>
       <h1>SIGCOI — Sistema de Gestão da Coleção Osteológica Identificada</h1>
       <p class="lede">Guia completo de uso do sistema de gestão da Coleção Osteológica Identificada do INC (COI-INC/DITEC/PF), coleção de referência para pesquisa, capacitação e ensino em antropologia forense (Portaria DITEC/PF nº 1415/2024): como o material entra, é limpo, curado, patologicamente examinado, guardado sob dupla custódia e disponibilizado para pesquisa — sete fases, cada uma travada por assinatura criptográfica.</p>
       <div class="cover-meta">
@@ -432,8 +432,8 @@
     <a href="#fases" class="sub" style="--sc:var(--p1)"><span class="swatch"></span>1 · Recebimento</a>
     <a href="#fases" class="sub" style="--sc:var(--p2)"><span class="swatch"></span>2 · Limpeza</a>
     <a href="#fases" class="sub" style="--sc:var(--p3)"><span class="swatch"></span>3 · Acondicionamento</a>
-    <a href="#fases" class="sub" style="--sc:var(--p4)"><span class="swatch"></span>4 · Montagem e Inventário</a>
-    <a href="#fases" class="sub" style="--sc:var(--p5)"><span class="swatch"></span>5 · Alterações Ósseas</a>
+    <a href="#fases" class="sub" style="--sc:var(--p4)"><span class="swatch"></span>4 · Curadoria</a>
+    <a href="#fases" class="sub" style="--sc:var(--p5)"><span class="swatch"></span>5 · Patologias</a>
     <a href="#fases" class="sub" style="--sc:var(--p6)"><span class="swatch"></span>6 · Galpão definitivo</a>
     <a href="#fases" class="sub" style="--sc:var(--p7)"><span class="swatch"></span>7 · Consulta &amp; pesquisa</a>
     <a href="#assinatura"><span class="n">03</span> Assinatura &amp; hash</a>
@@ -448,7 +448,7 @@
     <section id="visao-geral">
       <div class="sec-head"><span class="idx">00</span><h2>Visão geral</h2></div>
       <p class="lead">O SIGCOI conduz o fluxo operacional real de um conjunto osteológico desde o recebimento até a disponibilização para pesquisa — passo a passo, por voz ou por texto — seguindo os formulários oficiais da INC/DITEC/PF.</p>
-      <p>Cada conjunto recebe um <strong>NIC</strong> (Número de Identificação do Conjunto, ex. <code>NIC-2026-0841</code>), cujo número é digitado por quem cadastra o conjunto (botão "Novo Conjunto (NIC)"; o sistema recusa um NIC que já exista), e percorre sete fases em sequência obrigatória. Uma fase só abre depois que a anterior foi <strong>assinada</strong>; a assinatura trava o formulário daquela fase com um hash SHA-256 recalculado e conferido no servidor — ninguém edita um formulário já assinado sem que isso fique registrado.</p>
+      <p>Cada conjunto recebe um <strong>número COI</strong> (ex. <code>COI-001</code>, o mesmo número da caixa; nos POPs, este número é chamado de NIC). Quem cadastra digita só o número (botão "Novo Conjunto (COI)"): o sistema completa com zeros até 3 algarismos (1 → COI-001) e recusa um número que já exista, e percorre sete fases em sequência obrigatória. Uma fase só abre depois que a anterior foi <strong>assinada</strong>; a assinatura trava o formulário daquela fase com um hash SHA-256 recalculado e conferido no servidor — ninguém edita um formulário já assinado sem que isso fique registrado.</p>
       <div class="grid3" style="margin-top:22px;">
         <div class="card">
           <div class="pill accent" style="margin-bottom:10px;">Persistência</div>
@@ -477,7 +477,7 @@
         <div class="card role-card">
           <span class="role-code">Curador</span>
           <span class="role-name">Curador Antropólogo</span>
-          <p>Único papel que assina a Fase 4 (Montagem e Inventário). Participa também da Fase 5 e da dupla custódia da Fase 6.</p>
+          <p>Único papel que assina a Fase 4 (Curadoria). Participa também da Fase 5 e da dupla custódia da Fase 6.</p>
         </div>
         <div class="card role-card">
           <span class="role-code">Administrador</span>
@@ -505,14 +505,14 @@
     <section id="fases">
       <div class="sec-head"><span class="idx">02</span><h2>As 7 fases</h2></div>
       <p class="lead">O menu <strong>Fases</strong>, no topo, mostra as sete etapas lado a lado com seu estado atual (Assinada / Em aberto / Bloqueada) para o conjunto selecionado.</p>
-      <p>Os quadros marcados <span class="tag">caso real</span> abaixo mostram valores tirados de uma execução de ponta a ponta do conjunto <strong class="mono">NIC-2026-0841</strong> — não são exemplos inventados, são o que o sistema gravou de fato.</p>
+      <p>Os quadros marcados <span class="tag">caso real</span> abaixo mostram valores tirados de uma execução de ponta a ponta do conjunto <strong class="mono">NIC-2026-0841</strong> — não são exemplos inventados, são o que o sistema gravou de fato. Essa execução é anterior à padronização COI-XXX, por isso o número aparece no formato antigo.</p>
 
       <div class="phase" style="--pc:var(--p1)">
         <div class="phase-num">1</div>
         <div>
           <h3>Recebimento &amp; Formulário A.1</h3>
           <span class="who">Assina: Técnico</span>
-          <p>Abre o conjunto (NIC, com o número escolhido por quem cadastra), registra a origem legal, o material recebido e as fotos obrigatórias do checklist de recebimento. Preenchível por conversa guiada por voz ou pelo formulário manual — os dois alimentam o mesmo Formulário A.1.</p>
+          <p>Abre o conjunto (número COI, escolhido por quem cadastra), registra a origem legal, o material recebido e as fotos obrigatórias do checklist de recebimento. Preenchível por conversa guiada por voz ou pelo formulário manual — os dois alimentam o mesmo Formulário A.1.</p>
           <ul class="steps">
             <li><span class="chk"></span>Origem legal do material e instituição de procedência</li>
             <li><span class="chk"></span>Tipo de material, estado de preservação (inclui Mumificado e Adipocera), coleta para exame genético e para análise isotópica</li>
@@ -580,14 +580,14 @@
               <dt>QR gravado</dt><dd class="mono" style="font-size:11.5px;">SIGCOI://BOX/CX-NIC-2026-0841</dd>
             </dl>
           </div>
-          <div class="gate"><b>§</b>O conjunto entra na fila de espera para convocação à mesa de Montagem e Inventário só depois de assinada esta fase.</div>
+          <div class="gate"><b>§</b>O conjunto entra na fila de espera para convocação à mesa de montagem da curadoria só depois de assinada esta fase.</div>
         </div>
       </div>
 
       <div class="phase" style="--pc:var(--p4)">
         <div class="phase-num">4</div>
         <div>
-          <h3>Montagem e Inventário — Bioantropológico &amp; Versão Científica</h3>
+          <h3>Curadoria Bioantropológica &amp; Versão Científica</h3>
           <span class="who">Assina: Curador</span>
           <p>Quem identifica e decide é sempre o curador — os agentes de IA apenas buscam referências e apoiam a narração de rascunhos. Organizada em quatro abas:</p>
           <ul class="steps">
@@ -632,11 +632,11 @@
       <div class="phase" style="--pc:var(--p5)">
         <div class="phase-num">5</div>
         <div>
-          <h3>Alterações Ósseas, Exames &amp; Marcação Física</h3>
+          <h3>Patologias, Exames &amp; Marcação Física</h3>
           <span class="who">Assina: Curador</span>
           <p>Cataloga achados patológicos por elemento ósseo, anexa exames complementares (com visualizador DICOM embutido) e registra a marcação física definitiva do material antes do empacotamento final em material inerte.</p>
           <ul class="steps">
-            <li><span class="chk"></span><strong>Alterações Ósseas</strong> — categoria, termo, elemento afetado, ou "não catalogado" com justificativa</li>
+            <li><span class="chk"></span><strong>Patologias</strong> — categoria, termo, elemento afetado, ou "não catalogado" com justificativa</li>
             <li><span class="chk"></span><strong>Exames complementares</strong> — anexos e imagens DICOM</li>
             <li><span class="chk"></span><strong>Marcação física</strong> — técnica usada e quantos elementos foram marcados</li>
             <li><span class="chk"></span><strong>Checklist da Fase 5</strong> — os 4 itens (patologias revisadas, exames anexados, fotos finais, empacotamento inerte) precisam estar 100% para liberar a Fase 6</li>
@@ -709,7 +709,7 @@
         <div class="card tool-card">
           <div class="tool-icon">G</div>
           <h4>Grafo de Conhecimento</h4>
-          <p>Explora o acervo como um grafo — conjuntos, caixas, indivíduos, patologias, localização física, responsáveis e datas, todos conectados e navegáveis. Inclui a Busca por Semelhança: descreva livremente um osso em mãos (fora do acervo) e veja candidatos reais parecidos, com explicação da IA — uma sugestão para apoiar a montagem e inventário, nunca uma identificação confirmada.</p>
+          <p>Explora o acervo como um grafo — conjuntos, caixas, indivíduos, patologias, localização física, responsáveis e datas, todos conectados e navegáveis. Inclui a Busca por Semelhança: descreva livremente um osso em mãos (fora do acervo) e veja candidatos reais parecidos, com explicação da IA — uma sugestão para apoiar a curadoria, nunca uma identificação confirmada.</p>
         </div>
         <div class="card tool-card">
           <div class="tool-icon">M</div>
@@ -763,10 +763,10 @@
       <p>Termos técnicos usados no sistema, para quem está chegando agora.</p>
       <div class="card">
         <dl class="glossary">
-          <div class="gterm"><dt>NIC</dt><dd>Número de Identificação do Conjunto — o identificador único de cada conjunto osteológico, ex. NIC-2026-0841.</dd></div>
+          <div class="gterm"><dt>COI-XXX</dt><dd>Número do conjunto na COI-INC — o identificador único de cada conjunto osteológico e da sua caixa, ex. COI-001. Nos POPs, é chamado de NIC (Número de Identificação do Conjunto).</dd></div>
           <div class="gterm"><dt>NMI</dt><dd>Número Mínimo de Indivíduos — a estimativa de quantas pessoas distintas o material representa; cada hipótese vira um "Indivíduo" na Fase 4.</dd></div>
           <div class="gterm"><dt>FDI / ISO 3950</dt><dd>Notação odontológica forense internacional usada no odontograma — numera cada um dos 32 dentes nas duas arcadas.</dd></div>
-          <div class="gterm"><dt>POP-01 / POP-02</dt><dd>Procedimentos Operacionais Padrão da INC/DITEC/PF — POP-01 rege recebimento e limpeza (Fases 1-2), POP-02 rege montagem/inventário e alterações ósseas (Fases 4-5).</dd></div>
+          <div class="gterm"><dt>POP-01 / POP-02</dt><dd>Procedimentos Operacionais Padrão da INC/DITEC/PF — POP-01 rege recebimento e limpeza (Fases 1-2), POP-02 rege curadoria e patologias (Fases 4-5).</dd></div>
           <div class="gterm"><dt>Formulário A.1 / A.2</dt><dd>Os formulários oficiais de recebimento (A.1, Fase 1) e de análise preliminar/limpeza (A.2, Fase 2).</dd></div>
           <div class="gterm"><dt>Hash SHA-256</dt><dd>A impressão digital criptográfica de 64 caracteres que trava o conteúdo exato de uma fase assinada — qualquer alteração gera um hash diferente.</dd></div>
           <div class="gterm"><dt>Custódia</dt><dd>O registro formal de quem tem posse física do material em cada momento — cada movimentação (empréstimo, transporte, guarda) fica na trilha de custódia.</dd></div>

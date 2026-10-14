@@ -2,7 +2,15 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { Pool } from 'pg';
 import crypto from 'crypto';
 import { runMigrations } from '../migrate';
-import { listCollections, getCollection, createCollection, saveCollection } from '../collectionsRepo';
+import {
+  listCollections,
+  getCollection,
+  createCollection,
+  saveCollection,
+  insertPhase4AssemblyPhotoMetadata,
+  attachPhotoBytes,
+  getPhotoFile
+} from '../collectionsRepo';
 import { createEmptyPhase1Data, createEmptyPhase2Data } from '../../src/data/phaseDefaults';
 import type { OsteologicalCollection } from '../../src/types/sgccco';
 import { generateSignaturePayload } from '../../src/services/auditService';
@@ -53,7 +61,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   await pool.query(
     `BEGIN; SET LOCAL sigcoi.allow_wipe = 'on'; DELETE FROM change_log; DELETE FROM pop_step_audit; DELETE FROM custody_chain; DELETE FROM signatures;
-     DELETE FROM phase2_photos; DELETE FROM phase1_photos; DELETE FROM phase2_forms;
+     DELETE FROM phase4_photos; DELETE FROM phase2_photos; DELETE FROM phase1_photos; DELETE FROM phase2_forms;
      DELETE FROM phase1_forms; DELETE FROM collections; COMMIT;`
   );
 });
@@ -96,6 +104,32 @@ describe('collectionsRepo', () => {
 
     const reloaded = await getCollection(pool, 'NIC-REPO-0004');
     expect(reloaded?.phase1.equipeEnvolvidaLimpeza.value).toBe('Equipe Alfa');
+  });
+
+  it('salva foto1/foto4.1 como "sim" ou "sem_foto_justificado" (não mais boolean) sem rejeitar no phase1_forms', async () => {
+    const col = baseCollection('NIC-REPO-0005');
+    await createCollection(pool, col);
+
+    col.phase1.foto1SacoFechado = { value: 'sim', isAiSuggested: false };
+    col.phase1.foto4_1RemanescentesIsolados = { value: 'sem_foto_justificado', isAiSuggested: false };
+    col.phase1.foto4_1RemanescentesIsoladosJustificativaAusencia = {
+      value: 'Câmera indisponível no momento do recebimento.',
+      isAiSuggested: false
+    };
+    await saveCollection(pool, col);
+
+    const { rows } = await pool.query(
+      'SELECT foto1_saco_fechado, foto4_1_remanescentes_isolados FROM phase1_forms WHERE nic = $1',
+      ['NIC-REPO-0005']
+    );
+    expect(rows[0].foto1_saco_fechado).toBe('sim');
+    expect(rows[0].foto4_1_remanescentes_isolados).toBe('sem_foto_justificado');
+
+    const reloaded = await getCollection(pool, 'NIC-REPO-0005');
+    expect(reloaded?.phase1.foto1SacoFechado.value).toBe('sim');
+    expect(reloaded?.phase1.foto4_1RemanescentesIsoladosJustificativaAusencia?.value).toBe(
+      'Câmera indisponível no momento do recebimento.'
+    );
   });
 
   it('grava as descrições de 1ª costela e patela da coleta genética em phase1_forms', async () => {
@@ -181,5 +215,27 @@ describe('collectionsRepo', () => {
     const { rows } = await pool.query('SELECT status FROM signatures WHERE nic = $1', ['NIC-REPO-0006']);
     expect(rows).toHaveLength(1);
     expect(rows[0].status).toBe('locked');
+  });
+
+  it('registra a fotografia oficial de montagem da Fase 4 (metadado + bytes) e devolve os bytes reais depois', async () => {
+    const col = baseCollection('NIC-REPO-0007');
+    await createCollection(pool, col);
+
+    const photoId = crypto.randomUUID();
+    const photo = {
+      id: photoId,
+      category: 'montagem_completa',
+      url: `/api/collections/NIC-REPO-0007/photos/${photoId}/file`,
+      sha256Hash: serverSideSha256('bytes-da-foto-de-montagem'),
+      author: 'Dra. Curadora',
+      timestamp: new Date().toISOString()
+    };
+
+    await insertPhase4AssemblyPhotoMetadata(pool, photo, col.nic);
+    await attachPhotoBytes(pool, 'phase4_photos', photoId, Buffer.from('bytes-da-foto-de-montagem'), 'image/jpeg', 25, 4032, 3024);
+
+    const file = await getPhotoFile(pool, 'phase4_photos', col.nic, photoId);
+    expect(file?.mimetype).toBe('image/jpeg');
+    expect(file?.data.toString()).toBe('bytes-da-foto-de-montagem');
   });
 });

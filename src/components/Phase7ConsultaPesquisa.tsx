@@ -467,7 +467,7 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
                 Controle de Acesso Baseado em Atributos (ABAC) — Autorizações de Pesquisa
               </h3>
               <p className="text-slate-500">
-                O Administrador define exatamente quais NICs cada pesquisador credenciado pode visualizar.
+                O Administrador define exatamente quais conjuntos (COI) cada pesquisador credenciado pode visualizar.
               </p>
             </div>
           </div>
@@ -490,9 +490,9 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
                 </div>
 
                 <div className="p-2.5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 space-y-1 font-mono text-[11px]">
-                  <div className="text-slate-500">NICs Autorizados no Escopo:</div>
+                  <div className="text-slate-500">Conjuntos (COI) autorizados no escopo:</div>
                   <div className="flex flex-wrap gap-1.5">
-                    {(auth.scope?.allowedCollectionsNic || auth.authorizedNics || ['NIC-2026-0841']).map((nic: string) => (
+                    {(auth.scope?.allowedCollectionsNic || auth.authorizedNics || ['COI-001']).map((nic: string) => (
                       <span key={nic} className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-bold">
                         {nic === '*' ? 'TODOS OS CONJUNTOS (*)' : nic}
                       </span>
@@ -530,7 +530,7 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
               </span>
             </div>
             <p className="text-slate-600 dark:text-slate-300">
-              Conjunto: <strong>NIC-2026-0841</strong> (Caixa CX-0841-A) cedido temporariamente para análise tomográfica na USP com termo de guarda assinado por Dra. Helena Rios (Curadora) e Dr. Marcos Toledo.
+              Conjunto: <strong>COI-001</strong> (Caixa COI-001) cedido temporariamente para análise tomográfica na USP com termo de guarda assinado por Dra. Helena Rios (Curadora) e Dr. Marcos Toledo.
             </p>
           </div>
         </div>
@@ -551,7 +551,7 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
           <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3 font-mono">
             <div className="flex justify-between text-slate-500 text-[11px]">
               <span>Comparação: v1 (Rascunho de Bancada) ➔ v2 (Montagem e Inventário Homologados)</span>
-              <span>NIC: NIC-2026-0841</span>
+              <span>COI: COI-001</span>
             </div>
             <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 space-y-2 text-slate-700 dark:text-slate-300 font-sans leading-relaxed">
               <p>

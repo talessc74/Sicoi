@@ -182,7 +182,7 @@ export const AdminDangerZone: React.FC<AdminDangerZoneProps> = ({ currentUser, c
             onChange={(e) => { setBoxNic(e.target.value); setBoxId(''); }}
             className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
           >
-            <option value="">Selecione o conjunto (NIC)…</option>
+            <option value="">Selecione o conjunto (COI)…</option>
             {activeBoxesByNic.filter((c) => c.boxes.length > 0).map((c) => (
               <option key={c.nic} value={c.nic}>{c.nic}</option>
             ))}
@@ -229,7 +229,7 @@ export const AdminDangerZone: React.FC<AdminDangerZoneProps> = ({ currentUser, c
             onChange={(e) => { setCollectionNic(e.target.value); setCollectionConfirm(''); }}
             className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
           >
-            <option value="">Selecione o conjunto (NIC)…</option>
+            <option value="">Selecione o conjunto (COI)…</option>
             {collections.map((c) => (
               <option key={c.nic} value={c.nic}>{c.nic}</option>
             ))}

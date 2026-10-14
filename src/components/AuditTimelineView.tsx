@@ -148,11 +148,11 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-12 text-center">
         <ShieldCheck className="w-10 h-10 text-slate-300 mx-auto mb-3" />
         <h3 className="text-base font-semibold text-slate-800 dark:text-slate-200">
-          Nenhum conjunto (NIC) cadastrado ainda
+          Nenhum conjunto (COI) cadastrado ainda
         </h3>
         <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
           A Linha do Tempo de Auditoria mostra o histórico de um conjunto específico.
-          Cadastre um Novo Conjunto (NIC) para começar a gerar eventos de auditoria.
+          Cadastre um Novo Conjunto (COI) para começar a gerar eventos de auditoria.
         </p>
       </div>
     );
@@ -497,7 +497,7 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">
             {/* NIC Selector Dropdown */}
             <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5">
-              <span className="text-xs font-mono text-slate-500 font-medium">NIC:</span>
+              <span className="text-xs font-mono text-slate-500 font-medium">COI:</span>
               <select
                 value={selectedNic}
                 onChange={(e) => onSelectNic(e.target.value)}
@@ -661,7 +661,7 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
               className="w-full py-2 px-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-700 dark:text-slate-200 focus:outline-hidden"
             >
               <option value="all">Todos os Tipos de Ação</option>
-              <option value="criacao_nic">Abertura de NIC</option>
+              <option value="criacao_nic">Abertura de conjunto (COI)</option>
               <option value="recebimento_triagem">Triagem e Lacres</option>
               <option value="limpeza_higienizacao">Higienização e Limpeza</option>
               <option value="secagem_concluida">Secagem e Umidade</option>
