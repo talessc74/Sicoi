@@ -3,6 +3,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ForgotPasswordScreen } from '../ForgotPasswordScreen';
+import { friendlyMessage } from '../../utils/errorMessages';
 
 function mockFetchOnce(status: number, body: unknown) {
   vi.stubGlobal(
@@ -58,13 +59,13 @@ describe('ForgotPasswordScreen', () => {
 
   it('mostra erro de rede sem travar o formulário', async () => {
     const user = userEvent.setup();
-    mockFetchOnce(500, { error: 'Erro ao registrar o pedido. Tente novamente.' });
+    mockFetchOnce(500, { error: 'Erro ao registrar o pedido. Tente novamente.', code: 'AUTH_ERRO_INTERNO' });
 
     render(<ForgotPasswordScreen onBack={vi.fn()} />);
     await user.type(screen.getByPlaceholderText(/nome@instituicao/i), 'perito.x@inc.pf.gov.br');
     await user.click(screen.getByRole('button', { name: /avisar o administrador/i }));
 
-    expect(await screen.findByText('Erro ao registrar o pedido. Tente novamente.')).toBeInTheDocument();
+    expect(await screen.findByText(friendlyMessage('AUTH_ERRO_INTERNO'))).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /avisar o administrador/i })).toBeEnabled();
   });
 

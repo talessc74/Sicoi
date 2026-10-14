@@ -37,8 +37,20 @@ interface PersonAuthRow {
   role: string;
   institution: string;
   email: string;
+  admin_access: boolean;
+  legal_origin_access: boolean;
+  curation_access: boolean;
+  phase_signing_access: boolean;
+  export_access: boolean;
   password_hash: string | null;
 }
+
+// Mesmas colunas de ajuste de acesso por pessoa de db/peopleRepo.ts (§13) —
+// duplicado aqui porque este arquivo faz suas próprias consultas a `people`
+// (login não passa por peopleRepo.ts). Qualquer coluna nova de acesso
+// precisa ser adicionada nos dois lugares.
+const PERSON_AUTH_COLUMNS =
+  'id, name, role, institution, email, admin_access, legal_origin_access, curation_access, phase_signing_access, export_access';
 
 function toUserProfile(row: PersonAuthRow): UserProfile {
   return {
@@ -46,7 +58,12 @@ function toUserProfile(row: PersonAuthRow): UserProfile {
     name: row.name,
     role: row.role as UserProfile['role'],
     institution: row.institution,
-    email: row.email
+    email: row.email,
+    adminAccess: row.admin_access === true,
+    legalOriginAccess: row.legal_origin_access === true,
+    curationAccess: row.curation_access === true,
+    phaseSigningAccess: row.phase_signing_access === true,
+    exportAccess: row.export_access === true
   };
 }
 
@@ -66,7 +83,7 @@ export async function hashPassword(plainPassword: string): Promise<string> {
  */
 export async function verifyLogin(pool: Pool, email: string, plainPassword: string): Promise<UserProfile | null> {
   const { rows } = await pool.query<PersonAuthRow>(
-    'SELECT id, name, role, institution, email, password_hash FROM people WHERE lower(email) = lower($1)',
+    'SELECT id, name, role, institution, email, admin_access, legal_origin_access, curation_access, phase_signing_access, export_access, password_hash FROM people WHERE lower(email) = lower($1)',
     [email]
   );
   const row = rows[0];
@@ -142,7 +159,7 @@ export async function clearLoginAttempts(pool: Pool, email: string): Promise<voi
 
 export async function getPersonWithAuthStatus(pool: Pool, id: string): Promise<(UserProfile & { hasPassword: boolean }) | null> {
   const { rows } = await pool.query<PersonAuthRow>(
-    'SELECT id, name, role, institution, email, password_hash FROM people WHERE id = $1',
+    'SELECT id, name, role, institution, email, admin_access, legal_origin_access, curation_access, phase_signing_access, export_access, password_hash FROM people WHERE id = $1',
     [id]
   );
   if (!rows[0]) return null;
@@ -175,17 +192,17 @@ export async function hasUnactivatedAdministrator(pool: Pool): Promise<boolean> 
  */
 export async function claimAdministratorAccount(pool: Pool, email: string, newPassword: string): Promise<UserProfile> {
   const { rows } = await pool.query<PersonAuthRow>(
-    'SELECT id, name, role, institution, email, password_hash FROM people WHERE lower(email) = lower($1)',
+    'SELECT id, name, role, institution, email, admin_access, legal_origin_access, curation_access, phase_signing_access, export_access, password_hash FROM people WHERE lower(email) = lower($1)',
     [email]
   );
   const row = rows[0];
   if (!row || row.role !== 'administrador' || row.password_hash !== null) {
-    throw new Error('Não há Administrador pendente de ativação com esse e-mail.');
+    throw Object.assign(new Error('Não há Administrador pendente de ativação com esse e-mail.'), { code: 'AUTH_ADMIN_PENDENTE_NAO_ENCONTRADO' });
   }
   const passwordHash = await hashPassword(newPassword);
   const { rows: updated } = await pool.query<PersonAuthRow>(
     `UPDATE people SET password_hash = $1 WHERE id = $2
-     RETURNING id, name, role, institution, email, password_hash`,
+     RETURNING id, name, role, institution, email, admin_access, legal_origin_access, curation_access, phase_signing_access, export_access, password_hash`,
     [passwordHash, row.id]
   );
   return toUserProfile(updated[0]);
@@ -198,16 +215,16 @@ export async function claimAdministratorAccount(pool: Pool, email: string, newPa
  */
 export async function changeOwnPassword(pool: Pool, personId: string, currentPassword: string, newPassword: string): Promise<void> {
   const { rows } = await pool.query<PersonAuthRow>(
-    'SELECT id, name, role, institution, email, password_hash FROM people WHERE id = $1',
+    'SELECT id, name, role, institution, email, admin_access, legal_origin_access, curation_access, phase_signing_access, export_access, password_hash FROM people WHERE id = $1',
     [personId]
   );
   const row = rows[0];
   if (!row || !row.password_hash) {
-    throw new Error('Pessoa não encontrada.');
+    throw Object.assign(new Error('Pessoa não encontrada.'), { code: 'PESSOA_NAO_ENCONTRADA' });
   }
   const matches = await bcrypt.compare(currentPassword, row.password_hash);
   if (!matches) {
-    throw new Error('Senha atual incorreta.');
+    throw Object.assign(new Error('Senha atual incorreta.'), { code: 'AUTH_SENHA_ATUAL_INCORRETA' });
   }
   const newHash = await hashPassword(newPassword);
   await pool.query('UPDATE people SET password_hash = $1 WHERE id = $2', [newHash, personId]);
@@ -254,13 +271,13 @@ export async function createFirstAdmin(
     await client.query('SELECT pg_advisory_xact_lock($1)', [BOOTSTRAP_ADVISORY_LOCK_KEY]);
     const { rows: existing } = await client.query('SELECT 1 FROM people LIMIT 1');
     if (existing.length > 0) {
-      throw new Error('Já existe gente cadastrada — o bootstrap só funciona com o sistema vazio.');
+      throw Object.assign(new Error('Já existe gente cadastrada — o bootstrap só funciona com o sistema vazio.'), { code: 'AUTH_BOOTSTRAP_JA_FEITO' });
     }
     const passwordHash = await hashPassword(person.password);
     const { rows } = await client.query<PersonAuthRow>(
       `INSERT INTO people (name, role, institution, email, password_hash)
        VALUES ($1, 'administrador', $2, $3, $4)
-       RETURNING id, name, role, institution, email, password_hash`,
+       RETURNING id, name, role, institution, email, admin_access, legal_origin_access, curation_access, phase_signing_access, export_access, password_hash`,
       [person.name, person.institution, person.email, passwordHash]
     );
     await client.query('COMMIT');
@@ -349,12 +366,12 @@ export async function consumePasswordSetupToken(pool: Pool, token: string, newPa
       [tokenHash]
     );
     if (!rows[0]) {
-      throw new Error('Link inválido, expirado ou já utilizado.');
+      throw Object.assign(new Error('Link inválido, expirado ou já utilizado.'), { code: 'AUTH_LINK_INVALIDO' });
     }
     const passwordHash = await hashPassword(newPassword);
     const updated = await client.query<PersonAuthRow>(
       `UPDATE people SET password_hash = $1 WHERE id = $2
-       RETURNING id, name, role, institution, email, password_hash`,
+       RETURNING id, name, role, institution, email, admin_access, legal_origin_access, curation_access, phase_signing_access, export_access, password_hash`,
       [passwordHash, rows[0].person_id]
     );
     await client.query('UPDATE password_setup_tokens SET used_at = now() WHERE id = $1', [rows[0].id]);

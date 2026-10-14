@@ -14,7 +14,7 @@ async function parseJsonOrThrow(res: Response, fallbackMessage: string) {
     // resposta sem corpo JSON (ex.: 204 No Content)
   }
   if (!res.ok) {
-    throw new Error(data?.error || `${fallbackMessage} (HTTP ${res.status})`);
+    throw Object.assign(new Error(data?.error || `${fallbackMessage} (HTTP ${res.status})`), { code: data?.code });
   }
   return data;
 }

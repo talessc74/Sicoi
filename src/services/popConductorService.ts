@@ -295,8 +295,9 @@ export interface PopDefinition {
   completionMessage: string;
 }
 
-// Definições dos POPs INC/DITEC/PF
-export const INC_DITEC_PF_POPS: Record<PhaseNumber, PopDefinition> = {
+// Definições dos POPs INC/DITEC/PF — a Fase 0 (Recebimento da D.O.) não tem
+// condutor por voz, só o formulário manual + extração por foto.
+export const INC_DITEC_PF_POPS: Record<Exclude<PhaseNumber, 0>, PopDefinition> = {
   1: {
     phaseNumber: 1,
     popCode: 'POP-01',
@@ -368,14 +369,16 @@ export const INC_DITEC_PF_POPS: Record<PhaseNumber, PopDefinition> = {
           { field: 'foto4_2MateriaisIsolados', category: 'foto4_2_materiais_isolados', label: 'Materiais associados isolados', triState: true }
         ],
         quickSuggestions: [
-          'Foto do saco fechado feita. Placa de cemitério não se aplica. Materiais associados não se aplica. Remanescentes isolados fotografados.',
-          'Todas as fotos obrigatórias feitas, incluindo placa do cemitério e materiais associados isolados.'
+          'Placa de cemitério não se aplica. Materiais associados não se aplica.',
+          'Placa de cemitério e materiais associados isolados fotografados.'
         ],
         extractData: (input: string, context?: any) => {
           const lower = input.toLowerCase();
           const data: Record<string, any> = {};
 
-          if (/saco.*(fechado|lacre)/.test(lower) || /foto\s*1\b/.test(lower)) data.foto1SacoFechado = true;
+          // Foto 1 e Foto 4.1 não têm "não se aplica" — exigem foto real, então a
+          // narração nunca marca estas duas por si só (só o botão de captura real
+          // na UI faz isso; ver PopConversationalConductor.handleCaptureChecklistPhoto).
           if (/(placa).*(cemit[ée]rio)/.test(lower)) {
             data.foto2PlacaCemiterio = /n[ãa]o se aplica|sem placa/.test(lower) ? 'nao_se_aplica' : 'sim';
           }
@@ -386,13 +389,10 @@ export const INC_DITEC_PF_POPS: Record<PhaseNumber, PopDefinition> = {
           if (/materiais associados(?!\s*isolad)/.test(lower)) {
             data.foto3RemanescentesMateriais = /n[ãa]o se aplica/.test(lower) ? 'nao_se_aplica' : 'sim';
           }
-          if (/remanescentes isolad/.test(lower) || /foto\s*4\.?1\b/.test(lower)) data.foto4_1RemanescentesIsolados = true;
           if (/materiais associados isolad/.test(lower) || /foto\s*4\.?2\b/.test(lower)) {
             data.foto4_2MateriaisIsolados = /n[ãa]o se aplica/.test(lower) ? 'nao_se_aplica' : 'sim';
           }
           if (/todas as fotos/.test(lower)) {
-            data.foto1SacoFechado = true;
-            data.foto4_1RemanescentesIsolados = true;
             if (!data.foto2PlacaCemiterio) data.foto2PlacaCemiterio = 'sim';
             if (!data.foto3RemanescentesMateriais) data.foto3RemanescentesMateriais = 'sim';
             if (!data.foto4_2MateriaisIsolados) data.foto4_2MateriaisIsolados = 'sim';
@@ -866,7 +866,7 @@ export const INC_DITEC_PF_POPS: Record<PhaseNumber, PopDefinition> = {
     popCode: 'POP-INC-DITEC-PF-03',
     popTitle: 'Acondicionamento Provisório e Inventário',
     regulatoryRef: 'POP-INC-DITEC-PF-03 · Rastreabilidade de Caixas e Galpão',
-    introMessage: 'Iniciando o Condutor do POP-INC-DITEC-PF-03. Vamos associar as caixas de polionda alveolar neutro e registrar a coordenada física na sala de espera de curadoria.',
+    introMessage: 'Iniciando o Condutor do POP-INC-DITEC-PF-03. Vamos associar as caixas de polionda alveolar neutro e registrar a coordenada física na sala de espera de Montagem e Inventário.',
     steps: [
       {
         stepNumber: 1,
@@ -905,7 +905,7 @@ export const INC_DITEC_PF_POPS: Record<PhaseNumber, PopDefinition> = {
   4: {
     phaseNumber: 4,
     popCode: 'POP-INC-DITEC-PF-04',
-    popTitle: 'Curadoria e Perfil Biológico',
+    popTitle: 'Montagem e Inventário — Perfil Biológico',
     regulatoryRef: 'POP-INC-DITEC-PF-04 · Antropologia Forense',
     introMessage: 'Iniciando o Condutor do POP-INC-DITEC-PF-04. Vamos conduzir o pareamento anatômico, consolidação do NMI final e estimativas antropológicas de sexo, idade e ancestralidade.',
     steps: [
@@ -931,12 +931,12 @@ export const INC_DITEC_PF_POPS: Record<PhaseNumber, PopDefinition> = {
         }
       }
     ],
-    completionMessage: 'Curadoria do POP-04 registrada com sucesso.'
+    completionMessage: 'Montagem e Inventário do POP-04 registrados com sucesso.'
   },
   5: {
     phaseNumber: 5,
     popCode: 'POP-INC-DITEC-PF-05',
-    popTitle: 'Patologias, Traumatologia e DICOM',
+    popTitle: 'Alterações Ósseas, Traumatologia e DICOM',
     regulatoryRef: 'POP-INC-DITEC-PF-05 · Traumatologia Forense',
     introMessage: 'Condutor do POP-INC-DITEC-PF-05 ativo. Descreva as lesões traumáticas ante-mortem, peri-mortem ou pós-mortem e o status dos exames de imagem tomográfica.',
     steps: [
@@ -974,7 +974,7 @@ export const INC_DITEC_PF_POPS: Record<PhaseNumber, PopDefinition> = {
         stepTitle: 'Marcação Física em Paraloid B-72',
         conductorPrompt: 'Confirme a aplicação do verniz Paraloid B-72, nanquim indelével e selagem superficial nos ossos diagnósticos.',
         requiresPhoto: true,
-        photoPrompt: 'Fotografia macro da marcação com sigla NIC no fêmur',
+        photoPrompt: 'Fotografia macro da marcação com o número COI no fêmur',
         quickSuggestions: [
           'Marcação executada com Paraloid B-72 a 15% e tinta nanquim preta em todos os ossos principais.',
           'Camada de base e cobertura de Paraloid B-72 em acetona aplicadas com sucesso.'

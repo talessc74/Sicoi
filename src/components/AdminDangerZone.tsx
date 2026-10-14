@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { OsteologicalCollection, UserProfile } from '../types/sgccco';
+import { ErrorNotice } from './ErrorNotice';
+import { toAppError, AppError } from '../utils/errorMessages';
 import {
   ShieldAlert,
   Trash2,
@@ -42,7 +44,7 @@ export const AdminDangerZone: React.FC<AdminDangerZoneProps> = ({ currentUser, c
   const [deletedCollections, setDeletedCollections] = useState<DeletedCollectionSummary[]>([]);
   const [actions, setActions] = useState<AdminActionRow[]>([]);
   const [isLoadingTrail, setIsLoadingTrail] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<AppError | null>(null);
   const [isBusy, setIsBusy] = useState(false);
 
   // Caixa
@@ -69,7 +71,7 @@ export const AdminDangerZone: React.FC<AdminDangerZoneProps> = ({ currentUser, c
       setDeletedCollections(deleted);
       setActions(log);
     } catch (err: any) {
-      setError(err?.message || 'Erro ao carregar a trilha de ações administrativas.');
+      setError(toAppError(err, 'Erro ao carregar a trilha de ações administrativas.'));
     } finally {
       setIsLoadingTrail(false);
     }
@@ -106,7 +108,7 @@ export const AdminDangerZone: React.FC<AdminDangerZoneProps> = ({ currentUser, c
       await action();
       await Promise.all([onRefreshCollections(), refreshTrail()]);
     } catch (err: any) {
-      setError(err?.message || 'A ação não pôde ser concluída.');
+      setError(toAppError(err, 'A ação não pôde ser concluída.'));
     } finally {
       setIsBusy(false);
     }
@@ -166,9 +168,7 @@ export const AdminDangerZone: React.FC<AdminDangerZoneProps> = ({ currentUser, c
       </div>
 
       {error && (
-        <div className="mx-5 mt-4 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 font-mono">
-          {error}
-        </div>
+        <ErrorNotice className="mx-5 mt-4" code={error.code} message={error.message} />
       )}
 
       <div className="p-5 grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -182,7 +182,7 @@ export const AdminDangerZone: React.FC<AdminDangerZoneProps> = ({ currentUser, c
             onChange={(e) => { setBoxNic(e.target.value); setBoxId(''); }}
             className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
           >
-            <option value="">Selecione o conjunto (NIC)…</option>
+            <option value="">Selecione o conjunto (COI)…</option>
             {activeBoxesByNic.filter((c) => c.boxes.length > 0).map((c) => (
               <option key={c.nic} value={c.nic}>{c.nic}</option>
             ))}
@@ -229,7 +229,7 @@ export const AdminDangerZone: React.FC<AdminDangerZoneProps> = ({ currentUser, c
             onChange={(e) => { setCollectionNic(e.target.value); setCollectionConfirm(''); }}
             className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
           >
-            <option value="">Selecione o conjunto (NIC)…</option>
+            <option value="">Selecione o conjunto (COI)…</option>
             {collections.map((c) => (
               <option key={c.nic} value={c.nic}>{c.nic}</option>
             ))}

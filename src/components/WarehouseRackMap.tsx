@@ -142,13 +142,13 @@ export const WarehouseRackMap: React.FC<WarehouseRackMapProps> = ({
                         const matchingNic = collections.find(c =>
                           c.phase1.preliminaryBoxes.some(b => b.boxCode === boxCode || b.id === boxCode) ||
                           c.phase6.finalLocations.some(fl => fl.boxId === boxCode)
-                        )?.nic || (boxCode ? 'NIC-2026-0841' : undefined);
+                        )?.nic || (boxCode ? 'COI-001' : undefined);
 
                         return (
                           <div
                             key={idx}
                             onClick={() => matchingNic && onSelectNic(matchingNic)}
-                            title={boxCode ? `Caixa: ${boxCode} (NIC: ${matchingNic || 'N/D'}) - Clique para abrir` : 'Vão Livre'}
+                            title={boxCode ? `Caixa: ${boxCode} (COI: ${matchingNic || 'N/D'}) - Clique para abrir` : 'Vão Livre'}
                             className={`h-10 rounded-lg border flex flex-col items-center justify-center p-1 text-[9px] font-mono transition-all ${
                               boxCode
                                 ? 'bg-amber-100 dark:bg-amber-950/60 border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 cursor-pointer hover:ring-2 hover:ring-amber-500'

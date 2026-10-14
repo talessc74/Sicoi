@@ -3,8 +3,8 @@ import { OsteologicalCollection, UserProfile, FieldWithAiSuggestion, CleaningIns
 import { PopConversationalConductor } from './PopConversationalConductor';
 import { calculateSha256, generateSignaturePayload } from '../services/auditService';
 import { getLatestPhaseSignature } from '../utils/signatures';
-import { canPerformRole } from '../utils/permissions';
-import { Droplet, Wind, Clock, CheckCircle2, ShieldCheck, Bot, FileText, Sparkles, Box, Save, AlertCircle } from 'lucide-react';
+import { canSignAsTechnician } from '../utils/permissions';
+import { Droplet, Wind, Clock, CheckCircle2, ShieldCheck, Bot, FileText, Sparkles, Box, Save, AlertCircle, UserCheck } from 'lucide-react';
 
 const INSTRUMENT_OPTIONS: { value: CleaningInstrument; label: string }[] = [
   { value: 'esponja', label: 'Esponja' },
@@ -39,7 +39,11 @@ export const Phase2Limpeza: React.FC<Phase2LimpezaProps> = ({ collection, curren
 
   const phaseSignature = getLatestPhaseSignature(collection.signatures, 2);
   const isLocked = phaseSignature?.status === 'locked';
-  const canActAsTechnician = canPerformRole(currentUser.role, 'tecnico');
+  // A assinatura que trava a fase é exclusiva de Técnico/Curador — o Pesquisador
+  // tem acesso à Fase 2, mas sua participação é a confirmação opcional abaixo
+  // (handleConfirmResearcherReview), nunca esta assinatura (decisão de acesso
+  // out/2026, correção: "o técnico é obrigatório, o pesquisador pode ou não").
+  const canActAsTechnician = canSignAsTechnician(currentUser);
 
   const p2 = collection.phase2;
   // O status de limpeza/secagem vive em phase2.boxDryingStatus (não em
@@ -158,6 +162,20 @@ export const Phase2Limpeza: React.FC<Phase2LimpezaProps> = ({ collection, curren
     onUpdateCollection(updated);
   };
 
+  // Confirmação opcional do Pesquisador — nunca trava nem destrava nada, nunca
+  // substitui a assinatura do Técnico/Curador acima.
+  const handleConfirmResearcherReview = async () => {
+    const timestamp = new Date().toISOString();
+    const hash = await calculateSha256(`researcher-review|phase2|${collection.nic}|${currentUser.id}|${timestamp}`);
+    onUpdateCollection({
+      ...collection,
+      phase2: {
+        ...collection.phase2,
+        researcherConfirmation: { confirmedByName: currentUser.name, confirmedAt: timestamp, sha256Hash: hash }
+      }
+    });
+  };
+
   const canSign = requiredFieldsFilled && allBoxesDry && canActAsTechnician;
   const signBlockers: string[] = [...missingFieldLabels];
   if (!allBoxesDry) signBlockers.push('todas as caixas precisam estar com status "Seca"');
@@ -192,6 +210,24 @@ export const Phase2Limpeza: React.FC<Phase2LimpezaProps> = ({ collection, curren
                 <span>{justSaved ? 'Salvo!' : 'Salvar Formulário'}</span>
               </button>
             )}
+            {currentUser.role === 'pesquisador' && !isLocked && (
+              p2.researcherConfirmation ? (
+                <div className="px-3 py-2 rounded-xl bg-sky-50 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-900 flex items-center gap-2 text-xs font-mono text-sky-700 dark:text-sky-300 font-semibold">
+                  <UserCheck className="w-4 h-4 text-sky-600" />
+                  <span>Revisão do Pesquisador confirmada</span>
+                </div>
+              ) : (
+                <button
+                  onClick={handleConfirmResearcherReview}
+                  title="Confirmação opcional — não trava nem substitui a assinatura do Técnico/Curador."
+                  className="px-3 py-2 rounded-xl border border-sky-300 dark:border-sky-800 bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 text-xs font-semibold flex items-center gap-1.5 hover:bg-sky-100 dark:hover:bg-sky-900/60 transition-colors"
+                >
+                  <UserCheck className="w-4 h-4" />
+                  <span>Confirmar Revisão (Pesquisador)</span>
+                </button>
+              )
+            )}
+
             {isLocked ? (
               <div className="px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-900 flex items-center gap-2 text-xs font-mono text-emerald-700 dark:text-emerald-300 font-semibold">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />

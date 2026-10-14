@@ -55,11 +55,14 @@ export async function sendChatMessage(
 
     if (!res.ok) {
       if (res.status === 401) {
-        throw new Error(
-          'Erro 401 (Não Autorizado): A chave GEMINI_API_KEY do servidor não foi validada ou não tem permissão para este modelo. Acesse "Settings > Secrets" no AI Studio e gere uma nova chave.'
+        throw Object.assign(
+          new Error(
+            'Erro 401 (Não Autorizado): A chave GEMINI_API_KEY do servidor não foi validada ou não tem permissão para este modelo. Acesse "Settings > Secrets" no AI Studio e gere uma nova chave.'
+          ),
+          { code: data?.code || 'IA_CHAVE_AUSENTE' }
         );
       }
-      throw new Error(data.error || `Erro HTTP ${res.status}`);
+      throw Object.assign(new Error(data.error || `Erro HTTP ${res.status}`), { code: data?.code });
     }
 
     return {
@@ -91,11 +94,14 @@ export async function transcribeAudioBlob(blob: Blob): Promise<string> {
         const data = await res.json();
         if (!res.ok) {
           if (res.status === 401) {
-            throw new Error(
-              'Erro 401: Falha de autenticação ao transcrever áudio com gemini-3.5-transcribe. Verifique as credenciais no Secrets.'
+            throw Object.assign(
+              new Error(
+                'Erro 401: Falha de autenticação ao transcrever áudio com gemini-3.5-transcribe. Verifique as credenciais no Secrets.'
+              ),
+              { code: data?.code || 'IA_CHAVE_AUSENTE' }
             );
           }
-          throw new Error(data.error || 'Erro ao transcrever áudio.');
+          throw Object.assign(new Error(data.error || 'Erro ao transcrever áudio.'), { code: data?.code });
         }
 
         resolve(data.transcript || '');
@@ -130,7 +136,7 @@ export async function sendPopStepMessage(transcript: string, stepContext: string
 
   const data = await res.json();
   if (!res.ok) {
-    throw new Error(data.error || `Erro HTTP ${res.status} ao processar o passo do POP.`);
+    throw Object.assign(new Error(data.error || `Erro HTTP ${res.status} ao processar o passo do POP.`), { code: data?.code });
   }
   return data;
 }
@@ -185,7 +191,49 @@ export async function searchSimilarBones(
 
   const data = await res.json();
   if (!res.ok) {
-    throw new Error(data.error || `Erro HTTP ${res.status} ao buscar ossos parecidos.`);
+    throw Object.assign(new Error(data.error || `Erro HTTP ${res.status} ao buscar ossos parecidos.`), { code: data?.code });
   }
   return data;
+}
+
+/**
+ * Extrai os campos da Fase 0 a partir de uma foto/PDF da Declaração de Óbito.
+ * A imagem nunca é armazenada — só usada nesta chamada (_local-adr-policy-104).
+ * Devolve apenas o que o Gemini reconheceu com segurança no documento; campos
+ * ausentes no retorno significam "não identificado na imagem", nunca um valor
+ * inventado. O Técnico sempre revisa cada campo no formulário antes de assinar.
+ */
+export async function extractDeathCertificateFields(file: File): Promise<Record<string, any>> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      try {
+        const base64Image = reader.result as string;
+        const res = await fetch('/api/phase0/extract-death-certificate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
+          body: JSON.stringify({
+            imageBase64: base64Image,
+            mimeType: file.type || 'image/jpeg'
+          })
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          if (res.status === 401) {
+            throw Object.assign(
+              new Error('Erro 401: Falha de autenticação ao extrair dados da Declaração de Óbito. Verifique as credenciais no Secrets.'),
+              { code: data?.code || 'IA_CHAVE_AUSENTE' }
+            );
+          }
+          throw Object.assign(new Error(data.error || 'Erro ao extrair dados da Declaração de Óbito.'), { code: data?.code });
+        }
+        resolve(data.fields || {});
+      } catch (err) {
+        reject(err);
+      }
+    };
+    reader.onerror = (e) => reject(e);
+    reader.readAsDataURL(file);
+  });
 }

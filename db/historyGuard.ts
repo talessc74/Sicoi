@@ -26,13 +26,17 @@ import { canonicalJson, diffValues, sameContent } from '../src/utils/historyDiff
 export { canonicalJson };
 
 export class HistoryViolationError extends Error {
-  constructor(message: string) {
+  // Código estável pro tradutor de erros do cliente (src/utils/errorMessages.ts)
+  // — a mensagem acima continua existindo como detalhe técnico.
+  code: string;
+  constructor(message: string, code: string = 'HIST_FASE_TRAVADA') {
     super(message);
     this.name = 'HistoryViolationError';
+    this.code = code;
   }
 }
 
-const SIGNABLE_PHASES = [1, 2, 3, 4, 5, 6] as const;
+const SIGNABLE_PHASES = [0, 1, 2, 3, 4, 5, 6] as const;
 const ACCEPTED_PREFIXES = [SIGNATURE_PAYLOAD_PREFIX, ...LEGACY_SIGNATURE_PAYLOAD_PREFIXES];
 
 export function signatureKey(sig: Pick<PhaseSignature, 'phaseNumber' | 'signedAt' | 'sha256Hash'>): string {
@@ -88,7 +92,8 @@ export function mergeSignatures(
   for (const [key, stored] of previousByKey) {
     if (!incomingKeys.has(key)) {
       throw new HistoryViolationError(
-        `Histórico protegido: a assinatura da Fase ${stored.phaseNumber} feita por ${stored.signedByName} em ${stored.signedAt} não pode ser removida.`
+        `Histórico protegido: a assinatura da Fase ${stored.phaseNumber} feita por ${stored.signedByName} em ${stored.signedAt} não pode ser removida.`,
+        'HIST_ASSINATURA_NAO_REMOVIVEL'
       );
     }
   }
@@ -99,12 +104,16 @@ export function mergeSignatures(
 
     if (!stored) {
       if (received.status !== 'locked') {
-        throw new HistoryViolationError(`Assinatura nova da Fase ${received.phaseNumber} precisa chegar como assinada (travada).`);
+        throw new HistoryViolationError(
+          `Assinatura nova da Fase ${received.phaseNumber} precisa chegar como assinada (travada).`,
+          'HIST_ASSINATURA_DEVE_CHEGAR_TRAVADA'
+        );
       }
       const snapshot = verifyNewSignature(incoming, received);
       if (!snapshot) {
         throw new HistoryViolationError(
-          `Assinatura inválida para NIC ${incoming.nic}, Fase ${received.phaseNumber}: hash não confere com o conteúdo da fase enviado.`
+          `Assinatura inválida para o conjunto ${incoming.nic}, Fase ${received.phaseNumber}: hash não confere com o conteúdo da fase enviado.`,
+          'HIST_HASH_INVALIDO'
         );
       }
       const accepted: PhaseSignature = {
@@ -127,7 +136,8 @@ export function mergeSignatures(
       received.signedByRole !== stored.signedByRole
     ) {
       throw new HistoryViolationError(
-        `Histórico protegido: quem assinou a Fase ${stored.phaseNumber} em ${stored.signedAt} não pode ser alterado.`
+        `Histórico protegido: quem assinou a Fase ${stored.phaseNumber} em ${stored.signedAt} não pode ser alterado.`,
+        'HIST_ASSINANTE_IMUTAVEL'
       );
     }
 
@@ -136,7 +146,8 @@ export function mergeSignatures(
       const justification = (received.reopenJustification || '').trim();
       if (!justification) {
         throw new HistoryViolationError(
-          `A Fase ${stored.phaseNumber} está assinada: para alterá-la, reabra a fase com justificativa técnica.`
+          `A Fase ${stored.phaseNumber} está assinada: para alterá-la, reabra a fase com justificativa técnica.`,
+          'HIST_FASE_TRAVADA'
         );
       }
       merged.status = 'unlocked_for_revision';
@@ -146,13 +157,15 @@ export function mergeSignatures(
       events.push({ kind: 'reabertura', signature: merged });
     } else if (stored.status === 'unlocked_for_revision' && received.status === 'locked') {
       throw new HistoryViolationError(
-        `Histórico protegido: a assinatura substituída da Fase ${stored.phaseNumber} não pode voltar a valer; assine a fase de novo.`
+        `Histórico protegido: a assinatura substituída da Fase ${stored.phaseNumber} não pode voltar a valer; assine a fase de novo.`,
+        'HIST_ASSINATURA_SUBSTITUIDA_IMUTAVEL'
       );
     } else if (stored.status === 'unlocked_for_revision') {
       // Reabertura já registrada: justificativa, quem e quando não mudam depois.
       if (stored.reopenJustification && received.reopenJustification !== undefined && received.reopenJustification !== stored.reopenJustification) {
         throw new HistoryViolationError(
-          `Histórico protegido: a justificativa da reabertura da Fase ${stored.phaseNumber} não pode ser alterada.`
+          `Histórico protegido: a justificativa da reabertura da Fase ${stored.phaseNumber} não pode ser alterada.`,
+          'HIST_JUSTIFICATIVA_REABERTURA_IMUTAVEL'
         );
       }
     }
@@ -169,7 +182,8 @@ export function checkCustodyChain(previous: OsteologicalCollection, incoming: Os
     const received = incomingById.get(stored.id);
     if (!received || !sameContent(received, stored)) {
       throw new HistoryViolationError(
-        `Histórico protegido: o registro de custódia de ${stored.timestamp} (${stored.sourceLocation} → ${stored.targetLocation}) não pode ser removido nem alterado.`
+        `Histórico protegido: o registro de custódia de ${stored.timestamp} (${stored.sourceLocation} → ${stored.targetLocation}) não pode ser removido nem alterado.`,
+        'HIST_CUSTODIA_IMUTAVEL'
       );
     }
   }
@@ -185,7 +199,8 @@ export function checkLockedPhases(signatures: PhaseSignature[], incoming: Osteol
     if (!latest || latest.status !== 'locked' || !latest.dataSnapshotJson) continue;
     if (!sameContent(JSON.parse(latest.dataSnapshotJson), phaseData(incoming, phase))) {
       throw new HistoryViolationError(
-        `A Fase ${phase} está assinada e travada: para alterar o conteúdo, reabra a fase (Curador ou Administrador, com justificativa).`
+        `A Fase ${phase} está assinada e travada: para alterar o conteúdo, reabra a fase (Curador ou Administrador, com justificativa).`,
+        'HIST_FASE_TRAVADA'
       );
     }
   }

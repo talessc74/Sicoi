@@ -104,7 +104,7 @@ export async function softDeleteCollection(pool: Pool, nic: string, actor: Actor
      WHERE nic = $1 AND deleted_at IS NULL`,
     [nic, actor.id, actor.name, reason]
   );
-  if (!rowCount) throw new Error(`Conjunto ${nic} não encontrado ou já está excluído.`);
+  if (!rowCount) throw Object.assign(new Error(`Conjunto ${nic} não encontrado ou já está excluído.`), { code: 'ADMIN_ERRO_INTERNO' });
   await recordAdminAction(pool, actor, 'excluir_conjunto', { nic, reason });
 }
 
@@ -114,7 +114,7 @@ export async function restoreCollection(pool: Pool, nic: string, actor: Actor): 
      WHERE nic = $1 AND deleted_at IS NOT NULL`,
     [nic]
   );
-  if (!rowCount) throw new Error(`Conjunto ${nic} não encontrado ou não está excluído.`);
+  if (!rowCount) throw Object.assign(new Error(`Conjunto ${nic} não encontrado ou não está excluído.`), { code: 'ADMIN_ERRO_INTERNO' });
   await recordAdminAction(pool, actor, 'restaurar_conjunto', { nic });
 }
 
@@ -159,10 +159,10 @@ export async function adminDeleteBox(
   reason: string
 ): Promise<OsteologicalCollection> {
   const collection = await getCollection(pool, nic);
-  if (!collection) throw new Error(`Conjunto ${nic} não encontrado.`);
+  if (!collection) throw Object.assign(new Error(`Conjunto ${nic} não encontrado.`), { code: 'CONJUNTO_NAO_ENCONTRADO' });
   const box = findBox(collection, boxId);
-  if (!box) throw new Error(`Caixa ${boxId} não encontrada no conjunto ${nic}.`);
-  if (box.deletedAt) throw new Error(`Caixa ${boxId} já está excluída.`);
+  if (!box) throw Object.assign(new Error(`Caixa ${boxId} não encontrada no conjunto ${nic}.`), { code: 'ADMIN_CAIXA_NAO_ENCONTRADA' });
+  if (box.deletedAt) throw Object.assign(new Error(`Caixa ${boxId} já está excluída.`), { code: 'ADMIN_CAIXA_JA_EXCLUIDA' });
 
   const timestamp = new Date().toISOString();
   const next: OsteologicalCollection = {
@@ -193,10 +193,10 @@ export async function adminDeleteBox(
 
 export async function adminRestoreBox(pool: Pool, nic: string, boxId: string, actor: Actor): Promise<OsteologicalCollection> {
   const collection = await getCollection(pool, nic);
-  if (!collection) throw new Error(`Conjunto ${nic} não encontrado.`);
+  if (!collection) throw Object.assign(new Error(`Conjunto ${nic} não encontrado.`), { code: 'CONJUNTO_NAO_ENCONTRADO' });
   const box = findBox(collection, boxId);
-  if (!box) throw new Error(`Caixa ${boxId} não encontrada no conjunto ${nic}.`);
-  if (!box.deletedAt) throw new Error(`Caixa ${boxId} não está excluída.`);
+  if (!box) throw Object.assign(new Error(`Caixa ${boxId} não encontrada no conjunto ${nic}.`), { code: 'ADMIN_CAIXA_NAO_ENCONTRADA' });
+  if (!box.deletedAt) throw Object.assign(new Error(`Caixa ${boxId} não está excluída.`), { code: 'ADMIN_CAIXA_NAO_EXCLUIDA' });
 
   const next: OsteologicalCollection = {
     ...collection,

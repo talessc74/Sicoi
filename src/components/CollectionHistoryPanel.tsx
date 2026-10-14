@@ -4,6 +4,8 @@ import type { OsteologicalCollection, PhaseSignature } from '../types/sgccco';
 import { fetchCollectionHistory, CollectionHistory } from '../services/collectionsService';
 import { diffValues } from '../utils/historyDiff';
 import { fieldPathLabel, formatHistoryValue, phaseLabel } from '../utils/fieldLabels';
+import { ErrorNotice } from './ErrorNotice';
+import { toAppError, AppError } from '../utils/errorMessages';
 
 interface CollectionHistoryPanelProps {
   collection: OsteologicalCollection;
@@ -77,7 +79,7 @@ const formatDateTime = (iso?: string) => (iso ? new Date(iso).toLocaleString('pt
 export const CollectionHistoryPanel: React.FC<CollectionHistoryPanelProps> = ({ collection }) => {
   const [history, setHistory] = useState<CollectionHistory | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<AppError | null>(null);
   const [phaseFilter, setPhaseFilter] = useState<string>('all');
   const [visibleCount, setVisibleCount] = useState(60);
 
@@ -86,7 +88,7 @@ export const CollectionHistoryPanel: React.FC<CollectionHistoryPanelProps> = ({ 
     setError(null);
     fetchCollectionHistory(collection.nic)
       .then(setHistory)
-      .catch((err: any) => setError(err?.message || 'Não foi possível carregar o histórico.'))
+      .catch((err: any) => setError(toAppError(err, 'Não foi possível carregar o histórico.')))
       .finally(() => setLoading(false));
   };
 
@@ -145,11 +147,7 @@ export const CollectionHistoryPanel: React.FC<CollectionHistoryPanelProps> = ({ 
         </div>
       </div>
 
-      {error && (
-        <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300">
-          {error}
-        </div>
-      )}
+      {error && <ErrorNotice code={error.code} message={error.message} />}
 
       {/* Versões assinadas por fase */}
       <section className="space-y-3">

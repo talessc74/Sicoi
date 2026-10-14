@@ -122,7 +122,7 @@ export async function createCollection(
   }
 
   const current = await getCollection(pool, collection.nic);
-  if (!current) throw new Error(`Falha ao criar/recuperar o conjunto ${collection.nic} após o insert.`);
+  if (!current) throw Object.assign(new Error(`Falha ao criar/recuperar o conjunto ${collection.nic} após o insert.`), { code: 'CONJUNTO_ERRO_INTERNO' });
   return current;
 }
 
@@ -150,11 +150,12 @@ export async function saveCollection(
     );
     const previous = rows[0]?.full_state;
     if (!previous) {
-      throw new Error(`Conjunto ${collection.nic} não encontrado para atualização.`);
+      throw Object.assign(new Error(`Conjunto ${collection.nic} não encontrado para atualização.`), { code: 'CONJUNTO_NAO_ENCONTRADO' });
     }
     if (rows[0].deleted_at) {
       throw new HistoryViolationError(
-        `Conjunto ${collection.nic} está excluído — restaure-o na Zona de Risco (Configurações) antes de editar.`
+        `Conjunto ${collection.nic} está excluído — restaure-o na Zona de Risco (Configurações) antes de editar.`,
+        'CONJUNTO_EXCLUIDO'
       );
     }
 
@@ -352,10 +353,10 @@ async function upsertPhase1Form(client: PoolClient, nic: string, p1: Phase1Data)
       val(p1.equipeEnvolvidaLimpeza, 'equipeEnvolvidaLimpeza'),
       val(p1.dataAnalise, 'dataAnalise') || null,
       val(p1.horaAnalise, 'horaAnalise'),
-      val(p1.foto1SacoFechado, 'foto1SacoFechado') ?? false,
+      val(p1.foto1SacoFechado, 'foto1SacoFechado'),
       val(p1.foto2PlacaCemiterio, 'foto2PlacaCemiterio'),
       val(p1.foto3RemanescentesMateriais, 'foto3RemanescentesMateriais'),
-      val(p1.foto4_1RemanescentesIsolados, 'foto4_1RemanescentesIsolados') ?? false,
+      val(p1.foto4_1RemanescentesIsolados, 'foto4_1RemanescentesIsolados'),
       val(p1.foto4_2MateriaisIsolados, 'foto4_2MateriaisIsolados'),
       val(p1.tipoMaterial, 'tipoMaterial') || [],
       val(p1.cabeloDescricao, 'cabeloDescricao'),
@@ -544,15 +545,18 @@ function toUuidSafe(id: string): string {
   return `${hash.slice(0, 8)}-${hash.slice(8, 12)}-${hash.slice(12, 16)}-${hash.slice(16, 20)}-${hash.slice(20, 32)}`;
 }
 
+export type PhotoTable = 'phase1_photos' | 'phase2_photos' | 'phase4_photos';
+
 /**
  * Grava os bytes de uma foto real (_local-adr-policy-301) na linha já criada por
- * saveCollection/syncPhotos (que só grava metadados). Chamado depois que a foto já
+ * saveCollection/syncPhotos (ou, na Fase 4, por insertPhase4AssemblyPhotoMetadata
+ * abaixo) — em todos os casos, só metadados. Chamado depois que a foto já
  * está no full_state — nunca antes, para não deixar bytes órfãos se o save falhar
  * (fase travada, etc.).
  */
 export async function attachPhotoBytes(
   pool: Pool,
-  table: 'phase1_photos' | 'phase2_photos',
+  table: PhotoTable,
   photoId: string,
   bytes: Buffer,
   mimetype: string,
@@ -566,6 +570,22 @@ export async function attachPhotoBytes(
   );
 }
 
+// Fase 4 não tem array de fotos como Fase 1/2 (ver syncPhotos) — é uma foto
+// única oficial (completeAssemblyPhotoApproved), então o metadado é inserido
+// direto pela rota de upload, nunca por syncDerivedTables.
+export async function insertPhase4AssemblyPhotoMetadata(
+  pool: Pool,
+  photo: { id: string; category: string; url: string; caption?: string; sha256Hash: string; author: string; timestamp: string },
+  nic: string
+): Promise<void> {
+  await pool.query(
+    `INSERT INTO phase4_photos (id, nic, category, url, caption, sha256_hash, author, taken_at)
+     VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8)
+     ON CONFLICT (id) DO NOTHING`,
+    [toUuidSafe(photo.id), nic, photo.category, photo.url, photo.caption || null, photo.sha256Hash, photo.author, photo.timestamp]
+  );
+}
+
 export interface StoredPhotoFile {
   data: Buffer;
   mimetype: string;
@@ -574,7 +594,7 @@ export interface StoredPhotoFile {
 /** Lê os bytes de uma foto real para a rota de exibição. Nunca devolve fotos fictícias (sem `data`). */
 export async function getPhotoFile(
   pool: Pool,
-  table: 'phase1_photos' | 'phase2_photos',
+  table: PhotoTable,
   nic: string,
   photoId: string
 ): Promise<StoredPhotoFile | null> {
