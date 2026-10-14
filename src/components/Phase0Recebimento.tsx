@@ -124,11 +124,16 @@ export const Phase0Recebimento: React.FC<Phase0RecebimentoProps> = ({
     });
     const hash = await calculateSha256(payload);
 
+    // Diferente de Fase 4/5 (dupla assinatura, guardada dentro da própria fase):
+    // a Fase 0 tem assinatura única e não guarda nada de assinatura dentro de
+    // phase0 — só no registro de nível superior (signatures), mesmo padrão de
+    // Fase 1/2/3. O hash é calculado sobre p0 e tem que continuar batendo com
+    // o que realmente é salvo em phase0; se este objeto embutisse um campo de
+    // assinatura, o servidor recalcularia o hash sobre o conteúdo JÁ com esse
+    // campo, e nunca bateria com o hash calculado antes de adicioná-lo (bug
+    // real encontrado em produção — COI-146, out/2026).
     const updated = { ...collection };
-    updated.phase0 = {
-      ...p0,
-      technicianReceivalSign: { signedByName: currentUser.name, signedAt: timestamp, sha256Hash: hash }
-    };
+    updated.phase0 = p0;
     updated.signatures = [
       ...updated.signatures.map((s) => (s.phaseNumber === 0 ? { ...s, status: 'unlocked_for_revision' as const } : s)),
       {

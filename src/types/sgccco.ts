@@ -178,16 +178,16 @@ export interface Phase0Data {
 
   observacoes?: string;
 
-  // Assinatura única do Técnico (ou Curador) que trava a Fase 0 e libera a
-  // Fase 1 — diferente do modelo de dupla assinatura de Fase 4/5.
-  technicianReceivalSign?: {
-    signedByName: string;
-    signedAt: string;
-    sha256Hash: string;
-  };
+  // A assinatura única do Técnico (ou Curador) que trava a Fase 0 e libera a
+  // Fase 1 mora só em OsteologicalCollection.signatures (phaseNumber: 0) —
+  // nunca dentro de phase0 em si. Diferente de Fase 4/5 (dupla assinatura,
+  // guardada dentro da própria fase): embutir a assinatura aqui faria o hash
+  // calculado antes dela nunca bater com o conteúdo já salvo com ela dentro
+  // (bug real encontrado em produção — COI-146, out/2026). Mesmo padrão,
+  // sem campo de assinatura embutido, de Phase1Data/Phase2Data/Phase3Data.
 
   // Confirmação opcional do Pesquisador (ver ResearcherReviewConfirmation) —
-  // nunca substitui technicianReceivalSign.
+  // nunca substitui a assinatura do Técnico/Curador acima.
   researcherConfirmation?: ResearcherReviewConfirmation;
 }
 
