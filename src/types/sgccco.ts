@@ -3,7 +3,12 @@
 
 export type UserRole = 'tecnico' | 'curador' | 'administrador' | 'pesquisador' | 'estudante';
 
-export type PhaseNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+export type PhaseNumber = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
+
+export type BrazilianUf =
+  | 'AC' | 'AL' | 'AP' | 'AM' | 'BA' | 'CE' | 'DF' | 'ES' | 'GO' | 'MA'
+  | 'MT' | 'MS' | 'MG' | 'PA' | 'PB' | 'PR' | 'PE' | 'PI' | 'RJ' | 'RN'
+  | 'RS' | 'RO' | 'RR' | 'SC' | 'SP' | 'SE' | 'TO';
 
 export interface UserProfile {
   id: string;
@@ -12,7 +17,29 @@ export interface UserProfile {
   institution: string;
   // E-mail é o identificador de login — único campo que identifica a pessoa.
   email: string;
+  // Funções de Administrador somadas ao papel principal (ex.: Curadora que
+  // também administra o sistema). `role` segue sendo o que vai nas assinaturas.
+  adminAccess?: boolean;
+
+  // Ajustes de acesso por pessoa (§13, out/2026) — cada um começa com o valor
+  // padrão do papel (ver utils/permissions.ts) no momento em que a pessoa é
+  // cadastrada ou tem o papel trocado, e pode ser ampliado ou reduzido
+  // individualmente depois, na tela de Configurações, sem mudar o papel dela
+  // nem afetar mais ninguém. Sempre um boolean explícito (nunca "herda do
+  // papel" em tempo de execução) — mesmo padrão já usado em adminAccess acima.
+  legalOriginAccess?: boolean; // Origem Legal / Cemitério (§7) — ver Fase 1
+  curationAccess?: boolean; // Montagem e Inventário / Curadoria — ver Fase 4 (canEdit)
+  phaseSigningAccess?: boolean; // Assinatura de Fases (Fases 0-3, Montagem da Fase 4, Física da Fase 5) — nunca o Inventário/Científica, exclusivos do Curador
+  exportAccess?: boolean; // Exportação Científica — ver Fase 7
 }
+
+// Os 5 ajustes de acesso por pessoa (§13) juntos — reutilizado pelo cadastro/
+// edição de pessoa (SettingsView, App.tsx, peopleService.ts) pra não repetir a
+// mesma lista de 5 campos em cada assinatura de função.
+export type PersonAccessOverrides = Pick<
+  UserProfile,
+  'adminAccess' | 'legalOriginAccess' | 'curationAccess' | 'phaseSigningAccess' | 'exportAccess'
+>;
 
 // Criptografia e Assinatura por Fase (§7)
 export interface PhaseSignature {
@@ -74,6 +101,94 @@ export interface FieldWithAiSuggestion<T> {
   isAiSuggested?: boolean;
   transcriptSnippet?: string;
   confirmedByUser?: boolean;
+}
+
+// Confirmação opcional do Pesquisador numa fase onde ele tem acesso (Fases 1, 2,
+// 3, 4 e 5 — decisão de acesso out/2026). Nunca é a assinatura que destrava a
+// fase: essa continua sendo exclusiva do Técnico (ou do Curador, agindo como
+// técnico) — ver canSignAsTechnician em utils/permissions.ts. O Pesquisador
+// pode ou não registrar esta confirmação; ela é só um registro de que revisou
+// a fase, nunca bloqueia nem substitui a assinatura obrigatória.
+export interface ResearcherReviewConfirmation {
+  confirmedByName: string;
+  confirmedAt: string;
+  sha256Hash: string;
+}
+
+export interface Phase0ChildRecord {
+  id: string;
+  nome: string;
+  idade: string;
+}
+
+/**
+ * Fase 0: Recebimento — dados pessoais e do óbito transcritos da Declaração de
+ * Óbito (D.O.) que acompanha o conjunto na entrada, antes da Fase 1 (Formulário
+ * A.1). Responsabilidade do Técnico (ou Curador, agindo como técnico): a
+ * assinatura única abaixo é quem trava a fase e libera a Fase 1 — não é um
+ * modelo de dupla assinatura como Fase 4/5. Todo campo é opcional porque a D.O.
+ * real frequentemente chega com partes em branco ou "IGN." (aprovado com o
+ * Tales a partir da D.O. nº 21492, out/2026) — a fase trava com o que foi
+ * possível preencher, nunca exige um campo específico pra assinar.
+ */
+export interface Phase0Data {
+  nome?: string;
+  sexo?: 'M' | 'F' | 'Ignorado';
+  cor?: 'Branca' | 'Preta' | 'Parda' | 'Amarela' | 'Indígena' | 'Ignorada';
+  nacionalidade?: string;
+  naturalCidade?: string;
+  naturalUf?: BrazilianUf;
+  nascimento?: string; // ISO 8601 (data)
+  idade?: number;
+  estadoCivil?: 'Solteiro(a)' | 'Casado(a)' | 'Divorciado(a)' | 'Viúvo(a)' | 'Separado(a) judicialmente' | 'Ignorado';
+  profissao?: string;
+  cpf?: string;
+  rg?: string;
+
+  paiNome?: string;
+  paiFalecido?: boolean;
+  paiNatural?: string;
+  paiEstadoCivil?: string;
+  paiProfissao?: string;
+
+  maeNome?: string;
+  maeFalecida?: boolean;
+  maeNatural?: string;
+  maeEstadoCivil?: string;
+  maeProfissao?: string;
+
+  conjugeNome?: string;
+  conjugeNatural?: string;
+  conjugeProfissao?: string;
+
+  localFalecimento?: string;
+  obitoCidade?: string;
+  obitoUf?: BrazilianUf;
+  dataFalecimento?: string; // ISO 8601 (data)
+  horaFalecimento?: string;
+  medicoNome?: string;
+  medicoCrm?: string;
+  causaMorte?: string;
+
+  cemiterio?: string;
+  dataInumacao?: string; // ISO 8601 (data)
+  dataExumacao?: string; // ISO 8601 (data)
+
+  filhos: Phase0ChildRecord[];
+
+  observacoes?: string;
+
+  // A assinatura única do Técnico (ou Curador) que trava a Fase 0 e libera a
+  // Fase 1 mora só em OsteologicalCollection.signatures (phaseNumber: 0) —
+  // nunca dentro de phase0 em si. Diferente de Fase 4/5 (dupla assinatura,
+  // guardada dentro da própria fase): embutir a assinatura aqui faria o hash
+  // calculado antes dela nunca bater com o conteúdo já salvo com ela dentro
+  // (bug real encontrado em produção — COI-146, out/2026). Mesmo padrão,
+  // sem campo de assinatura embutido, de Phase1Data/Phase2Data/Phase3Data.
+
+  // Confirmação opcional do Pesquisador (ver ResearcherReviewConfirmation) —
+  // nunca substitui a assinatura do Técnico/Curador acima.
+  researcherConfirmation?: ResearcherReviewConfirmation;
 }
 
 // Categorias fixas do checklist fotográfico do Formulário A.1 (campos 5-9)
@@ -143,12 +258,17 @@ export interface Phase1Data {
   dataAnalise: FieldWithAiSuggestion<string>; // ISO 8601 (data)
   horaAnalise: FieldWithAiSuggestion<string>; // ex.: "11h20min"
 
-  // Checklist de fotos (campos 5-9) — obrigatoriedade de cada categoria conforme o A.1:
-  // foto1 e foto4.1 são sempre obrigatórias; foto2, foto3 e foto4.2 são "se aplicável".
-  foto1SacoFechado: FieldWithAiSuggestion<boolean>;
+  // Checklist de fotos (campos 5-9) — foto2, foto3 e foto4.2 são "se aplicável" (podem
+  // não existir no caso). foto1 e foto4.1 são sempre esperadas, mas não travam a fase
+  // pra sempre se não houver foto real: o operador pode registrar a foto de verdade
+  // (value: 'sim') ou, perguntado explicitamente pelo sistema, confirmar que não há
+  // foto pra guardar com justificativa obrigatória (value: 'sem_foto_justificado').
+  foto1SacoFechado: FieldWithAiSuggestion<'sim' | 'sem_foto_justificado'>;
+  foto1SacoFechadoJustificativaAusencia?: FieldWithAiSuggestion<string>;
   foto2PlacaCemiterio: FieldWithAiSuggestion<'sim' | 'nao_se_aplica'>;
   foto3RemanescentesMateriais: FieldWithAiSuggestion<'sim' | 'nao_se_aplica'>;
-  foto4_1RemanescentesIsolados: FieldWithAiSuggestion<boolean>;
+  foto4_1RemanescentesIsolados: FieldWithAiSuggestion<'sim' | 'sem_foto_justificado'>;
+  foto4_1RemanescentesIsoladosJustificativaAusencia?: FieldWithAiSuggestion<string>;
   foto4_2MateriaisIsolados: FieldWithAiSuggestion<'sim' | 'nao_se_aplica'>;
 
   // Tipo de material (campo 10) + descrições condicionais (11-15)
@@ -196,6 +316,10 @@ export interface Phase1Data {
 
   preliminaryBoxes: PreliminaryBox[];
   photos: Phase1Photo[];
+
+  // Não é campo do A.1 — confirmação opcional do Pesquisador (ver
+  // ResearcherReviewConfirmation), nunca a assinatura que destrava a fase.
+  researcherConfirmation?: ResearcherReviewConfirmation;
 }
 
 export interface PreliminaryBox {
@@ -276,9 +400,13 @@ export interface Phase2Data {
   dryingConfirmedBy?: string;
 
   photos: Phase1Photo[];
+
+  // Não é campo do A.2 — confirmação opcional do Pesquisador (ver
+  // ResearcherReviewConfirmation), nunca a assinatura que destrava a fase.
+  researcherConfirmation?: ResearcherReviewConfirmation;
 }
 
-// Fase 3: Acondicionamento Provisório e Fila de Curadoria
+// Fase 3: Acondicionamento Provisório e Fila de Montagem e Inventário
 export interface Phase3Data {
   boxLocations: {
     boxId: string;
@@ -291,12 +419,16 @@ export interface Phase3Data {
     qrScannedConfirmation?: boolean;
   }[];
   enteredQueueAt?: string;
+
+  // Confirmação opcional do Pesquisador (ver ResearcherReviewConfirmation),
+  // nunca a assinatura/ação que destrava a fase.
+  researcherConfirmation?: ResearcherReviewConfirmation;
 }
 
 // Grau de Certeza Biológica (§8)
 export type BiologicalConfidence = 'alto' | 'alta' | 'medio' | 'media' | 'baixo' | 'baixa' | 'inconclusivo' | 'inconclusiva';
 
-// Fase 4: Curadoria Científica, NMI e Perfil Biológico
+// Fase 4: Montagem e Inventário (NMI e Perfil Biológico)
 export type CurationVersionStatus = 'rascunho' | 'revisao' | 'aprovada_curador' | 'aprovada';
 
 export interface IndividualHypothesis {
@@ -378,9 +510,40 @@ export interface Phase4Data {
     sha256Hash: string;
     resolution: string;
   };
+  // Confirmação do Técnico de que a Montagem está completa — precisa existir
+  // junto com curatorInventorySign pra fase travar e avançar (mesmo padrão
+  // de duas confirmações já usado em phase5.technicianPhysicalSign/
+  // curatorScientificSign). Nenhuma das duas sozinha avança a fase.
+  technicianAssemblySign?: {
+    signedByName: string;
+    signedAt: string;
+    sha256Hash: string;
+  };
+  curatorInventorySign?: {
+    signedByName: string;
+    signedAt: string;
+    sha256Hash: string;
+  };
+
+  // Confirmação opcional do Pesquisador (ver ResearcherReviewConfirmation) —
+  // nunca substitui technicianAssemblySign, que continua sendo a assinatura
+  // exclusiva de Técnico/Curador.
+  researcherConfirmation?: ResearcherReviewConfirmation;
+
+  // Confirmação explícita de que não há fotografia oficial de montagem pra
+  // guardar agora — a câmera normalmente é obrigatória pra fechar a Fase 4,
+  // mas o sistema pergunta em vez de travar pra sempre quando ela não está
+  // disponível (mesmo padrão da Fase 1 — ver _local-adr-policy-301). Nunca
+  // coexiste com completeAssemblyPhotoApproved: registrar uma foto real
+  // sempre limpa esta justificativa (e vice-versa).
+  assemblyPhotoJustification?: {
+    justifiedByName: string;
+    justifiedAt: string;
+    reason: string;
+  };
 }
 
-// Fase 5: Patologias, Exames e Marcação Óssea
+// Fase 5: Alterações Ósseas, Exames e Marcação Óssea
 export interface BonePathology {
   id: string;
   elementId?: string;
@@ -495,6 +658,11 @@ export interface Phase5Data {
     hash: string;
   }[];
   completenessChecklist?: CompletenessChecklist;
+
+  // Confirmação opcional do Pesquisador (ver ResearcherReviewConfirmation) —
+  // nunca substitui technicianPhysicalSign, que continua sendo a única
+  // assinatura que trava e avança a fase.
+  researcherConfirmation?: ResearcherReviewConfirmation;
 }
 
 // Fase 6: Armazenamento Definitivo no Galpão
@@ -685,6 +853,11 @@ export interface OsteologicalCollection {
   
   // Dados de cada fase
   legalOrigin: LegalOriginData;
+  // Opcional: conjuntos criados antes da Fase 0 existir (out/2026) nunca tiveram
+  // este campo — a fase deles nasceu direto na Fase 1, e segue assim, sem ser
+  // forçada retroativamente a passar pela Fase 0. Só conjuntos novos ganham
+  // phase0 já no momento da criação (ver App.tsx).
+  phase0?: Phase0Data;
   phase1: Phase1Data;
   phase2: Phase2Data;
   phase3: Phase3Data;

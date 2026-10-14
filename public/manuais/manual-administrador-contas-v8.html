@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Administrador · Gestão de Contas</title>
+</head>
+<body>
+<style>
+  :root {
+    --bone: #f6f3ec; --bone-2: #efe9db; --ink: #1c1a17; --ink-soft: #4a453d;
+    --line: #ddd4c2; --line-soft: #e8e1d1;
+    --accent: #0f766e; --accent-2: #8a6a3f; --accent-soft: #dcece9;
+    --good: #2f6b4f; --good-soft: #e1efe6;
+    --warn: #9a5b1f; --warn-soft: #f3e6d4;
+    --danger: #b3261e; --danger-soft: #f6e0de;
+    --card: #fffdf8;
+    --shadow: 0 1px 2px rgba(28,26,23,.06), 0 8px 24px -12px rgba(28,26,23,.18);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bone: #17181a; --bone-2: #1d1f22; --ink: #efe9db; --ink-soft: #b7b0a0;
+      --line: #34332e; --line-soft: #2a2924;
+      --accent: #5eead4; --accent-2: #d3a866; --accent-soft: #16302c;
+      --good: #7fc7a1; --good-soft: #1c2c23;
+      --warn: #e0a862; --warn-soft: #2d2418;
+      --danger: #e59289; --danger-soft: #34201d;
+      --card: #1d1e20;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 28px -14px rgba(0,0,0,.6);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bone: #17181a; --bone-2: #1d1f22; --ink: #efe9db; --ink-soft: #b7b0a0;
+    --line: #34332e; --line-soft: #2a2924;
+    --accent: #5eead4; --accent-2: #d3a866; --accent-soft: #16302c;
+    --good: #7fc7a1; --good-soft: #1c2c23;
+    --warn: #e0a862; --warn-soft: #2d2418;
+    --danger: #e59289; --danger-soft: #34201d;
+    --card: #1d1e20;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 28px -14px rgba(0,0,0,.6);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bone); color: var(--ink);
+    font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-size: 15.5px; line-height: 1.6; padding: 0 16px;
+  }
+  h1, h2, h3, h4 { font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif; text-wrap: balance; margin: 0; color: var(--ink); }
+  code, .mono { font-family: ui-monospace, 'SF Mono', 'Cascadia Code', 'Consolas', monospace; }
+  p { color: var(--ink-soft); max-width: 74ch; }
+  strong { color: var(--ink); }
+  a { color: var(--accent); }
+
+  .shell { max-width: 860px; margin: 0 auto; padding-block: 28px 90px; }
+
+  .cover {
+    border: 1px solid var(--line); border-radius: 18px;
+    background: linear-gradient(180deg, var(--card), var(--bone-2));
+    padding: 36px clamp(20px,5vw,48px);
+    box-shadow: var(--shadow); margin-bottom: 34px;
+  }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--accent); background: var(--accent-soft); border: 1px solid var(--line);
+    border-radius: 100px; padding: 5px 12px 5px 10px;
+  }
+  .eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+  .cover h1 { font-size: clamp(26px, 4vw, 36px); font-weight: 600; margin-top: 16px; max-width: 26ch; }
+  .cover p.lede { max-width: 62ch; margin-top: 12px; font-size: 15.5px; }
+
+  nav.jump { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 40px; }
+  nav.jump a {
+    text-decoration: none; font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+    color: var(--ink); background: var(--card); border: 1px solid var(--line);
+    border-radius: 100px; padding: 7px 14px; display: flex; align-items: center; gap: 7px;
+  }
+  nav.jump a .sw { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+
+  .block { margin-bottom: 56px; scroll-margin-top: 20px; }
+  .block-head {
+    display: flex; align-items: center; gap: 16px;
+    padding-bottom: 18px; border-bottom: 2px solid var(--accent);
+    margin-bottom: 22px;
+  }
+  .block-head .num {
+    width: 46px; height: 46px; border-radius: 12px; flex-shrink: 0;
+    background: var(--accent); color: var(--bone);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 20px;
+  }
+  .block-head h2 { font-size: 22px; font-weight: 600; }
+  .block-head .sub {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--accent-2); margin-top: 3px; display: block;
+  }
+
+  .step {
+    display: grid; grid-template-columns: 32px 1fr; gap: 14px;
+    padding: 15px 0; border-bottom: 1px solid var(--line-soft);
+  }
+  .step:last-of-type { border-bottom: none; }
+  .step .marker {
+    width: 28px; height: 28px; border-radius: 50%;
+    border: 2px solid var(--accent); color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 12.5px;
+  }
+  .step h4 { font-size: 14.5px; font-weight: 600; margin-bottom: 4px; }
+  .step p { font-size: 13.8px; margin: 0; }
+  .step .where {
+    display: inline-block; margin-top: 8px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--ink-soft); background: var(--bone-2); border: 1px solid var(--line);
+    border-radius: 100px; padding: 2px 9px;
+  }
+
+  .callout {
+    margin-top: 16px; border-left: 3px solid var(--accent);
+    background: var(--accent-soft); border-radius: 0 12px 12px 0;
+    padding: 13px 16px; font-size: 13.5px; color: var(--ink);
+  }
+  .callout.warn { border-color: var(--warn); background: var(--warn-soft); }
+  .callout.danger { border-color: var(--danger); background: var(--danger-soft); }
+  .callout.good { border-color: var(--good); background: var(--good-soft); }
+  .callout b {
+    display: block; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px;
+    text-transform: uppercase; letter-spacing: .08em; margin-bottom: 5px; color: inherit;
+  }
+
+  .faq-item { padding: 14px 0; border-bottom: 1px solid var(--line-soft); }
+  .faq-item:last-of-type { border-bottom: none; }
+  .faq-item h4 { font-size: 14.5px; margin-bottom: 5px; }
+  .faq-item p { font-size: 13.8px; margin: 0; }
+
+  table.roles { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+  table.roles th, table.roles td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line-soft); }
+  table.roles th { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-soft); }
+  table.roles td.ok { color: var(--good); font-weight: 600; }
+  table.roles td.no { color: var(--ink-soft); }
+
+  footer.page-footer {
+    border-top: 1px solid var(--line); margin-top: 30px; padding-top: 20px;
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--ink-soft);
+  }
+
+  .theme-toggle {
+    position: fixed; bottom: 16px; right: 16px; z-index: 20;
+    background: var(--card); border: 1px solid var(--line); border-radius: 100px;
+    box-shadow: var(--shadow); padding: 8px 14px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--ink-soft); cursor: pointer;
+  }
+
+  @media (max-width: 560px) {
+    .block-head { gap: 10px; }
+    .block-head .num { width: 38px; height: 38px; font-size: 17px; }
+    .block-head h2 { font-size: 19px; }
+  }
+</style>
+
+<div class="shell">
+
+  <div class="cover">
+    <span class="eyebrow"><span class="dot"></span>Manual SIGCOI · Administrador</span>
+    <h1>Gestão de Contas de Acesso</h1>
+    <p class="lede">
+      Como ativar o primeiro acesso do Administrador, dar acesso a uma pessoa
+      nova, editar uma pessoa já cadastrada, redefinir uma senha esquecida e
+      remover o acesso de quem sai da equipe — desde a Fase 3 do login real
+      (<code>_local-adr-policy-202</code>), o SIGCOI passa a exigir e-mail e
+      senha de cada pessoa, e só o Administrador cadastra e gerencia contas.
+    </p>
+  </div>
+
+  <nav class="jump">
+    <a href="#mudou"><span class="sw"></span>O que mudou</a>
+    <a href="#ativacao"><span class="sw"></span>Primeiro acesso do Administrador</a>
+    <a href="#cadastrar"><span class="sw"></span>Cadastrar pessoa</a>
+    <a href="#editar"><span class="sw"></span>Editar pessoa</a>
+    <a href="#link"><span class="sw"></span>Gerar link de acesso</a>
+    <a href="#entregar"><span class="sw"></span>Entregar o link</a>
+    <a href="#redefinir"><span class="sw"></span>Redefinir senha</a>
+    <a href="#remover"><span class="sw"></span>Remover acesso</a>
+    <a href="#seguranca"><span class="sw"></span>Segurança</a>
+    <a href="#faq"><span class="sw"></span>Perguntas frequentes</a>
+  </nav>
+
+  <!-- ===================== O QUE MUDOU ===================== -->
+  <section class="block" id="mudou">
+    <div class="block-head">
+      <div class="num">1</div>
+      <div>
+        <h2>O que mudou desde a Fase 3</h2>
+        <span class="sub">Login real substitui o troca-de-perfil de um clique</span>
+      </div>
+    </div>
+
+    <p>
+      Antes, qualquer pessoa cadastrada podia clicar no menu do cabeçalho e "virar"
+      qualquer outra pessoa do sistema — inclusive o Administrador — sem senha
+      nenhuma. Isso foi identificado como a falha mais grave de segurança do
+      sistema numa auditoria dedicada, e foi corrigido de ponta a ponta:
+    </p>
+
+    <ul style="color:var(--ink-soft); font-size:14px; padding-left:20px; margin-top:8px;">
+      <li>Cada pessoa entra com <strong>e-mail + senha próprios</strong>.</li>
+      <li>Quem está agindo no sistema é sempre conferido pela <strong>sessão de login no servidor</strong> — nunca por um dado que a tela do navegador declara.</li>
+      <li>Não existe mais botão de "trocar de perfil". Sair de uma conta e entrar em outra agora é um login de verdade.</li>
+      <li>Só o <strong>Administrador logado</strong> cadastra pessoas novas, edita, gera acesso e remove acesso.</li>
+    </ul>
+
+    <div class="callout good">
+      <b>O que isso significa na prática para você, Administrador</b>
+      Você passa a ser o único ponto de entrada de gente nova no sistema — e o
+      único que pode tirar o acesso de alguém. Este manual é o passo a passo
+      dessas tarefas.
+    </div>
+  </section>
+
+  <!-- ===================== ATIVAÇÃO (MIGRAÇÃO DE DADOS ANTIGOS) ===================== -->
+  <section class="block" id="ativacao">
+    <div class="block-head">
+      <div class="num">2</div>
+      <div>
+        <h2>Primeiro acesso do Administrador (migrando de dados antigos)</h2>
+        <span class="sub">Quando já existe gente cadastrada de antes do login real — o caso real da COI-INC</span>
+      </div>
+    </div>
+
+    <p>
+      A tela de "cadastrar o primeiro Administrador" (próxima seção do sistema,
+      não deste manual) só aparece quando o banco de dados está <strong>completamente
+      vazio</strong>. Se o sistema já tinha gente cadastrada antes do login real
+      existir — o caso real da COI-INC, com dezenas de pessoas já cadastradas,
+      incluindo quem já era Administrador — essa tela nunca aparece, porque o
+      banco não está vazio. Para isso existe um caminho separado: <strong>ativar</strong>
+      uma conta de Administrador que já existia, em vez de criar uma nova.
+    </p>
+
+    <div class="step">
+      <div class="marker">1</div>
+      <div>
+        <h4>Alguém com acesso ao painel do Render define o código de ativação</h4>
+        <p>A variável de ambiente <code class="mono">ADMIN_BOOTSTRAP_SECRET</code> — um valor aleatório longo (ex.: gerado com <code class="mono">openssl rand -hex 32</code>). Sem essa variável configurada, esta tela de ativação fica indisponível por padrão — ninguém consegue usá-la sem que alguém decida ligá-la.</p>
+        <span class="where">Render → Environment → Add Environment Variable</span>
+      </div>
+    </div>
+    <div class="step">
+      <div class="marker">2</div>
+      <div>
+        <h4>Esse código é entregue por fora do sistema, só para quem já é Administrador nos dados reais</h4>
+        <p>WhatsApp, ligação, entrega pessoal — nunca por um canal público. Cada Administrador dos dados antigos (por exemplo, mais de uma pessoa, se for o caso) recebe o mesmo código uma vez.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="marker">3</div>
+      <div>
+        <h4>Cada Administrador abre o site e vê a tela "Ativar acesso do Administrador"</h4>
+        <p>Digita o próprio e-mail (o que já estava cadastrado para essa pessoa antes), o código de ativação, e escolhe a própria senha. O sistema confere que esse e-mail já existe, já tem o papel Administrador, e ainda não tem senha nenhuma — só nesse caso a ativação funciona.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="marker">4</div>
+      <div>
+        <h4>Pronto — a partir daqui, essa pessoa já pode gerar links para todo mundo</h4>
+        <p>Incluindo para outro Administrador dos dados antigos que ainda não ativou a própria conta, ou para qualquer outra pessoa já cadastrada (ver "Cadastrar uma pessoa nova" — mas aqui não é cadastro, essas pessoas já existem, só falta senha).</p>
+      </div>
+    </div>
+
+    <div class="callout warn">
+      <b>Isto nunca cria uma pessoa nova</b>
+      A ativação só destrava a senha de uma pessoa que já existia com o papel
+      Administrador. Se o e-mail digitado não corresponder a um
+      Administrador sem senha (e-mail errado, papel diferente, ou já
+      ativado antes), o sistema recusa com a mesma mensagem genérica — não
+      revela qual desses foi o motivo.
+    </div>
+
+    <div class="callout">
+      <b>Essa tela aparece de novo num computador novo? Isso é esperado</b>
+      Enquanto sobrar qualquer pessoa cadastrada com o papel Administrador e
+      sem senha (mesmo que seja só um registro antigo de teste, não a sua
+      própria conta), a tela de ativação continua aparecendo para quem abre o
+      site sem sessão salva — mesmo que você já tenha ativado a sua. Se isso
+      acontecer e você já tem senha, use o link <strong>"Já tem uma senha?
+      Fazer login"</strong>, no rodapé dessa tela, para ir direto ao login
+      normal. O problema de fundo some sozinho assim que as contas antigas
+      sem e-mail forem limpas ou editadas (ver "Editar pessoa").
+    </div>
+
+    <div class="callout warn">
+      <b>Primeiro acesso do dia pode demorar — isso não é erro</b>
+      Se o sistema estiver hospedado num plano gratuito, a instância
+      "adormece" depois de um tempo sem uso e demora até cerca de 50 segundos
+      para acordar na primeira requisição do dia. Se a ativação ou o login
+      falharem com um erro genérico (ex.: "Erro HTTP 502") logo depois de
+      abrir o site pela primeira vez, espere uns 30 a 60 segundos com a
+      página aberta e tente de novo — na grande maioria das vezes, a segunda
+      tentativa funciona normalmente.
+    </div>
+
+    <div class="callout good">
+      <b>Depois que todo mundo ativou</b>
+      Recomendado: remova a variável <code class="mono">ADMIN_BOOTSTRAP_SECRET</code> do
+      Render (ou gere um valor novo, se quiser guardar a possibilidade de
+      usar de novo no futuro). Sem essa migração pendente, a tela de
+      ativação não tem mais função — o cadastro de pessoas novas passa a
+      ser sempre pelo fluxo normal ("Cadastrar uma pessoa nova", a seguir).
+    </div>
+  </section>
+
+  <!-- ===================== CADASTRAR PESSOA ===================== -->
+  <section class="block" id="cadastrar">
+    <div class="block-head">
+      <div class="num">3</div>
+      <div>
+        <h2>Cadastrar uma pessoa nova</h2>
+        <span class="sub">Configurações → Pessoas Cadastradas</span>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="marker">1</div>
+      <div>
+        <h4>Abra Configurações</h4>
+        <p>No menu principal, vá em <strong>Ferramentas → Configurações</strong> (ou direto pelo atalho "Configurações", se sua tela for larga o suficiente para mostrá-lo).</p>
+        <span class="where">Aba Configurações</span>
+      </div>
+    </div>
+    <div class="step">
+      <div class="marker">2</div>
+      <div>
+        <h4>Clique em "Cadastrar pessoa"</h4>
+        <p>Esse botão só aparece para quem está logado como Administrador. Preencha nome completo, papel (Técnico, Curador, Administrador, Pesquisador ou Estudante), instituição e e-mail.</p>
+        <span class="where">Painel "Pessoas Cadastradas"</span>
+      </div>
+    </div>
+    <div class="step">
+      <div class="marker">3</div>
+      <div>
+        <h4>Salve</h4>
+        <p>A pessoa já aparece na lista — mas <strong>ainda não tem senha</strong>. Ela não consegue logar até você gerar o link de acesso (próximo passo).</p>
+      </div>
+    </div>
+
+    <div class="callout">
+      <b>E-mail é o identificador de login</b>
+      O campo "e-mail" é o que a pessoa vai digitar para entrar no sistema —
+      não pode repetir um e-mail já cadastrado (maiúsculas/minúsculas não
+      importam: "Nome@x.com" e "nome@x.com" são o mesmo cadastro).
+    </div>
+
+    <div class="callout warn">
+      <b>Não cadastre de novo quem já existe sem e-mail</b>
+      Se a pessoa já aparece na lista mas sem e-mail (dado de antes do login
+      real existir), não cadastre um registro novo para ela — use
+      <strong>"Editar"</strong> (próxima seção) na pessoa já existente. Isso
+      evita duplicar nomes e preserva qualquer histórico já ligado ao
+      cadastro antigo.
+    </div>
+  </section>
+
+  <!-- ===================== EDITAR PESSOA ===================== -->
+  <section class="block" id="editar">
+    <div class="block-head">
+      <div class="num">4</div>
+      <div>
+        <h2>Editar uma pessoa já cadastrada</h2>
+        <span class="sub">Principal uso: preencher o e-mail de um cadastro antigo, sem e-mail</span>
+      </div>
+    </div>
+
+    <p>
+      Cadastros feitos antes do login real existir não têm e-mail nenhum — e,
+      sem e-mail, essa pessoa nunca consegue logar (mesmo que você gere um
+      link de acesso para ela). Em vez de apagar e recadastrar do zero,
+      edite o cadastro existente para completá-lo.
+    </p>
+
+    <div class="step">
+      <div class="marker">1</div>
+      <div>
+        <h4>Localize a pessoa na lista</h4>
+        <p>Em "Pessoas Cadastradas", pessoas sem e-mail aparecem com o aviso <em>"sem e-mail cadastrado"</em> no lugar do e-mail.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="marker">2</div>
+      <div>
+        <h4>Clique em "Editar"</h4>
+        <p>Abre um formulário no lugar da linha da pessoa, com nome, papel, instituição e e-mail — os mesmos campos do cadastro, já preenchidos com o que existir.</p>
+        <span class="where">Botão ao lado do nome da pessoa</span>
+      </div>
+    </div>
+    <div class="step">
+      <div class="marker">3</div>
+      <div>
+        <h4>Preencha o e-mail (ou corrija qualquer outro campo) e salve</h4>
+        <p>A partir daqui, "Gerar link de acesso" já funciona de verdade para essa pessoa — ela consegue definir a senha e logar normalmente.</p>
+      </div>
+    </div>
+
+    <div class="callout">
+      <b>Edição substitui dado antigo por completo</b>
+      Editar troca o que estiver nos campos — não é um complemento. Se a
+      pessoa já tiver senha definida, ela continua valendo normalmente;
+      editar não mexe na senha.
+    </div>
+
+    <h3>Uma pessoa com dois papéis: Curadora que também é Administradora</h3>
+    <p>
+      Cada pessoa tem um <b>papel principal</b> — é ele que aparece nas
+      assinaturas e no histórico. Quem cuida da coleção e também administra o
+      sistema (por exemplo, a Curadora responsável) não precisa de duas contas:
+      basta escolher o papel principal e marcar a caixa
+      <em>"Também é Administrador(a) do sistema"</em>, que aparece no cadastro e
+      na edição sempre que o papel escolhido não é Administrador.
+    </p>
+    <div class="step">
+      <div class="marker">1</div>
+      <div>
+        <h4>Clique em "Editar" na pessoa</h4>
+        <p>Vale também para o seu próprio cadastro.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="marker">2</div>
+      <div>
+        <h4>Escolha o papel principal e marque a caixa</h4>
+        <p>Ex.: papel <b>Curador</b> + caixa <em>"Também é Administrador(a) do sistema"</em> marcada. Salve.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="marker">3</div>
+      <div>
+        <h4>Confira na lista</h4>
+        <p>A pessoa aparece com dois selos: o do papel principal e <em>"+ administrador"</em>. Ela continua com o mesmo e-mail e a mesma senha — não precisa de link novo.</p>
+      </div>
+    </div>
+    <div class="callout">
+      <b>Você não consegue tirar o seu próprio acesso de Administrador</b>
+      Para não deixar o sistema sem ninguém que administre, salvar o seu próprio
+      cadastro sem papel de Administrador e sem a caixa marcada é recusado.
+      Se for mesmo necessário, peça a outro Administrador.
+    </div>
+  </section>
+
+  <!-- ===================== GERAR LINK ===================== -->
+  <section class="block" id="link">
+    <div class="block-head">
+      <div class="num">5</div>
+      <div>
+        <h2>Gerar o link de acesso</h2>
+        <span class="sub">Um link de uso único para cada pessoa definir a própria senha</span>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="marker">1</div>
+      <div>
+        <h4>Localize a pessoa na lista</h4>
+        <p>Em "Pessoas Cadastradas", encontre o nome de quem vai receber acesso (a pessoa que você acabou de cadastrar ou editar, ou alguém que já tinha conta e precisa de uma senha nova).</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="marker">2</div>
+      <div>
+        <h4>Clique em "Gerar link de acesso"</h4>
+        <p>O sistema cria um link de uso único e mostra ele na tela, dentro de uma caixa azul, com um botão "Copiar" — e a data em que o link perde a validade.</p>
+        <span class="where">Botão ao lado do nome da pessoa</span>
+      </div>
+    </div>
+    <div class="step">
+      <div class="marker">3</div>
+      <div>
+        <h4>Copie o link agora</h4>
+        <p>Esse link <strong>só aparece uma vez</strong>. Se você fechar a tela ou atualizar a página sem copiar, precisa gerar outro (isso é seguro por padrão: o link nunca fica gravado em nenhum lugar legível, só um hash dele).</p>
+      </div>
+    </div>
+
+    <div class="callout warn">
+      <b>Validade</b>
+      O link vale por 72 horas, ou até ser usado uma vez — o que vier primeiro.
+      Depois disso, gerar um novo link para a mesma pessoa é a solução (ver
+      "Redefinir senha" abaixo).
+    </div>
+
+    <div class="callout">
+      <b>Testando o link você mesmo?</b>
+      Se você, Administrador, abrir o link gerado no mesmo navegador em que
+      já está logado (por exemplo, para conferir que ele funciona antes de
+      enviar), tudo funciona normalmente — a tela de definir senha é pública
+      e não depende de você estar deslogado.
+    </div>
+  </section>
+
+  <!-- ===================== ENTREGAR O LINK ===================== -->
+  <section class="block" id="entregar">
+    <div class="block-head">
+      <div class="num">6</div>
+      <div>
+        <h2>Entregar o link e a pessoa entra pela primeira vez</h2>
+        <span class="sub">Sempre por fora do sistema, num canal privado</span>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="marker">1</div>
+      <div>
+        <h4>Envie o link por um canal privado</h4>
+        <p>WhatsApp, e-mail institucional ou entrega pessoal — nunca por um grupo público, mural ou qualquer canal que outras pessoas além da destinatária possam ver.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="marker">2</div>
+      <div>
+        <h4>A pessoa abre o link e define a senha</h4>
+        <p>Ela vê uma tela pedindo uma senha nova (mínimo 8 caracteres) e a confirmação dela, cada campo com um ícone de olho para mostrar/ocultar o que foi digitado — útil para conferir antes de salvar, especialmente em teclados pequenos de celular. Ao salvar, recebe a confirmação "Senha definida com sucesso" e um botão para ir ao login.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="marker">3</div>
+      <div>
+        <h4>A pessoa entra com e-mail + a senha que acabou de criar</h4>
+        <p>A partir daqui, ela já está logada e vê o sistema normalmente, de acordo com o papel que você cadastrou para ela.</p>
+      </div>
+    </div>
+
+    <div class="callout danger">
+      <b>Nunca faça isto</b>
+      Não envie a senha em texto pelo mesmo canal que qualquer outra pessoa
+      também acompanha, e não peça para alguém "usar o login de outra pessoa" —
+      cada conta deve ser usada só por quem ela identifica. É exatamente essa
+      garantia que a Fase 3 do login real existe para proteger.
+    </div>
+  </section>
+
+  <!-- ===================== REDEFINIR SENHA ===================== -->
+  <section class="block" id="redefinir">
+    <div class="block-head">
+      <div class="num">7</div>
+      <div>
+        <h2>Redefinir a senha de alguém</h2>
+        <span class="sub">Esqueceu a senha, ou o link expirou antes de usar</span>
+      </div>
+    </div>
+
+    <p>
+      A pessoa pode avisar sozinha, clicando em <strong>"Esqueci minha
+      senha"</strong> na tela de login — mas isso não redefine nada por conta
+      própria (não há e-mail nem SMS configurado no sistema): só registra um
+      pedido que aparece para você em Configurações. Quem resolve continua
+      sendo sempre o Administrador, com a mesma ação de "Cadastrar pessoa":
+    </p>
+
+    <div class="step">
+      <div class="marker">1</div>
+      <div>
+        <h4>Veja se há um pedido pendente</h4>
+        <p>Se alguém clicou em "Esqueci minha senha", um bloco amarelo
+        <strong>"Pedidos de Redefinição de Senha"</strong> aparece no topo de
+        Configurações, com o nome da pessoa e quando ela pediu. Sem pedido
+        pendente, esse bloco não aparece — vá direto para "Pessoas
+        Cadastradas".</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="marker">2</div>
+      <div>
+        <h4>Clique em "Gerar novo link" (no pedido) ou "Gerar link de acesso" (na lista de pessoas)</h4>
+        <p>Os dois botões fazem a mesma coisa e funcionam mesmo que já exista senha definida antes. Quando a pessoa usar esse link, a senha antiga é substituída pela nova — não dá para ter as duas. Gerar o link também remove o pedido pendente da lista automaticamente.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="marker">3</div>
+      <div>
+        <h4>Entregue o novo link do mesmo jeito (canal privado)</h4>
+        <p>Assim que a pessoa definir a nova senha, a antiga deixa de funcionar imediatamente.</p>
+      </div>
+    </div>
+
+    <div class="callout">
+      <b>"Esqueci minha senha" nunca revela quem está cadastrado</b>
+      Mesmo que o e-mail digitado não exista no sistema, a pessoa vê a
+      mesma mensagem de confirmação — por segurança, o sistema nunca diz se
+      um e-mail existe ou não. Só e-mails reais criam um pedido visível
+      para você.
+    </div>
+
+    <div class="callout good">
+      <b>Se a pessoa ainda tem acesso, ela mesma pode trocar a senha</b>
+      Gerar link é só para quem perdeu o acesso de verdade. Se a pessoa
+      ainda consegue logar (por exemplo, quer trocar a senha por
+      precaução), ela mesma faz isso em <strong>menu do nome → Trocar
+      minha senha</strong> — mais rápido, sem precisar do Administrador.
+    </div>
+
+    <div class="callout warn">
+      <b>Limitação conhecida desta versão</b>
+      Nem gerar um link novo, nem a pessoa trocar a própria senha,
+      invalida uma sessão já aberta em outro computador/navegador com a
+      senha antiga — só troca a senha na próxima vez que alguém tentar
+      logar com ela. Se o motivo for suspeita de acesso indevido, avise a
+      pessoa para também encerrar sessões abertas (fechar o navegador
+      onde estava logada) e, em caso de suspeita mais séria, considere
+      remover e recriar a conta (próxima seção).
+    </div>
+  </section>
+
+  <!-- ===================== REMOVER ACESSO ===================== -->
+  <section class="block" id="remover">
+    <div class="block-head">
+      <div class="num">8</div>
+      <div>
+        <h2>Remover o acesso de alguém</h2>
+        <span class="sub">Quando a pessoa sai da equipe, ou o acesso precisa ser revogado</span>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="marker">1</div>
+      <div>
+        <h4>Vá em Configurações → Pessoas Cadastradas</h4>
+        <p>Clique no ícone de lixeira ao lado do nome da pessoa.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="marker">2</div>
+      <div>
+        <h4>Confirme a remoção</h4>
+        <p>O sistema pede uma confirmação explícita antes de remover — não tem "desfazer" para esta ação específica (ela é sobre quem pode entrar, não sobre os dados do acervo).</p>
+      </div>
+    </div>
+
+    <div class="callout good">
+      <b>O que continua preservado</b>
+      Remover uma pessoa não apaga nenhum registro que ela já assinou —
+      recebimentos, custódias, laudos, reaberturas — nada disso desaparece.
+      O nome dela permanece em todo o histórico e na Linha do Tempo de
+      Auditoria exatamente como estava. Só o acesso futuro é cortado: o
+      e-mail fica livre para ser reaproveitado, se um dia for o caso, e
+      qualquer sessão dela ainda aberta para de funcionar na próxima ação que
+      tentar fazer.
+    </div>
+  </section>
+
+  <!-- ===================== SEGURANÇA ===================== -->
+  <section class="block" id="seguranca">
+    <div class="block-head">
+      <div class="num">9</div>
+      <div>
+        <h2>Segurança & boas práticas</h2>
+        <span class="sub">O que o Administrador precisa lembrar sempre</span>
+      </div>
+    </div>
+
+    <ul style="color:var(--ink-soft); font-size:14px; padding-left:20px;">
+      <li>Cada pessoa tem sua própria conta. Nunca crie uma conta "genérica" (ex.: "Laboratório", "Turno da Tarde") para várias pessoas usarem — isso quebra a rastreabilidade que todo o sistema existe para garantir.</li>
+      <li>Trate o link de definição de senha como se fosse uma senha temporária: envie só para a pessoa certa, por um canal privado, e nunca o publique em nenhum lugar (grupo, mural, planilha compartilhada).</li>
+      <li>O papel Administrador tem acesso à Zona de Risco (exclusão reversível de dados). Cadastre esse papel só para quem realmente precisa dele.</li>
+      <li>Qualquer segredo de ambiente (código de ativação, senha de banco de dados) que precisar compartilhar para configurar o sistema, gere na própria ferramenta de hospedagem e cole direto lá — evite deixá-lo registrado em conversas de texto, mesmo privadas; se isso acontecer, troque o valor depois por precaução.</li>
+      <li>Esta versão (Alfa) ainda não tem autenticação em duas etapas nem exige troca periódica de senha — são pendências conhecidas, registradas em <code>_local-adr-policy-202</code>.</li>
+    </ul>
+
+    <table class="roles">
+      <thead>
+        <tr><th>Papel</th><th>Assina fases</th><th>Zona de Risco</th><th>Gerencia contas</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Técnico</td><td class="ok">Sim</td><td class="no">Não</td><td class="no">Não</td></tr>
+        <tr><td>Curador</td><td class="ok">Sim</td><td class="no">Não</td><td class="no">Não</td></tr>
+        <tr><td>Administrador</td><td class="ok">Sim</td><td class="ok">Sim</td><td class="ok">Sim</td></tr>
+        <tr><td>Pesquisador</td><td class="no">Não</td><td class="no">Não</td><td class="no">Não</td></tr>
+        <tr><td>Estudante</td><td class="no">Não</td><td class="no">Não</td><td class="no">Não</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ===================== FAQ ===================== -->
+  <section class="block" id="faq">
+    <div class="block-head">
+      <div class="num">10</div>
+      <div>
+        <h2>Perguntas frequentes</h2>
+        <span class="sub">Dúvidas comuns do dia a dia</span>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <h4>O sistema abriu direto numa tela pedindo para eu criar um Administrador. É normal?</h4>
+      <p>Sim — isso só acontece quando o banco de dados está completamente vazio (nenhuma pessoa cadastrada), como na primeira instalação. É a única vez que o sistema aceita criar uma conta sem ninguém logado antes. Depois desse primeiro Administrador criado, essa tela nunca mais aparece.</p>
+    </div>
+    <div class="faq-item">
+      <h4>O sistema abriu direto numa tela pedindo e-mail + código de ativação. É normal?</h4>
+      <p>Sim — é a tela de "Primeiro acesso do Administrador" (ver seção 2 deste manual), que aparece quando o banco já tem gente cadastrada de antes do login real (o caso real da COI-INC) e ainda existe Administrador sem senha. Só funciona com o código de ativação (<code class="mono">ADMIN_BOOTSTRAP_SECRET</code>) que quem configurou o ambiente entregou a você por fora do sistema. Se você já tem senha e essa tela aparecer de novo (por exemplo, num computador novo), use o link "Já tem uma senha? Fazer login" no rodapé dela.</p>
+    </div>
+    <div class="faq-item">
+      <h4>Posso trocar a minha própria senha sem gerar um link para mim mesmo?</h4>
+      <p>Sim. Clique no seu nome no canto superior direito → <strong>Trocar minha senha</strong>. Você precisa digitar a senha atual (por segurança, mesmo já estando logado) e a nova senha duas vezes. Vale para qualquer papel, não só Administrador.</p>
+    </div>
+    <div class="faq-item">
+      <h4>Uma pessoa esqueceu o e-mail que cadastrou. O que faço?</h4>
+      <p>Veja a lista em Configurações → Pessoas Cadastradas — o e-mail de cada pessoa aparece junto do nome dela.</p>
+    </div>
+    <div class="faq-item">
+      <h4>Cadastrei o e-mail errado, ou preciso adicionar e-mail a uma pessoa antiga sem e-mail. Posso corrigir?</h4>
+      <p>Sim — clique em <strong>"Editar"</strong>, ao lado do nome da pessoa, e corrija qualquer campo (nome, papel, instituição ou e-mail). Não é mais necessário remover e recadastrar.</p>
+    </div>
+    <div class="faq-item">
+      <h4>Quantos Administradores o sistema pode ter?</h4>
+      <p>Quantos forem necessários — não há limite. Recomenda-se ter pelo menos dois, para que a gestão de contas nunca dependa de uma única pessoa disponível.</p>
+    </div>
+  </section>
+
+  <footer class="page-footer">
+    <span>Manual SIGCOI — Administrador · Gestão de Contas · v8</span>
+    <span>_local-adr-policy-202 · Login real</span>
+  </footer>
+</div>
+
+<button class="theme-toggle" onclick="(function(){
+  var r=document.documentElement, cur=r.getAttribute('data-theme');
+  var next = cur==='dark' ? 'light' : (cur==='light' ? null : 'dark');
+  if (next) r.setAttribute('data-theme', next); else r.removeAttribute('data-theme');
+})()">Alternar tema claro/escuro</button>
+
+</body>
+</html>

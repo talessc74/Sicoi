@@ -1,36 +1,33 @@
 import React, { useState } from 'react';
 import { Plus, X, AlertCircle } from 'lucide-react';
+import { formatCoiNumber } from '../utils/coiNumber';
 
 interface NewCollectionModalProps {
   existingNics: string[];
   onCancel: () => void;
-  onConfirm: (nic: string, number: string) => Promise<void>;
+  onConfirm: (nic: string) => Promise<void>;
 }
 
-// O NIC é escolhido pela pessoa que cadastra (antes era gerado em sequência pelo
-// sistema). Formato NIC-AAAA-NÚMERO; só o ano e o número são digitados.
+// O número do conjunto é escolhido por quem cadastra (antes era gerado em
+// sequência pelo sistema). Formato COI-XXX (ver utils/coiNumber.ts): só o
+// número é digitado — o mesmo da caixa na planilha de controle da coleção.
 export const NewCollectionModal: React.FC<NewCollectionModalProps> = ({ existingNics, onCancel, onConfirm }) => {
-  const [year, setYear] = useState(String(new Date().getFullYear()));
   const [number, setNumber] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const cleanNumber = number.trim().toUpperCase();
-  const nic = `NIC-${year.trim()}-${cleanNumber}`;
-  const yearValid = /^\d{4}$/.test(year.trim());
-  const numberValid = /^[A-Z0-9]+$/.test(cleanNumber);
-  const duplicate = existingNics.some((n) => n.toUpperCase() === nic);
-  const canConfirm = yearValid && numberValid && !duplicate && !saving;
+  const coi = formatCoiNumber(number);
+  const duplicate = coi !== null && existingNics.some((n) => n.toUpperCase() === coi);
+  const canConfirm = coi !== null && !duplicate && !saving;
 
   const problems: string[] = [];
-  if (!yearValid) problems.push('o ano deve ter 4 dígitos');
-  if (cleanNumber && !numberValid) problems.push('o número pode ter só letras e algarismos, sem espaços');
-  if (duplicate) problems.push(`o ${nic} já existe no acervo`);
+  if (number.trim() && coi === null) problems.push('digite só o número, com algarismos (ex.: 1, 42 ou 204)');
+  if (duplicate) problems.push(`o ${coi} já existe no acervo`);
 
   const handleConfirm = async () => {
     if (!canConfirm) return;
     setSaving(true);
     try {
-      await onConfirm(nic, cleanNumber);
+      await onConfirm(coi as string);
     } finally {
       setSaving(false);
     }
@@ -47,9 +44,9 @@ export const NewCollectionModal: React.FC<NewCollectionModalProps> = ({ existing
       >
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h3 className="font-bold text-base text-slate-900 dark:text-white">Novo Conjunto (NIC)</h3>
+            <h3 className="font-bold text-base text-slate-900 dark:text-white">Novo Conjunto (COI)</h3>
             <p className="text-slate-500 dark:text-slate-400 mt-1">
-              Informe o número do conjunto. O NIC não pode ser alterado depois de criado.
+              Informe o número do conjunto — o mesmo da caixa. O número não pode ser alterado depois de criado.
             </p>
           </div>
           <button type="button" onClick={onCancel} className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800" title="Cancelar">
@@ -57,32 +54,24 @@ export const NewCollectionModal: React.FC<NewCollectionModalProps> = ({ existing
           </button>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
-          <label className="block">
-            <span className="block text-slate-600 dark:text-slate-400 font-medium mb-1">Ano *</span>
-            <input
-              value={year}
-              onChange={(e) => setYear(e.target.value)}
-              inputMode="numeric"
-              maxLength={4}
-              className="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-mono"
-            />
-          </label>
-          <label className="block col-span-2">
-            <span className="block text-slate-600 dark:text-slate-400 font-medium mb-1">Número *</span>
+        <label className="block">
+          <span className="block text-slate-600 dark:text-slate-400 font-medium mb-1">Número do conjunto *</span>
+          <div className="flex items-center rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 overflow-hidden">
+            <span className="pl-2.5 pr-1 font-mono text-slate-500 dark:text-slate-400 select-none">COI-</span>
             <input
               value={number}
               onChange={(e) => setNumber(e.target.value)}
               autoFocus
-              placeholder="Ex.: 0841"
-              className="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-mono"
+              inputMode="numeric"
+              placeholder="Ex.: 1"
+              className="w-full py-2.5 pr-2.5 bg-transparent text-slate-900 dark:text-white font-mono outline-none"
             />
-          </label>
-        </div>
+          </div>
+        </label>
 
         <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono">
-          <span className="text-slate-400 text-[10px] uppercase block">NIC que será criado</span>
-          <span className="text-base font-bold text-slate-900 dark:text-white">{cleanNumber ? nic : `NIC-${year.trim()}-…`}</span>
+          <span className="text-slate-400 text-[10px] uppercase block">Conjunto que será criado</span>
+          <span className="text-base font-bold text-slate-900 dark:text-white">{coi ?? 'COI-…'}</span>
         </div>
 
         {problems.length > 0 && (

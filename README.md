@@ -128,9 +128,9 @@ consulte o índice `.xdrs/_local/index.md` daquele repositório.
   cadastrados em outros conjuntos, e mostra os casos reais que batem — nunca
   texto fixo de exemplo.
 - **Pendências conhecidas, fora do escopo até agora:** validação de entrada
-  mais rígida no backend, CSRF nas rotas que alteram estado, rate-limit de
-  login persistente entre reinícios do servidor (hoje é em memória — ver
-  `_local-adr-policy-202`).
+  mais rígida no backend. CSRF (double-submit token, `csrfProtection` em
+  `server.ts`) e rate-limit de login persistente em Postgres (tabela
+  `login_attempts`) já estão implementados — ver `_local-adr-policy-202`.
 
 ## Rodando localmente
 

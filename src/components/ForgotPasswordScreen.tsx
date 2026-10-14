@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { forgotPasswordApi } from '../services/authService';
+import { ErrorNotice } from './ErrorNotice';
+import { toAppError, AppError } from '../utils/errorMessages';
 import { KeyRound, Loader2, ArrowLeft, CheckCircle2 } from 'lucide-react';
 
 interface ForgotPasswordScreenProps {
@@ -16,7 +18,7 @@ interface ForgotPasswordScreenProps {
 export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ onBack }) => {
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<AppError | null>(null);
   const [confirmation, setConfirmation] = useState<string | null>(null);
 
   const isValid = email.trim().length > 0;
@@ -30,7 +32,7 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ onBa
       const { message } = await forgotPasswordApi(email.trim());
       setConfirmation(message);
     } catch (err: any) {
-      setError(err?.message || 'Não foi possível registrar o pedido.');
+      setError(toAppError(err, 'Não foi possível registrar o pedido.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -79,7 +81,7 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ onBa
               />
             </div>
 
-            {error && <p className="text-xs text-rose-600 dark:text-rose-400 font-mono">{error}</p>}
+            {error && <ErrorNotice code={error.code} message={error.message} />}
 
             <button
               type="submit"

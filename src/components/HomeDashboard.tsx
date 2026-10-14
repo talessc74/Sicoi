@@ -44,17 +44,18 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   const fullyCatalogedCount = collections.filter(c => c.currentPhase >= 7).length;
   const catalogedPercent = totalCollections > 0 ? Math.round((fullyCatalogedCount / totalCollections) * 100) : 0;
 
-  const phaseCounts = [1, 2, 3, 4, 5, 6, 7].map(ph => ({
+  const phaseCounts = [0, 1, 2, 3, 4, 5, 6, 7].map(ph => ({
     phase: ph,
     count: collections.filter(c => c.currentPhase === ph).length
   }));
 
   const phaseNames: Record<number, string> = {
+    0: 'Recebimento (D.O.)',
     1: 'Recebimento & Triagem',
     2: 'Limpeza & Secagem',
     3: 'Acondicionamento Provisório',
-    4: 'Curadoria Científica & NMI',
-    5: 'Patologias & Marcação',
+    4: 'Montagem e Inventário & NMI',
+    5: 'Alterações Ósseas & Marcação',
     6: 'Galpão Definitivo & QR',
     7: 'Consulta & Pesquisa'
   };
@@ -107,7 +108,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold flex items-center gap-2 border border-white/20 transition-colors"
             >
               <Plus className="w-4 h-4 text-emerald-400" />
-              <span>Novo Conjunto (NIC)</span>
+              <span>Novo Conjunto (COI)</span>
             </button>
           </div>
         </div>
@@ -131,7 +132,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           <div className="space-y-1">
             <span className="text-xs text-slate-500 font-mono">Total de Conjuntos</span>
             <div className="text-2xl font-bold font-mono text-slate-900 dark:text-white">
-              {totalCollections} <span className="text-xs font-normal text-slate-400">NICs</span>
+              {totalCollections} <span className="text-xs font-normal text-slate-400">{totalCollections === 1 ? 'conjunto' : 'conjuntos'}</span>
             </div>
             <span
               className={`text-[11px] font-medium ${catalogedPercent === 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}
@@ -206,7 +207,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         </div>
 
         <div className="overflow-x-auto pb-1">
-          <div className="grid grid-cols-7 gap-2.5 min-w-[900px]">
+          <div className="grid grid-cols-8 gap-2.5 min-w-[1000px]">
             {phaseCounts.map(({ phase, count }) => {
               // A Fase 7 é consulta de conjuntos já concluídos, não uma fila pendente.
               const hasPending = count > 0 && phase < 7;
@@ -218,7 +219,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                     onNavigateToPhase(phase);
                     onNavigateToTab('fases');
                   }}
-                  aria-label={`Fase ${phase}: ${count} ${count === 1 ? 'NIC' : 'NICs'} · ${phaseNames[phase]}`}
+                  aria-label={`Fase ${phase}: ${count} ${count === 1 ? 'conjunto' : 'conjuntos'} · ${phaseNames[phase]}`}
                   className={`p-3 rounded-xl border text-left transition-colors space-y-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 ${
                     hasPending
                       ? 'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 hover:border-amber-500'
@@ -232,7 +233,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                     <span className={`w-2 h-2 rounded-full ${hasPending ? 'bg-amber-500' : 'bg-slate-300 dark:bg-slate-600'}`} />
                   </div>
                   <div className={`text-base font-bold font-mono ${hasPending ? 'text-slate-900 dark:text-amber-100' : 'text-slate-500 dark:text-slate-400'}`}>
-                    {count} {count === 1 ? 'NIC' : 'NICs'}
+                    {count} {count === 1 ? 'conjunto' : 'conjuntos'}
                   </div>
                   <div className={`text-[10px] truncate ${hasPending ? 'text-slate-600 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'}`} title={phaseNames[phase]}>
                     {phaseNames[phase]}
@@ -260,7 +261,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             className="px-3 py-1.5 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-semibold hover:opacity-95 transition-opacity flex items-center gap-1.5"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Adicionar NIC</span>
+            <span>Adicionar conjunto (COI)</span>
           </button>
         </div>
 
@@ -268,7 +269,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 font-mono uppercase text-[10px] border-b border-slate-200 dark:border-slate-800">
               <tr>
-                <th className="px-5 py-3 font-semibold">NIC Oficial</th>
+                <th className="px-5 py-3 font-semibold">Nº COI</th>
                 <th className="px-5 py-3 font-semibold">Fase Atual</th>
                 <th className="px-5 py-3 font-semibold">Indivíduos (NMI)</th>
                 <th className="px-5 py-3 font-semibold">Caixas</th>
@@ -309,8 +310,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                       {!nmiNotDetermined ? (
                         <>{col.phase4.individuals.length} {col.phase4.individuals.length === 1 ? 'indivíduo (NMI)' : 'indivíduos (NMI)'}</>
                       ) : (
-                        // Sem curadoria concluída, o número de caixas não informa o NMI.
-                        <span className="text-slate-400" title="Fase 4 (Curadoria) ainda não realizada — nenhum indivíduo confirmado">
+                        // Sem Montagem e Inventário concluídos, o número de caixas não informa o NMI.
+                        <span className="text-slate-400" title="Fase 4 (Montagem e Inventário) ainda não realizada — nenhum indivíduo confirmado">
                           Não determinado
                         </span>
                       )}
@@ -348,7 +349,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                             onNavigateToTab('auditoria');
                           }}
                           className="px-2.5 py-1 rounded-lg border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 font-mono text-xs font-semibold inline-flex items-center gap-1 transition-colors"
-                          title="Ver Linha do Tempo de Auditoria deste NIC"
+                          title="Ver Linha do Tempo de Auditoria deste conjunto"
                         >
                           <ShieldCheck className="w-3 h-3 text-emerald-600" />
                           <span>Auditoria</span>
