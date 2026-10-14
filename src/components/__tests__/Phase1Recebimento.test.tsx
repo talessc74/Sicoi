@@ -126,7 +126,7 @@ describe('Phase1Recebimento', () => {
   it('bloqueia a assinatura quando o papel ativo não é Técnico nem Curador', async () => {
     const user = userEvent.setup();
     const collection = baseCollection('NIC-TEST-0002');
-    const currentUser = makeUser('pesquisador');
+    const currentUser = makeUser('estudante');
 
     render(
       <Phase1Recebimento
@@ -143,8 +143,40 @@ describe('Phase1Recebimento', () => {
     expect(signButton).toBeDisabled();
 
     expect(
+      screen.getByText((text) => text.includes('"estudante"') && text.includes('Técnico ou Curador pode assinar'))
+    ).toBeInTheDocument();
+  });
+
+  it('bloqueia a assinatura do Pesquisador — sua participação é a confirmação opcional, nunca a assinatura que trava a fase', async () => {
+    const user = userEvent.setup();
+    const collection = baseCollection('NIC-TEST-0002B');
+    const currentUser = makeUser('pesquisador');
+    const onUpdateCollection = vi.fn();
+
+    render(
+      <Phase1Recebimento
+        collection={collection}
+        currentUser={currentUser}
+        onUpdateCollection={onUpdateCollection}
+        laboratoryMode={false}
+      />
+    );
+
+    await goToFormMode(user);
+
+    const signButton = screen.getByRole('button', { name: /revisar & assinar fase 1/i });
+    expect(signButton).toBeDisabled();
+    expect(
       screen.getByText((text) => text.includes('"pesquisador"') && text.includes('Técnico ou Curador pode assinar'))
     ).toBeInTheDocument();
+
+    // A confirmação opcional do Pesquisador existe, é separada, e nunca mexe em canSign.
+    const confirmButton = screen.getByRole('button', { name: /confirmar revisão \(pesquisador\)/i });
+    await user.click(confirmButton);
+
+    const updated = onUpdateCollection.mock.calls.at(-1)?.[0] as OsteologicalCollection;
+    expect(updated.phase1.researcherConfirmation?.confirmedByName).toBe('Fulano de Tal');
+    expect(screen.getByRole('button', { name: /revisar & assinar fase 1/i })).toBeDisabled();
   });
 
   it('chama onUpdateCollection com os dados atualizados ao preencher um campo do formulário', async () => {
