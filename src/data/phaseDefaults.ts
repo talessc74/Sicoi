@@ -1,11 +1,18 @@
-// Fábrica dos formulários vazios das Fases 1 e 2, fiéis ao Formulário A.1 e ao POP-01
-// §9.5-9.7. Única fonte de verdade da "forma vazia" — reutilizada por App.tsx (novo
-// conjunto) e pelos dados de exemplo (mockData.ts), em vez de repetir os ~35 campos
-// em cada lugar que precisa criar um Phase1Data/Phase2Data do zero.
-import { Phase1Data, Phase2Data } from '../types/sgccco';
+// Fábrica dos formulários vazios das Fases 0, 1 e 2, fiéis ao Formulário A.1 e ao
+// POP-01 §9.5-9.7 (Fases 1/2) e à Declaração de Óbito (Fase 0). Única fonte de
+// verdade da "forma vazia" — reutilizada por App.tsx (novo conjunto) e pelos dados
+// de exemplo (mockData.ts), em vez de repetir os campos em cada lugar que precisa
+// criar um Phase0Data/Phase1Data/Phase2Data do zero.
+import { Phase0Data, Phase1Data, Phase2Data } from '../types/sgccco';
 
 function field<T>(value: T) {
   return { value, isAiSuggested: false as const };
+}
+
+export function createEmptyPhase0Data(): Phase0Data {
+  return {
+    filhos: []
+  };
 }
 
 export function createEmptyPhase1Data(): Phase1Data {

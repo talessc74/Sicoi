@@ -3,7 +3,12 @@
 
 export type UserRole = 'tecnico' | 'curador' | 'administrador' | 'pesquisador' | 'estudante';
 
-export type PhaseNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+export type PhaseNumber = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
+
+export type BrazilianUf =
+  | 'AC' | 'AL' | 'AP' | 'AM' | 'BA' | 'CE' | 'DF' | 'ES' | 'GO' | 'MA'
+  | 'MT' | 'MS' | 'MG' | 'PA' | 'PB' | 'PR' | 'PE' | 'PI' | 'RJ' | 'RN'
+  | 'RS' | 'RO' | 'RR' | 'SC' | 'SP' | 'SE' | 'TO';
 
 export interface UserProfile {
   id: string;
@@ -89,6 +94,82 @@ export interface ResearcherReviewConfirmation {
   confirmedByName: string;
   confirmedAt: string;
   sha256Hash: string;
+}
+
+export interface Phase0ChildRecord {
+  id: string;
+  nome: string;
+  idade: string;
+}
+
+/**
+ * Fase 0: Recebimento — dados pessoais e do óbito transcritos da Declaração de
+ * Óbito (D.O.) que acompanha o conjunto na entrada, antes da Fase 1 (Formulário
+ * A.1). Responsabilidade do Técnico (ou Curador, agindo como técnico): a
+ * assinatura única abaixo é quem trava a fase e libera a Fase 1 — não é um
+ * modelo de dupla assinatura como Fase 4/5. Todo campo é opcional porque a D.O.
+ * real frequentemente chega com partes em branco ou "IGN." (aprovado com o
+ * Tales a partir da D.O. nº 21492, out/2026) — a fase trava com o que foi
+ * possível preencher, nunca exige um campo específico pra assinar.
+ */
+export interface Phase0Data {
+  nome?: string;
+  sexo?: 'M' | 'F' | 'Ignorado';
+  cor?: 'Branca' | 'Preta' | 'Parda' | 'Amarela' | 'Indígena' | 'Ignorada';
+  nacionalidade?: string;
+  naturalCidade?: string;
+  naturalUf?: BrazilianUf;
+  nascimento?: string; // ISO 8601 (data)
+  idade?: number;
+  estadoCivil?: 'Solteiro(a)' | 'Casado(a)' | 'Divorciado(a)' | 'Viúvo(a)' | 'Separado(a) judicialmente' | 'Ignorado';
+  profissao?: string;
+  cpf?: string;
+  rg?: string;
+
+  paiNome?: string;
+  paiFalecido?: boolean;
+  paiNatural?: string;
+  paiEstadoCivil?: string;
+  paiProfissao?: string;
+
+  maeNome?: string;
+  maeFalecida?: boolean;
+  maeNatural?: string;
+  maeEstadoCivil?: string;
+  maeProfissao?: string;
+
+  conjugeNome?: string;
+  conjugeNatural?: string;
+  conjugeProfissao?: string;
+
+  localFalecimento?: string;
+  obitoCidade?: string;
+  obitoUf?: BrazilianUf;
+  dataFalecimento?: string; // ISO 8601 (data)
+  horaFalecimento?: string;
+  medicoNome?: string;
+  medicoCrm?: string;
+  causaMorte?: string;
+
+  cemiterio?: string;
+  dataInumacao?: string; // ISO 8601 (data)
+  dataExumacao?: string; // ISO 8601 (data)
+
+  filhos: Phase0ChildRecord[];
+
+  observacoes?: string;
+
+  // Assinatura única do Técnico (ou Curador) que trava a Fase 0 e libera a
+  // Fase 1 — diferente do modelo de dupla assinatura de Fase 4/5.
+  technicianReceivalSign?: {
+    signedByName: string;
+    signedAt: string;
+    sha256Hash: string;
+  };
+
+  // Confirmação opcional do Pesquisador (ver ResearcherReviewConfirmation) —
+  // nunca substitui technicianReceivalSign.
+  researcherConfirmation?: ResearcherReviewConfirmation;
 }
 
 // Categorias fixas do checklist fotográfico do Formulário A.1 (campos 5-9)
@@ -753,6 +834,11 @@ export interface OsteologicalCollection {
   
   // Dados de cada fase
   legalOrigin: LegalOriginData;
+  // Opcional: conjuntos criados antes da Fase 0 existir (out/2026) nunca tiveram
+  // este campo — a fase deles nasceu direto na Fase 1, e segue assim, sem ser
+  // forçada retroativamente a passar pela Fase 0. Só conjuntos novos ganham
+  // phase0 já no momento da criação (ver App.tsx).
+  phase0?: Phase0Data;
   phase1: Phase1Data;
   phase2: Phase2Data;
   phase3: Phase3Data;

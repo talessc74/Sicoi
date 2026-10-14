@@ -24,6 +24,7 @@ export const PhaseProgressRibbon: React.FC<PhaseProgressRibbonProps> = ({
   const [justification, setJustification] = React.useState('');
 
   const phasesInfo: { number: PhaseNumber; title: string; subtitle: string; signerRole: string }[] = [
+    { number: 0, title: 'Fase 0', subtitle: 'Recebimento', signerRole: 'Técnico' },
     { number: 1, title: 'Fase 1', subtitle: 'Recebimento & A.1', signerRole: 'Técnico' },
     { number: 2, title: 'Fase 2', subtitle: 'Limpeza & Secagem A.2', signerRole: 'Técnico' },
     { number: 3, title: 'Fase 3', subtitle: 'Acondic. Provisório', signerRole: 'Técnico' },
@@ -41,8 +42,14 @@ export const PhaseProgressRibbon: React.FC<PhaseProgressRibbonProps> = ({
     return getLatestPhaseSignature(collection.signatures, p);
   };
 
+  // Conjuntos criados antes da Fase 0 existir (out/2026) nunca tiveram phase0 —
+  // nasceram direto na Fase 1 e continuam liberados nela, sem ficar retroativamente
+  // bloqueados por uma fase que não existia quando foram criados.
+  const hasPhase0 = Boolean(collection.phase0);
+
   const isPhaseAccessible = (p: PhaseNumber): boolean => {
-    if (p === 1) return true;
+    if (p === 0) return true;
+    if (p === 1) return !hasPhase0 || isPhaseSigned(0);
     if (p === 7) return true; // Consulta sempre aberta
     // Bloqueio sequencial: fase P exige fase P-1 assinada
     return isPhaseSigned((p - 1) as PhaseNumber);
