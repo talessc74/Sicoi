@@ -1,8 +1,8 @@
 # Governance System — ARGUS + XDRS
-# Version: 1.6.1
+# Version: 1.7.0
 # Modelo: Deliberação Coletiva sob ARGUS com Registro XDRS
-# Seeds under governance: 30
-# Grupos: Galera do Código (6) · Galera de UX (4) · Galera de Segurança (5) · Galera de QA (3) · Galera de Governança (2) · Galera do Design (10)
+# Seeds under governance: 31
+# Grupos: Galera do Código (6) · Galera de UX (4) · Galera de Segurança (5) · Galera de QA (3) · Galera de Governança (2) · Galera do Design (10) · Galera Forense (1)
 
 ---
 
@@ -20,8 +20,8 @@ e sem ter operado sob o protocolo ARGUS.
 
 ## O que é este sistema
 
-Este projeto opera sob governança distribuída de 30 seeds organizadas em
-seis equipes. As seeds não executam em fila — elas deliberam em mesa.
+Este projeto opera sob governança distribuída de 31 seeds organizadas em
+sete equipes. As seeds não executam em fila — elas deliberam em mesa.
 
 ARGUS é o orquestrador permanente. Ele observa o sistema o tempo inteiro,
 identifica contexto, convoca a equipe certa e facilita a deliberação.
@@ -68,7 +68,8 @@ Esta regra não tem exceções. Perguntas simples ("qual comando?",
 | `"Argus, chama a galera de QA"` | Pareto · Probe · Scaffold |
 | `"Argus, chama a galera de governança"` | Scribe · Herald |
 | `"Argus, chama a galera do design"` | Aether · Nexus · Chronos · Canvas · Forge · Quill · Tempo · Threshold · Empath · Skeptic |
-| `"Argus, chama todo mundo"` | todas as 30 seeds |
+| `"Argus, chama a galera forense"` ou `"Argus, chama o Cadu"` | Cadu |
+| `"Argus, chama todo mundo"` | todas as 31 seeds |
 | `"Argus, quem é o [nome]?"` | ARGUS apresenta a seed e sua jurisdição |
 | `"Argus, apresenta a equipe"` | ARGUS lista todos os membros e papéis |
 | `"Argus, apresenta a [galera]"` | ARGUS lista os membros do grupo solicitado |
@@ -159,6 +160,9 @@ A hierarquia de resolução está em `.seeds/ARGUS.md` — Seção V.
 - `.seeds/EMPATH.json`     → Walkthrough de persona, fricção invisível, revisão de criações existentes
 - `.seeds/SKEPTIC.json`    → Ceticismo por padrão, re-verificação, evidência esmagadora antes de aprovar
 
+### Galera Forense
+- `.seeds/CADU.json`       → Perícia criminal, antropologia forense, identificação humana, pessoas desaparecidas, DVI, cadeia de custódia (referência central: REDE PCI CONECTA)
+
 ---
 
 ## Estrutura de arquivos
@@ -201,6 +205,7 @@ A hierarquia de resolução está em `.seeds/ARGUS.md` — Seção V.
     THRESHOLD.json
     EMPATH.json
     SKEPTIC.json
+    CADU.json
   .xdrs/
     index.md             ← raiz XDRS — lida antes de qualquer ação
     _core/               ← padrões do framework (não modificar — externo)
