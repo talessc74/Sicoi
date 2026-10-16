@@ -1757,19 +1757,25 @@ const PHASE0_EXTRACTION_RESPONSE_SCHEMA = {
     estadoCivil: { type: 'STRING', enum: PHASE0_ESTADO_CIVIL_ENUM },
     profissao: { type: 'STRING' },
     cpf: { type: 'STRING' },
-    rg: { type: 'STRING' },
+    rgNumero: { type: 'STRING' },
+    rgOrgaoExpedidor: { type: 'STRING' },
+    rgUfExpedidor: { type: 'STRING', enum: PHASE0_UF_ENUM },
     paiNome: { type: 'STRING' },
     paiFalecido: { type: 'BOOLEAN' },
-    paiNatural: { type: 'STRING' },
-    paiEstadoCivil: { type: 'STRING' },
+    paiNaturalCidade: { type: 'STRING' },
+    paiNaturalUf: { type: 'STRING', enum: PHASE0_UF_ENUM },
+    paiEstadoCivil: { type: 'STRING', enum: PHASE0_ESTADO_CIVIL_ENUM },
     paiProfissao: { type: 'STRING' },
     maeNome: { type: 'STRING' },
     maeFalecida: { type: 'BOOLEAN' },
-    maeNatural: { type: 'STRING' },
-    maeEstadoCivil: { type: 'STRING' },
+    maeNaturalCidade: { type: 'STRING' },
+    maeNaturalUf: { type: 'STRING', enum: PHASE0_UF_ENUM },
+    maeEstadoCivil: { type: 'STRING', enum: PHASE0_ESTADO_CIVIL_ENUM },
     maeProfissao: { type: 'STRING' },
     conjugeNome: { type: 'STRING' },
-    conjugeNatural: { type: 'STRING' },
+    conjugeNaturalCidade: { type: 'STRING' },
+    conjugeNaturalUf: { type: 'STRING', enum: PHASE0_UF_ENUM },
+    conjugeEstadoCivil: { type: 'STRING', enum: PHASE0_ESTADO_CIVIL_ENUM },
     conjugeProfissao: { type: 'STRING' },
     localFalecimento: { type: 'STRING' },
     obitoCidade: { type: 'STRING' },
@@ -1795,10 +1801,10 @@ const PHASE0_EXTRACTION_RESPONSE_SCHEMA = {
 };
 
 const PHASE0_STRING_FIELDS = [
-  'nome', 'nacionalidade', 'naturalCidade', 'nascimento', 'profissao', 'cpf', 'rg',
-  'paiNome', 'paiNatural', 'paiEstadoCivil', 'paiProfissao',
-  'maeNome', 'maeNatural', 'maeEstadoCivil', 'maeProfissao',
-  'conjugeNome', 'conjugeNatural', 'conjugeProfissao',
+  'nome', 'nacionalidade', 'naturalCidade', 'nascimento', 'profissao', 'cpf', 'rgNumero', 'rgOrgaoExpedidor',
+  'paiNome', 'paiNaturalCidade', 'paiProfissao',
+  'maeNome', 'maeNaturalCidade', 'maeProfissao',
+  'conjugeNome', 'conjugeNaturalCidade', 'conjugeProfissao',
   'localFalecimento', 'obitoCidade', 'dataFalecimento', 'horaFalecimento',
   'medicoNome', 'medicoCrm', 'causaMorte', 'cemiterio', 'dataInumacao', 'dataExumacao', 'observacoes'
 ] as const;
@@ -1830,8 +1836,15 @@ function sanitizePhase0Extraction(raw: any): Partial<Phase0Data> {
   if (PHASE0_SEXO_ENUM.includes(raw.sexo)) out.sexo = raw.sexo;
   if (PHASE0_COR_ENUM.includes(raw.cor)) out.cor = raw.cor;
   if (PHASE0_ESTADO_CIVIL_ENUM.includes(raw.estadoCivil)) out.estadoCivil = raw.estadoCivil;
+  if (PHASE0_ESTADO_CIVIL_ENUM.includes(raw.paiEstadoCivil)) out.paiEstadoCivil = raw.paiEstadoCivil;
+  if (PHASE0_ESTADO_CIVIL_ENUM.includes(raw.maeEstadoCivil)) out.maeEstadoCivil = raw.maeEstadoCivil;
+  if (PHASE0_ESTADO_CIVIL_ENUM.includes(raw.conjugeEstadoCivil)) out.conjugeEstadoCivil = raw.conjugeEstadoCivil;
   if (PHASE0_UF_ENUM.includes(raw.naturalUf)) out.naturalUf = raw.naturalUf;
   if (PHASE0_UF_ENUM.includes(raw.obitoUf)) out.obitoUf = raw.obitoUf;
+  if (PHASE0_UF_ENUM.includes(raw.rgUfExpedidor)) out.rgUfExpedidor = raw.rgUfExpedidor;
+  if (PHASE0_UF_ENUM.includes(raw.paiNaturalUf)) out.paiNaturalUf = raw.paiNaturalUf;
+  if (PHASE0_UF_ENUM.includes(raw.maeNaturalUf)) out.maeNaturalUf = raw.maeNaturalUf;
+  if (PHASE0_UF_ENUM.includes(raw.conjugeNaturalUf)) out.conjugeNaturalUf = raw.conjugeNaturalUf;
   if (Array.isArray(raw.filhos)) {
     const filhos = raw.filhos
       .filter((f: any) => f && typeof f.nome === 'string' && f.nome.trim())
