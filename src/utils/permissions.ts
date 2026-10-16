@@ -49,6 +49,13 @@ export const hasAdminAccess = (person: Pick<UserProfile, 'role' | 'adminAccess'>
 export const canViewLegalOrigin = (person: Pick<UserProfile, 'role' | 'legalOriginAccess'>): boolean =>
   person.legalOriginAccess ?? (person.role === 'curador' || person.role === 'administrador');
 
+// Ver e preencher a Fase 0 (Identificação e DO: nome, documentos, filiação,
+// causa da morte) e usar a leitura da DO pela IA — Técnico, Curador e
+// Administrador (decisão da curadoria, out/2026). Pesquisador e Estudante não
+// recebem esses dados nem do servidor (db/collectionRedaction.ts).
+export const canViewPhase0Identity = (person: Pick<UserProfile, 'role' | 'adminAccess'> | null | undefined): boolean =>
+  Boolean(person && (person.role === 'tecnico' || person.role === 'curador' || hasAdminAccess(person)));
+
 // Editar indivíduos/perfil biológico/odontograma na Fase 4 (Montagem e
 // Inventário/Curadoria) — hoje Curador e Estudante por padrão; ajustável por
 // pessoa (curationAccess, §13). Diferente de canSignInventory (Phase4Curadoria.tsx),

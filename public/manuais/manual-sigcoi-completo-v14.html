@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manual SIGCOI</title>
+</head>
+<body>
+<style>
+  :root {
+    --bone: #f6f3ec;
+    --bone-2: #efe9db;
+    --ink: #1c1a17;
+    --ink-soft: #4a453d;
+    --line: #ddd4c2;
+    --line-soft: #e8e1d1;
+    --accent: #2c4a52;
+    --accent-2: #8a6a3f;
+    --accent-soft: #dfe8e6;
+    --good: #2f6b4f;
+    --good-soft: #e1efe6;
+    --warn: #9a5b1f;
+    --warn-soft: #f3e6d4;
+    --card: #fffdf8;
+    --shadow: 0 1px 2px rgba(28,26,23,.06), 0 8px 24px -12px rgba(28,26,23,.18);
+    --p0: #5b6472; --p1: #2c6e6a; --p2: #2f5f8a; --p3: #6a4f9e; --p4: #a3721f;
+    --p5: #a13f3f; --p6: #2f7d4f; --p7: #45526b;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bone: #17181a;
+      --bone-2: #1d1f22;
+      --ink: #efe9db;
+      --ink-soft: #b7b0a0;
+      --line: #34332e;
+      --line-soft: #2a2924;
+      --accent: #8fb8bf;
+      --accent-2: #d3a866;
+      --accent-soft: #223235;
+      --good: #7fc7a1;
+      --good-soft: #1c2c23;
+      --warn: #e0a862;
+      --warn-soft: #2d2418;
+      --card: #1d1e20;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 28px -14px rgba(0,0,0,.6);
+      --p0: #b3bac6; --p1: #6bbdb4; --p2: #7fabd6; --p3: #ac97dd; --p4: #e0ab5c;
+      --p5: #dd8c8c; --p6: #7fc79a; --p7: #a6b0c9;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bone: #17181a;
+    --bone-2: #1d1f22;
+    --ink: #efe9db;
+    --ink-soft: #b7b0a0;
+    --line: #34332e;
+    --line-soft: #2a2924;
+    --accent: #8fb8bf;
+    --accent-2: #d3a866;
+    --accent-soft: #223235;
+    --good: #7fc7a1;
+    --good-soft: #1c2c23;
+    --warn: #e0a862;
+    --warn-soft: #2d2418;
+    --card: #1d1e20;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 28px -14px rgba(0,0,0,.6);
+    --p0: #b3bac6; --p1: #6bbdb4; --p2: #7fabd6; --p3: #ac97dd; --p4: #e0ab5c;
+    --p5: #dd8c8c; --p6: #7fc79a; --p7: #a6b0c9;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bone);
+    color: var(--ink);
+    font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-size: 15.5px;
+    line-height: 1.6;
+    padding: 0 16px;
+  }
+  h1, h2, h3, h4 { font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif; text-wrap: balance; margin: 0; color: var(--ink); }
+  code, .mono { font-family: ui-monospace, 'SF Mono', 'Cascadia Code', 'Consolas', monospace; }
+  a { color: var(--accent); }
+  .shell {
+    max-width: 1180px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 250px minmax(0,1fr);
+    gap: 40px;
+    padding-block: 28px 80px;
+  }
+  @media (max-width: 880px) {
+    .shell { grid-template-columns: 1fr; }
+  }
+
+  /* ---------- Cover ---------- */
+  .cover {
+    grid-column: 1 / -1;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background:
+      linear-gradient(180deg, var(--card), var(--bone-2));
+    padding: 40px clamp(20px,5vw,56px);
+    margin-bottom: 8px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .cover::before {
+    content: "";
+    position: absolute; inset: 0;
+    background-image:
+      repeating-linear-gradient(90deg, transparent, transparent 39px, var(--line-soft) 39px, var(--line-soft) 40px);
+    opacity: .5;
+    mask-image: linear-gradient(180deg, black, transparent 75%);
+  }
+  .cover-inner { position: relative; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border: 1px solid var(--line);
+    border-radius: 100px;
+    padding: 5px 12px 5px 10px;
+  }
+  .eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+  .cover h1 {
+    font-size: clamp(30px, 4.4vw, 46px);
+    font-weight: 600;
+    margin-top: 18px;
+    max-width: 16ch;
+  }
+  .cover p.lede {
+    max-width: 62ch;
+    margin-top: 14px;
+    font-size: 16px;
+    color: var(--ink-soft);
+  }
+  .cover-meta {
+    display: flex; flex-wrap: wrap; gap: 22px;
+    margin-top: 26px;
+    padding-top: 20px;
+    border-top: 1px dashed var(--line);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+  .cover-meta b { color: var(--ink); font-weight: 600; }
+
+  /* ---------- Nav ---------- */
+  nav.toc {
+    align-self: start;
+    position: sticky;
+    top: max(20px, env(safe-area-inset-top, 0px));
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    padding-right: 6px;
+  }
+  nav.toc .toc-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-soft);
+    padding: 0 10px 10px;
+  }
+  nav.toc a {
+    display: flex; align-items: baseline; gap: 8px;
+    text-decoration: none;
+    color: var(--ink-soft);
+    font-size: 13.5px;
+    padding: 7px 10px;
+    border-radius: 8px;
+    border-left: 2px solid transparent;
+  }
+  nav.toc a .n { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--accent-2); flex-shrink: 0; }
+  nav.toc a:hover { background: var(--bone-2); color: var(--ink); }
+  nav.toc a.sub { padding-left: 26px; font-size: 12.5px; align-items: center; }
+  nav.toc a.sub .swatch { width: 7px; height: 7px; border-radius: 50%; background: var(--sc, var(--accent)); flex-shrink: 0; }
+  nav.toc details summary { cursor: pointer; }
+  nav.toc details summary::-webkit-details-marker { display:none; }
+
+  main { min-width: 0; }
+  section { margin-bottom: 54px; scroll-margin-top: 20px; }
+  section > .sec-head {
+    display: flex; align-items: baseline; gap: 12px;
+    margin-bottom: 18px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  section > .sec-head .idx {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px; color: var(--accent-2);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 2px 7px;
+  }
+  section > .sec-head h2 { font-size: 24px; font-weight: 600; }
+  section > .sec-head .role-tag {
+    margin-left: auto;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-radius: 100px;
+    padding: 3px 10px;
+    white-space: nowrap;
+  }
+  p { color: var(--ink-soft); max-width: 74ch; }
+  p.lead { color: var(--ink); font-size: 16.5px; }
+  strong { color: var(--ink); }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px 20px;
+    box-shadow: var(--shadow);
+  }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; }
+  @media (max-width: 700px) { .grid2, .grid3 { grid-template-columns: 1fr; } }
+
+  /* Role cards */
+  .role-card { display: flex; flex-direction: column; gap: 6px; }
+  .role-card .role-name { font-family: 'Fraunces', serif; font-weight: 600; font-size: 16px; }
+  .role-card .role-code {
+    font-family: 'IBM Plex Mono', monospace; font-size: 10.5px;
+    color: var(--accent-2); text-transform: uppercase; letter-spacing: .06em;
+  }
+  .role-card p { font-size: 13.5px; margin: 0; }
+
+  /* Phase timeline */
+  .phase {
+    display: grid;
+    grid-template-columns: 56px 1fr;
+    gap: 18px;
+    padding: 22px 0;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .phase:last-child { border-bottom: none; }
+  .phase-num {
+    width: 42px; height: 42px;
+    border-radius: 10px;
+    background: var(--accent);
+    color: var(--bone);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Fraunces', serif; font-weight: 600; font-size: 18px;
+    position: relative;
+  }
+  .phase-num::after {
+    content: "";
+    position: absolute;
+    top: 46px; left: 50%; width: 1px; height: calc(100% + 4px);
+    background: var(--line);
+    transform: translateX(-50%);
+  }
+  .phase:last-of-type .phase-num::after { display: none; }
+  .phase[style*="--pc"] .phase-num { background: var(--pc); }
+  .phase[style*="--pc"] .who { color: var(--pc); }
+  .phase[style*="--pc"] .steps li .chk { border-color: var(--pc); }
+  .phase[style*="--pc"] .steps li .chk::after { color: var(--pc); }
+  .phase h3 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+  .phase .who {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--accent-2); margin-bottom: 8px; display:block;
+  }
+  .phase .tag {
+    display: inline-block;
+    font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: .05em;
+    color: var(--ink-soft); background: var(--bone-2); border: 1px solid var(--line);
+    border-radius: 100px; padding: 2px 9px; margin-left: 8px; vertical-align: middle;
+  }
+  .steps { margin: 12px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  .steps li {
+    display: flex; gap: 10px; align-items: flex-start;
+    font-size: 13.8px; color: var(--ink-soft);
+  }
+  .steps li .chk {
+    flex-shrink: 0; margin-top: 3px;
+    width: 15px; height: 15px; border-radius: 4px;
+    border: 1.5px solid var(--accent);
+    display: flex; align-items:center; justify-content:center;
+  }
+  .steps li .chk::after { content:"✓"; font-size: 10px; color: var(--accent); }
+  .gate {
+    margin-top: 14px;
+    font-size: 12.5px;
+    background: var(--warn-soft);
+    color: var(--warn);
+    border: 1px solid color-mix(in srgb, var(--warn) 30%, transparent);
+    border-radius: 10px;
+    padding: 10px 14px;
+    display: flex; gap: 8px;
+  }
+  .gate b { color: inherit; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  th { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); font-weight: 500; }
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+  .table-wrap table { min-width: 560px; }
+  .table-wrap .card { border: none; box-shadow: none; padding: 0; }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em;
+    border-radius: 100px; padding: 2px 9px;
+  }
+  .pill.good { background: var(--good-soft); color: var(--good); }
+  .pill.warn { background: var(--warn-soft); color: var(--warn); }
+  .pill.accent { background: var(--accent-soft); color: var(--accent); }
+
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    border-radius: 0 12px 12px 0;
+    padding: 14px 18px;
+    font-size: 13.8px;
+    color: var(--ink);
+  }
+  .callout.warn { border-color: var(--warn); background: var(--warn-soft); }
+  .callout b { display: block; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 5px; color: inherit; }
+
+  .tools-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: 14px; }
+  .tool-card h4 { font-size: 15px; margin-bottom: 5px; }
+  .tool-card .tool-icon {
+    width: 34px; height: 34px; border-radius: 9px;
+    background: var(--accent-soft); color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Fraunces', serif; font-weight: 600; font-size: 15px;
+    margin-bottom: 10px;
+  }
+  .tool-card p { font-size: 13px; }
+
+  .faq-item { border-bottom: 1px solid var(--line-soft); padding: 16px 0; }
+  .faq-item:last-child { border: none; }
+  .faq-item summary { cursor: pointer; font-weight: 600; font-size: 14.5px; list-style: none; display:flex; align-items:center; gap:10px; }
+  .faq-item summary::-webkit-details-marker { display: none; }
+  .faq-item summary::before { content: "+"; font-family: 'IBM Plex Mono', monospace; color: var(--accent); width: 16px; }
+  .faq-item[open] summary::before { content: "–"; }
+  .faq-item p { margin-top: 10px; font-size: 13.8px; }
+
+  .case {
+    margin-top: 14px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--bone-2);
+    padding: 14px 16px;
+  }
+  .case .case-head {
+    display: flex; align-items: center; gap: 8px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em;
+    color: var(--ink-soft); margin-bottom: 10px;
+  }
+  .case .case-head .nic { color: var(--ink); font-weight: 600; letter-spacing: 0; }
+  .case dl {
+    display: grid; grid-template-columns: auto 1fr; gap: 4px 14px;
+    margin: 0; font-size: 13px;
+  }
+  .case dt { color: var(--ink-soft); font-family: 'IBM Plex Mono', monospace; font-size: 11px; align-self: center; }
+  .case dd { margin: 0; color: var(--ink); }
+
+  .shots { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 14px; }
+  @media (max-width: 620px) { .shots { grid-template-columns: 1fr; } }
+  .shot { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--bone-2); }
+  .shot img { display: block; width: 100%; height: auto; }
+  .shot figcaption {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--ink-soft);
+    padding: 8px 10px; border-top: 1px solid var(--line);
+  }
+
+  .glossary { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap: 2px 24px; }
+  .gterm { padding: 12px 0; border-bottom: 1px solid var(--line-soft); }
+  .gterm dt { font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; font-weight: 600; color: var(--accent); margin-bottom: 3px; }
+  .gterm dd { margin: 0; font-size: 13px; color: var(--ink-soft); }
+
+  .hashline {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11.5px;
+    background: var(--bone-2); border: 1px solid var(--line);
+    border-radius: 8px; padding: 10px 12px; overflow-x: auto; white-space: pre;
+    color: var(--ink-soft);
+  }
+
+  footer.page-footer {
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--line);
+    margin-top: 20px;
+    padding-top: 22px;
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--ink-soft);
+  }
+
+  .theme-toggle {
+    position: fixed; bottom: 16px; right: 16px;
+    z-index: 20;
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 100px; box-shadow: var(--shadow);
+    padding: 8px 14px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    color: var(--ink-soft); cursor: pointer;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    section { animation: rise .5s ease both; }
+  }
+  @keyframes rise { from { opacity: 0; transform: translateY(6px);} to { opacity:1; transform:none; } }
+</style>
+
+<div class="shell">
+
+  <div class="cover">
+    <div class="cover-inner">
+      <span class="eyebrow"><span class="dot"></span>Manual do usuário · v14</span>
+      <h1>SIGCOI — Sistema de Gestão da Coleção Osteológica Identificada</h1>
+      <p class="lede">Guia completo de uso do sistema de gestão da Coleção Osteológica Identificada do INC (COI-INC/DITEC/PF), coleção de referência para pesquisa, capacitação e ensino em antropologia forense (Portaria DITEC/PF nº 1415/2024): como o material entra, é limpo, curado, patologicamente examinado, guardado sob dupla custódia e disponibilizado para pesquisa — oito fases (0 a 7), cada uma travada por assinatura criptográfica.</p>
+      <div class="cover-meta">
+        <span><b>Acervo</b> Coleções osteológicas identificadas</span>
+        <span><b>Base normativa</b> POP-01 · POP-02 · Formulários A.1 / A.2</span>
+        <span><b>Assinatura</b> SHA-256, reconferida no servidor</span>
+        <span><b>Acesso</b> sgcccco-k50m.onrender.com</span>
+      </div>
+    </div>
+  </div>
+
+  <nav class="toc">
+    <div class="toc-title">Neste manual</div>
+    <a href="#visao-geral"><span class="n">00</span> Visão geral</a>
+    <a href="#perfis"><span class="n">01</span> Perfis de acesso</a>
+    <a href="#fases"><span class="n">02</span> As fases (0 a 7)</a>
+    <a href="#fases" class="sub" style="--sc:var(--p0)"><span class="swatch"></span>0 · Identificação e DO</a>
+    <a href="#fases" class="sub" style="--sc:var(--p1)"><span class="swatch"></span>1 · Análise Preliminar</a>
+    <a href="#fases" class="sub" style="--sc:var(--p2)"><span class="swatch"></span>2 · Limpeza</a>
+    <a href="#fases" class="sub" style="--sc:var(--p3)"><span class="swatch"></span>3 · Acondicionamento</a>
+    <a href="#fases" class="sub" style="--sc:var(--p4)"><span class="swatch"></span>4 · Montagem e Inventário</a>
+    <a href="#fases" class="sub" style="--sc:var(--p5)"><span class="swatch"></span>5 · Alterações Ósseas</a>
+    <a href="#fases" class="sub" style="--sc:var(--p6)"><span class="swatch"></span>6 · Armazenamento Definitivo</a>
+    <a href="#fases" class="sub" style="--sc:var(--p7)"><span class="swatch"></span>7 · Consulta &amp; pesquisa</a>
+    <a href="#assinatura"><span class="n">03</span> Assinatura &amp; hash</a>
+    <a href="#ferramentas"><span class="n">04</span> Ferramentas</a>
+    <a href="#condutor"><span class="n">05</span> Condutor por voz</a>
+    <a href="#glossario"><span class="n">06</span> Glossário</a>
+    <a href="#faq"><span class="n">07</span> Perguntas frequentes</a>
+  </nav>
+
+  <main>
+
+    <section id="visao-geral">
+      <div class="sec-head"><span class="idx">00</span><h2>Visão geral</h2></div>
+      <p class="lead">O SIGCOI conduz o fluxo operacional real de um conjunto osteológico desde o recebimento até a disponibilização para pesquisa — passo a passo, por voz ou por texto — seguindo os formulários oficiais da INC/DITEC/PF.</p>
+      <p>Cada conjunto recebe um <strong>número COI</strong> (ex. <code>COI-001</code>, o mesmo número da caixa; nos POPs, este número é chamado de NIC). Quem cadastra digita só o número (botão "Novo Conjunto (COI)"): o sistema completa com zeros até 3 algarismos (1 → COI-001) e recusa um número que já exista, e percorre oito fases (0 a 7) em sequência obrigatória. Uma fase só abre depois que a anterior foi <strong>assinada</strong>; a assinatura trava o formulário daquela fase com um hash SHA-256 recalculado e conferido no servidor — ninguém edita um formulário já assinado sem que isso fique registrado.</p>
+      <div class="grid3" style="margin-top:22px;">
+        <div class="card">
+          <div class="pill accent" style="margin-bottom:10px;">Persistência</div>
+          <p style="margin:0;font-size:13.5px;">Tudo grava em PostgreSQL a cada mudança de campo — um indicador "Salvo automaticamente às HH:MM:SS" confirma isso em tempo real, sem botão de salvar separado.</p>
+        </div>
+        <div class="card">
+          <div class="pill accent" style="margin-bottom:10px;">Rastreabilidade</div>
+          <p style="margin:0;font-size:13.5px;">Toda assinatura, reabertura e movimentação de custódia aparece automaticamente na Linha do Tempo de Auditoria — nada se apaga, tudo se sobrepõe com histórico.</p>
+        </div>
+        <div class="card">
+          <div class="pill accent" style="margin-bottom:10px;">Login real</div>
+          <p style="margin:0;font-size:13.5px;">Cada pessoa entra com e-mail e senha próprios — quem está agindo é sempre conferido pela sessão de login no servidor, nunca declarado pela tela. Só o Administrador cadastra pessoas e gera o link de definição de senha (ver manual "Administrador · Gestão de Contas").</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="perfis">
+      <div class="sec-head"><span class="idx">01</span><h2>Perfis de acesso</h2></div>
+      <p>Cada pessoa cadastrada assume um papel. O sistema libera botões de assinatura e edição de acordo com o papel de quem está logado — conferido pela sessão de login, nunca por uma escolha na tela.</p>
+      <div class="grid3">
+        <div class="card role-card">
+          <span class="role-code">Técnico</span>
+          <span class="role-name">Técnico de Laboratório</span>
+          <p>Conduz e assina as Fases 1, 2 e 3 — recebimento, limpeza/secagem e acondicionamento provisório.</p>
+        </div>
+        <div class="card role-card">
+          <span class="role-code">Curador</span>
+          <span class="role-name">Curador Antropólogo</span>
+          <p>Único papel que assina a Fase 4 (Montagem e Inventário). Participa também da Fase 5 e da dupla custódia da Fase 6.</p>
+        </div>
+        <div class="card role-card">
+          <span class="role-code">Administrador</span>
+          <span class="role-name">Administrador do Sistema</span>
+          <p>Acesso amplo de gestão, reabertura de fases já assinadas com justificativa obrigatória. Único papel com acesso à <strong>Zona de Risco</strong> (Configurações): pode excluir um conjunto inteiro (com as suas caixas) ou todos os dados — sempre de forma reversível, com um botão de restaurar e uma trilha própria de quem fez o quê, quando e por quê.</p>
+        </div>
+        <div class="card role-card">
+          <span class="role-code">Pesquisador</span>
+          <span class="role-name">Pesquisador Externo</span>
+          <p>Acessa a Fase 7 dentro do escopo de uma autorização de pesquisa ativa — nunca vê além do que foi liberado.</p>
+        </div>
+        <div class="card role-card">
+          <span class="role-code">Estudante</span>
+          <span class="role-name">Estudante Supervisionado</span>
+          <p>Pode editar conteúdo em fases abertas sob supervisão, sem poder de assinatura.</p>
+        </div>
+        <div class="card role-card" style="background:var(--accent-soft);border-style:dashed;">
+          <span class="role-code">Entrar / Sair</span>
+          <span class="role-name">Login real (e-mail + senha)</span>
+          <p>Não existe mais botão de "trocar de perfil". Cada pessoa entra com o próprio e-mail e senha; para usar outra conta, é preciso sair (menu com o nome, no canto superior direito → Sair) e fazer login de novo com as credenciais daquela conta. Só o Administrador cadastra pessoas novas e gera o link de definição de senha de cada uma — ver o manual "Administrador · Gestão de Contas", na aba Documentos. Cada papel continua tendo uma cor e um ícone fixos (chave para Técnico, frasco para Curador, escudo para Administrador, lupa para Pesquisador, capelo para Estudante), visíveis na faixa do topo e no selo com o nome de quem está logado.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="fases">
+      <div class="sec-head"><span class="idx">02</span><h2>As fases (0 a 7)</h2></div>
+      <p class="lead">O menu <strong>Fases</strong>, no topo, mostra as oito etapas (Fase 0 a Fase 7) lado a lado com seu estado atual (Assinada / Em aberto / Bloqueada) para o conjunto selecionado.</p>
+      <p>Os quadros marcados <span class="tag">caso real</span> abaixo mostram valores tirados de uma execução de ponta a ponta do conjunto <strong class="mono">NIC-2026-0841</strong> — não são exemplos inventados, são o que o sistema gravou de fato. Essa execução é anterior à padronização COI-XXX, por isso o número aparece no formato antigo.</p>
+
+      <div class="phase" style="--pc:var(--p0)">
+        <div class="phase-num">0</div>
+        <div>
+          <h3>Identificação e DO</h3>
+          <span class="who">Assina: Técnico (ou Curador)</span>
+          <p>Primeira etapa de todo conjunto novo: transcreve os dados de identificação do indivíduo e do óbito a partir da <strong>Declaração de Óbito (DO)</strong> que acompanha o material. Só depois da assinatura desta fase a Fase 1 é liberada.</p>
+          <ul class="steps">
+            <li><span class="chk"></span>Dados pessoais: nome, sexo, cor/raça, nacionalidade, naturalidade, data de nascimento, estado civil, profissão, CPF e RG. A idade é calculada sozinha pela data de nascimento e pela data do falecimento.</li>
+            <li><span class="chk"></span>Filiação (mãe e pai, com a opção "não consta") e cônjuge</li>
+            <li><span class="chk"></span>Dados do óbito: local, cidade e UF, data e hora, médico e CRM, causa da morte</li>
+            <li><span class="chk"></span>Sepultamento: cemitério, data da inumação e data da exumação</li>
+            <li><span class="chk"></span>Filhos (nome e idade) e um campo livre de observações</li>
+          </ul>
+          <p><strong>Ler a DO pela foto.</strong> Em "Selecionar Foto", tire uma foto ou envie a imagem da DO: o sistema lê o documento com o serviço de IA (Gemini) e preenche os campos que estão escritos e legíveis. Campos em branco, "XXX" ou "IGN." ficam vazios — nada é deduzido. Cada campo preenchido assim aparece marcado como <em>IA</em> até ser revisado; ao corrigir um campo à mão, a marca some. A foto não é guardada no conjunto.</p>
+          <div class="gate"><b>§</b>Nenhum campo é obrigatório: a DO real muitas vezes chega com partes em branco ou "IGN.", então a fase é assinada com o que foi possível transcrever. Revise todos os campos marcados como <em>IA</em> antes de assinar. A assinatura é única (Técnico ou Curador) e trava a fase com hash SHA-256, como as demais.</div>
+          <div class="callout">
+            <b>Dado pessoal e sensível</b>
+            A Fase 0 guarda nome, documentos, filiação e causa da morte do indivíduo — dados protegidos pela LGPD e pelo termo de responsabilidade da Portaria DITEC/PF nº 1415/2024. Nunca copie esses dados para fora do sistema, nem os use em publicações, apresentações ou planilhas de pesquisa. Por isso, só <strong>Técnico, Curador e Administrador</strong> veem e preenchem esta fase e usam a leitura da DO pela foto. Para Pesquisador e Estudante a fase aparece como "acesso restrito", e o servidor nem envia esses dados ao navegador deles. O mesmo vale para os dados de origem do cemitério, visíveis só para Curador e Administrador.
+          </div>
+        </div>
+      </div>
+
+      <div class="phase" style="--pc:var(--p1)">
+        <div class="phase-num">1</div>
+        <div>
+          <h3>Análise Preliminar &amp; Formulário A.1</h3>
+          <span class="who">Assina: Técnico</span>
+          <p>Liberada depois da assinatura da Fase 0. Registra o material recebido, a origem legal e as fotos obrigatórias do checklist de recebimento. Preenchível por conversa guiada por voz ou pelo formulário manual — os dois alimentam o mesmo Formulário A.1.</p>
+          <ul class="steps">
+            <li><span class="chk"></span>Origem legal do material e instituição de procedência</li>
+            <li><span class="chk"></span>Tipo de material, estado de preservação (inclui Mumificado e Adipocera), coleta para exame genético e para análise isotópica</li>
+            <li><span class="chk"></span>Descrição de cada opção marcada que pede detalhe — cabelo, próteses, vestes, pertences, tecidos moles; "Outros" do estado de preservação; falange, ossos tarsais, dente hígido, 1ª costela, patela e "Outros" do exame genético; cabelo, unha e dente da análise isotópica. Cada uma abre a sua própria caixa de descrição, obrigatória.</li>
+            <li><span class="chk"></span>Checklist fotográfico do recebimento (fotos obrigatórias e "não se aplica" justificado)</li>
+            <li><span class="chk"></span>Cadastro das caixas preliminares do conjunto</li>
+          </ul>
+          <div class="case">
+            <div class="case-head"><span class="tag">caso real</span><span class="nic">NIC-2026-0841</span></div>
+            <dl>
+              <dt>Equipe</dt><dd>Equipe Alfa</dd>
+              <dt>Responsáveis</dt><dd>Perito X · Perito Y</dd>
+              <dt>Saco de lavagem</dt><dd>Azul</dd>
+              <dt>Tipo de limpeza</dt><dd>A seco</dd>
+              <dt>Caixa cadastrada</dt><dd>CX-0841</dd>
+            </dl>
+          </div>
+          <div class="gate"><b>§</b>Assinar exige: nenhum campo obrigatório vazio, todas as fotos resolvidas e o papel ativo ser Técnico. O gate explica exatamente o que falta, em vez de só desabilitar o botão: no formulário manual, a lista amarela de pendências fica no fim do formulário; no modo condutor, embaixo do botão de assinar.</div>
+        </div>
+      </div>
+
+      <div class="phase" style="--pc:var(--p2)">
+        <div class="phase-num">2</div>
+        <div>
+          <h3>Limpeza, Maceração &amp; Secagem — Formulário A.2</h3>
+          <span class="who">Assina: Técnico</span>
+          <p>Registra a maceração (ciclos, instrumentos, danos) e conduz cada caixa por três estados até "Seca (Liberada)": Em Limpeza → Em Secagem → Seca.</p>
+          <ul class="steps">
+            <li><span class="chk"></span>Equipe, data e hora da limpeza</li>
+            <li><span class="chk"></span>Ciclos de maceração, instrumentos utilizados, danos ocorridos</li>
+            <li><span class="chk"></span>Forma de secagem (estufa / aquecedor / temperatura ambiente)</li>
+            <li><span class="chk"></span>Todas as caixas do conjunto marcadas como Secas — não há caixa de marcar separada para "secagem completa": ela vem do status de cada caixa</li>
+          </ul>
+          <div class="case">
+            <div class="case-head"><span class="tag">caso real</span><span class="nic">NIC-2026-0841</span></div>
+            <dl>
+              <dt>Equipe</dt><dd>Equipe Beta</dd>
+              <dt>Ciclos</dt><dd>1</dd>
+              <dt>Instrumento</dt><dd>Esponja</dd>
+              <dt>Secagem</dt><dd>Estufa · 72 horas</dd>
+              <dt>Resultado</dt><dd>1 de 1 caixas secas — CX-0841 "Seca (Liberada)"</dd>
+            </dl>
+          </div>
+          <div class="gate"><b>§6</b>O material só avança para a Fase 3 depois que <strong>todas</strong> as caixas estão secas e o Formulário A.2 está completo.</div>
+        </div>
+      </div>
+
+      <div class="phase" style="--pc:var(--p3)">
+        <div class="phase-num">3</div>
+        <div>
+          <h3>Acondicionamento Provisório</h3>
+          <span class="who">Assina: Técnico</span>
+          <p>Guarda cada caixa por leitura dupla de QR Code — o QR da caixa e o QR da estante/prateleira/vão — vinculando a localização física. O local (Local, Sala, Estante, Prateleira e Vão) pode ser digitado e, enquanto a fase não for assinada, corrigido pelo botão "Editar local" de cada caixa — a mudança fica registrada na cadeia de custódia, do local antigo para o novo.</p>
+          <ul class="steps">
+            <li><span class="chk"></span>Leitura do QR da caixa a guardar</li>
+            <li><span class="chk"></span>Leitura do QR da estante · prateleira · vão de destino</li>
+            <li><span class="chk"></span>Confirmação de leitura para vincular a custódia</li>
+            <li><span class="chk"></span>Correção do local de uma caixa já guardada ("Editar local"), se necessário</li>
+          </ul>
+          <div class="case">
+            <div class="case-head"><span class="tag">caso real</span><span class="nic">NIC-2026-0841</span></div>
+            <dl>
+              <dt>Caixa</dt><dd>CX-0841</dd>
+              <dt>Local</dt><dd>Estante 04 · Prateleira 02 · Vão 01</dd>
+              <dt>QR gravado</dt><dd class="mono" style="font-size:11.5px;">SIGCOI://BOX/CX-NIC-2026-0841</dd>
+            </dl>
+          </div>
+          <div class="gate"><b>§</b>O conjunto entra na fila de espera para convocação à mesa de Montagem e Inventário só depois de assinada esta fase.</div>
+        </div>
+      </div>
+
+      <div class="phase" style="--pc:var(--p4)">
+        <div class="phase-num">4</div>
+        <div>
+          <h3>Montagem e Inventário — Bioantropológico &amp; Versão Científica</h3>
+          <span class="who">Assina: Curador</span>
+          <p>Quem identifica e decide é sempre o curador — os agentes de IA apenas buscam referências e apoiam a narração de rascunhos. Organizada em quatro abas:</p>
+          <ul class="steps">
+            <li><span class="chk"></span><strong>Indivíduos &amp; Perfil Biológico</strong> — hipóteses de indivíduo (NMI), com fusão/separação e perfil biológico completo por método científico padronizado (sexo, idade, estatura, ancestralidade)</li>
+            <li><span class="chk"></span><strong>Inventário &amp; Completude Esquelética</strong> — 33 regiões anatômicas reais, com presença, lateralidade e preservação de cada elemento</li>
+            <li><span class="chk"></span><strong>Odontograma</strong> — os 32 dentes em notação FDI/ISO 3950, nas duas arcadas</li>
+            <li><span class="chk"></span><strong>Foto de Montagem Completa</strong> — a fotografia institucional que fica visível na leitura pública do QR Code</li>
+          </ul>
+          <div class="case">
+            <div class="case-head"><span class="tag">caso real</span><span class="nic">NIC-2026-0841 · IND-01</span></div>
+            <dl>
+              <dt>Sexo estimado</dt><dd>Indeterminado — método Phenice (1969)</dd>
+              <dt>Faixa etária</dt><dd>Adulto médio, 30–45 anos — Suchey-Brooks (1990)</dd>
+              <dt>Estatura</dt><dd>170 cm ± 3,5 cm — Trotter &amp; Gleser (1952)</dd>
+              <dt>Inventário</dt><dd>34 de 34 elementos mapeados, todos completos</dd>
+              <dt>Odontograma</dt><dd>32 dentes gerados, 0 anomalias registradas</dd>
+            </dl>
+          </div>
+          <p style="margin-top:14px;font-size:13.5px;"><strong>Ver na prática</strong> — as quatro abas reais, capturadas ao vivo neste mesmo conjunto:</p>
+          <div class="shots">
+            <figure class="shot">
+              <img src="img/fase4-individuos.png" alt="Aba Indivíduos &amp; Perfil Biológico da Fase 4, mostrando a ficha do indivíduo IND-01" loading="lazy">
+              <figcaption>Indivíduos &amp; Perfil Biológico</figcaption>
+            </figure>
+            <figure class="shot">
+              <img src="img/fase4-inventario.png" alt="Aba Inventário Anatômico da Fase 4, tabela com 34 elementos ósseos" loading="lazy">
+              <figcaption>Inventário &amp; Completude Esquelética</figcaption>
+            </figure>
+            <figure class="shot">
+              <img src="img/fase4-odontograma.png" alt="Aba Odontograma da Fase 4, 32 dentes em notação FDI nas duas arcadas" loading="lazy">
+              <figcaption>Odontograma (FDI / ISO 3950)</figcaption>
+            </figure>
+            <figure class="shot">
+              <img src="img/fase4-montagem.png" alt="Aba de Foto de Montagem Completa da Fase 4, aguardando upload da fotografia oficial" loading="lazy">
+              <figcaption>Foto de Montagem Completa</figcaption>
+            </figure>
+          </div>
+          <div class="gate"><b>§8</b>Assinar exige ao menos um indivíduo criado e a foto de montagem completa aprovada.</div>
+        </div>
+      </div>
+
+      <div class="phase" style="--pc:var(--p5)">
+        <div class="phase-num">5</div>
+        <div>
+          <h3>Alterações Ósseas, Exames &amp; Marcação Física</h3>
+          <span class="who">Assina: Curador</span>
+          <p>Cataloga achados patológicos por elemento ósseo, anexa exames complementares (com visualizador DICOM embutido) e registra a marcação física definitiva do material antes do empacotamento final em material inerte.</p>
+          <ul class="steps">
+            <li><span class="chk"></span><strong>Alterações Ósseas</strong> — categoria, termo, elemento afetado, ou "não catalogado" com justificativa</li>
+            <li><span class="chk"></span><strong>Exames complementares</strong> — anexos e imagens DICOM</li>
+            <li><span class="chk"></span><strong>Marcação física</strong> — técnica usada e quantos elementos foram marcados</li>
+            <li><span class="chk"></span><strong>Checklist da Fase 5</strong> — os 4 itens (patologias revisadas, exames anexados, fotos finais, empacotamento inerte) precisam estar 100% para liberar a Fase 6</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="phase" style="--pc:var(--p6)">
+        <div class="phase-num">6</div>
+        <div>
+          <h3>Armazenamento Definitivo</h3>
+          <span class="who">Assina: Dupla custódia</span>
+          <p>Transporte e guarda definitiva do conjunto, com QR Code público opcional — ativado aqui, ele mostra a foto de montagem aprovada na Fase 4 a qualquer pessoa que ler o código, sem expor dados restritos.</p>
+          <ul class="steps">
+            <li><span class="chk"></span>Recibo de entrega (transportador) e alocação em estante/prateleira/nicho definitivo</li>
+            <li><span class="chk"></span>Assinatura dupla — dois responsáveis distintos confirmam a custódia</li>
+            <li><span class="chk"></span>Ativação opcional do QR Code de inspeção pública</li>
+          </ul>
+          <div class="gate"><b>§6</b>Só abre depois que as Fases 1 a 5 estão assinadas <strong>e</strong> o checklist da Fase 5 está 100% completo.</div>
+        </div>
+      </div>
+
+      <div class="phase" style="--pc:var(--p7)">
+        <div class="phase-num">7</div>
+        <div>
+          <h3>Consulta &amp; Pesquisa</h3>
+          <span class="who">Acesso: Pesquisador / Admin / Livre</span>
+          <p>Busca no acervo por sexo, presença de trauma, exames DICOM disponíveis — inclusive por linguagem natural, traduzida para filtros estruturados. Pesquisadores externos só enxergam o que sua autorização de pesquisa ativa permite (escopo aplicado automaticamente, nunca por confiança).</p>
+          <ul class="steps">
+            <li><span class="chk"></span><strong>Busca</strong> — filtros manuais ou por pergunta em linguagem natural</li>
+            <li><span class="chk"></span><strong>Autorizações</strong> — gestão de quem pode ver o quê</li>
+            <li><span class="chk"></span><strong>Empréstimos</strong> — movimentação controlada para consulta</li>
+            <li><span class="chk"></span><strong>Narrador</strong> — exportação de metadados para relatório</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="assinatura">
+      <div class="sec-head"><span class="idx">03</span><h2>Assinatura &amp; hash</h2></div>
+      <p class="lead">Cada fase é travada por assinatura própria — não existe "salvar tudo de uma vez" no final.</p>
+      <div class="grid2">
+        <div class="card">
+          <h4 style="font-size:15px;margin-bottom:8px;">Como funciona</h4>
+          <p style="font-size:13.5px;margin:0 0 10px;">Ao assinar, o sistema calcula o hash (o "lacre") sobre o conteúdo da fase e o servidor <strong>recalcula</strong> o mesmo hash de forma independente — se um único byte não bater, a assinatura é recusada. O servidor guarda também uma <strong>cópia exata do conteúdo assinado</strong>, que permite comparar versões e reconferir o lacre a qualquer momento.</p>
+          <div class="hashline">SHA256( payload_canônico_fase_N )
+  = a13f...92cd
+  status: locked · signedBy · signedAt</div>
+        </div>
+        <div class="card">
+          <h4 style="font-size:15px;margin-bottom:8px;">Reabertura</h4>
+          <p style="font-size:13.5px;margin:0;">Curador e Administrador podem reabrir uma fase já assinada com o botão <strong>Reabrir</strong> — exige justificativa técnica obrigatória. A assinatura antiga nunca é apagada: fica marcada como substituída, com quem reabriu, quando e por quê. Depois da correção, a fase é assinada de novo e passa a ter duas versões, que podem ser comparadas campo a campo na aba Auditoria. Enquanto a fase estiver assinada e travada, o servidor recusa qualquer alteração no conteúdo dela.</p>
+        </div>
+      </div>
+      <div class="callout" style="margin-top:16px;">
+        <b>Histórico protegido</b>
+        Nada do histórico pode ser apagado ou reescrito — nem pela tela, nem por uma chamada direta ao servidor, nem direto no banco de dados: assinaturas, reaberturas, movimentações de custódia e o registro de alterações só recebem registros novos. Se uma gravação for recusada por isso, a faixa vermelha no topo da tela explica qual fase e por quê.
+      </div>
+      <div class="card" style="margin-top:16px;">
+        <h4 style="font-size:15px;margin-bottom:8px;">Registro de alterações</h4>
+        <p style="font-size:13.5px;margin:0;">Além das assinaturas, o servidor registra <strong>cada alteração</strong> de cada campo: qual campo, o valor anterior, o valor novo, quem fez e quando — inclusive o que foi preenchido pelo condutor por voz. As entradas são encadeadas por hash: se alguém alterar ou apagar uma entrada direto no banco, a conferência acusa a partir de qual entrada. Os dados restritos de procedência (cemitério, jazigo, declaração de óbito) aparecem no registro só como "alterado", sem os valores.</p>
+        <p style="font-size:13.5px;margin:10px 0 0;"><strong>Quem fez</strong> é a pessoa autenticada na sessão de login — conferida pelo servidor a cada gravação, nunca declarada pela tela do navegador.</p>
+      </div>
+    </section>
+
+    <section id="ferramentas">
+      <div class="sec-head"><span class="idx">04</span><h2>Ferramentas</h2></div>
+      <p>Reunidas no menu <strong>Ferramentas</strong> do topo — atalhos que cruzam todas as fases e todos os conjuntos.</p>
+      <div class="tools-grid">
+        <div class="card tool-card">
+          <div class="tool-icon">G</div>
+          <h4>Grafo de Conhecimento</h4>
+          <p>Explora o acervo como um grafo — conjuntos, caixas, indivíduos, patologias, localização física, responsáveis e datas, todos conectados e navegáveis. Inclui a Busca por Semelhança: descreva livremente um osso em mãos (fora do acervo) e veja candidatos reais parecidos, com explicação da IA — uma sugestão para apoiar a montagem e inventário, nunca uma identificação confirmada.</p>
+        </div>
+        <div class="card tool-card">
+          <div class="tool-icon">M</div>
+          <h4>Mapa de Estantes</h4>
+          <p>Visualização física do galpão — onde cada caixa e cada conjunto está guardado, estante por estante.</p>
+        </div>
+        <div class="card tool-card">
+          <div class="tool-icon">P</div>
+          <h4>Consulta &amp; Pesquisa</h4>
+          <p>Atalho direto para a Fase 7, útil para quem só precisa buscar no acervo, sem navegar pelas fases operacionais.</p>
+        </div>
+        <div class="card tool-card">
+          <div class="tool-icon">Q</div>
+          <h4>QR Code</h4>
+          <p>Gera ou escaneia o QR Code oficial de uma caixa, estante ou conjunto — usado nas leituras duplas das Fases 3 e 6.</p>
+        </div>
+        <div class="card tool-card">
+          <div class="tool-icon">A</div>
+          <h4>Linha do Tempo de Auditoria</h4>
+          <p>Todo evento relevante — assinatura, reabertura, movimentação de custódia — em ordem cronológica, com hash e responsável. O quadro <strong>Histórico completo do conjunto</strong> mostra as versões assinadas de cada fase (com comparação campo a campo entre versões) e o registro de todas as alterações. O botão <strong>Validar Cadeia Criptográfica</strong> confere de verdade a corrente do registro e recalcula o lacre de cada assinatura a partir da cópia guardada.</p>
+        </div>
+        <div class="card tool-card">
+          <div class="tool-icon">L</div>
+          <h4>Modo Laboratório</h4>
+          <p>Alterna para botões ampliados e alto contraste — pensado para operação com luvas no laboratório.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="condutor">
+      <div class="sec-head"><span class="idx">05</span><h2>Condutor por voz</h2></div>
+      <p class="lead">Em vez de preencher campo por campo, é possível conversar com o sistema — por voz ou texto — e ele extrai as respostas estruturadas para o formulário da fase ativa.</p>
+      <div class="grid2">
+        <div class="card">
+          <h4 style="font-size:15px;margin-bottom:8px;">Como usar</h4>
+          <p style="font-size:13.5px;margin:0;">Abra a aba <strong>Condutor do POP-01 (Voz/Conversa)</strong> dentro de qualquer fase. Fale ou digite naturalmente — o condutor pergunta um item do POP de cada vez, mantém contexto entre falas e usa o checklist de fotos como fonte de verdade do que ainda falta. Na Fase 1, quando uma opção marcada pede descrição (por exemplo próteses, vestes ou falange), o condutor aproveita a descrição dita junto ("uma prótese dentária, descrita como coroa metálica…") e pede as que faltarem, uma de cada vez — o passo só avança com todas as descrições.</p>
+        </div>
+        <div class="card">
+          <h4 style="font-size:15px;margin-bottom:8px;">Compatibilidade</h4>
+          <p style="font-size:13.5px;margin:0;">Funciona em navegadores desktop e também no Safari/iOS, onde o áudio precisa de um primeiro toque na tela para desbloquear — o botão de microfone cuida disso automaticamente.</p>
+        </div>
+      </div>
+      <div class="callout" style="margin-top:16px;">
+        <b>Sobre o Assistente IA</b>
+        O botão "Assistente IA" no topo da tela usa Gemini apenas para extrair campos estruturados a partir da fala já transcrita em texto — o áudio bruto nunca é enviado a ele diretamente. Na Fase 0, a foto da Declaração de Óbito também é enviada ao Gemini para leitura dos campos; ela não é guardada no conjunto.
+      </div>
+    </section>
+
+    <section id="glossario">
+      <div class="sec-head"><span class="idx">06</span><h2>Glossário</h2></div>
+      <p>Termos técnicos usados no sistema, para quem está chegando agora.</p>
+      <div class="card">
+        <dl class="glossary">
+          <div class="gterm"><dt>COI-XXX</dt><dd>Número do conjunto na COI-INC — o identificador único de cada conjunto osteológico e da sua caixa, ex. COI-001. Nos POPs, é chamado de NIC (Número de Identificação do Conjunto).</dd></div>
+          <div class="gterm"><dt>NMI</dt><dd>Número Mínimo de Indivíduos — a estimativa de quantas pessoas distintas o material representa; cada hipótese vira um "Indivíduo" na Fase 4.</dd></div>
+          <div class="gterm"><dt>FDI / ISO 3950</dt><dd>Notação odontológica forense internacional usada no odontograma — numera cada um dos 32 dentes nas duas arcadas.</dd></div>
+          <div class="gterm"><dt>POP-01 / POP-02</dt><dd>Procedimentos Operacionais Padrão da INC/DITEC/PF — POP-01 rege recebimento e limpeza (Fases 1-2), POP-02 rege montagem/inventário e alterações ósseas (Fases 4-5).</dd></div>
+          <div class="gterm"><dt>Formulário A.1 / A.2</dt><dd>Os formulários oficiais A.1 (Fase 1 · Análise Preliminar) e A.2 (Fase 2 · Limpeza &amp; Secagem).</dd></div>
+          <div class="gterm"><dt>Hash SHA-256</dt><dd>A impressão digital criptográfica de 64 caracteres que trava o conteúdo exato de uma fase assinada — qualquer alteração gera um hash diferente.</dd></div>
+          <div class="gterm"><dt>Custódia</dt><dd>O registro formal de quem tem posse física do material em cada momento — cada movimentação (empréstimo, transporte, guarda) fica na trilha de custódia.</dd></div>
+          <div class="gterm"><dt>QR público</dt><dd>Código opcional, ativado na Fase 6, que mostra a foto de montagem aprovada a qualquer pessoa, sem expor dados restritos do conjunto.</dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <section id="faq">
+      <div class="sec-head"><span class="idx">07</span><h2>Perguntas frequentes</h2></div>
+      <div class="card" style="padding:4px 20px;">
+        <details class="faq-item" open>
+          <summary>Por que não consigo assinar a Fase 2?</summary>
+          <p>Confirme que todas as caixas do conjunto estão marcadas como "Seca (Liberada)" na lista de caixas e que os campos obrigatórios do Formulário A.2 (equipe, data, hora, ciclos, instrumentos, forma de secagem) estão preenchidos. O botão de assinatura só habilita quando as duas condições são satisfeitas.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Apareceu uma faixa vermelha "Assinatura inválida" — o que fazer?</summary>
+          <p>Significa que o hash de uma assinatura <strong>nova</strong> não bateu com o conteúdo da fase enviado — o servidor recusa a gravação. Assinaturas já gravadas não são reconferidas a cada salvamento (a conferência delas fica no botão "Validar Cadeia Criptográfica" da Auditoria). Nenhum dado é perdido silenciosamente: refaça a última alteração; se persistir, é um bug a reportar, não um erro de preenchimento.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Como vejo o que mudou quando uma fase foi reaberta?</summary>
+          <p>Na aba Auditoria, no quadro "Histórico completo do conjunto", cada fase mostra suas versões assinadas, quem reabriu e a justificativa. Escolha duas versões em "Comparar" para ver, campo a campo, o valor de cada uma. Assinaturas feitas antes desta versão do sistema não têm a cópia do conteúdo e não entram na comparação.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Posso corrigir um campo depois que a fase foi assinada?</summary>
+          <p>Sim, mas só Curador ou Administrador podem reabrir a fase, e é preciso justificativa técnica. A assinatura original permanece no histórico — nunca é apagada, apenas marcada como substituída.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Como funciona o QR Code público?</summary>
+          <p>É ativado na Fase 6 e mostra apenas a foto de montagem completa aprovada na Fase 4 — nenhum dado restrito do conjunto fica exposto a quem lê o código sem estar autenticado no sistema.</p>
+        </details>
+        <details class="faq-item">
+          <summary>As Fases 3 a 6 já são confiáveis?</summary>
+          <p>Sim, funcionam de ponta a ponta — interface, modelo de dados e fluxo de assinatura completos. O que falta é a verificação campo a campo contra os apêndices oficiais do POP-02, que ainda não foram entregues à equipe; até lá, o conteúdo dos formulários é a melhor aproximação possível, não uma cópia fiel confirmada.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Preciso de senha para entrar?</summary>
+          <p>Sim. Desde a Fase 3 do login real, cada pessoa entra com e-mail e senha próprios. Se ainda não tem senha, peça ao Administrador do sistema um link de definição de senha (ver o manual "Administrador · Gestão de Contas", na aba Documentos).</p>
+        </details>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="page-footer">
+    <span>SIGCOI · Sistema de Gestão da Coleção Osteológica Identificada · INC/DITEC/PF</span>
+    <span>Manual gerado a partir do estado real do código em produção</span>
+  </footer>
+</div>
+
+<button class="theme-toggle" id="themeToggle" type="button">Alternar tema</button>
+<script>
+  (function () {
+    var root = document.documentElement;
+    var btn = document.getElementById('themeToggle');
+    function apply(t) { if (t) root.setAttribute('data-theme', t); else root.removeAttribute('data-theme'); }
+    var saved = null;
+    try { saved = localStorage.getItem('sigcoi-manual-theme'); } catch (e) {}
+    apply(saved);
+    btn.addEventListener('click', function () {
+      var current = root.getAttribute('data-theme');
+      var mql = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var next;
+      if (!current) next = mql ? 'light' : 'dark';
+      else if (current === 'dark') next = 'light';
+      else next = 'dark';
+      apply(next);
+      try { localStorage.setItem('sigcoi-manual-theme', next); } catch (e) {}
+    });
+  })();
+</script>
+
+</body>
+</html>

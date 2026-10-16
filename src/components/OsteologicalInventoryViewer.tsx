@@ -5,7 +5,7 @@ import {
   AlteracaoOsseaTipo,
   OsteologicalAlteracaoRegiao
 } from '../types/sgccco';
-import { Check, Info, ShieldAlert, Sparkles } from 'lucide-react';
+import { Info, Sparkles, Plus, Trash2, AlertCircle } from 'lucide-react';
 
 interface OsteologicalInventoryViewerProps {
   inventory?: OsteologicalInventoryData;
@@ -80,13 +80,57 @@ const PRESENCE_DEFINITIONS: Record<
   }
 };
 
-const ALTERACOES_OPTIONS: { id: AlteracaoOsseaTipo; label: string }[] = [
-  { id: 'lesao_ante_mortem', label: 'Lesão ante-mortem' },
-  { id: 'lesao_peri_mortem', label: 'Lesão peri-mortem' },
-  { id: 'alteracao_post_mortem', label: 'Alteração post-mortem (tafonômica)' },
-  { id: 'patologia', label: 'Patologia' },
-  { id: 'variacao_anatomica', label: 'Variação anatômica' },
-  { id: 'alteracao', label: 'Outra alteração' }
+interface AlteracaoOptionConfig {
+  id: AlteracaoOsseaTipo;
+  label: React.ReactNode;
+  plainText: string;
+  isNone?: boolean;
+}
+
+const ALTERACOES_OPTIONS: AlteracaoOptionConfig[] = [
+  {
+    id: 'lesao_ante_mortem',
+    label: (
+      <span>
+        Lesão <span className="italic">ante mortem</span>
+      </span>
+    ),
+    plainText: 'Lesão ante mortem'
+  },
+  {
+    id: 'lesao_peri_mortem',
+    label: (
+      <span>
+        Lesão <span className="italic">peri mortem</span>
+      </span>
+    ),
+    plainText: 'Lesão peri mortem'
+  },
+  {
+    id: 'alteracao_post_mortem',
+    label: (
+      <span>
+        Alteração <span className="italic">post mortem</span> (tafonômica)
+      </span>
+    ),
+    plainText: 'Alteração post mortem (tafonômica)'
+  },
+  {
+    id: 'patologia',
+    label: <span>Patologia</span>,
+    plainText: 'Patologia'
+  },
+  {
+    id: 'variacao_anatomica',
+    label: <span>Variação anatômica</span>,
+    plainText: 'Variação anatômica'
+  },
+  {
+    id: 'sem_alteracao',
+    label: <span>Sem alteração</span>,
+    plainText: 'Sem alteração',
+    isNone: true
+  }
 ];
 
 export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerProps> = ({
@@ -186,27 +230,79 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
     });
   };
 
-  const handleToggleAlteracao = (tipo: AlteracaoOsseaTipo) => {
+  const [expandedBones, setExpandedBones] = useState<Record<string, boolean>>({});
+  const toggleExpandBone = (bone: string) => {
+    setExpandedBones(prev => ({ ...prev, [bone]: !prev[bone] }));
+  };
+
+  const generateAltId = () => `alt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
+  const handleToggleBoneAlteracao = (bone: string, tipo: AlteracaoOsseaTipo) => {
     if (readOnly) return;
     const list = cabecaData.alteracoes || [];
-    const exists = list.some(a => a.tipo === tipo);
-    let updated: OsteologicalAlteracaoRegiao[];
-    if (exists) {
-      updated = list.filter(a => a.tipo !== tipo);
-    } else {
-      updated = [...list, { tipo, osso: CABECA_PESCOCO_OSSOS[0], observacoes: '' }];
+    const boneAlts = list.filter(a => a.osso === bone);
+    const otherBonesAlts = list.filter(a => a.osso !== bone);
+
+    if (tipo === 'sem_alteracao') {
+      const isAlreadyChecked = boneAlts.some(a => a.tipo === 'sem_alteracao');
+      const updatedBoneAlts: OsteologicalAlteracaoRegiao[] = isAlreadyChecked
+        ? []
+        : [{ id: generateAltId(), tipo: 'sem_alteracao', osso: bone, observacoes: '' }];
+      onUpdateInventory({
+        ...inventory,
+        cabecaPescoco: { ...cabecaData, alteracoes: [...otherBonesAlts, ...updatedBoneAlts] }
+      });
+      return;
     }
+
+    const withoutSemAlt = boneAlts.filter(a => a.tipo !== 'sem_alteracao');
+    const exists = withoutSemAlt.some(a => a.tipo === tipo);
+    let updatedBoneAlts: OsteologicalAlteracaoRegiao[];
+    if (exists) {
+      updatedBoneAlts = withoutSemAlt.filter(a => a.tipo !== tipo);
+    } else {
+      updatedBoneAlts = [
+        ...withoutSemAlt,
+        { id: generateAltId(), tipo, osso: bone, observacoes: '' }
+      ];
+    }
+    onUpdateInventory({
+      ...inventory,
+      cabecaPescoco: { ...cabecaData, alteracoes: [...otherBonesAlts, ...updatedBoneAlts] }
+    });
+  };
+
+  const handleAddBoneAlteracaoItem = (bone: string, tipo: AlteracaoOsseaTipo) => {
+    if (readOnly) return;
+    const list = cabecaData.alteracoes || [];
+    const withoutSemAlt = list.filter(a => !(a.osso === bone && a.tipo === 'sem_alteracao'));
+    const updated: OsteologicalAlteracaoRegiao[] = [
+      ...withoutSemAlt,
+      { id: generateAltId(), tipo, osso: bone, observacoes: '' }
+    ];
     onUpdateInventory({
       ...inventory,
       cabecaPescoco: { ...cabecaData, alteracoes: updated }
     });
   };
 
-  const handleUpdateAlteracaoOsso = (tipo: AlteracaoOsseaTipo, osso: string, obs?: string) => {
+  const handleRemoveBoneAlteracaoItem = (idToRemove: string) => {
     if (readOnly) return;
     const list = cabecaData.alteracoes || [];
-    const updated = list.map(a =>
-      a.tipo === tipo ? { ...a, osso, observacoes: obs !== undefined ? obs : a.observacoes } : a
+    const updated = list.filter((a, idx) => (a.id || `alt-${a.tipo}-${idx}`) !== idToRemove);
+    onUpdateInventory({
+      ...inventory,
+      cabecaPescoco: { ...cabecaData, alteracoes: updated }
+    });
+  };
+
+  const handleUpdateBoneAlteracaoItem = (idToUpdate: string, obs: string) => {
+    if (readOnly) return;
+    const list = cabecaData.alteracoes || [];
+    const updated = list.map((a, idx) =>
+      (a.id || `alt-${a.tipo}-${idx}`) === idToUpdate
+        ? { ...a, observacoes: obs }
+        : a
     );
     onUpdateInventory({
       ...inventory,
@@ -221,6 +317,9 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
   const countF = Object.values(cabecaData.ossos).filter(c => c === 'F').length;
   const countI = Object.values(cabecaData.ossos).filter(c => c === 'I').length;
   const countA = Object.values(cabecaData.ossos).filter(c => c === 'A').length;
+  const countAlteracoes = CABECA_PESCOCO_OSSOS.filter(bone =>
+    (cabecaData.alteracoes || []).some(a => a.osso === bone && a.tipo !== 'sem_alteracao')
+  ).length;
 
   return (
     <div className="space-y-5">
@@ -306,6 +405,9 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                 <span className={`px-2 py-0.5 rounded border text-[11px] font-bold ${PRESENCE_DEFINITIONS.A.badgeClass}`}>
                   A: {countA}
                 </span>
+                <span className="px-2 py-0.5 rounded border text-[11px] font-bold bg-red-100 text-red-800 dark:bg-red-950/70 dark:text-red-300 border-red-300 dark:border-red-700">
+                  !: {countAlteracoes}
+                </span>
               </div>
 
               {!readOnly && (
@@ -333,13 +435,13 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
             </div>
           </div>
 
-          {/* Legenda dos Códigos P / F / I / A */}
+          {/* Legenda dos Códigos P / F / I / A e Alterações Ósseas */}
           <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 text-xs">
             <div className="font-semibold text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-1.5 text-[11px] uppercase tracking-wider font-mono">
               <Info className="w-3.5 h-3.5 text-sky-600" />
               Códigos Padronizados de Presença Óssea (Escolha Única)
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
               {(Object.keys(PRESENCE_DEFINITIONS) as OsteologicalPresenceCode[]).map(code => {
                 const item = PRESENCE_DEFINITIONS[code];
                 return (
@@ -351,58 +453,261 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                   </div>
                 );
               })}
+              {/* Item da legenda para Alterações Ósseas */}
+              <div className="flex items-center gap-2 p-2 rounded-lg border bg-red-100 text-red-800 dark:bg-red-950/70 dark:text-red-300 border-red-300 dark:border-red-700">
+                <span className="w-5 h-5 rounded flex items-center justify-center font-mono font-bold text-xs bg-white dark:bg-slate-900 border border-current text-red-700 dark:text-red-400">
+                  !
+                </span>
+                <span className="text-[11px] leading-tight font-medium">Alterações ósseas</span>
+              </div>
             </div>
           </div>
 
-          {/* Lista dos 23 Ossos com Seleção Única */}
-          <div>
-            <h5 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-mono mb-3">
-              Elementos Ósseos da Cabeça e Pescoço ({totalOssos})
-            </h5>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+          {/* Lista dos 23 Ossos com Seleção Única e Alterações Ósseas */}
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h5 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-mono">
+                Elementos Ósseos da Cabeça e Pescoço ({totalOssos})
+              </h5>
+              <span className="text-[11px] text-slate-500 font-mono">
+                Clique no botão com <AlertCircle className="w-3.5 h-3.5 inline text-slate-500 align-text-bottom" /> para abrir as alterações ósseas do osso
+              </span>
+            </div>
+
+            <div className="space-y-2">
               {CABECA_PESCOCO_OSSOS.map((bone, index) => {
                 const currentCode = cabecaData.ossos[bone];
+                const isExpanded = !!expandedBones[bone];
+                const boneAlteracoes = (cabecaData.alteracoes || []).filter(a => a.osso === bone);
+                const hasSemAlteracao = boneAlteracoes.some(a => a.tipo === 'sem_alteracao');
+                const activeAlteracoes = boneAlteracoes.filter(a => a.tipo !== 'sem_alteracao');
+
                 return (
                   <div
                     key={bone}
-                    className={`flex items-center justify-between p-2.5 rounded-xl border transition-all ${
-                      currentCode
-                        ? 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xs'
-                        : 'border-slate-200 dark:border-slate-800/80 bg-slate-50/60 dark:bg-slate-800/30'
+                    className={`rounded-xl border transition-all ${
+                      isExpanded
+                        ? 'border-red-400 dark:border-red-800 bg-white dark:bg-slate-900 shadow-xs ring-1 ring-red-200 dark:ring-red-950'
+                        : currentCode
+                          ? 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xs'
+                          : 'border-slate-200 dark:border-slate-800/80 bg-slate-50/60 dark:bg-slate-800/30'
                     }`}
                   >
-                    <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                      <span className="text-[11px] font-mono text-slate-400 w-5 text-right flex-shrink-0">
-                        {index + 1}.
-                      </span>
-                      <span className="text-xs font-medium text-slate-800 dark:text-slate-200 truncate" title={bone}>
-                        {bone}
-                      </span>
+                    {/* Linha Principal do Osso */}
+                    <div className="flex flex-wrap items-center justify-between p-2.5 sm:p-3 gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                        <span className="text-[11px] font-mono text-slate-400 w-5 text-right flex-shrink-0">
+                          {index + 1}.
+                        </span>
+                        <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate" title={bone}>
+                          {bone}
+                        </span>
+
+                        {/* Badges de Alterações Ósseas Registradas */}
+                        {hasSemAlteracao && (
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-semibold border border-emerald-200 dark:border-emerald-800">
+                            Sem alteração
+                          </span>
+                        )}
+                        {activeAlteracoes.length > 0 && (
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300 font-bold border border-red-200 dark:border-red-800 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3 text-red-600 dark:text-red-400" />
+                            {activeAlteracoes.length} {activeAlteracoes.length === 1 ? 'alteração' : 'alterações'}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Grupo de Ações: P / F / I / A + Botão de Alterações Ósseas */}
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {(['P', 'F', 'I', 'A'] as OsteologicalPresenceCode[]).map(code => {
+                          const isSelected = currentCode === code;
+                          const config = PRESENCE_DEFINITIONS[code];
+                          return (
+                            <button
+                              key={code}
+                              type="button"
+                              disabled={readOnly}
+                              onClick={() => handleSetBonePresence(bone, code)}
+                              title={`${bone} — ${config.desc}`}
+                              className={`w-7 h-7 rounded-lg text-xs font-mono font-bold transition-all border ${
+                                isSelected
+                                  ? config.activeBtnClass
+                                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'
+                              } ${readOnly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer active:scale-95'}`}
+                            >
+                              {code}
+                            </button>
+                          );
+                        })}
+
+                        <div className="w-[1px] h-5 bg-slate-200 dark:bg-slate-700 mx-0.5" />
+
+                        {/* Botão de Alterações Ósseas (ilumina em vermelho quando selecionado/expandido ou quando possui alterações) */}
+                        <button
+                          type="button"
+                          onClick={() => toggleExpandBone(bone)}
+                          title={`Alterações ósseas — ${bone}`}
+                          aria-label={`Alterações ósseas — ${bone}`}
+                          className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all border ${
+                            isExpanded || activeAlteracoes.length > 0
+                              ? isExpanded
+                                ? 'bg-red-700 text-white border-red-800 ring-2 ring-red-400/50 shadow-xs'
+                                : 'bg-red-600 text-white border-red-700 shadow-xs hover:bg-red-700 active:scale-95'
+                              : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-red-50 hover:text-red-600 hover:border-red-300 dark:hover:bg-red-950/40 dark:hover:text-red-400 active:scale-95'
+                          } ${readOnly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                        >
+                          <AlertCircle className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
 
-                    {/* Grupo de Botões P / F / I / A */}
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      {(['P', 'F', 'I', 'A'] as OsteologicalPresenceCode[]).map(code => {
-                        const isSelected = currentCode === code;
-                        const config = PRESENCE_DEFINITIONS[code];
-                        return (
+                    {/* Drawer Expansível de Alterações Ósseas — Específico do Osso */}
+                    {isExpanded && (
+                      <div className="border-t border-red-200 dark:border-red-900/60 bg-red-50/20 dark:bg-red-950/20 p-4 rounded-b-xl space-y-3">
+                        <div className="flex items-center justify-between pb-2 border-b border-red-200/80 dark:border-red-900/50">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-red-600" />
+                            <h6 className="text-xs font-bold text-red-900 dark:text-red-200 uppercase font-mono tracking-wider flex items-center gap-1.5">
+                              <AlertCircle className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
+                              Alterações Ósseas — {bone}
+                            </h6>
+                          </div>
                           <button
-                            key={code}
                             type="button"
-                            disabled={readOnly}
-                            onClick={() => handleSetBonePresence(bone, code)}
-                            title={`${bone} — ${config.desc}`}
-                            className={`w-7 h-7 rounded-lg text-xs font-mono font-bold transition-all border ${
-                              isSelected
-                                ? config.activeBtnClass
-                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'
-                            } ${readOnly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer active:scale-95'}`}
+                            onClick={() => toggleExpandBone(bone)}
+                            className="text-[11px] text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 font-mono"
                           >
-                            {code}
+                            Fechar ✕
                           </button>
-                        );
-                      })}
-                    </div>
+                        </div>
+
+                        <div className="space-y-2.5">
+                          {ALTERACOES_OPTIONS.map(opt => {
+                            const matchingEntries = boneAlteracoes.filter(a => a.tipo === opt.id);
+                            const isChecked = matchingEntries.length > 0;
+
+                            if (opt.isNone) {
+                              return (
+                                <div
+                                  key={opt.id}
+                                  className={`p-2.5 rounded-lg border transition-all ${
+                                    isChecked
+                                      ? 'border-emerald-300 dark:border-emerald-800/80 bg-emerald-50/40 dark:bg-emerald-950/20'
+                                      : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-slate-800 dark:text-slate-200">
+                                      <input
+                                        type="checkbox"
+                                        disabled={readOnly}
+                                        checked={isChecked}
+                                        onChange={() => handleToggleBoneAlteracao(bone, opt.id)}
+                                        className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                                      />
+                                      <span>{opt.label}</span>
+                                    </label>
+                                    {isChecked && (
+                                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200">
+                                        Osso sem alterações
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            }
+
+                            return (
+                              <div
+                                key={opt.id}
+                                className={`p-3 rounded-lg border transition-all ${
+                                  isChecked
+                                    ? 'border-amber-300 dark:border-amber-800/80 bg-amber-50/40 dark:bg-amber-950/20'
+                                    : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-800 dark:text-slate-200">
+                                    <input
+                                      type="checkbox"
+                                      disabled={readOnly}
+                                      checked={isChecked}
+                                      onChange={() => handleToggleBoneAlteracao(bone, opt.id)}
+                                      className="rounded border-slate-300 text-amber-600 focus:ring-amber-500"
+                                    />
+                                    <span>{opt.label}</span>
+                                  </label>
+                                  {isChecked && (
+                                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 font-medium">
+                                      {matchingEntries.length} {matchingEntries.length === 1 ? 'item' : 'itens'}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Lista de itens registrados para a categoria neste osso */}
+                                {isChecked && (
+                                  <div className="mt-2.5 pt-2.5 border-t border-amber-200/80 dark:border-amber-900/60 space-y-2">
+                                    {matchingEntries.map((entry, idx) => {
+                                      const entryId = entry.id || `alt-${opt.id}-${idx}`;
+                                      return (
+                                        <div
+                                          key={entryId}
+                                          className="p-2.5 rounded-lg bg-white/90 dark:bg-slate-900/90 border border-amber-200 dark:border-amber-900/50 shadow-2xs space-y-1.5"
+                                        >
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-[10px] font-mono font-bold text-amber-800 dark:text-amber-300 uppercase">
+                                              Item #{idx + 1}
+                                            </span>
+                                            {!readOnly && matchingEntries.length > 1 && (
+                                              <button
+                                                type="button"
+                                                onClick={() => handleRemoveBoneAlteracaoItem(entryId)}
+                                                className="text-rose-600 hover:text-rose-700 text-xs flex items-center gap-1 font-medium transition-colors"
+                                                title="Remover este item"
+                                              >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                                Remover
+                                              </button>
+                                            )}
+                                          </div>
+
+                                          <div>
+                                            <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                                              Descrição / Detalhamento:
+                                            </label>
+                                            <input
+                                              type="text"
+                                              disabled={readOnly}
+                                              value={entry.observacoes || ''}
+                                              onChange={e => handleUpdateBoneAlteracaoItem(entryId, e.target.value)}
+                                              placeholder="Ex: Fratura linear sem cicatrização; orifício de PAF..."
+                                              className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
+                                            />
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+
+                                    {!readOnly && (
+                                      <div className="flex justify-end pt-1">
+                                        <button
+                                          type="button"
+                                          onClick={() => handleAddBoneAlteracaoItem(bone, opt.id)}
+                                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 text-amber-800 dark:text-amber-200 hover:bg-amber-100/60 dark:hover:bg-amber-950/40 transition-colors text-xs font-semibold shadow-2xs"
+                                        >
+                                          <Plus className="w-3.5 h-3.5 text-amber-600" />
+                                          Adicionar outro item nesta categoria
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -412,7 +717,7 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
           {/* Estruturas Complementares: Cartilagens e Ossículos */}
           <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-4">
             <h5 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-mono">
-              Estruturas Cartilaginosas e Ossículos Auditivos (Múltipla Escolha)
+              Cartilagens da laringe ossificadas / Ossículos da audição
             </h5>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -504,92 +809,6 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
             </div>
           </div>
 
-          {/* Alterações Ósseas Identificadas Nesta Região */}
-          <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
-            <div>
-              <h5 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-mono flex items-center gap-2">
-                <ShieldAlert className="w-4 h-4 text-amber-600" />
-                Alterações Ósseas Identificadas Nesta Região
-              </h5>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Marque as categorias de alterações observadas nesta região e vincule o osso correspondente.
-              </p>
-            </div>
-
-            <div className="space-y-2.5">
-              {ALTERACOES_OPTIONS.map(opt => {
-                const existing = (cabecaData.alteracoes || []).find(a => a.tipo === opt.id);
-                const isChecked = Boolean(existing);
-
-                return (
-                  <div
-                    key={opt.id}
-                    className={`p-3 rounded-xl border transition-all ${
-                      isChecked
-                        ? 'border-amber-300 dark:border-amber-800/80 bg-amber-50/40 dark:bg-amber-950/20'
-                        : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-slate-800 dark:text-slate-200">
-                        <input
-                          type="checkbox"
-                          disabled={readOnly}
-                          checked={isChecked}
-                          onChange={() => handleToggleAlteracao(opt.id)}
-                          className="rounded border-slate-300 text-amber-600 focus:ring-amber-500"
-                        />
-                        <span>{opt.label}</span>
-                      </label>
-                      {isChecked && (
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200">
-                          Identificada
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Caixa de seleção vinculada do osso e observação */}
-                    {isChecked && (
-                      <div className="mt-3 pt-2.5 border-t border-amber-200 dark:border-amber-900/60 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                        <div className="sm:col-span-1">
-                          <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                            Osso afetado:
-                          </label>
-                          <select
-                            disabled={readOnly}
-                            value={existing?.osso || CABECA_PESCOCO_OSSOS[0]}
-                            onChange={e => handleUpdateAlteracaoOsso(opt.id, e.target.value)}
-                            className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
-                          >
-                            <option value="Múltiplos / Região Geral">Múltiplos / Região Geral</option>
-                            {CABECA_PESCOCO_OSSOS.map(b => (
-                              <option key={b} value={b}>
-                                {b}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="sm:col-span-2">
-                          <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                            Descrição / Detalhamento da alteração:
-                          </label>
-                          <input
-                            type="text"
-                            disabled={readOnly}
-                            value={existing?.observacoes || ''}
-                            onChange={e => handleUpdateAlteracaoOsso(opt.id, existing?.osso || CABECA_PESCOCO_OSSOS[0], e.target.value)}
-                            placeholder="Ex: Fratura linear sem cicatrização; osteófito na margem..."
-                            className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
-                          >
-                          </input>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
         </div>
       ) : (
         /* Placeholder para as Seções 2 a 8 */

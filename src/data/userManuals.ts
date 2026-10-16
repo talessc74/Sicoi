@@ -14,24 +14,19 @@ export interface UserManual {
   version: string;
   path: string;
   updatedAt: string; // YYYY-MM-DD
+  // Só aparece na aba Documentos para quem tem acesso de Administrador
+  // (hasAdminAccess) — decisão da curadoria, out/2026.
+  adminOnly?: boolean;
 }
 
 export const USER_MANUALS: UserManual[] = [
   {
     id: 'manual-completo',
     title: 'Manual SIGCOI — Guia completo',
-    description: 'Visão geral, perfis de acesso, login real, as 7 fases (incl. Montagem e Inventário, Alterações Ósseas), assinatura & hash, ferramentas (incl. Busca por Semelhança entre ossos), condutor por voz, glossário e FAQ.',
-    version: 'v10',
-    path: '/manuais/manual-sigcoi-completo-v10.html',
-    updatedAt: '2026-10-14',
-  },
-  {
-    id: 'manual-fases-4-a-7',
-    title: 'Manual SIGCOI — Passo a passo · Fases 4 a 7',
-    description: 'Guia detalhado das fases de Montagem e Inventário, Alterações Ósseas, Galpão Definitivo e Consulta & Pesquisa.',
-    version: 'v3',
-    path: '/manuais/manual-sigcoi-fases-4-a-7-v3.html',
-    updatedAt: '2026-10-14',
+    description: 'Visão geral, perfis de acesso, login real, as fases 0 a 7 (incl. Identificação e DO, Montagem e Inventário, Alterações Ósseas), assinatura & hash, ferramentas (incl. Busca por Semelhança entre ossos), condutor por voz, glossário e FAQ.',
+    version: 'v14',
+    path: '/manuais/manual-sigcoi-completo-v14.html',
+    updatedAt: '2026-10-16',
   },
   {
     id: 'manual-administrador-contas',
@@ -40,5 +35,6 @@ export const USER_MANUALS: UserManual[] = [
     version: 'v8',
     path: '/manuais/manual-administrador-contas-v8.html',
     updatedAt: '2026-10-13',
+    adminOnly: true,
   },
 ];

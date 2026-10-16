@@ -553,7 +553,7 @@ export const Phase5Patologias: React.FC<Phase5PatologiasProps> = ({
                 Checklist Determinístico de Completude — Fase 5 (§15)
               </h3>
               <p className="text-slate-500">
-                A liberação da Fase 6 (Galpão Definitivo) exige 100% dos itens validados e dupla assinatura.
+                A liberação da Fase 6 (Armazenamento Definitivo) exige 100% dos itens validados e dupla assinatura.
               </p>
             </div>
             <div className="text-right font-mono">

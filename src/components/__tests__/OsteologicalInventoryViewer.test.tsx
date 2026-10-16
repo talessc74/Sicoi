@@ -22,6 +22,9 @@ describe('OsteologicalInventoryViewer', () => {
     for (const bone of CABECA_PESCOCO_OSSOS) {
       expect(screen.getByText(bone)).toBeInTheDocument();
     }
+
+    // Verifica que a legenda possui os códigos P/F/I/A e Alterações ósseas
+    expect(screen.getByText('Alterações ósseas')).toBeInTheDocument();
   });
 
   it('permite marcar a presença de um osso com o código P/F/I/A', async () => {
@@ -98,7 +101,7 @@ describe('OsteologicalInventoryViewer', () => {
     );
   });
 
-  it('abre campo de seleção de osso ao marcar uma alteração óssea', async () => {
+  it('abre gaveta de alterações ósseas ao clicar no botão de exclamação do osso', async () => {
     const user = userEvent.setup();
     const onUpdateInventory = vi.fn();
 
@@ -116,8 +119,87 @@ describe('OsteologicalInventoryViewer', () => {
       />
     );
 
-    expect(screen.getByText('Osso afetado:')).toBeInTheDocument();
+    // Verifica que o badge de alteração aparece no osso
+    expect(screen.getByText(/1 alteração/i)).toBeInTheDocument();
+
+    // Clica no botão vermelho de exclamação para abrir o drawer do osso Frontal
+    const altButton = screen.getByRole('button', { name: 'Alterações ósseas — Frontal' });
+    await user.click(altButton);
+
+    expect(screen.getByText('Alterações Ósseas — Frontal')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Fratura cicatrizada')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Adicionar outro item nesta categoria/i })).toBeInTheDocument();
+  });
+
+  it('permite adicionar outro item na mesma categoria usando o botão de mais (+)', async () => {
+    const user = userEvent.setup();
+    const onUpdateInventory = vi.fn();
+
+    const initialInventory: OsteologicalInventoryData = {
+      cabecaPescoco: {
+        ossos: {},
+        alteracoes: [{ id: 'alt-1', tipo: 'lesao_ante_mortem', osso: 'Frontal', observacoes: 'Primeira fratura' }]
+      }
+    };
+
+    render(
+      <OsteologicalInventoryViewer
+        inventory={initialInventory}
+        onUpdateInventory={onUpdateInventory}
+      />
+    );
+
+    // Abre o drawer de alterações do osso Frontal
+    const altButton = screen.getByRole('button', { name: 'Alterações ósseas — Frontal' });
+    await user.click(altButton);
+
+    const addMoreBtn = screen.getByRole('button', { name: /Adicionar outro item nesta categoria/i });
+    await user.click(addMoreBtn);
+
+    expect(onUpdateInventory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cabecaPescoco: expect.objectContaining({
+          alteracoes: expect.arrayContaining([
+            expect.objectContaining({ tipo: 'lesao_ante_mortem', osso: 'Frontal' }),
+            expect.objectContaining({ tipo: 'lesao_ante_mortem', osso: 'Frontal' })
+          ])
+        })
+      })
+    );
+  });
+
+  it('permite selecionar "Sem alteração" desmarcando outras alterações do osso', async () => {
+    const user = userEvent.setup();
+    const onUpdateInventory = vi.fn();
+
+    const initialInventory: OsteologicalInventoryData = {
+      cabecaPescoco: {
+        ossos: {},
+        alteracoes: [{ id: 'alt-1', tipo: 'lesao_ante_mortem', osso: 'Frontal', observacoes: 'Lesão' }]
+      }
+    };
+
+    render(
+      <OsteologicalInventoryViewer
+        inventory={initialInventory}
+        onUpdateInventory={onUpdateInventory}
+      />
+    );
+
+    // Abre o drawer de alterações do osso Frontal
+    const altButton = screen.getByRole('button', { name: 'Alterações ósseas — Frontal' });
+    await user.click(altButton);
+
+    const semAltCheckbox = screen.getByRole('checkbox', { name: /Sem alteração/i });
+    await user.click(semAltCheckbox);
+
+    expect(onUpdateInventory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cabecaPescoco: expect.objectContaining({
+          alteracoes: [expect.objectContaining({ tipo: 'sem_alteracao', osso: 'Frontal' })]
+        })
+      })
+    );
   });
 
   it('ao clicar em outra seção exibe aviso de aguardo de especificações técnicas', async () => {

@@ -18,6 +18,18 @@ import { toAppError, AppError } from '../utils/errorMessages';
 import { calculateSha256, generateSignaturePayload } from '../services/auditService';
 import { uploadCollectionPhoto } from '../services/photoService';
 import { getLatestPhaseSignature } from '../utils/signatures';
+import {
+  MATERIAL_TYPE_OPTIONS,
+  PRESERVATION_OPTIONS,
+  GENETIC_OPTIONS,
+  ISOTOPIC_OPTIONS,
+  MATERIAL_DESCRIPTION_FIELDS,
+  PRESERVATION_DESCRIPTION_FIELDS,
+  GENETIC_DESCRIPTION_FIELDS,
+  ISOTOPIC_DESCRIPTION_FIELDS,
+  Phase1DescriptionKey
+} from '../data/phase1Options';
+import { phase1MissingFields } from '../utils/collectionPendencies';
 import { canSignAsTechnician, canViewLegalOrigin } from '../utils/permissions';
 import { Shield, Lock, FileText, Camera, CheckCircle2, AlertCircle, Sparkles, Printer, Bot, Save, HelpCircle, UserCheck } from 'lucide-react';
 
@@ -37,85 +49,6 @@ interface Phase1RecebimentoProps {
   onUpdateCollection: (updated: OsteologicalCollection) => void;
   laboratoryMode: boolean;
 }
-
-const MATERIAL_TYPE_OPTIONS: { value: MaterialType; label: string }[] = [
-  { value: 'ossos', label: 'Ossos' },
-  { value: 'dentes', label: 'Dentes' },
-  { value: 'cabelo', label: 'Cabelo (solto ou aderido)' },
-  { value: 'unha', label: 'Unha' },
-  { value: 'proteses', label: 'Próteses' },
-  { value: 'vestes', label: 'Vestes' },
-  { value: 'pertences', label: 'Pertences' },
-  { value: 'tecidos_moles', label: 'Tecidos moles e/ou mumificados' }
-];
-
-const PRESERVATION_OPTIONS: { value: PreservationCharacteristic; label: string }[] = [
-  { value: 'preservado_integro', label: 'Preservado/Íntegro' },
-  { value: 'degradado', label: 'Degradado' },
-  { value: 'fragmentacao', label: 'Fragmentação' },
-  { value: 'friavel', label: 'Friável' },
-  { value: 'erosao', label: 'Erosão' },
-  { value: 'umido', label: 'Úmido' },
-  { value: 'seco', label: 'Seco' },
-  { value: 'fungo_visivel', label: 'Fungo visível' },
-  { value: 'manchas', label: 'Manchas' },
-  { value: 'perda_cortical', label: 'Perda de cortical' },
-  { value: 'carbonizacao', label: 'Carbonização' },
-  { value: 'insetos_pupas', label: 'Insetos/Pupas' },
-  { value: 'mumificado', label: 'Mumificado' },
-  { value: 'adipocera', label: 'Adipocera' },
-  { value: 'outros', label: 'Outros' }
-];
-
-const GENETIC_OPTIONS: { value: GeneticSampleElement; label: string }[] = [
-  { value: 'falange', label: 'Falange' },
-  { value: 'ossos_tarsais', label: 'Ossos tarsais' },
-  { value: 'dente_higido', label: 'Dente hígido' },
-  { value: 'primeira_costela', label: '1ª costela' },
-  { value: 'patela', label: 'Patela' },
-  { value: 'outros', label: 'Outros' },
-  { value: 'nao_coletado', label: 'Não coletado' }
-];
-
-const ISOTOPIC_OPTIONS: { value: IsotopicSampleMaterial; label: string }[] = [
-  { value: 'cabelo', label: 'Cabelo' },
-  { value: 'unha', label: 'Unha' },
-  { value: 'dente', label: 'Dente' },
-  { value: 'nao_coletado', label: 'Não coletado' }
-];
-
-// Campos de texto do Phase1Data (descrições condicionais).
-type Phase1DescriptionKey = {
-  [K in keyof Phase1Data]-?: NonNullable<Phase1Data[K]> extends FieldWithAiSuggestion<string> ? K : never;
-}[keyof Phase1Data];
-
-// Opções que, quando marcadas, abrem uma caixa de descrição própria e obrigatória.
-const MATERIAL_DESCRIPTION_FIELDS: Partial<Record<MaterialType, Phase1DescriptionKey>> = {
-  cabelo: 'cabeloDescricao',
-  proteses: 'protesesDescricao',
-  vestes: 'vestesDescricao',
-  pertences: 'pertencesDescricao',
-  tecidos_moles: 'tecidosMolesDescricao'
-};
-
-const PRESERVATION_DESCRIPTION_FIELDS: Partial<Record<PreservationCharacteristic, Phase1DescriptionKey>> = {
-  outros: 'estadoPreservacaoOutrosDescricao'
-};
-
-const GENETIC_DESCRIPTION_FIELDS: Partial<Record<GeneticSampleElement, Phase1DescriptionKey>> = {
-  falange: 'geneticoFalangeDescricao',
-  ossos_tarsais: 'geneticoOssosTarsaisDescricao',
-  dente_higido: 'geneticoDenteHigidoDescricao',
-  primeira_costela: 'geneticoPrimeiraCostelaDescricao',
-  patela: 'geneticoPatelaDescricao',
-  outros: 'geneticoOutrosDescricao'
-};
-
-const ISOTOPIC_DESCRIPTION_FIELDS: Partial<Record<IsotopicSampleMaterial, Phase1DescriptionKey>> = {
-  cabelo: 'isotopicaCabeloDescricao',
-  unha: 'isotopicaUnhaDescricao',
-  dente: 'isotopicaDenteDescricao'
-};
 
 function toggleInArray<T>(arr: T[] | undefined, value: T): T[] {
   const current = arr || [];
@@ -307,43 +240,7 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
   // Cada entrada também vira um item legível na lista de pendências abaixo — sem
   // isso, o botão só fica cinza sem nenhuma pista do porquê (mesma classe de bug
   // já corrigida na voz: bloqueio silencioso).
-  const missingFieldLabels: string[] = [];
-  if (!Boolean(p1.equipeEnvolvidaLimpeza.value)) missingFieldLabels.push('equipe envolvida');
-  if (!Boolean(p1.dataAnalise.value)) missingFieldLabels.push('data da análise');
-  if (!Boolean(p1.horaAnalise.value)) missingFieldLabels.push('hora da análise');
-  if (p1.foto1SacoFechado.value === undefined) missingFieldLabels.push('foto do saco fechado (ou confirmar que não há foto)');
-  if (p1.foto2PlacaCemiterio.value === undefined) missingFieldLabels.push('foto da placa do cemitério (ou "não se aplica")');
-  if (p1.foto3RemanescentesMateriais.value === undefined) missingFieldLabels.push('foto dos materiais associados (ou "não se aplica")');
-  if (p1.foto4_1RemanescentesIsolados.value === undefined) missingFieldLabels.push('foto dos remanescentes isolados (ou confirmar que não há foto)');
-  if (p1.foto4_2MateriaisIsolados.value === undefined) missingFieldLabels.push('foto dos materiais associados isolados (ou "não se aplica")');
-  // Cada opção marcada que tem caixa de descrição exige a descrição preenchida.
-  const pushMissingDescriptions = <T extends string>(
-    selected: T[] | undefined,
-    options: { value: T; label: string }[],
-    descriptionFields: Partial<Record<T, Phase1DescriptionKey>>,
-    sectionLabel: string
-  ) => {
-    for (const option of options) {
-      const key = descriptionFields[option.value];
-      if (key && selected?.includes(option.value) && !descriptionValue(key).trim()) {
-        missingFieldLabels.push(`descrição de "${option.label}" (${sectionLabel})`);
-      }
-    }
-  };
-  if ((p1.tipoMaterial.value?.length || 0) === 0) missingFieldLabels.push('tipo de material');
-  pushMissingDescriptions(p1.tipoMaterial.value, MATERIAL_TYPE_OPTIONS, MATERIAL_DESCRIPTION_FIELDS, 'tipo de material');
-  if ((p1.estadoPreservacao.value?.length || 0) === 0) missingFieldLabels.push('estado de preservação');
-  pushMissingDescriptions(p1.estadoPreservacao.value, PRESERVATION_OPTIONS, PRESERVATION_DESCRIPTION_FIELDS, 'estado de preservação');
-  if ((p1.exameGenetico.value?.length || 0) === 0) missingFieldLabels.push('exame genético');
-  pushMissingDescriptions(p1.exameGenetico.value, GENETIC_OPTIONS, GENETIC_DESCRIPTION_FIELDS, 'exame genético');
-  if (!Boolean(p1.geneticoResponsavelColeta.value)) missingFieldLabels.push('responsável pela coleta genética');
-  if ((p1.analiseIsotopica.value?.length || 0) === 0) missingFieldLabels.push('análise isotópica');
-  pushMissingDescriptions(p1.analiseIsotopica.value, ISOTOPIC_OPTIONS, ISOTOPIC_DESCRIPTION_FIELDS, 'análise isotópica');
-  if (!Boolean(p1.isotopicaResponsavelColeta.value)) missingFieldLabels.push('responsável pela coleta isotópica');
-  if (!Boolean(p1.corSacoLavagem.value)) missingFieldLabels.push('cor do saco de lavagem');
-  if (!Boolean(p1.tipoLimpeza.value)) missingFieldLabels.push('tipo de limpeza');
-  if (p1.houveDanos.value === undefined) missingFieldLabels.push('se houve dano');
-  if (p1.houveDanos.value === true && !Boolean(p1.descricaoDanos.value)) missingFieldLabels.push('descrição do dano');
+  const missingFieldLabels = phase1MissingFields(p1);
   const requiredFieldsFilled = missingFieldLabels.length === 0;
   const hasBoxes = collection.phase1.preliminaryBoxes.length > 0;
   // "Pelo menos uma foto anexada" já é garantido pelos 5 campos do checklist acima

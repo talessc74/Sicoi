@@ -37,3 +37,4 @@ Decisões de arquitetura e técnicas deste projeto, criadas por deliberação AR
 - [_local-adr-policy-204](controls/204-abac-por-pessoa.md) - ABAC por pessoa: acesso ajustável além do padrão do papel — assinatura de Inventário e Científica nunca são override-áveis
 - [_local-adr-policy-205](controls/205-autorizacoes-de-pesquisa-reais.md) - Autorizações de pesquisa reais (Fase 7, §13): escopo granular por projeto/NIC/validade, persistidas em Postgres — revogação nunca é delete
 - [_local-adr-policy-206](controls/206-validacao-entrada-rotas-ia.md) - Validação de forma/tamanho nas rotas públicas de IA — gap de autenticação permanece deliberadamente fora do escopo
+- [_local-adr-policy-207](controls/207-dados-restritos-saem-so-para-quem-pode-ver.md) - Dados da DO (Fase 0) e de procedência só saem do servidor para quem pode vê-los; a tela esconder não basta

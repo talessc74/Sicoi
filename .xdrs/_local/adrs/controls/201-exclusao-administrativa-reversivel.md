@@ -59,6 +59,12 @@ esconde da tela, e pode ser desfeito a qualquer momento.**
   excluído. As rotas HTTP em si (`server.ts`) não têm teste de integração
   próprio — são wrappers finos sobre as funções testadas.
 
+- **Quadro "Excluir uma caixa" retirado da tela (out/2026, pedido da
+  curadoria)**: excluir o conjunto já cobre o caso, e o conjunto e a caixa
+  passaram a ter o mesmo número (COI-XXX, `_local-bdr-policy-501`). A rota
+  do servidor e a restauração de caixas já excluídas continuam existindo, para
+  que exclusões antigas sigam podendo ser desfeitas pela lista da Zona de Risco.
+
 ## References
 
 - Arquivos: `db/migrations/008_admin_soft_delete.sql`, `db/adminRepo.ts`,

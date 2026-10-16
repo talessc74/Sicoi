@@ -259,3 +259,36 @@ describe('collectionsRepo', () => {
     expect(file?.data.toString()).toBe('bytes-da-foto-de-montagem');
   });
 });
+
+describe('dados restritos ao salvar (Fase 0 e origem)', () => {
+  it('Pesquisador salva a partir da versão sem dados restritos: Fase 0 assinada e origem continuam intactas', async () => {
+    const { redactCollectionForViewer, restoreHiddenFields } = await import('../collectionRedaction');
+    const col = { ...baseCollection('COI-REPO-0900'), currentPhase: 1 } as OsteologicalCollection;
+    col.phase0 = { nome: 'Fulano de Tal', causaMorte: 'Causa', filhos: [] };
+    col.legalOrigin = { cemeteryName: 'Cemitério X' };
+    await createCollection(pool, col);
+
+    const timestamp = new Date().toISOString();
+    const snapshot = JSON.stringify(col.phase0);
+    const hash = serverSideSha256(
+      generateSignaturePayload({ nic: col.nic, phaseNumber: 0, signedBy: 'usr-1', role: 'tecnico', timestamp, dataSnapshotJson: snapshot })
+    );
+    col.signatures = [
+      { phaseNumber: 0, signedBy: 'usr-1', signedByName: 'Técnico', signedByRole: 'tecnico', signedAt: timestamp, sha256Hash: hash, status: 'locked', dataSnapshotJson: snapshot }
+    ];
+    await saveCollection(pool, col);
+
+    const stored = (await getCollection(pool, col.nic))!;
+    const seenByResearcher = redactCollectionForViewer(stored, { role: 'pesquisador' });
+    expect(seenByResearcher.phase0).toEqual({ filhos: [], redacted: true });
+
+    seenByResearcher.phase1.equipeEnvolvidaLimpeza = { value: 'Equipe Alfa', isAiSuggested: false };
+    await saveCollection(pool, restoreHiddenFields(seenByResearcher, stored, { role: 'pesquisador' }));
+
+    const after = (await getCollection(pool, col.nic))!;
+    expect(after.phase0?.nome).toBe('Fulano de Tal');
+    expect(after.legalOrigin.cemeteryName).toBe('Cemitério X');
+    expect(after.phase1.equipeEnvolvidaLimpeza.value).toBe('Equipe Alfa');
+    expect(after.signatures[0].dataSnapshotJson).toBe(snapshot);
+  });
+});

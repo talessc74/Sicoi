@@ -61,11 +61,11 @@ por conteúdo). Mantivemos o arquivo já arquivado aqui, sem duplicar.
 
 ## Como estes documentos chegam ao site
 
-Cópias idênticas (mesmo SHA-256) de todos os 6 arquivos acima ficam em
-`public/documentos-oficiais/`, servidas como estáticas pelo Express
-(`express.static(dist/)`, que inclui o conteúdo de `public/` no build do
-Vite) e listadas em `src/data/officialDocuments.ts`, exibidas na aba
-Documentos do site sob "Documentos Oficiais da COI-INC". Este `docs/normativos/`
-é o arquivo de origem com a ficha de proveniência (hash, data de
-recebimento); `public/documentos-oficiais/` é só a cópia servida — nunca
-editar um sem conferir o outro.
+Os arquivos ficam só aqui, fora da pasta pública — nunca copiados para
+`public/`. A rota `GET /api/documentos/:id` (`server.ts`, protegida por
+`requireAuth`) lê o arquivo direto desta pasta pelo `fileName` cadastrado em
+`src/data/officialDocuments.ts`, nunca por um caminho vindo da URL; só quem
+está logado consegue abrir ou baixar. A aba Documentos do site lista esses
+mesmos registros sob "Documentos Oficiais da COI-INC". Para incluir um
+documento novo: arquivo aqui + ficha de proveniência (hash, data) neste
+README + entrada em `officialDocuments.ts` — sempre os três juntos.

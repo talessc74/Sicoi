@@ -41,13 +41,13 @@ import {
 } from 'lucide-react';
 
 const PHASE_META: Record<PhaseNumber, { subtitle: string; signerRole: string }> = {
-  0: { subtitle: 'Recebimento', signerRole: 'Técnico' },
-  1: { subtitle: 'Recebimento & A.1', signerRole: 'Técnico' },
+  0: { subtitle: 'Identificação e DO', signerRole: 'Técnico' },
+  1: { subtitle: 'Análise Preliminar', signerRole: 'Técnico' },
   2: { subtitle: 'Limpeza & Secagem A.2', signerRole: 'Técnico' },
   3: { subtitle: 'Acondic. Provisório', signerRole: 'Técnico' },
   4: { subtitle: 'Montagem e Inventário & Perfil', signerRole: 'Técnico / Curador' },
   5: { subtitle: 'Alterações Ósseas & Exames', signerRole: 'Curador / Técnico' },
-  6: { subtitle: 'Galpão Definitivo', signerRole: 'Dupla Custódia' },
+  6: { subtitle: 'Armazenamento Definitivo', signerRole: 'Dupla Custódia' },
   7: { subtitle: 'Pesquisa & Grafo', signerRole: 'Admin / Livre' }
 };
 
@@ -662,13 +662,13 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
               className="w-full py-2 px-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-700 dark:text-slate-200 focus:outline-hidden"
             >
               <option value="all">Todas as Fases (0 a 7)</option>
-              <option value="0">Fase 0: Recebimento</option>
-              <option value="1">Fase 1: Entrada / Recebimento</option>
+              <option value="0">Fase 0: Identificação e DO</option>
+              <option value="1">Fase 1: Análise Preliminar</option>
               <option value="2">Fase 2: Limpeza e Secagem</option>
               <option value="3">Fase 3: Acondicionamento Prov.</option>
               <option value="4">Fase 4: Montagem e Inventário / NMI</option>
               <option value="5">Fase 5: Alterações Ósseas e Embalagem</option>
-              <option value="6">Fase 6: Galpão Definitivo</option>
+              <option value="6">Fase 6: Armazenamento Definitivo</option>
               <option value="7">Fase 7: Consulta / Pesquisa</option>
             </select>
           </div>

@@ -6,7 +6,6 @@ import {
   ShieldAlert,
   Trash2,
   RotateCcw,
-  Package,
   FolderX,
   Bomb,
   Loader2,
@@ -19,7 +18,6 @@ import {
   restoreCollectionApi,
   deleteAllCollectionsApi,
   restoreAllCollectionsApi,
-  deleteBoxApi,
   restoreBoxApi,
   DeletedCollectionSummary,
   AdminActionRow
@@ -46,11 +44,6 @@ export const AdminDangerZone: React.FC<AdminDangerZoneProps> = ({ currentUser, c
   const [isLoadingTrail, setIsLoadingTrail] = useState(false);
   const [error, setError] = useState<AppError | null>(null);
   const [isBusy, setIsBusy] = useState(false);
-
-  // Caixa
-  const [boxNic, setBoxNic] = useState('');
-  const [boxId, setBoxId] = useState('');
-  const [boxReason, setBoxReason] = useState('');
 
   // Conjunto
   const [collectionNic, setCollectionNic] = useState('');
@@ -82,15 +75,6 @@ export const AdminDangerZone: React.FC<AdminDangerZoneProps> = ({ currentUser, c
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const activeBoxesByNic = useMemo(
-    () =>
-      collections.map((c) => ({
-        nic: c.nic,
-        boxes: c.phase1.preliminaryBoxes.filter((b) => !b.deletedAt)
-      })),
-    [collections]
-  );
-
   const deletedBoxes = useMemo(
     () =>
       collections.flatMap((c) =>
@@ -98,8 +82,6 @@ export const AdminDangerZone: React.FC<AdminDangerZoneProps> = ({ currentUser, c
       ),
     [collections]
   );
-
-  const boxesForSelectedNic = activeBoxesByNic.find((c) => c.nic === boxNic)?.boxes || [];
 
   const runAction = async (action: () => Promise<void>) => {
     setIsBusy(true);
@@ -113,14 +95,6 @@ export const AdminDangerZone: React.FC<AdminDangerZoneProps> = ({ currentUser, c
       setIsBusy(false);
     }
   };
-
-  const handleDeleteBox = () =>
-    runAction(async () => {
-      await deleteBoxApi(boxNic, boxId, boxReason.trim());
-      setBoxNic('');
-      setBoxId('');
-      setBoxReason('');
-    });
 
   const handleRestoreBox = (nic: string, id: string) =>
     runAction(async () => {
@@ -171,54 +145,7 @@ export const AdminDangerZone: React.FC<AdminDangerZoneProps> = ({ currentUser, c
         <ErrorNotice className="mx-5 mt-4" code={error.code} message={error.message} />
       )}
 
-      <div className="p-5 grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Excluir caixa */}
-        <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2.5">
-          <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200">
-            <Package className="w-3.5 h-3.5" /> Excluir uma caixa
-          </div>
-          <select
-            value={boxNic}
-            onChange={(e) => { setBoxNic(e.target.value); setBoxId(''); }}
-            className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
-          >
-            <option value="">Selecione o conjunto (COI)…</option>
-            {activeBoxesByNic.filter((c) => c.boxes.length > 0).map((c) => (
-              <option key={c.nic} value={c.nic}>{c.nic}</option>
-            ))}
-          </select>
-          <select
-            value={boxId}
-            onChange={(e) => setBoxId(e.target.value)}
-            disabled={!boxNic}
-            className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 disabled:opacity-50"
-          >
-            <option value="">Selecione a caixa…</option>
-            {boxesForSelectedNic.map((b) => (
-              <option key={b.id} value={b.id}>{b.boxCode}</option>
-            ))}
-          </select>
-          <textarea
-            value={boxReason}
-            onChange={(e) => setBoxReason(e.target.value)}
-            placeholder="Justificativa (obrigatória)"
-            rows={2}
-            className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
-          />
-          <button
-            onClick={handleDeleteBox}
-            disabled={isBusy || !boxNic || !boxId || !boxReason.trim()}
-            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-semibold disabled:opacity-40"
-          >
-            {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-            Excluir caixa
-          </button>
-          <p className="text-slate-400 text-[10px] leading-snug">
-            Se a Fase 1 já estiver assinada, isto reabre a fase automaticamente com esta justificativa — igual a
-            qualquer outra correção pós-assinatura.
-          </p>
-        </div>
-
+      <div className="p-5 grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Excluir conjunto */}
         <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2.5">
           <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200">

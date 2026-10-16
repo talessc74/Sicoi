@@ -200,6 +200,12 @@ export interface Phase0Data {
   // Confirmação opcional do Pesquisador (ver ResearcherReviewConfirmation) —
   // nunca substitui a assinatura do Técnico/Curador acima.
   researcherConfirmation?: ResearcherReviewConfirmation;
+
+  // Marca colocada pelo SERVIDOR quando quem pede o conjunto não pode ver os
+  // dados de identificação da DO (db/collectionRedaction.ts): o conteúdo real
+  // não sai do banco, e o que chega no navegador é só { filhos: [], redacted }.
+  // Nunca é gravado — ao salvar, o servidor devolve a Fase 0 guardada.
+  redacted?: boolean;
 }
 
 // Categorias fixas do checklist fotográfico do Formulário A.1 (campos 5-9)
@@ -531,9 +537,11 @@ export type AlteracaoOsseaTipo =
   | 'alteracao_post_mortem'
   | 'patologia'
   | 'variacao_anatomica'
+  | 'sem_alteracao'
   | 'alteracao';
 
 export interface OsteologicalAlteracaoRegiao {
+  id?: string;
   tipo: AlteracaoOsseaTipo;
   osso?: string;
   observacoes?: string;

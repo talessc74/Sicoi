@@ -1,7 +1,9 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { NORMATIVE_DOCUMENT_SECTIONS, DocumentSection } from '../data/normativeDocument';
 import { USER_MANUALS } from '../data/userManuals';
-import { OFFICIAL_DOCUMENTS, OfficialDocument, OfficialDocumentType } from '../data/officialDocuments';
+import { OFFICIAL_DOCUMENTS, officialDocumentUrl } from '../data/officialDocuments';
+import { hasAdminAccess } from '../utils/permissions';
+import type { UserProfile } from '../types/sgccco';
 import {
   Search,
   BookOpen,
@@ -21,11 +23,13 @@ import {
 } from 'lucide-react';
 
 interface DocumentSearchViewerProps {
+  currentUser: UserProfile;
   initialSearchQuery?: string;
   onNavigateToPhase?: (phase: number) => void;
 }
 
 export const DocumentSearchViewer: React.FC<DocumentSearchViewerProps> = ({
+  currentUser,
   initialSearchQuery = '',
   onNavigateToPhase
 }) => {
@@ -163,21 +167,6 @@ export const DocumentSearchViewer: React.FC<DocumentSearchViewerProps> = ({
     }
   };
 
-  const TYPE_LABELS: Record<OfficialDocumentType, string> = {
-    portaria: 'Portaria',
-    pop: 'POP',
-    formulario: 'Formulário'
-  };
-
-  const TYPE_BADGE_CLASS: Record<OfficialDocumentType, string> = {
-    portaria: 'bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300',
-    pop: 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300',
-    formulario: 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300'
-  };
-
-  const formatPhases = (doc: OfficialDocument) =>
-    doc.phaseApplicable === 'todas' ? 'Todas as fases' : `Fase${doc.phaseApplicable.length > 1 ? 's' : ''} ${doc.phaseApplicable.join(', ')}`;
-
   const popularKeywords = [
     'Paraloid B-72',
     'NMI',
@@ -193,38 +182,39 @@ export const DocumentSearchViewer: React.FC<DocumentSearchViewerProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Documentos Oficiais da COI-INC (arquivos reais, não resumos) */}
+      {/* Documentos oficiais (originais, sem alteração) — primeiro lugar da aba */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs">
-        <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-mono text-xs font-semibold uppercase mb-1">
-          <ShieldCheck className="w-4 h-4" />
+        <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-mono text-xs font-semibold uppercase mb-1">
+          <FileText className="w-4 h-4" />
           <span>Documentos Oficiais da COI-INC</span>
         </div>
         <p className="text-xs text-slate-500 mb-3">
-          Arquivos reais recebidos da equipe (Portaria, POPs e Formulários) — não o texto parafraseado abaixo. Cada um tem o hash SHA-256 conferido em{' '}
-          <code className="text-[11px] bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded">docs/normativos/README.md</code>.
+          Arquivos originais, sem alteração. Em caso de dúvida, valem sempre estes documentos.
         </p>
+        {OFFICIAL_DOCUMENTS.length === 0 && (
+          <p className="text-xs text-slate-600 dark:text-slate-300 p-3 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
+            A portaria da COI-INC, os POPs e os formulários oficiais serão anexados aqui pela curadoria.
+          </p>
+        )}
         <div className="grid sm:grid-cols-2 gap-3">
-          {OFFICIAL_DOCUMENTS.map(doc => (
+          {OFFICIAL_DOCUMENTS.map((doc) => (
             <a
               key={doc.id}
-              href={doc.path}
+              href={officialDocumentUrl(doc)}
               target="_blank"
               rel="noopener noreferrer"
-              className="group flex flex-col gap-1.5 p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-600 bg-slate-50 dark:bg-slate-800/50 transition-colors"
+              className="group flex flex-col gap-1.5 p-4 rounded-xl border border-emerald-200 dark:border-emerald-900 hover:border-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/20 transition-colors"
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="font-bold text-sm text-slate-900 dark:text-white">{doc.title}</span>
-                <span className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-mono font-semibold ${TYPE_BADGE_CLASS[doc.type]}`}>
-                  {TYPE_LABELS[doc.type]}
+                <span className="shrink-0 px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300">
+                  {doc.kind}
                 </span>
               </div>
               <p className="text-xs text-slate-500">{doc.description}</p>
-              <div className="flex items-center justify-between mt-1">
-                <span className="text-[10px] text-slate-400 font-mono">{formatPhases(doc)} · {doc.format}</span>
-                <span className="text-emerald-600 dark:text-emerald-400 text-xs font-semibold flex items-center gap-1 group-hover:underline">
-                  Abrir <ExternalLink className="w-3 h-3" />
-                </span>
-              </div>
+              <span className="self-end text-emerald-700 dark:text-emerald-400 text-xs font-semibold flex items-center gap-1 group-hover:underline">
+                {doc.fileName.toLowerCase().endsWith('.docx') ? 'Baixar DOCX' : 'Abrir PDF'} <ExternalLink className="w-3 h-3" />
+              </span>
             </a>
           ))}
         </div>
@@ -237,7 +227,7 @@ export const DocumentSearchViewer: React.FC<DocumentSearchViewerProps> = ({
           <span>Manuais do Usuário</span>
         </div>
         <div className="grid sm:grid-cols-2 gap-3">
-          {USER_MANUALS.map(manual => (
+          {USER_MANUALS.filter((manual) => !manual.adminOnly || hasAdminAccess(currentUser)).map(manual => (
             <a
               key={manual.id}
               href={manual.path}
@@ -269,13 +259,13 @@ export const DocumentSearchViewer: React.FC<DocumentSearchViewerProps> = ({
           <div>
             <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 font-mono text-xs font-semibold uppercase">
               <BookOpen className="w-4 h-4" />
-              <span>Diretrizes Oficiais & Manual Técnico Normativo (ALFA)</span>
+              <span>Resumo Normativo para Consulta Rápida</span>
             </div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-0.5">
-              Protocolo Operacional Padrão SIGCOI / INC/DITEC/PF
+              Resumo das normas e procedimentos do SIGCOI
             </h2>
             <p className="text-xs text-slate-500 mt-1">
-              Consolidação de normas técnicas, procedimentos das 7 fases, fórmulas antropométricas, regras de sigilo LGPD e segurança da informação.
+              Texto de apoio escrito para o sistema, com busca por termo: procedimentos das fases, métodos, sigilo (LGPD) e segurança. Não substitui os documentos oficiais.
             </p>
           </div>
 
@@ -347,12 +337,12 @@ export const DocumentSearchViewer: React.FC<DocumentSearchViewerProps> = ({
                 className="p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono text-xs"
               >
                 <option value="todas">Todas as Fases</option>
-                <option value="1">Fase 1 · Recebimento</option>
+                <option value="1">Fase 1 · Análise Preliminar</option>
                 <option value="2">Fase 2 · Limpeza & Secagem</option>
                 <option value="3">Fase 3 · Acondicionamento Provisório</option>
                 <option value="4">Fase 4 · Montagem e Inventário & NMI</option>
                 <option value="5">Fase 5 · Alterações Ósseas & DICOM</option>
-                <option value="6">Fase 6 · Galpão Definitivo</option>
+                <option value="6">Fase 6 · Armazenamento Definitivo</option>
                 <option value="7">Fase 7 · Pesquisa & ABAC</option>
               </select>
             </div>
