@@ -483,11 +483,26 @@ export interface IndividualHypothesis {
     };
   };
   odontogram: ToothRecord[];
+
+  // Dentição em avaliação no Inventário Odontológico — "mista" é a única que
+  // precisa saber, por par de quadrante anatômico (1↔5 sup. direito, 2↔6 sup.
+  // esquerdo, 3↔7 inf. esquerdo, 4↔8 inf. direito), qual dos dois lados do par
+  // está em uso agora; o outro lado do par fica travado pra nunca registrar os
+  // dois ao mesmo tempo pra uma mesma posição anatômica. Ausente (undefined)
+  // ou em "permanente"/"decídua" equivale a todos os pares no mesmo lado.
+  denticao?: 'permanente' | 'mista' | 'decidua';
+  denticaoQuadrantePares?: Partial<Record<1 | 2 | 3 | 4, 'permanente' | 'decidua'>>;
+
+  // Dentes extras além das 32 posições FDI padrão — nunca ocupam uma posição
+  // do odontogram, só descrevem onde foram observados.
+  supernumeraryTeeth?: { id: string; descricaoPosicao: string }[];
 }
 
 export interface ToothRecord {
   toothNumberFdi: number;
-  quadrant: 1 | 2 | 3 | 4;
+  // 1-4: dentição permanente (ISO 3950). 5-8: dentição decídua, no mesmo
+  // posicionamento anatômico do seu par (5↔1, 6↔2, 7↔3, 8↔4).
+  quadrant: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
   condition: 'higido' | 'ausente_ante_mortem' | 'ausente_post_mortem' | 'carie' | 'restauracao' | 'desgaste_severo' | 'raiz_residual' | 'nao_erupcionado';
   notes?: string;
 }

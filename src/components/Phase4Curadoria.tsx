@@ -169,9 +169,34 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
     const updated = { ...collection };
     const ind = updated.phase4.individuals.find(i => i.id === currentInd.id);
     if (ind) {
-      ind.odontogram = ind.odontogram.map(t => 
+      ind.odontogram = ind.odontogram.map(t =>
         t.toothNumberFdi === num ? { ...t, condition, notes: notes || '' } : t
       );
+      onUpdateCollection(updated);
+    }
+  };
+
+  // Marcação em lote (Edêntulo ante/post-mortem) — só os dentes passados,
+  // nunca o odontograma inteiro, pra não sobrescrever posições de outra
+  // arcada ou lado inativo do par de quadrante em dentição mista.
+  const handleBulkMarkTeeth = (toothNumbers: number[], condition: any) => {
+    if (!currentInd) return;
+    const updated = { ...collection };
+    const ind = updated.phase4.individuals.find(i => i.id === currentInd.id);
+    if (ind) {
+      ind.odontogram = ind.odontogram.map(t =>
+        toothNumbers.includes(t.toothNumberFdi) ? { ...t, condition } : t
+      );
+      onUpdateCollection(updated);
+    }
+  };
+
+  const handlePatchIndividual = (patch: Partial<IndividualHypothesis>) => {
+    if (!currentInd) return;
+    const updated = { ...collection };
+    const ind = updated.phase4.individuals.find(i => i.id === currentInd.id);
+    if (ind) {
+      Object.assign(ind, patch);
       onUpdateCollection(updated);
     }
   };
@@ -431,7 +456,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
             }`}
           >
-            Odontograma (FDI / ISO 3950)
+            Inventário Odontológico (FDI / ISO 3950)
           </button>
           <button
             onClick={() => setActiveTab('montagem')}
@@ -785,12 +810,23 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
         </div>
       )}
 
-      {/* Conteúdo da Aba 3: Odontograma */}
+      {/* Conteúdo da Aba 3: Inventário Odontológico */}
       {activeTab === 'odontograma' && currentInd && (
         <div className="space-y-4">
           <OdontogramViewer
             teeth={currentInd.odontogram}
             onUpdateTooth={handleUpdateTooth}
+            onBulkMarkTeeth={handleBulkMarkTeeth}
+            denticao={currentInd.denticao}
+            onSetDenticao={(d) => handlePatchIndividual({ denticao: d })}
+            denticaoQuadrantePares={currentInd.denticaoQuadrantePares}
+            onSetQuadrantePar={(q, lado) =>
+              handlePatchIndividual({
+                denticaoQuadrantePares: { ...currentInd.denticaoQuadrantePares, [q]: lado }
+              })
+            }
+            supernumeraryTeeth={currentInd.supernumeraryTeeth}
+            onSetSupernumeraryTeeth={(list) => handlePatchIndividual({ supernumeraryTeeth: list })}
             readOnly={isLocked || !canEdit}
           />
         </div>
