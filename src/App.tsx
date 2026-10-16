@@ -617,6 +617,7 @@ export default function App() {
         {/* Documentos (Pesquisa Eficiente no Documento Normativo e POPs) */}
         {activeTab === 'documentos' && (
           <DocumentSearchViewer
+            currentUser={currentUser}
             initialSearchQuery={documentSearchQuery}
             onNavigateToPhase={(phase) => {
               setActivePhase(phase as PhaseNumber);

@@ -14,6 +14,9 @@ export interface UserManual {
   version: string;
   path: string;
   updatedAt: string; // YYYY-MM-DD
+  // Só aparece na aba Documentos para quem tem acesso de Administrador
+  // (hasAdminAccess) — decisão da curadoria, out/2026.
+  adminOnly?: boolean;
 }
 
 export const USER_MANUALS: UserManual[] = [
@@ -26,19 +29,12 @@ export const USER_MANUALS: UserManual[] = [
     updatedAt: '2026-10-16',
   },
   {
-    id: 'manual-fases-4-a-7',
-    title: 'Manual SIGCOI — Passo a passo · Fases 4 a 7',
-    description: 'Guia detalhado das fases de Montagem e Inventário, Alterações Ósseas, Armazenamento Definitivo e Consulta & Pesquisa.',
-    version: 'v4',
-    path: '/manuais/manual-sigcoi-fases-4-a-7-v4.html',
-    updatedAt: '2026-10-16',
-  },
-  {
     id: 'manual-administrador-contas',
     title: 'Manual SIGCOI — Administrador · Gestão de Contas',
     description: 'Passo a passo do login real: ativar o primeiro acesso (migrando de dados antigos), cadastrar pessoa, editar pessoa já cadastrada (ex.: adicionar e-mail a um registro antigo), dar acesso de Administrador a quem tem outro papel (ex.: Curadora que também administra), gerar link de acesso, atender pedidos de "esqueci a senha", trocar a própria senha e remover acesso.',
     version: 'v8',
     path: '/manuais/manual-administrador-contas-v8.html',
     updatedAt: '2026-10-13',
+    adminOnly: true,
   },
 ];

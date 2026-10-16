@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { NORMATIVE_DOCUMENT_SECTIONS, DocumentSection } from '../data/normativeDocument';
 import { USER_MANUALS } from '../data/userManuals';
+import { hasAdminAccess } from '../utils/permissions';
+import type { UserProfile } from '../types/sgccco';
 import {
   Search,
   BookOpen,
@@ -20,11 +22,13 @@ import {
 } from 'lucide-react';
 
 interface DocumentSearchViewerProps {
+  currentUser: UserProfile;
   initialSearchQuery?: string;
   onNavigateToPhase?: (phase: number) => void;
 }
 
 export const DocumentSearchViewer: React.FC<DocumentSearchViewerProps> = ({
+  currentUser,
   initialSearchQuery = '',
   onNavigateToPhase
 }) => {
@@ -184,7 +188,7 @@ export const DocumentSearchViewer: React.FC<DocumentSearchViewerProps> = ({
           <span>Manuais do Usuário</span>
         </div>
         <div className="grid sm:grid-cols-2 gap-3">
-          {USER_MANUALS.map(manual => (
+          {USER_MANUALS.filter((manual) => !manual.adminOnly || hasAdminAccess(currentUser)).map(manual => (
             <a
               key={manual.id}
               href={manual.path}
