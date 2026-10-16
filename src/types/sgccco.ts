@@ -522,12 +522,43 @@ export interface SkeletalElement {
   observations: string;
 }
 
+// PR4 — Inventário Osteológico por Regiões Anatômicas (Fase 4)
+export type OsteologicalPresenceCode = 'P' | 'F' | 'I' | 'A';
+
+export type AlteracaoOsseaTipo =
+  | 'lesao_ante_mortem'
+  | 'lesao_peri_mortem'
+  | 'alteracao_post_mortem'
+  | 'patologia'
+  | 'variacao_anatomica'
+  | 'alteracao';
+
+export interface OsteologicalAlteracaoRegiao {
+  tipo: AlteracaoOsseaTipo;
+  osso?: string;
+  observacoes?: string;
+}
+
+export interface OsteologicalSectionCabecaPescoco {
+  ossos: Record<string, OsteologicalPresenceCode>;
+  cartilagensLaringe?: string[];
+  ossiculosDireitos?: string[];
+  ossiculosEsquerdos?: string[];
+  alteracoes?: OsteologicalAlteracaoRegiao[];
+}
+
+export interface OsteologicalInventoryData {
+  cabecaPescoco?: OsteologicalSectionCabecaPescoco;
+  [key: string]: unknown;
+}
+
 export interface Phase4Data {
   curationVersionNumber: number;
   curationVersionStatus: CurationVersionStatus;
   curatorAuthor: string;
   individuals: IndividualHypothesis[];
   skeletalElements: SkeletalElement[];
+  osteologicalInventory?: OsteologicalInventoryData;
   completeAssemblyPhotoApproved?: {
     photoUrl: string;
     capturedAt: string;

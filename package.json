@@ -34,6 +34,7 @@
     "vite": "^8.3.0"
   },
   "devDependencies": {
+    "@rolldown/binding-darwin-x64": "^1.2.14",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",

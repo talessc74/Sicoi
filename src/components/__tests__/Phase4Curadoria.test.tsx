@@ -117,7 +117,7 @@ describe('Phase4Curadoria', () => {
 
     expect(screen.getByText('IND-01')).toBeInTheDocument();
     expect(screen.getByText(/Indivíduos & Perfil Biológico/i)).toBeInTheDocument();
-    expect(screen.getByText(/Inventário & Completude Esquelética/i)).toBeInTheDocument();
+    expect(screen.getByText(/Inventário Osteológico/i)).toBeInTheDocument();
     expect(screen.getByText(/Inventário Odontológico \(FDI/i)).toBeInTheDocument();
     expect(screen.getByText(/Foto Montagem Completa/i)).toBeInTheDocument();
   });

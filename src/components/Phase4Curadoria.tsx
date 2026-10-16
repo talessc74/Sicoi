@@ -5,9 +5,11 @@ import {
   IndividualHypothesis,
   SkeletalElement,
   CurationVersionStatus,
-  BiologicalConfidence
+  BiologicalConfidence,
+  OsteologicalInventoryData
 } from '../types/sgccco';
 import { OdontogramViewer } from './OdontogramViewer';
+import { OsteologicalInventoryViewer } from './OsteologicalInventoryViewer';
 import { PhotoSourceModal } from './PhotoSourceModal';
 import { ErrorNotice } from './ErrorNotice';
 import { toAppError, AppError } from '../utils/errorMessages';
@@ -206,6 +208,12 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
     updated.phase4.skeletalElements = updated.phase4.skeletalElements.map(e => 
       e.id === elemId ? { ...e, presence, preservationQuality: quality } : e
     );
+    onUpdateCollection(updated);
+  };
+
+  const handleUpdateOsteologicalInventory = (updatedInv: OsteologicalInventoryData) => {
+    const updated = { ...collection };
+    updated.phase4.osteologicalInventory = updatedInv;
     onUpdateCollection(updated);
   };
 
@@ -446,7 +454,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
             }`}
           >
-            Inventário & Completude Esquelética ({elements.length})
+            Inventário Osteológico ({elements.length})
           </button>
           <button
             onClick={() => setActiveTab('odontograma')}
@@ -737,76 +745,80 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
         </div>
       )}
 
-      {/* Conteúdo da Aba 2: Inventário Anatômico de Completude */}
+      {/* Conteúdo da Aba 2: Inventário Osteológico */}
       {activeTab === 'inventario' && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
-            <div>
-              <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                <Layers className="w-4 h-4 text-sky-600" />
-                Inventário Anatômico e Completude Esquelética
-              </h3>
-              <p className="text-xs text-slate-500">
-                Presença, lateralidade e preservação de cada osso do conjunto.
-              </p>
-            </div>
-            <span className="font-mono text-xs text-slate-400">
-              {elements.filter(e => e.presence === 'completo').length} completos / {elements.length} mapeados
-            </span>
-          </div>
+        <div className="space-y-6">
+          <OsteologicalInventoryViewer
+            inventory={collection.phase4.osteologicalInventory}
+            onUpdateInventory={handleUpdateOsteologicalInventory}
+            readOnly={isLocked || !canEdit}
+          />
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-800 font-mono uppercase text-[10px] text-slate-500 border-b border-slate-200 dark:border-slate-700">
-                <tr>
-                  <th className="p-2.5">Código Anatômico</th>
-                  <th className="p-2.5">Elemento Ósseo</th>
-                  <th className="p-2.5">Região / Lado</th>
-                  <th className="p-2.5">Presença</th>
-                  <th className="p-2.5">Preservação</th>
-                  <th className="p-2.5">Indivíduo</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-sans">
-                {elements.map((el) => (
-                  <tr key={el.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
-                    <td className="p-2.5 font-mono font-bold text-slate-800 dark:text-slate-200">{el.anatomicalCode}</td>
-                    <td className="p-2.5 text-slate-900 dark:text-white font-medium">{el.namePt}</td>
-                    <td className="p-2.5 text-slate-500 capitalize">{el.region} · {el.side}</td>
-                    <td className="p-2.5">
-                      <select
-                        disabled={isLocked || !canEdit}
-                        value={el.presence}
-                        onChange={(e) => handleUpdateElementPresence(el.id, e.target.value, el.preservationQuality)}
-                        className="p-1 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-mono text-[11px]"
-                      >
-                        <option value="completo">Completo</option>
-                        <option value="parcial_maior_50">Parcial (&gt; 50%)</option>
-                        <option value="fragmentado_menor_50">Fragmentado (&lt; 50%)</option>
-                        <option value="ausente">Ausente</option>
-                      </select>
-                    </td>
-                    <td className="p-2.5">
-                      <select
-                        disabled={isLocked || !canEdit}
-                        value={el.preservationQuality}
-                        onChange={(e) => handleUpdateElementPresence(el.id, el.presence, e.target.value)}
-                        className="p-1 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-mono text-[11px]"
-                      >
-                        <option value="excelente">Excelente</option>
-                        <option value="boa">Boa</option>
-                        <option value="regular">Regular</option>
-                        <option value="erosao_cortical_severa">Erosão Severa</option>
-                      </select>
-                    </td>
-                    <td className="p-2.5 font-mono font-semibold text-sky-600">
-                      {individuals.find(i => i.id === el.associatedIndividualId)?.code || 'Conjunto Geral'}
-                    </td>
+          {/* Tabela de Completude Geral do Acervo (Legado / Mapeamento de Indivíduos) */}
+          <details className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs group">
+            <summary className="cursor-pointer font-bold text-xs text-slate-700 dark:text-slate-300 flex items-center justify-between list-none">
+              <span className="flex items-center gap-2">
+                <Layers className="w-4 h-4 text-slate-500" />
+                Mapeamento Geral de Completude e Associação por Indivíduo ({elements.length} elementos)
+              </span>
+              <span className="font-mono text-[11px] text-slate-400 font-normal">
+                {elements.filter(e => e.presence === 'completo').length} completos / {elements.length} mapeados (clique para expandir)
+              </span>
+            </summary>
+
+            <div className="overflow-x-auto mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 dark:bg-slate-800 font-mono uppercase text-[10px] text-slate-500 border-b border-slate-200 dark:border-slate-700">
+                  <tr>
+                    <th className="p-2.5">Código Anatômico</th>
+                    <th className="p-2.5">Elemento Ósseo</th>
+                    <th className="p-2.5">Região / Lado</th>
+                    <th className="p-2.5">Presença</th>
+                    <th className="p-2.5">Preservação</th>
+                    <th className="p-2.5">Indivíduo</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-sans">
+                  {elements.map((el) => (
+                    <tr key={el.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
+                      <td className="p-2.5 font-mono font-bold text-slate-800 dark:text-slate-200">{el.anatomicalCode}</td>
+                      <td className="p-2.5 text-slate-900 dark:text-white font-medium">{el.namePt}</td>
+                      <td className="p-2.5 text-slate-500 capitalize">{el.region} · {el.side}</td>
+                      <td className="p-2.5">
+                        <select
+                          disabled={isLocked || !canEdit}
+                          value={el.presence}
+                          onChange={(e) => handleUpdateElementPresence(el.id, e.target.value, el.preservationQuality)}
+                          className="p-1 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-mono text-[11px]"
+                        >
+                          <option value="completo">Completo</option>
+                          <option value="parcial_maior_50">Parcial (&gt; 50%)</option>
+                          <option value="fragmentado_menor_50">Fragmentado (&lt; 50%)</option>
+                          <option value="ausente">Ausente</option>
+                        </select>
+                      </td>
+                      <td className="p-2.5">
+                        <select
+                          disabled={isLocked || !canEdit}
+                          value={el.preservationQuality}
+                          onChange={(e) => handleUpdateElementPresence(el.id, el.presence, e.target.value)}
+                          className="p-1 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-mono text-[11px]"
+                        >
+                          <option value="excelente">Excelente</option>
+                          <option value="boa">Boa</option>
+                          <option value="regular">Regular</option>
+                          <option value="erosao_cortical_severa">Erosão Severa</option>
+                        </select>
+                      </td>
+                      <td className="p-2.5 font-mono font-semibold text-sky-600">
+                        {individuals.find(i => i.id === el.associatedIndividualId)?.code || 'Conjunto Geral'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </details>
         </div>
       )}
 
