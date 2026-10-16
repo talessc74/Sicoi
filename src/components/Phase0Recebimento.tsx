@@ -261,7 +261,7 @@ export const Phase0Recebimento: React.FC<Phase0RecebimentoProps> = ({
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <span className="text-[11px] font-mono text-slate-400 uppercase font-semibold block">Fase 0 · Recebimento</span>
+            <span className="text-[11px] font-mono text-slate-400 uppercase font-semibold block">Fase 0 · Identificação e DO</span>
             <div className="flex items-center gap-3">
               <h2 className="text-2xl font-bold font-mono text-slate-900 dark:text-white">{collection.nic}</h2>
             </div>
@@ -316,7 +316,7 @@ export const Phase0Recebimento: React.FC<Phase0RecebimentoProps> = ({
       <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg border-l-4 border-sky-500 bg-sky-50 dark:bg-sky-950/40 text-sky-800 dark:text-sky-300 text-sm">
         <Shield className="w-4 h-4 flex-none" />
         <span>
-          Fase 0 · Recebimento — responsabilidade do <strong>Técnico</strong>. Todo campo é opcional: registre o que a
+          Fase 0 · Identificação e DO — responsabilidade do <strong>Técnico</strong>. Todo campo é opcional: registre o que a
           Declaração de Óbito realmente traz, mesmo que incompleta.
         </span>
       </div>
@@ -639,7 +639,7 @@ export const Phase0Recebimento: React.FC<Phase0RecebimentoProps> = ({
             <h3 className="font-bold text-base text-slate-900 dark:text-white mb-2">Assinatura Técnica de Fechamento — Fase 0</h3>
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
               Ao assinar, você atesta a conformidade dos dados transcritos da Declaração de Óbito. O formulário será{' '}
-              <strong>travado</strong> e gerará o hash SHA-256 da etapa, liberando a Fase 1 (Recebimento & A.1).
+              <strong>travado</strong> e gerará o hash SHA-256 da etapa, liberando a Fase 1 (Análise Preliminar).
             </p>
 
             <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl text-xs space-y-1 font-mono text-slate-700 dark:text-slate-300 mb-4">

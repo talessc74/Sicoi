@@ -24,8 +24,8 @@ export const PhaseProgressRibbon: React.FC<PhaseProgressRibbonProps> = ({
   const [justification, setJustification] = React.useState('');
 
   const phasesInfo: { number: PhaseNumber; title: string; subtitle: string; signerRole: string }[] = [
-    { number: 0, title: 'Fase 0', subtitle: 'Recebimento', signerRole: 'Técnico' },
-    { number: 1, title: 'Fase 1', subtitle: 'Recebimento & A.1', signerRole: 'Técnico' },
+    { number: 0, title: 'Fase 0', subtitle: 'Identificação e DO', signerRole: 'Técnico' },
+    { number: 1, title: 'Fase 1', subtitle: 'Análise Preliminar', signerRole: 'Técnico' },
     { number: 2, title: 'Fase 2', subtitle: 'Limpeza & Secagem A.2', signerRole: 'Técnico' },
     { number: 3, title: 'Fase 3', subtitle: 'Acondic. Provisório', signerRole: 'Técnico' },
     { number: 4, title: 'Fase 4', subtitle: 'Montagem e Inventário & Perfil', signerRole: 'Técnico / Curador' },

@@ -2,7 +2,7 @@
 // comparação de versões (ex.: "phase1.corSacoLavagem" → "Fase 1 · Cor do saco de lavagem").
 
 const PHASE_NAMES: Record<string, string> = {
-  phase1: 'Fase 1 · Recebimento (A.1)',
+  phase1: 'Fase 1 · Análise Preliminar (A.1)',
   phase2: 'Fase 2 · Limpeza e secagem (A.2)',
   phase3: 'Fase 3 · Acondicionamento',
   phase4: 'Fase 4 · Montagem e Inventário',
