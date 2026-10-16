@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { NORMATIVE_DOCUMENT_SECTIONS, DocumentSection } from '../data/normativeDocument';
 import { USER_MANUALS } from '../data/userManuals';
+import { OFFICIAL_DOCUMENTS, OfficialDocument, OfficialDocumentType } from '../data/officialDocuments';
 import {
   Search,
   BookOpen,
@@ -162,6 +163,21 @@ export const DocumentSearchViewer: React.FC<DocumentSearchViewerProps> = ({
     }
   };
 
+  const TYPE_LABELS: Record<OfficialDocumentType, string> = {
+    portaria: 'Portaria',
+    pop: 'POP',
+    formulario: 'Formulário'
+  };
+
+  const TYPE_BADGE_CLASS: Record<OfficialDocumentType, string> = {
+    portaria: 'bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300',
+    pop: 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300',
+    formulario: 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300'
+  };
+
+  const formatPhases = (doc: OfficialDocument) =>
+    doc.phaseApplicable === 'todas' ? 'Todas as fases' : `Fase${doc.phaseApplicable.length > 1 ? 's' : ''} ${doc.phaseApplicable.join(', ')}`;
+
   const popularKeywords = [
     'Paraloid B-72',
     'NMI',
@@ -177,6 +193,43 @@ export const DocumentSearchViewer: React.FC<DocumentSearchViewerProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Documentos Oficiais da COI-INC (arquivos reais, não resumos) */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs">
+        <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-mono text-xs font-semibold uppercase mb-1">
+          <ShieldCheck className="w-4 h-4" />
+          <span>Documentos Oficiais da COI-INC</span>
+        </div>
+        <p className="text-xs text-slate-500 mb-3">
+          Arquivos reais recebidos da equipe (Portaria, POPs e Formulários) — não o texto parafraseado abaixo. Cada um tem o hash SHA-256 conferido em{' '}
+          <code className="text-[11px] bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded">docs/normativos/README.md</code>.
+        </p>
+        <div className="grid sm:grid-cols-2 gap-3">
+          {OFFICIAL_DOCUMENTS.map(doc => (
+            <a
+              key={doc.id}
+              href={doc.path}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex flex-col gap-1.5 p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-600 bg-slate-50 dark:bg-slate-800/50 transition-colors"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-bold text-sm text-slate-900 dark:text-white">{doc.title}</span>
+                <span className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-mono font-semibold ${TYPE_BADGE_CLASS[doc.type]}`}>
+                  {TYPE_LABELS[doc.type]}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500">{doc.description}</p>
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-[10px] text-slate-400 font-mono">{formatPhases(doc)} · {doc.format}</span>
+                <span className="text-emerald-600 dark:text-emerald-400 text-xs font-semibold flex items-center gap-1 group-hover:underline">
+                  Abrir <ExternalLink className="w-3 h-3" />
+                </span>
+              </div>
+            </a>
+          ))}
+        </div>
+      </div>
+
       {/* Manuais do Usuário (guias em HTML, com versão) */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs">
         <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 font-mono text-xs font-semibold uppercase mb-3">
