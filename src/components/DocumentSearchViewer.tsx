@@ -213,7 +213,7 @@ export const DocumentSearchViewer: React.FC<DocumentSearchViewerProps> = ({
               </div>
               <p className="text-xs text-slate-500">{doc.description}</p>
               <span className="self-end text-emerald-700 dark:text-emerald-400 text-xs font-semibold flex items-center gap-1 group-hover:underline">
-                Abrir PDF <ExternalLink className="w-3 h-3" />
+                {doc.fileName.toLowerCase().endsWith('.docx') ? 'Baixar DOCX' : 'Abrir PDF'} <ExternalLink className="w-3 h-3" />
               </span>
             </a>
           ))}

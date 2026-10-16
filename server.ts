@@ -779,8 +779,14 @@ app.get('/api/documentos/:id', requireAuth, (req: Request, res: Response) => {
   if (!filePath) {
     return res.status(404).json({ error: 'Arquivo do documento não está disponível no servidor.', code: 'DOCUMENTO_NAO_ENCONTRADO' });
   }
-  res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', `inline; filename="${doc.fileName}"`);
+  // PDF abre inline no navegador; DOCX (POPs recebidos em Word, sem conversão —
+  // "arquivo original, sem alteração") não tem viewer nativo, então baixa.
+  const isDocx = doc.fileName.toLowerCase().endsWith('.docx');
+  const contentType = isDocx
+    ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    : 'application/pdf';
+  res.setHeader('Content-Type', contentType);
+  res.setHeader('Content-Disposition', `${isDocx ? 'attachment' : 'inline'}; filename="${doc.fileName}"`);
   res.setHeader('Cache-Control', 'private, max-age=3600');
   return res.sendFile(filePath);
 });
