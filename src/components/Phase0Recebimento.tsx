@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { cities } from 'estados-cidades';
 import { OsteologicalCollection, UserProfile, Phase0Data, BrazilianUf } from '../types/sgccco';
 import { createEmptyPhase0Data } from '../data/phaseDefaults';
 import { PhotoSourceModal } from './PhotoSourceModal';
@@ -24,6 +25,61 @@ const UF_OPTIONS: BrazilianUf[] = [
 const SEXO_OPTIONS = ['M', 'F', 'Ignorado'];
 const COR_OPTIONS = ['Branca', 'Preta', 'Parda', 'Amarela', 'Indígena', 'Ignorada'];
 const ESTADO_CIVIL_OPTIONS = ['Solteiro(a)', 'Casado(a)', 'Divorciado(a)', 'Viúvo(a)', 'Separado(a) judicialmente', 'Ignorado'];
+
+// "Brasileira" primeiro (valor padrão de createEmptyPhase0Data) — o resto em
+// ordem alfabética. Forma feminina pra concordar com "nacionalidade", igual
+// aos documentos civis brasileiros de verdade (RG, certidões).
+const NACIONALIDADE_OPTIONS = [
+  'Brasileira', 'Alemã', 'Americana', 'Angolana', 'Argentina', 'Australiana', 'Austríaca', 'Belga', 'Boliviana',
+  'Britânica', 'Búlgara', 'Canadense', 'Chilena', 'Chinesa', 'Colombiana', 'Congolesa', 'Coreana', 'Costarriquenha',
+  'Cubana', 'Dinamarquesa', 'Egípcia', 'Equatoriana', 'Eslovaca', 'Espanhola', 'Filipina', 'Finlandesa', 'Francesa',
+  'Grega', 'Guianense', 'Haitiana', 'Holandesa', 'Hondurenha', 'Húngara', 'Indiana', 'Indonésia', 'Iraniana',
+  'Iraquiana', 'Irlandesa', 'Israelense', 'Italiana', 'Jamaicana', 'Japonesa', 'Libanesa', 'Marroquina', 'Mexicana',
+  'Moçambicana', 'Nicaraguense', 'Nigeriana', 'Norueguesa', 'Panamenha', 'Paraguaia', 'Peruana', 'Polonesa',
+  'Portuguesa', 'Romena', 'Russa', 'Salvadorenha', 'Senegalesa', 'Síria', 'Sul-africana', 'Sueca', 'Suíça',
+  'Tailandesa', 'Taiwanesa', 'Turca', 'Ucraniana', 'Uruguaia', 'Venezuelana', 'Vietnamita', 'Ignorada'
+];
+
+const ORGAO_EXPEDIDOR_OPTIONS = [
+  'SSP', 'DETRAN', 'Polícia Federal', 'Polícia Civil', 'IFP', 'IIRGD', 'Exército', 'Marinha', 'Aeronáutica', 'OAB',
+  'CRM', 'CRC', 'CREA'
+];
+
+const CITIES_BY_UF: Record<string, string[]> = {};
+function citiesForUf(uf?: string): string[] {
+  if (!uf) return [];
+  if (!CITIES_BY_UF[uf]) CITIES_BY_UF[uf] = cities(uf) || [];
+  return CITIES_BY_UF[uf];
+}
+
+function todayIsoDate(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+// Aceita qualquer coisa digitada e devolve só os dígitos formatados como
+// XXX.XXX.XXX-XX, truncando em 11 dígitos — nunca rejeita o que já foi
+// digitado, só formata incrementalmente.
+function formatCpf(raw: string): string {
+  const digits = raw.replace(/\D/g, '').slice(0, 11);
+  const parts = [digits.slice(0, 3), digits.slice(3, 6), digits.slice(6, 9)].filter(Boolean);
+  let formatted = parts.join('.');
+  if (digits.length > 9) formatted += `-${digits.slice(9, 11)}`;
+  return formatted;
+}
+
+// Idade completa (anos) na data do óbito — nunca mais digitada à mão.
+// undefined quando as duas datas não estão disponíveis ou não fazem sentido
+// (óbito antes do nascimento, data inválida).
+function calculateAgeAtDeath(nascimentoIso?: string, obitoIso?: string): number | undefined {
+  if (!nascimentoIso || !obitoIso) return undefined;
+  const birth = new Date(nascimentoIso);
+  const death = new Date(obitoIso);
+  if (Number.isNaN(birth.getTime()) || Number.isNaN(death.getTime()) || death < birth) return undefined;
+  let age = death.getUTCFullYear() - birth.getUTCFullYear();
+  const monthDiff = death.getUTCMonth() - birth.getUTCMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && death.getUTCDate() < birth.getUTCDate())) age--;
+  return age;
+}
 
 export const Phase0Recebimento: React.FC<Phase0RecebimentoProps> = ({
   collection,
@@ -71,6 +127,37 @@ export const Phase0Recebimento: React.FC<Phase0RecebimentoProps> = ({
       });
     }
   };
+
+  // Nascimento e data do óbito alimentam a idade calculada — qualquer edição
+  // em um dos dois recalcula e grava a idade no mesmo patch (nunca duas
+  // chamadas de set() em sequência, que perderiam a primeira por operarem
+  // sobre o mesmo p0 da closure).
+  const setNascimento = (v: string) => {
+    const computed = calculateAgeAtDeath(v, p0.dataFalecimento);
+    const patch: Partial<Phase0Data> = { nascimento: v };
+    if (computed !== undefined) patch.idade = computed;
+    set(patch);
+    setFromIA((prev) => {
+      const next = { ...prev };
+      delete next.nascimento;
+      if (computed !== undefined) delete next.idade;
+      return next;
+    });
+  };
+  const setDataFalecimento = (v: string) => {
+    const computed = calculateAgeAtDeath(p0.nascimento, v);
+    const patch: Partial<Phase0Data> = { dataFalecimento: v };
+    if (computed !== undefined) patch.idade = computed;
+    set(patch);
+    setFromIA((prev) => {
+      const next = { ...prev };
+      delete next.dataFalecimento;
+      if (computed !== undefined) delete next.idade;
+      return next;
+    });
+  };
+  const idadeCalculada = calculateAgeAtDeath(p0.nascimento, p0.dataFalecimento);
+  const idadeExibida = idadeCalculada ?? p0.idade;
 
   const filhos = p0.filhos || [];
   const addFilho = () => set({ filhos: [...filhos, { id: `filho-${Date.now()}`, nome: '', idade: '' }] });
@@ -305,50 +392,142 @@ export const Phase0Recebimento: React.FC<Phase0RecebimentoProps> = ({
                 </div>
                 <SelectInput label="Sexo" disabled={disabled} suggested={fromIA.sexo} options={SEXO_OPTIONS} value={p0.sexo || ''} onChange={(v) => setField('sexo', v as Phase0Data['sexo'])} />
                 <SelectInput label="Cor/raça" disabled={disabled} suggested={fromIA.cor} options={COR_OPTIONS} value={p0.cor || ''} onChange={(v) => setField('cor', v as Phase0Data['cor'])} />
-                <TextInput label="Nacionalidade" disabled={disabled} suggested={fromIA.nacionalidade} value={p0.nacionalidade || ''} onChange={(v) => setField('nacionalidade', v)} />
-                <TextInput label="Naturalidade — Cidade" disabled={disabled} suggested={fromIA.naturalCidade} value={p0.naturalCidade || ''} onChange={(v) => setField('naturalCidade', v)} />
+                <SelectInput label="Nacionalidade" disabled={disabled} suggested={fromIA.nacionalidade} options={NACIONALIDADE_OPTIONS} value={p0.nacionalidade || ''} onChange={(v) => setField('nacionalidade', v)} />
                 <SelectInput label="Naturalidade — UF" disabled={disabled} suggested={fromIA.naturalUf} options={UF_OPTIONS} value={p0.naturalUf || ''} onChange={(v) => setField('naturalUf', v as BrazilianUf)} />
-                <TextInput label="Data de nascimento" type="date" disabled={disabled} suggested={fromIA.nascimento} value={p0.nascimento || ''} onChange={(v) => setField('nascimento', v)} />
-                <TextInput label="Idade" type="number" disabled={disabled} suggested={fromIA.idade} value={p0.idade?.toString() || ''} onChange={(v) => setField('idade', v === '' ? undefined : Number(v))} />
+                <SelectInput
+                  label="Naturalidade — Cidade"
+                  disabled={disabled || !p0.naturalUf}
+                  suggested={fromIA.naturalCidade}
+                  options={citiesForUf(p0.naturalUf)}
+                  value={p0.naturalCidade || ''}
+                  onChange={(v) => setField('naturalCidade', v)}
+                />
+                <TextInput label="Data de nascimento" type="date" max={todayIsoDate()} disabled={disabled} suggested={fromIA.nascimento} value={p0.nascimento || ''} onChange={setNascimento} />
+                <ReadOnlyField label="Idade (calculada)" value={idadeExibida !== undefined ? `${idadeExibida} ano(s)` : ''} hint="Calculada a partir da data de nascimento e da data do óbito — não é digitada." />
                 <SelectInput label="Estado civil" disabled={disabled} suggested={fromIA.estadoCivil} options={ESTADO_CIVIL_OPTIONS} value={p0.estadoCivil || ''} onChange={(v) => setField('estadoCivil', v as Phase0Data['estadoCivil'])} />
                 <TextInput label="Profissão" disabled={disabled} suggested={fromIA.profissao} value={p0.profissao || ''} onChange={(v) => setField('profissao', v)} />
-                <TextInput label="CPF" disabled={disabled} suggested={fromIA.cpf} value={p0.cpf || ''} onChange={(v) => setField('cpf', v)} />
-                <TextInput label="RG + órgão expedidor" disabled={disabled} suggested={fromIA.rg} value={p0.rg || ''} onChange={(v) => setField('rg', v)} />
+                <TextInput label="CPF" disabled={disabled} suggested={fromIA.cpf} value={p0.cpf || ''} onChange={(v) => setField('cpf', formatCpf(v))} />
+                <TextInput label="RG — número" disabled={disabled} suggested={fromIA.rgNumero} value={p0.rgNumero || ''} onChange={(v) => setField('rgNumero', v)} />
+                <SelectInput label="RG — órgão expedidor" disabled={disabled} suggested={fromIA.rgOrgaoExpedidor} options={ORGAO_EXPEDIDOR_OPTIONS} value={p0.rgOrgaoExpedidor || ''} onChange={(v) => setField('rgOrgaoExpedidor', v)} />
+                <SelectInput label="RG — UF expedidor" disabled={disabled} suggested={fromIA.rgUfExpedidor} options={UF_OPTIONS} value={p0.rgUfExpedidor || ''} onChange={(v) => setField('rgUfExpedidor', v as BrazilianUf)} />
               </div>
             </FormSection>
 
             <FormSection title="Filiação">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="sm:col-span-2">
-                  <TextInput label="Nome do pai" disabled={disabled} suggested={fromIA.paiNome} value={p0.paiNome || ''} onChange={(v) => setField('paiNome', v)} />
+                  <TextInput
+                    label="Nome do pai"
+                    disabled={disabled || Boolean(p0.paiNaoConsta)}
+                    suggested={fromIA.paiNome}
+                    value={p0.paiNaoConsta ? '' : p0.paiNome || ''}
+                    onChange={(v) => setField('paiNome', v)}
+                  />
                 </div>
-                <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 self-end pb-2.5">
-                  <input type="checkbox" disabled={disabled} checked={Boolean(p0.paiFalecido)} onChange={(e) => setField('paiFalecido', e.target.checked)} />
-                  Falecido
-                </label>
-                <TextInput label="Naturalidade do pai" disabled={disabled} suggested={fromIA.paiNatural} value={p0.paiNatural || ''} onChange={(v) => setField('paiNatural', v)} />
-                <TextInput label="Estado civil do pai" disabled={disabled} suggested={fromIA.paiEstadoCivil} value={p0.paiEstadoCivil || ''} onChange={(v) => setField('paiEstadoCivil', v)} />
+                <div className="flex items-end gap-3 pb-2.5">
+                  <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
+                    <input
+                      type="checkbox"
+                      disabled={disabled}
+                      checked={Boolean(p0.paiNaoConsta)}
+                      onChange={(e) => {
+                        setField('paiNaoConsta', e.target.checked);
+                        if (e.target.checked) setField('paiNome', '');
+                      }}
+                    />
+                    Não consta
+                  </label>
+                  <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
+                    <input type="checkbox" disabled={disabled} checked={Boolean(p0.paiFalecido)} onChange={(e) => setField('paiFalecido', e.target.checked)} />
+                    Falecido
+                  </label>
+                </div>
+                <SelectInput label="Naturalidade do pai — UF" disabled={disabled} suggested={fromIA.paiNaturalUf} options={UF_OPTIONS} value={p0.paiNaturalUf || ''} onChange={(v) => setField('paiNaturalUf', v as BrazilianUf)} />
+                <SelectInput
+                  label="Naturalidade do pai — Cidade"
+                  disabled={disabled || !p0.paiNaturalUf}
+                  suggested={fromIA.paiNaturalCidade}
+                  options={citiesForUf(p0.paiNaturalUf)}
+                  value={p0.paiNaturalCidade || ''}
+                  onChange={(v) => setField('paiNaturalCidade', v)}
+                />
+                <SelectInput label="Estado civil do pai" disabled={disabled} suggested={fromIA.paiEstadoCivil} options={ESTADO_CIVIL_OPTIONS} value={p0.paiEstadoCivil || ''} onChange={(v) => setField('paiEstadoCivil', v)} />
                 <TextInput label="Profissão do pai" disabled={disabled} suggested={fromIA.paiProfissao} value={p0.paiProfissao || ''} onChange={(v) => setField('paiProfissao', v)} />
 
                 <div className="sm:col-span-2">
-                  <TextInput label="Nome da mãe" disabled={disabled} suggested={fromIA.maeNome} value={p0.maeNome || ''} onChange={(v) => setField('maeNome', v)} />
+                  <TextInput
+                    label="Nome da mãe"
+                    disabled={disabled || Boolean(p0.maeNaoConsta)}
+                    suggested={fromIA.maeNome}
+                    value={p0.maeNaoConsta ? '' : p0.maeNome || ''}
+                    onChange={(v) => setField('maeNome', v)}
+                  />
                 </div>
-                <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 self-end pb-2.5">
-                  <input type="checkbox" disabled={disabled} checked={Boolean(p0.maeFalecida)} onChange={(e) => setField('maeFalecida', e.target.checked)} />
-                  Falecida
-                </label>
-                <TextInput label="Naturalidade da mãe" disabled={disabled} suggested={fromIA.maeNatural} value={p0.maeNatural || ''} onChange={(v) => setField('maeNatural', v)} />
-                <TextInput label="Estado civil da mãe" disabled={disabled} suggested={fromIA.maeEstadoCivil} value={p0.maeEstadoCivil || ''} onChange={(v) => setField('maeEstadoCivil', v)} />
+                <div className="flex items-end gap-3 pb-2.5">
+                  <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
+                    <input
+                      type="checkbox"
+                      disabled={disabled}
+                      checked={Boolean(p0.maeNaoConsta)}
+                      onChange={(e) => {
+                        setField('maeNaoConsta', e.target.checked);
+                        if (e.target.checked) setField('maeNome', '');
+                      }}
+                    />
+                    Não consta
+                  </label>
+                  <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
+                    <input type="checkbox" disabled={disabled} checked={Boolean(p0.maeFalecida)} onChange={(e) => setField('maeFalecida', e.target.checked)} />
+                    Falecida
+                  </label>
+                </div>
+                <SelectInput label="Naturalidade da mãe — UF" disabled={disabled} suggested={fromIA.maeNaturalUf} options={UF_OPTIONS} value={p0.maeNaturalUf || ''} onChange={(v) => setField('maeNaturalUf', v as BrazilianUf)} />
+                <SelectInput
+                  label="Naturalidade da mãe — Cidade"
+                  disabled={disabled || !p0.maeNaturalUf}
+                  suggested={fromIA.maeNaturalCidade}
+                  options={citiesForUf(p0.maeNaturalUf)}
+                  value={p0.maeNaturalCidade || ''}
+                  onChange={(v) => setField('maeNaturalCidade', v)}
+                />
+                <SelectInput label="Estado civil da mãe" disabled={disabled} suggested={fromIA.maeEstadoCivil} options={ESTADO_CIVIL_OPTIONS} value={p0.maeEstadoCivil || ''} onChange={(v) => setField('maeEstadoCivil', v)} />
                 <TextInput label="Profissão da mãe" disabled={disabled} suggested={fromIA.maeProfissao} value={p0.maeProfissao || ''} onChange={(v) => setField('maeProfissao', v)} />
               </div>
             </FormSection>
 
             <FormSection title="Cônjuge">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="sm:col-span-3">
-                  <TextInput label="Nome do cônjuge" disabled={disabled} suggested={fromIA.conjugeNome} value={p0.conjugeNome || ''} onChange={(v) => setField('conjugeNome', v)} />
+                <div className="sm:col-span-2">
+                  <TextInput
+                    label="Nome do cônjuge"
+                    disabled={disabled || Boolean(p0.conjugeNaoConsta)}
+                    suggested={fromIA.conjugeNome}
+                    value={p0.conjugeNaoConsta ? '' : p0.conjugeNome || ''}
+                    onChange={(v) => setField('conjugeNome', v)}
+                  />
                 </div>
-                <TextInput label="Naturalidade do cônjuge" disabled={disabled} suggested={fromIA.conjugeNatural} value={p0.conjugeNatural || ''} onChange={(v) => setField('conjugeNatural', v)} />
+                <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 self-end pb-2.5">
+                  <input
+                    type="checkbox"
+                    disabled={disabled}
+                    checked={Boolean(p0.conjugeNaoConsta)}
+                    onChange={(e) => {
+                      setField('conjugeNaoConsta', e.target.checked);
+                      if (e.target.checked) setField('conjugeNome', '');
+                    }}
+                  />
+                  Não consta
+                </label>
+                <SelectInput label="Naturalidade do cônjuge — UF" disabled={disabled} suggested={fromIA.conjugeNaturalUf} options={UF_OPTIONS} value={p0.conjugeNaturalUf || ''} onChange={(v) => setField('conjugeNaturalUf', v as BrazilianUf)} />
+                <SelectInput
+                  label="Naturalidade do cônjuge — Cidade"
+                  disabled={disabled || !p0.conjugeNaturalUf}
+                  suggested={fromIA.conjugeNaturalCidade}
+                  options={citiesForUf(p0.conjugeNaturalUf)}
+                  value={p0.conjugeNaturalCidade || ''}
+                  onChange={(v) => setField('conjugeNaturalCidade', v)}
+                />
+                <SelectInput label="Estado civil do cônjuge" disabled={disabled} suggested={fromIA.conjugeEstadoCivil} options={ESTADO_CIVIL_OPTIONS} value={p0.conjugeEstadoCivil || ''} onChange={(v) => setField('conjugeEstadoCivil', v)} />
                 <TextInput label="Profissão do cônjuge" disabled={disabled} suggested={fromIA.conjugeProfissao} value={p0.conjugeProfissao || ''} onChange={(v) => setField('conjugeProfissao', v)} />
               </div>
             </FormSection>
@@ -356,9 +535,16 @@ export const Phase0Recebimento: React.FC<Phase0RecebimentoProps> = ({
             <FormSection title="Dados do Óbito">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <TextInput label="Local do falecimento" disabled={disabled} suggested={fromIA.localFalecimento} value={p0.localFalecimento || ''} onChange={(v) => setField('localFalecimento', v)} />
-                <TextInput label="Cidade" disabled={disabled} suggested={fromIA.obitoCidade} value={p0.obitoCidade || ''} onChange={(v) => setField('obitoCidade', v)} />
                 <SelectInput label="UF" disabled={disabled} suggested={fromIA.obitoUf} options={UF_OPTIONS} value={p0.obitoUf || ''} onChange={(v) => setField('obitoUf', v as BrazilianUf)} />
-                <TextInput label="Data do falecimento" type="date" disabled={disabled} suggested={fromIA.dataFalecimento} value={p0.dataFalecimento || ''} onChange={(v) => setField('dataFalecimento', v)} />
+                <SelectInput
+                  label="Cidade"
+                  disabled={disabled || !p0.obitoUf}
+                  suggested={fromIA.obitoCidade}
+                  options={citiesForUf(p0.obitoUf)}
+                  value={p0.obitoCidade || ''}
+                  onChange={(v) => setField('obitoCidade', v)}
+                />
+                <TextInput label="Data do falecimento" type="date" max={todayIsoDate()} disabled={disabled} suggested={fromIA.dataFalecimento} value={p0.dataFalecimento || ''} onChange={setDataFalecimento} />
                 <TextInput label="Hora do falecimento" type="time" disabled={disabled} suggested={fromIA.horaFalecimento} value={p0.horaFalecimento || ''} onChange={(v) => setField('horaFalecimento', v)} />
                 <TextInput label="Nome do médico" disabled={disabled} suggested={fromIA.medicoNome} value={p0.medicoNome || ''} onChange={(v) => setField('medicoNome', v)} />
                 <TextInput label="CRM do médico" disabled={disabled} suggested={fromIA.medicoCrm} value={p0.medicoCrm || ''} onChange={(v) => setField('medicoCrm', v)} />
@@ -509,9 +695,10 @@ const TextInput: React.FC<{
   value: string;
   disabled?: boolean;
   type?: string;
+  max?: string;
   suggested?: boolean;
   onChange: (v: string) => void;
-}> = ({ label, value, disabled, type = 'text', suggested, onChange }) => (
+}> = ({ label, value, disabled, type = 'text', max, suggested, onChange }) => (
   <div>
     <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1 text-xs">
       {label}
@@ -519,6 +706,7 @@ const TextInput: React.FC<{
     </label>
     <input
       type={type}
+      max={max}
       disabled={disabled}
       value={value}
       onChange={(e) => onChange(e.target.value)}
@@ -526,6 +714,18 @@ const TextInput: React.FC<{
         suggested ? 'border-dashed border-amber-400 dark:border-amber-600' : 'border-slate-300 dark:border-slate-700'
       }`}
     />
+  </div>
+);
+
+const ReadOnlyField: React.FC<{ label: string; value: string; hint?: string }> = ({ label, value, hint }) => (
+  <div>
+    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1 text-xs">{label}</label>
+    <div
+      className="w-full p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 text-xs"
+      title={hint}
+    >
+      {value || '—'}
+    </div>
   </div>
 );
 

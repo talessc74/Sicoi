@@ -11,6 +11,7 @@ function field<T>(value: T) {
 
 export function createEmptyPhase0Data(): Phase0Data {
   return {
+    nacionalidade: 'Brasileira',
     filhos: []
   };
 }

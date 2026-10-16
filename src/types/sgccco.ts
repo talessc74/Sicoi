@@ -139,26 +139,37 @@ export interface Phase0Data {
   naturalCidade?: string;
   naturalUf?: BrazilianUf;
   nascimento?: string; // ISO 8601 (data)
+  // Calculada a partir de nascimento + dataFalecimento (ver calculateAgeAtDeath
+  // em Phase0Recebimento.tsx) — nunca mais digitada à mão.
   idade?: number;
   estadoCivil?: 'Solteiro(a)' | 'Casado(a)' | 'Divorciado(a)' | 'Viúvo(a)' | 'Separado(a) judicialmente' | 'Ignorado';
   profissao?: string;
   cpf?: string;
-  rg?: string;
+  rgNumero?: string;
+  rgOrgaoExpedidor?: string;
+  rgUfExpedidor?: BrazilianUf;
 
   paiNome?: string;
+  paiNaoConsta?: boolean;
   paiFalecido?: boolean;
-  paiNatural?: string;
+  paiNaturalCidade?: string;
+  paiNaturalUf?: BrazilianUf;
   paiEstadoCivil?: string;
   paiProfissao?: string;
 
   maeNome?: string;
+  maeNaoConsta?: boolean;
   maeFalecida?: boolean;
-  maeNatural?: string;
+  maeNaturalCidade?: string;
+  maeNaturalUf?: BrazilianUf;
   maeEstadoCivil?: string;
   maeProfissao?: string;
 
   conjugeNome?: string;
-  conjugeNatural?: string;
+  conjugeNaoConsta?: boolean;
+  conjugeNaturalCidade?: string;
+  conjugeNaturalUf?: BrazilianUf;
+  conjugeEstadoCivil?: string;
   conjugeProfissao?: string;
 
   localFalecimento?: string;
