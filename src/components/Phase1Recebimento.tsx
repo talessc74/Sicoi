@@ -128,7 +128,10 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
   onUpdateCollection,
   laboratoryMode
 }) => {
-  const [interactionMode, setInteractionMode] = useState<'conversacional' | 'formulario'>('conversacional');
+  // Formulário manual é o padrão — o Condutor por voz/conversa é opt-in (pedido
+  // do Tales, out/2026): quem quiser o auxílio vocal aperta o botão da aba pra
+  // começar; sem isso, o campo é sempre respondido só com texto/seleção.
+  const [interactionMode, setInteractionMode] = useState<'conversacional' | 'formulario'>('formulario');
   const [showSignModal, setShowSignModal] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
   const [signing, setSigning] = useState(false);
