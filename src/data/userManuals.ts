@@ -21,9 +21,9 @@ export const USER_MANUALS: UserManual[] = [
     id: 'manual-completo',
     title: 'Manual SIGCOI — Guia completo',
     description: 'Visão geral, perfis de acesso, login real, as 7 fases (incl. Montagem e Inventário, Alterações Ósseas), assinatura & hash, ferramentas (incl. Busca por Semelhança entre ossos), condutor por voz, glossário e FAQ.',
-    version: 'v10',
-    path: '/manuais/manual-sigcoi-completo-v10.html',
-    updatedAt: '2026-10-14',
+    version: 'v11',
+    path: '/manuais/manual-sigcoi-completo-v11.html',
+    updatedAt: '2026-10-16',
   },
   {
     id: 'manual-fases-4-a-7',
