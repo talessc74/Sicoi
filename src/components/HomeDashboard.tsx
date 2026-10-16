@@ -62,7 +62,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     3: 'Acondicionamento Provisório',
     4: 'Montagem e Inventário & NMI',
     5: 'Alterações Ósseas & Marcação',
-    6: 'Galpão Definitivo & QR',
+    6: 'Armazenamento Definitivo & QR',
     7: 'Consulta & Pesquisa'
   };
 
@@ -180,7 +180,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-xs text-slate-500 font-mono">Galpão Definitivo</span>
+            <span className="text-xs text-slate-500 font-mono">Armazenamento Definitivo</span>
             <div className="text-2xl font-bold font-mono text-slate-900 dark:text-white">
               {collectionsInDefinitiveStorage} / {totalCollections}
             </div>

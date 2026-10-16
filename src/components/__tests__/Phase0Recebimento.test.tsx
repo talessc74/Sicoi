@@ -129,18 +129,29 @@ describe('Phase0Recebimento', () => {
     expect(await calculateSha256(payload)).toBe(sig.sha256Hash);
   });
 
-  it('pesquisador pode preencher mas não pode assinar a Fase 0 (botão desabilitado)', async () => {
-    const onUpdateCollection = vi.fn();
-    render(
-      <ControlledWrapper
-        initialCollection={baseCollection()}
-        currentUser={makeUser('pesquisador')}
-        onUpdateCollection={onUpdateCollection}
-      />
-    );
+  it('pesquisador e estudante não veem a Fase 0 (dados da DO restritos a Técnico, Curador e Administrador)', async () => {
+    for (const role of ['pesquisador', 'estudante'] as const) {
+      const { unmount } = render(
+        <ControlledWrapper
+          initialCollection={baseCollection()}
+          currentUser={makeUser(role)}
+          onUpdateCollection={vi.fn()}
+        />
+      );
+      expect(screen.getByText(/acesso restrito/i)).toBeInTheDocument();
+      expect(screen.queryByLabelText(/^Nome completo$/i)).toBeNull();
+      expect(screen.queryByRole('button', { name: /Assinar Fechamento da Fase 0/i })).toBeNull();
+      unmount();
+    }
+  });
 
-    expect(screen.getByRole('button', { name: /Assinar Fechamento da Fase 0/i })).toBeDisabled();
-    expect(getInputByLabelText(/^Nome completo$/i)).not.toBeDisabled();
+  it('conjunto que chega do servidor sem os dados (redacted) mostra só o aviso de acesso restrito', () => {
+    const collection = baseCollection();
+    collection.phase0 = { filhos: [], redacted: true };
+    render(
+      <ControlledWrapper initialCollection={collection} currentUser={makeUser('tecnico')} onUpdateCollection={vi.fn()} />
+    );
+    expect(screen.getByText(/acesso restrito/i)).toBeInTheDocument();
   });
 
   it('ao adicionar e remover um filho, atualiza a lista estruturada', async () => {

@@ -180,7 +180,7 @@ export const Phase6Galpao: React.FC<Phase6GalpaoProps> = ({
           <div>
             <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 font-mono text-xs font-semibold uppercase">
               <Warehouse className="w-4 h-4" />
-              <span>Fase 6 · Galpão Definitivo & Ativação de QR Code (§11)</span>
+              <span>Fase 6 · Armazenamento Definitivo & Ativação de QR Code (§11)</span>
             </div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-0.5">
               {collection.nic}

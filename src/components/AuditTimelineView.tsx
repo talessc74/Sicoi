@@ -47,7 +47,7 @@ const PHASE_META: Record<PhaseNumber, { subtitle: string; signerRole: string }> 
   3: { subtitle: 'Acondic. Provisório', signerRole: 'Técnico' },
   4: { subtitle: 'Montagem e Inventário & Perfil', signerRole: 'Técnico / Curador' },
   5: { subtitle: 'Alterações Ósseas & Exames', signerRole: 'Curador / Técnico' },
-  6: { subtitle: 'Galpão Definitivo', signerRole: 'Dupla Custódia' },
+  6: { subtitle: 'Armazenamento Definitivo', signerRole: 'Dupla Custódia' },
   7: { subtitle: 'Pesquisa & Grafo', signerRole: 'Admin / Livre' }
 };
 
@@ -668,7 +668,7 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
               <option value="3">Fase 3: Acondicionamento Prov.</option>
               <option value="4">Fase 4: Montagem e Inventário / NMI</option>
               <option value="5">Fase 5: Alterações Ósseas e Embalagem</option>
-              <option value="6">Fase 6: Galpão Definitivo</option>
+              <option value="6">Fase 6: Armazenamento Definitivo</option>
               <option value="7">Fase 7: Consulta / Pesquisa</option>
             </select>
           </div>

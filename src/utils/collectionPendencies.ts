@@ -32,7 +32,7 @@ const PHASE_TITLES: Record<PhaseNumber, string> = {
   3: 'Acondicionamento Provisório',
   4: 'Montagem, Inventário & Perfil',
   5: 'Alterações Ósseas & Exames',
-  6: 'Galpão Definitivo',
+  6: 'Armazenamento Definitivo',
   7: 'Pesquisa & Grafo'
 };
 
