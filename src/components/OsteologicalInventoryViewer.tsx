@@ -317,6 +317,9 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
   const countF = Object.values(cabecaData.ossos).filter(c => c === 'F').length;
   const countI = Object.values(cabecaData.ossos).filter(c => c === 'I').length;
   const countA = Object.values(cabecaData.ossos).filter(c => c === 'A').length;
+  const countAlteracoes = CABECA_PESCOCO_OSSOS.filter(bone =>
+    (cabecaData.alteracoes || []).some(a => a.osso === bone && a.tipo !== 'sem_alteracao')
+  ).length;
 
   return (
     <div className="space-y-5">
@@ -402,6 +405,9 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                 <span className={`px-2 py-0.5 rounded border text-[11px] font-bold ${PRESENCE_DEFINITIONS.A.badgeClass}`}>
                   A: {countA}
                 </span>
+                <span className="px-2 py-0.5 rounded border text-[11px] font-bold bg-red-100 text-red-800 dark:bg-red-950/70 dark:text-red-300 border-red-300 dark:border-red-700">
+                  !: {countAlteracoes}
+                </span>
               </div>
 
               {!readOnly && (
@@ -429,13 +435,13 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
             </div>
           </div>
 
-          {/* Legenda dos Códigos P / F / I / A */}
+          {/* Legenda dos Códigos P / F / I / A e Alterações Ósseas */}
           <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 text-xs">
             <div className="font-semibold text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-1.5 text-[11px] uppercase tracking-wider font-mono">
               <Info className="w-3.5 h-3.5 text-sky-600" />
               Códigos Padronizados de Presença Óssea (Escolha Única)
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
               {(Object.keys(PRESENCE_DEFINITIONS) as OsteologicalPresenceCode[]).map(code => {
                 const item = PRESENCE_DEFINITIONS[code];
                 return (
@@ -447,6 +453,13 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                   </div>
                 );
               })}
+              {/* Item da legenda para Alterações Ósseas */}
+              <div className="flex items-center gap-2 p-2 rounded-lg border bg-red-100 text-red-800 dark:bg-red-950/70 dark:text-red-300 border-red-300 dark:border-red-700">
+                <span className="w-5 h-5 rounded flex items-center justify-center font-mono font-bold text-xs bg-white dark:bg-slate-900 border border-current text-red-700 dark:text-red-400">
+                  !
+                </span>
+                <span className="text-[11px] leading-tight font-medium">Alterações ósseas</span>
+              </div>
             </div>
           </div>
 
@@ -457,7 +470,7 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                 Elementos Ósseos da Cabeça e Pescoço ({totalOssos})
               </h5>
               <span className="text-[11px] text-slate-500 font-mono">
-                Clique no botão vermelho com <AlertCircle className="w-3 h-3 inline text-red-600 align-text-bottom" /> para abrir as alterações ósseas do osso
+                Clique no botão com <AlertCircle className="w-3.5 h-3.5 inline text-slate-500 align-text-bottom" /> para abrir as alterações ósseas do osso
               </span>
             </div>
 
@@ -504,7 +517,7 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                         )}
                       </div>
 
-                      {/* Grupo de Ações: P / F / I / A + Botão Vermelho de Alterações Ósseas */}
+                      {/* Grupo de Ações: P / F / I / A + Botão de Alterações Ósseas */}
                       <div className="flex items-center gap-1.5 flex-shrink-0">
                         {(['P', 'F', 'I', 'A'] as OsteologicalPresenceCode[]).map(code => {
                           const isSelected = currentCode === code;
@@ -529,19 +542,19 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
 
                         <div className="w-[1px] h-5 bg-slate-200 dark:bg-slate-700 mx-0.5" />
 
-                        {/* Botão Vermelho (quadradinho com a exclamação) para Alterações Ósseas */}
+                        {/* Botão de Alterações Ósseas (ilumina em vermelho quando selecionado/expandido ou quando possui alterações) */}
                         <button
                           type="button"
                           onClick={() => toggleExpandBone(bone)}
                           title={`Alterações ósseas — ${bone}`}
                           aria-label={`Alterações ósseas — ${bone}`}
                           className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all border ${
-                            isExpanded
-                              ? 'bg-red-700 text-white border-red-800 ring-2 ring-red-400/50 shadow-xs'
-                              : boneAlteracoes.length > 0
-                                ? 'bg-red-600 text-white border-red-700 shadow-xs hover:bg-red-700 active:scale-95'
-                                : 'bg-red-600 text-white border-red-700 hover:bg-red-700 active:scale-95'
-                          }`}
+                            isExpanded || activeAlteracoes.length > 0
+                              ? isExpanded
+                                ? 'bg-red-700 text-white border-red-800 ring-2 ring-red-400/50 shadow-xs'
+                                : 'bg-red-600 text-white border-red-700 shadow-xs hover:bg-red-700 active:scale-95'
+                              : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-red-50 hover:text-red-600 hover:border-red-300 dark:hover:bg-red-950/40 dark:hover:text-red-400 active:scale-95'
+                          } ${readOnly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
                         >
                           <AlertCircle className="w-4 h-4" />
                         </button>

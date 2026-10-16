@@ -22,6 +22,9 @@ describe('OsteologicalInventoryViewer', () => {
     for (const bone of CABECA_PESCOCO_OSSOS) {
       expect(screen.getByText(bone)).toBeInTheDocument();
     }
+
+    // Verifica que a legenda possui os códigos P/F/I/A e Alterações ósseas
+    expect(screen.getByText('Alterações ósseas')).toBeInTheDocument();
   });
 
   it('permite marcar a presença de um osso com o código P/F/I/A', async () => {
