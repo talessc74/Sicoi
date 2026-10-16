@@ -294,7 +294,7 @@ export const DocumentSearchViewer: React.FC<DocumentSearchViewerProps> = ({
                 className="p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono text-xs"
               >
                 <option value="todas">Todas as Fases</option>
-                <option value="1">Fase 1 · Recebimento</option>
+                <option value="1">Fase 1 · Análise Preliminar</option>
                 <option value="2">Fase 2 · Limpeza & Secagem</option>
                 <option value="3">Fase 3 · Acondicionamento Provisório</option>
                 <option value="4">Fase 4 · Montagem e Inventário & NMI</option>

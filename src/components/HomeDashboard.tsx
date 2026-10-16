@@ -1,5 +1,7 @@
-import React from 'react';
-import { OsteologicalCollection, UserProfile } from '../types/sgccco';
+import React, { useState } from 'react';
+import { OsteologicalCollection, UserProfile, PhaseNumber } from '../types/sgccco';
+import { listCollectionPendencies, countPendencies } from '../utils/collectionPendencies';
+import { PendenciesModal } from './PendenciesModal';
 import { getRoleTheme } from '../utils/roleTheme';
 import {
   FolderOpen,
@@ -12,7 +14,8 @@ import {
   BookOpen,
   Clock,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  ListChecks
 } from 'lucide-react';
 
 interface HomeDashboardProps {
@@ -32,6 +35,9 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   onNavigateToTab,
   onCreateNewNic
 }) => {
+  // Conjunto cuja lista de pendências está aberta (etiqueta "Pendências" da tabela).
+  const [pendenciesNic, setPendenciesNic] = useState<string | null>(null);
+  const pendenciesCollection = collections.find((c) => c.nic === pendenciesNic) || null;
   // Aggregate statistics
   const totalCollections = collections.length;
   const totalBoxes = collections.reduce((acc, c) => acc + c.phase1.preliminaryBoxes.length, 0);
@@ -50,8 +56,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   }));
 
   const phaseNames: Record<number, string> = {
-    0: 'Recebimento (D.O.)',
-    1: 'Recebimento & Triagem',
+    0: 'Identificação e DO',
+    1: 'Análise Preliminar',
     2: 'Limpeza & Secagem',
     3: 'Acondicionamento Provisório',
     4: 'Montagem e Inventário & NMI',
@@ -282,6 +288,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               {collections.map(col => {
                 const currentSigned = col.signatures.some(s => s.phaseNumber === col.currentPhase && s.status === 'locked');
                 const nmiNotDetermined = col.phase4.individuals.length === 0;
+                const pendencyCount = countPendencies(listCollectionPendencies(col));
                 const locationText = col.phase6.finalLocations[0]
                   ? `${col.phase6.finalLocations[0].location.facility} · ${col.phase6.finalLocations[0].location.rack}`
                   : col.phase3.boxLocations[0]
@@ -333,10 +340,19 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                             <AlertCircle className="w-3.5 h-3.5" /> Em edição técnica
                           </span>
                         )}
-                        {nmiNotDetermined && (
-                          <span className="rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-amber-800 dark:text-amber-300">
-                            Pendente: NMI
-                          </span>
+                        {pendencyCount > 0 && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPendenciesNic(col.nic);
+                            }}
+                            className="rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/40 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-amber-800 dark:text-amber-300 inline-flex items-center gap-1 underline-offset-2 hover:underline"
+                            title="Ver tudo o que falta neste conjunto"
+                          >
+                            <ListChecks className="w-3 h-3" />
+                            {pendencyCount === 1 ? '1 pendência' : `${pendencyCount} pendências`}
+                          </button>
                         )}
                       </div>
                     </td>
@@ -374,6 +390,20 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           </table>
         </div>
       </div>
+
+      {pendenciesCollection && (
+        <PendenciesModal
+          nic={pendenciesCollection.nic}
+          pendencies={listCollectionPendencies(pendenciesCollection)}
+          onClose={() => setPendenciesNic(null)}
+          onGoToPhase={(phase: PhaseNumber) => {
+            setPendenciesNic(null);
+            onSelectNic(pendenciesCollection.nic);
+            onNavigateToPhase(phase);
+            onNavigateToTab('fases');
+          }}
+        />
+      )}
     </div>
   );
 };

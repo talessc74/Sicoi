@@ -3,6 +3,7 @@ import { OsteologicalCollection, UserProfile, FieldWithAiSuggestion, CleaningIns
 import { PopConversationalConductor } from './PopConversationalConductor';
 import { calculateSha256, generateSignaturePayload } from '../services/auditService';
 import { getLatestPhaseSignature } from '../utils/signatures';
+import { phase2MissingFields } from '../utils/collectionPendencies';
 import { canSignAsTechnician } from '../utils/permissions';
 import { Droplet, Wind, Clock, CheckCircle2, ShieldCheck, Bot, FileText, Sparkles, Box, Save, AlertCircle, UserCheck } from 'lucide-react';
 
@@ -108,14 +109,7 @@ export const Phase2Limpeza: React.FC<Phase2LimpezaProps> = ({ collection, curren
 
   // Itemizado (em vez de um booleano só) para poder mostrar exatamente o que falta —
   // mesma lógica já usada na Fase 1, que corrigiu o mesmo tipo de bloqueio silencioso.
-  const missingFieldLabels: string[] = [];
-  if (!Boolean(p2.equipeEnvolvidaLimpeza.value)) missingFieldLabels.push('equipe envolvida');
-  if (!Boolean(p2.dataAnalise.value)) missingFieldLabels.push('data da análise');
-  if (!Boolean(p2.horaAnalise.value)) missingFieldLabels.push('hora da análise');
-  if ((p2.instrumentosUtilizados.value?.length || 0) === 0) missingFieldLabels.push('instrumentos utilizados');
-  if (p2.houveDanosMaceracao.value === undefined) missingFieldLabels.push('se houve dano na maceração');
-  if (p2.houveDanosMaceracao.value === true && !Boolean(p2.descricaoDanosMaceracao.value)) missingFieldLabels.push('descrição do dano na maceração');
-  if (!Boolean(p2.formaSecagem.value)) missingFieldLabels.push('forma de secagem');
+  const missingFieldLabels = phase2MissingFields(p2);
   // A secagem completa não é mais uma caixa de marcar à parte: vem do status "Seca" de
   // cada caixa (handleBoxStatus já grava dryingConfirmationAllBoxes), e o bloqueio
   // correspondente é o allBoxesDry, logo abaixo.
