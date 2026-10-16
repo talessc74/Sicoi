@@ -98,7 +98,7 @@ describe('OsteologicalInventoryViewer', () => {
     );
   });
 
-  it('abre campo de seleção de osso ao marcar uma alteração óssea', async () => {
+  it('abre gaveta de alterações ósseas ao clicar no botão de exclamação do osso', async () => {
     const user = userEvent.setup();
     const onUpdateInventory = vi.fn();
 
@@ -116,7 +116,14 @@ describe('OsteologicalInventoryViewer', () => {
       />
     );
 
-    expect(screen.getByText('Osso afetado:')).toBeInTheDocument();
+    // Verifica que o badge de alteração aparece no osso
+    expect(screen.getByText(/1 alteração/i)).toBeInTheDocument();
+
+    // Clica no botão vermelho de exclamação para abrir o drawer do osso Frontal
+    const altButton = screen.getByRole('button', { name: 'Alterações ósseas — Frontal' });
+    await user.click(altButton);
+
+    expect(screen.getByText('Alterações Ósseas — Frontal')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Fratura cicatrizada')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Adicionar outro item nesta categoria/i })).toBeInTheDocument();
   });
@@ -139,6 +146,10 @@ describe('OsteologicalInventoryViewer', () => {
       />
     );
 
+    // Abre o drawer de alterações do osso Frontal
+    const altButton = screen.getByRole('button', { name: 'Alterações ósseas — Frontal' });
+    await user.click(altButton);
+
     const addMoreBtn = screen.getByRole('button', { name: /Adicionar outro item nesta categoria/i });
     await user.click(addMoreBtn);
 
@@ -154,7 +165,7 @@ describe('OsteologicalInventoryViewer', () => {
     );
   });
 
-  it('permite selecionar "Sem alteração" desmarcando outras alterações', async () => {
+  it('permite selecionar "Sem alteração" desmarcando outras alterações do osso', async () => {
     const user = userEvent.setup();
     const onUpdateInventory = vi.fn();
 
@@ -172,13 +183,17 @@ describe('OsteologicalInventoryViewer', () => {
       />
     );
 
+    // Abre o drawer de alterações do osso Frontal
+    const altButton = screen.getByRole('button', { name: 'Alterações ósseas — Frontal' });
+    await user.click(altButton);
+
     const semAltCheckbox = screen.getByRole('checkbox', { name: /Sem alteração/i });
     await user.click(semAltCheckbox);
 
     expect(onUpdateInventory).toHaveBeenCalledWith(
       expect.objectContaining({
         cabecaPescoco: expect.objectContaining({
-          alteracoes: [expect.objectContaining({ tipo: 'sem_alteracao' })]
+          alteracoes: [expect.objectContaining({ tipo: 'sem_alteracao', osso: 'Frontal' })]
         })
       })
     );
