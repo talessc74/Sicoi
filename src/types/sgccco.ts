@@ -531,9 +531,11 @@ export type AlteracaoOsseaTipo =
   | 'alteracao_post_mortem'
   | 'patologia'
   | 'variacao_anatomica'
+  | 'sem_alteracao'
   | 'alteracao';
 
 export interface OsteologicalAlteracaoRegiao {
+  id?: string;
   tipo: AlteracaoOsseaTipo;
   osso?: string;
   observacoes?: string;

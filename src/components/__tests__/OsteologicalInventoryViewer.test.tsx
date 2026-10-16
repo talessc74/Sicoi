@@ -118,6 +118,70 @@ describe('OsteologicalInventoryViewer', () => {
 
     expect(screen.getByText('Osso afetado:')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Fratura cicatrizada')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Adicionar outro item nesta categoria/i })).toBeInTheDocument();
+  });
+
+  it('permite adicionar outro item na mesma categoria usando o botão de mais (+)', async () => {
+    const user = userEvent.setup();
+    const onUpdateInventory = vi.fn();
+
+    const initialInventory: OsteologicalInventoryData = {
+      cabecaPescoco: {
+        ossos: {},
+        alteracoes: [{ id: 'alt-1', tipo: 'lesao_ante_mortem', osso: 'Frontal', observacoes: 'Primeira fratura' }]
+      }
+    };
+
+    render(
+      <OsteologicalInventoryViewer
+        inventory={initialInventory}
+        onUpdateInventory={onUpdateInventory}
+      />
+    );
+
+    const addMoreBtn = screen.getByRole('button', { name: /Adicionar outro item nesta categoria/i });
+    await user.click(addMoreBtn);
+
+    expect(onUpdateInventory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cabecaPescoco: expect.objectContaining({
+          alteracoes: expect.arrayContaining([
+            expect.objectContaining({ tipo: 'lesao_ante_mortem', osso: 'Frontal' }),
+            expect.objectContaining({ tipo: 'lesao_ante_mortem', osso: 'Frontal' })
+          ])
+        })
+      })
+    );
+  });
+
+  it('permite selecionar "Sem alteração" desmarcando outras alterações', async () => {
+    const user = userEvent.setup();
+    const onUpdateInventory = vi.fn();
+
+    const initialInventory: OsteologicalInventoryData = {
+      cabecaPescoco: {
+        ossos: {},
+        alteracoes: [{ id: 'alt-1', tipo: 'lesao_ante_mortem', osso: 'Frontal', observacoes: 'Lesão' }]
+      }
+    };
+
+    render(
+      <OsteologicalInventoryViewer
+        inventory={initialInventory}
+        onUpdateInventory={onUpdateInventory}
+      />
+    );
+
+    const semAltCheckbox = screen.getByRole('checkbox', { name: /Sem alteração/i });
+    await user.click(semAltCheckbox);
+
+    expect(onUpdateInventory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cabecaPescoco: expect.objectContaining({
+          alteracoes: [expect.objectContaining({ tipo: 'sem_alteracao' })]
+        })
+      })
+    );
   });
 
   it('ao clicar em outra seção exibe aviso de aguardo de especificações técnicas', async () => {

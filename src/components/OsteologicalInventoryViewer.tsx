@@ -5,7 +5,7 @@ import {
   AlteracaoOsseaTipo,
   OsteologicalAlteracaoRegiao
 } from '../types/sgccco';
-import { Check, Info, ShieldAlert, Sparkles } from 'lucide-react';
+import { Check, Info, ShieldAlert, Sparkles, Plus, Trash2 } from 'lucide-react';
 
 interface OsteologicalInventoryViewerProps {
   inventory?: OsteologicalInventoryData;
@@ -80,13 +80,57 @@ const PRESENCE_DEFINITIONS: Record<
   }
 };
 
-const ALTERACOES_OPTIONS: { id: AlteracaoOsseaTipo; label: string }[] = [
-  { id: 'lesao_ante_mortem', label: 'Lesão ante-mortem' },
-  { id: 'lesao_peri_mortem', label: 'Lesão peri-mortem' },
-  { id: 'alteracao_post_mortem', label: 'Alteração post-mortem (tafonômica)' },
-  { id: 'patologia', label: 'Patologia' },
-  { id: 'variacao_anatomica', label: 'Variação anatômica' },
-  { id: 'alteracao', label: 'Outra alteração' }
+interface AlteracaoOptionConfig {
+  id: AlteracaoOsseaTipo;
+  label: React.ReactNode;
+  plainText: string;
+  isNone?: boolean;
+}
+
+const ALTERACOES_OPTIONS: AlteracaoOptionConfig[] = [
+  {
+    id: 'lesao_ante_mortem',
+    label: (
+      <span>
+        Lesão <span className="italic">ante mortem</span>
+      </span>
+    ),
+    plainText: 'Lesão ante mortem'
+  },
+  {
+    id: 'lesao_peri_mortem',
+    label: (
+      <span>
+        Lesão <span className="italic">peri mortem</span>
+      </span>
+    ),
+    plainText: 'Lesão peri mortem'
+  },
+  {
+    id: 'alteracao_post_mortem',
+    label: (
+      <span>
+        Alteração <span className="italic">post mortem</span> (tafonômica)
+      </span>
+    ),
+    plainText: 'Alteração post mortem (tafonômica)'
+  },
+  {
+    id: 'patologia',
+    label: <span>Patologia</span>,
+    plainText: 'Patologia'
+  },
+  {
+    id: 'variacao_anatomica',
+    label: <span>Variação anatômica</span>,
+    plainText: 'Variação anatômica'
+  },
+  {
+    id: 'sem_alteracao',
+    label: <span>Sem alteração</span>,
+    plainText: 'Sem alteração',
+    isNone: true
+  }
 ];
 
 export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerProps> = ({
@@ -186,15 +230,34 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
     });
   };
 
+  const generateAltId = () => `alt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
   const handleToggleAlteracao = (tipo: AlteracaoOsseaTipo) => {
     if (readOnly) return;
     const list = cabecaData.alteracoes || [];
-    const exists = list.some(a => a.tipo === tipo);
+
+    if (tipo === 'sem_alteracao') {
+      const isAlreadyChecked = list.some(a => a.tipo === 'sem_alteracao');
+      const updated: OsteologicalAlteracaoRegiao[] = isAlreadyChecked
+        ? []
+        : [{ id: generateAltId(), tipo: 'sem_alteracao', osso: '', observacoes: '' }];
+      onUpdateInventory({
+        ...inventory,
+        cabecaPescoco: { ...cabecaData, alteracoes: updated }
+      });
+      return;
+    }
+
+    const withoutSemAlteracao = list.filter(a => a.tipo !== 'sem_alteracao');
+    const exists = withoutSemAlteracao.some(a => a.tipo === tipo);
     let updated: OsteologicalAlteracaoRegiao[];
     if (exists) {
-      updated = list.filter(a => a.tipo !== tipo);
+      updated = withoutSemAlteracao.filter(a => a.tipo !== tipo);
     } else {
-      updated = [...list, { tipo, osso: CABECA_PESCOCO_OSSOS[0], observacoes: '' }];
+      updated = [
+        ...withoutSemAlteracao,
+        { id: generateAltId(), tipo, osso: CABECA_PESCOCO_OSSOS[0], observacoes: '' }
+      ];
     }
     onUpdateInventory({
       ...inventory,
@@ -202,11 +265,37 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
     });
   };
 
-  const handleUpdateAlteracaoOsso = (tipo: AlteracaoOsseaTipo, osso: string, obs?: string) => {
+  const handleAddAlteracaoItem = (tipo: AlteracaoOsseaTipo) => {
     if (readOnly) return;
     const list = cabecaData.alteracoes || [];
-    const updated = list.map(a =>
-      a.tipo === tipo ? { ...a, osso, observacoes: obs !== undefined ? obs : a.observacoes } : a
+    const withoutSemAlteracao = list.filter(a => a.tipo !== 'sem_alteracao');
+    const updated: OsteologicalAlteracaoRegiao[] = [
+      ...withoutSemAlteracao,
+      { id: generateAltId(), tipo, osso: CABECA_PESCOCO_OSSOS[0], observacoes: '' }
+    ];
+    onUpdateInventory({
+      ...inventory,
+      cabecaPescoco: { ...cabecaData, alteracoes: updated }
+    });
+  };
+
+  const handleRemoveAlteracaoItem = (idToRemove: string) => {
+    if (readOnly) return;
+    const list = cabecaData.alteracoes || [];
+    const updated = list.filter((a, idx) => (a.id || `alt-${a.tipo}-${idx}`) !== idToRemove);
+    onUpdateInventory({
+      ...inventory,
+      cabecaPescoco: { ...cabecaData, alteracoes: updated }
+    });
+  };
+
+  const handleUpdateAlteracaoItem = (idToUpdate: string, osso: string, obs?: string) => {
+    if (readOnly) return;
+    const list = cabecaData.alteracoes || [];
+    const updated = list.map((a, idx) =>
+      (a.id || `alt-${a.tipo}-${idx}`) === idToUpdate
+        ? { ...a, osso, observacoes: obs !== undefined ? obs : a.observacoes }
+        : a
     );
     onUpdateInventory({
       ...inventory,
@@ -516,22 +605,53 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
               </p>
             </div>
 
-            <div className="space-y-2.5">
+            <div className="space-y-3">
               {ALTERACOES_OPTIONS.map(opt => {
-                const existing = (cabecaData.alteracoes || []).find(a => a.tipo === opt.id);
-                const isChecked = Boolean(existing);
+                const matchingEntries = (cabecaData.alteracoes || []).filter(a => a.tipo === opt.id);
+                const isChecked = matchingEntries.length > 0;
+
+                if (opt.isNone) {
+                  return (
+                    <div
+                      key={opt.id}
+                      className={`p-3 rounded-xl border transition-all ${
+                        isChecked
+                          ? 'border-emerald-300 dark:border-emerald-800/80 bg-emerald-50/40 dark:bg-emerald-950/20'
+                          : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-slate-800 dark:text-slate-200">
+                          <input
+                            type="checkbox"
+                            disabled={readOnly}
+                            checked={isChecked}
+                            onChange={() => handleToggleAlteracao(opt.id)}
+                            className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                          />
+                          <span>{opt.label}</span>
+                        </label>
+                        {isChecked && (
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200">
+                            Região sem alterações
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
 
                 return (
                   <div
                     key={opt.id}
-                    className={`p-3 rounded-xl border transition-all ${
+                    className={`p-3.5 rounded-xl border transition-all ${
                       isChecked
                         ? 'border-amber-300 dark:border-amber-800/80 bg-amber-50/40 dark:bg-amber-950/20'
                         : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900'
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-slate-800 dark:text-slate-200">
+                      <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-800 dark:text-slate-200">
                         <input
                           type="checkbox"
                           disabled={readOnly}
@@ -542,47 +662,88 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                         <span>{opt.label}</span>
                       </label>
                       {isChecked && (
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200">
-                          Identificada
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 font-medium">
+                          {matchingEntries.length} {matchingEntries.length === 1 ? 'item registrado' : 'itens registrados'}
                         </span>
                       )}
                     </div>
 
-                    {/* Caixa de seleção vinculada do osso e observação */}
+                    {/* Lista dinâmica de ocorrências da categoria */}
                     {isChecked && (
-                      <div className="mt-3 pt-2.5 border-t border-amber-200 dark:border-amber-900/60 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                        <div className="sm:col-span-1">
-                          <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                            Osso afetado:
-                          </label>
-                          <select
-                            disabled={readOnly}
-                            value={existing?.osso || CABECA_PESCOCO_OSSOS[0]}
-                            onChange={e => handleUpdateAlteracaoOsso(opt.id, e.target.value)}
-                            className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
-                          >
-                            <option value="Múltiplos / Região Geral">Múltiplos / Região Geral</option>
-                            {CABECA_PESCOCO_OSSOS.map(b => (
-                              <option key={b} value={b}>
-                                {b}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="sm:col-span-2">
-                          <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                            Descrição / Detalhamento da alteração:
-                          </label>
-                          <input
-                            type="text"
-                            disabled={readOnly}
-                            value={existing?.observacoes || ''}
-                            onChange={e => handleUpdateAlteracaoOsso(opt.id, existing?.osso || CABECA_PESCOCO_OSSOS[0], e.target.value)}
-                            placeholder="Ex: Fratura linear sem cicatrização; osteófito na margem..."
-                            className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
-                          >
-                          </input>
-                        </div>
+                      <div className="mt-3 pt-3 border-t border-amber-200/80 dark:border-amber-900/60 space-y-3">
+                        {matchingEntries.map((entry, idx) => {
+                          const entryId = entry.id || `alt-${opt.id}-${idx}`;
+                          return (
+                            <div
+                              key={entryId}
+                              className="p-3 rounded-lg bg-white/90 dark:bg-slate-900/90 border border-amber-200 dark:border-amber-900/50 shadow-2xs space-y-2.5"
+                            >
+                              <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-800">
+                                <span className="text-[11px] font-mono font-bold text-amber-800 dark:text-amber-300 uppercase">
+                                  Item #{idx + 1}
+                                </span>
+                                {!readOnly && matchingEntries.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveAlteracaoItem(entryId)}
+                                    className="text-rose-600 hover:text-rose-700 text-xs flex items-center gap-1 font-medium transition-colors"
+                                    title="Remover este item"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                    Remover
+                                  </button>
+                                )}
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                                <div className="sm:col-span-1">
+                                  <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                                    Osso afetado:
+                                  </label>
+                                  <select
+                                    disabled={readOnly}
+                                    value={entry.osso || CABECA_PESCOCO_OSSOS[0]}
+                                    onChange={e => handleUpdateAlteracaoItem(entryId, e.target.value)}
+                                    className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
+                                  >
+                                    <option value="Múltiplos / Região Geral">Múltiplos / Região Geral</option>
+                                    {CABECA_PESCOCO_OSSOS.map(b => (
+                                      <option key={b} value={b}>
+                                        {b}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div className="sm:col-span-2">
+                                  <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                                    Descrição / Detalhamento da alteração:
+                                  </label>
+                                  <input
+                                    type="text"
+                                    disabled={readOnly}
+                                    value={entry.observacoes || ''}
+                                    onChange={e => handleUpdateAlteracaoItem(entryId, entry.osso || CABECA_PESCOCO_OSSOS[0], e.target.value)}
+                                    placeholder="Ex: Fratura linear sem cicatrização; orifício de PAF..."
+                                    className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+
+                        {!readOnly && (
+                          <div className="flex justify-end pt-1">
+                            <button
+                              type="button"
+                              onClick={() => handleAddAlteracaoItem(opt.id)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 text-amber-800 dark:text-amber-200 hover:bg-amber-100/60 dark:hover:bg-amber-950/40 transition-colors text-xs font-semibold shadow-2xs"
+                            >
+                              <Plus className="w-3.5 h-3.5 text-amber-600" />
+                              Adicionar outro item nesta categoria
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
