@@ -31,4 +31,10 @@ describe('Manuais do Usuário na aba Documentos', () => {
     render(<DocumentSearchViewer currentUser={person('curador')} />);
     expect(screen.queryByText(/Fases 4 a 7/)).toBeNull();
   });
+
+  it('mostra a área de documentos oficiais no topo, aguardando os PDFs da curadoria', () => {
+    render(<DocumentSearchViewer currentUser={person('estudante')} />);
+    expect(screen.getByText(/Documentos Oficiais da COI-INC/)).toBeInTheDocument();
+    expect(screen.getByText(/serão anexados aqui pela curadoria/)).toBeInTheDocument();
+  });
 });
