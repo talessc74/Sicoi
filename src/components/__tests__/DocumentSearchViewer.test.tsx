@@ -31,4 +31,10 @@ describe('Manuais do Usuário na aba Documentos', () => {
     render(<DocumentSearchViewer currentUser={person('curador')} />);
     expect(screen.queryByText(/Fases 4 a 7/)).toBeNull();
   });
+
+  it('mostra os documentos oficiais no topo, com link protegido para o PDF original', () => {
+    render(<DocumentSearchViewer currentUser={person('estudante')} />);
+    const link = screen.getByRole('link', { name: /Portaria DITEC\/PF nº 1415\/2024/ });
+    expect(link).toHaveAttribute('href', '/api/documentos/portaria-1415-2024');
+  });
 });

@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { NORMATIVE_DOCUMENT_SECTIONS, DocumentSection } from '../data/normativeDocument';
 import { USER_MANUALS } from '../data/userManuals';
+import { OFFICIAL_DOCUMENTS, officialDocumentUrl } from '../data/officialDocuments';
 import { hasAdminAccess } from '../utils/permissions';
 import type { UserProfile } from '../types/sgccco';
 import {
@@ -181,6 +182,39 @@ export const DocumentSearchViewer: React.FC<DocumentSearchViewerProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Documentos oficiais (originais, sem alteração) — primeiro lugar da aba */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs">
+        <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-mono text-xs font-semibold uppercase mb-1">
+          <FileText className="w-4 h-4" />
+          <span>Documentos Oficiais da COI-INC</span>
+        </div>
+        <p className="text-xs text-slate-500 mb-3">
+          Arquivos originais, sem alteração. Em caso de dúvida, valem sempre estes documentos.
+        </p>
+        <div className="grid sm:grid-cols-2 gap-3">
+          {OFFICIAL_DOCUMENTS.map((doc) => (
+            <a
+              key={doc.id}
+              href={officialDocumentUrl(doc)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex flex-col gap-1.5 p-4 rounded-xl border border-emerald-200 dark:border-emerald-900 hover:border-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/20 transition-colors"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-bold text-sm text-slate-900 dark:text-white">{doc.title}</span>
+                <span className="shrink-0 px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300">
+                  {doc.kind}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500">{doc.description}</p>
+              <span className="self-end text-emerald-700 dark:text-emerald-400 text-xs font-semibold flex items-center gap-1 group-hover:underline">
+                Abrir PDF <ExternalLink className="w-3 h-3" />
+              </span>
+            </a>
+          ))}
+        </div>
+      </div>
+
       {/* Manuais do Usuário (guias em HTML, com versão) */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs">
         <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 font-mono text-xs font-semibold uppercase mb-3">
@@ -220,13 +254,13 @@ export const DocumentSearchViewer: React.FC<DocumentSearchViewerProps> = ({
           <div>
             <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 font-mono text-xs font-semibold uppercase">
               <BookOpen className="w-4 h-4" />
-              <span>Diretrizes Oficiais & Manual Técnico Normativo (ALFA)</span>
+              <span>Resumo Normativo para Consulta Rápida</span>
             </div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-0.5">
-              Protocolo Operacional Padrão SIGCOI / INC/DITEC/PF
+              Resumo das normas e procedimentos do SIGCOI
             </h2>
             <p className="text-xs text-slate-500 mt-1">
-              Consolidação de normas técnicas, procedimentos das 7 fases, fórmulas antropométricas, regras de sigilo LGPD e segurança da informação.
+              Texto de apoio escrito para o sistema, com busca por termo: procedimentos das fases, métodos, sigilo (LGPD) e segurança. Não substitui os documentos oficiais acima.
             </p>
           </div>
 

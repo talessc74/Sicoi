@@ -1,5 +1,6 @@
 import express, { Request, Response, NextFunction } from 'express';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { execSync } from 'child_process';
@@ -53,6 +54,7 @@ import {
 import { findSimilarIndividuals } from './db/individualReferenceSearch';
 import { listPeople, createPerson, updatePerson, deletePerson, countPeople } from './db/peopleRepo';
 import { hasAdminAccess, canViewPhase0Identity } from './src/utils/permissions';
+import { OFFICIAL_DOCUMENTS } from './src/data/officialDocuments';
 import type { Phase0Data } from './src/types/sgccco';
 import {
   listAuthorizations,
@@ -757,6 +759,30 @@ app.get('/api/collections/:nic/history', requireAuth, async (req: Request, res: 
     console.error('Erro ao carregar histórico:', error);
     return res.status(500).json({ error: error?.message || 'Erro ao carregar histórico.', code: error?.code || 'CONJUNTO_ERRO_INTERNO' });
   }
+});
+
+// Documentos oficiais da COI-INC (Portaria, POPs, formulários) — PDFs originais
+// guardados em docs/normativos/, fora da pasta pública: só saem com sessão
+// (_local-adr-policy-203). Só ids da lista em src/data/officialDocuments.ts;
+// nunca um caminho vindo da URL.
+app.get('/api/documentos/:id', requireAuth, (req: Request, res: Response) => {
+  const doc = OFFICIAL_DOCUMENTS.find((d) => d.id === req.params.id);
+  if (!doc) {
+    return res.status(404).json({ error: 'Documento não encontrado.', code: 'DOCUMENTO_NAO_ENCONTRADO' });
+  }
+  const candidates = [
+    path.resolve(process.cwd(), 'docs', 'normativos', doc.fileName),
+    path.resolve(__dirname, 'docs', 'normativos', doc.fileName),
+    path.resolve(__dirname, '..', 'docs', 'normativos', doc.fileName)
+  ];
+  const filePath = candidates.find((p) => fs.existsSync(p));
+  if (!filePath) {
+    return res.status(404).json({ error: 'Arquivo do documento não está disponível no servidor.', code: 'DOCUMENTO_NAO_ENCONTRADO' });
+  }
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `inline; filename="${doc.fileName}"`);
+  res.setHeader('Cache-Control', 'private, max-age=3600');
+  return res.sendFile(filePath);
 });
 
 // --- Fotos reais (Fase 1, 2 e 4) — captura pela câmera, bytes guardados direto no
