@@ -79,11 +79,14 @@ export async function getCollection(pool: Pool, nic: string): Promise<Osteologic
 }
 
 /**
- * Cria um conjunto. Idempotente por NIC: se o NIC já existe, não sobrescreve o que
- * já está no banco — só devolve o que já lá está. Isso protege contra reenvio
- * duplicado (ex.: StrictMode do React re-executando um efeito em desenvolvimento,
- * ou um retry de rede) sem mascarar uma colisão real de NIC como sucesso silencioso
- * de uma criação distinta — quem chama sempre recebe de volta o estado atual do NIC.
+ * Cria um conjunto. Idempotente só pra minha própria tentativa sendo repetida
+ * (mesmo `collection.id`, gerado uma vez no navegador por tentativa de criação —
+ * ex.: StrictMode do React re-executando um efeito em desenvolvimento, ou um
+ * retry de rede): nesse caso não sobrescreve o que já está no banco, só devolve
+ * o que já lá está. Uma tentativa de criar um NIC que já pertence a um conjunto
+ * DIFERENTE (outro `id`) é um erro real — nunca um sucesso silencioso (bug
+ * relatado pelo Tales, out/2026: a partir do COI-002, criar um NIC já existente
+ * devolvia o conjunto antigo sem avisar nada).
  */
 export async function createCollection(
   pool: Pool,
@@ -112,6 +115,15 @@ export async function createCollection(
         { kind: 'criacao', note: `Conjunto ${collection.nic} cadastrado` },
         ...custodyEventsToEntries(collection.custodyChain || [])
       ]);
+    } else {
+      const { rows } = await client.query<{ full_state: OsteologicalCollection }>(
+        'SELECT full_state FROM collections WHERE nic = $1',
+        [collection.nic]
+      );
+      const existing = rows[0]?.full_state;
+      if (existing && existing.id !== collection.id) {
+        throw Object.assign(new Error(`O conjunto ${collection.nic} já existe no acervo.`), { code: 'CONJUNTO_JA_EXISTE' });
+      }
     }
     await client.query('COMMIT');
   } catch (err) {

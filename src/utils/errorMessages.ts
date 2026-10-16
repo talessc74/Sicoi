@@ -38,6 +38,7 @@ export type ErrorCode =
   | 'HIST_CUSTODIA_IMUTAVEL'
   // Conjuntos (coleções)
   | 'CONJUNTO_NAO_ENCONTRADO'
+  | 'CONJUNTO_JA_EXISTE'
   | 'CONJUNTO_EXCLUIDO'
   | 'CONJUNTO_ERRO_INTERNO'
   // Pessoas e administração
@@ -116,6 +117,7 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   HIST_CUSTODIA_IMUTAVEL: 'Este registro de movimentação já está confirmado e não pode ser alterado.',
 
   CONJUNTO_NAO_ENCONTRADO: 'Não foi possível encontrar este conjunto (COI). Ele pode ter sido removido ou o número pode estar errado.',
+  CONJUNTO_JA_EXISTE: 'Este conjunto (COI) já existe no acervo. Verifique o número antes de criar um novo.',
   CONJUNTO_EXCLUIDO: 'Este conjunto está na Zona de Risco (excluído). Restaure-o em Configurações antes de continuar editando.',
   CONJUNTO_ERRO_INTERNO: 'Não foi possível salvar o conjunto agora. Tente de novo em instantes.',
 

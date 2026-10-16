@@ -80,6 +80,26 @@ describe('collectionsRepo', () => {
     expect(loaded?.createdByTechnician).toBe('Técnico de Teste');
   });
 
+  it('recusa criar um conjunto com um NIC que já pertence a outro conjunto (id diferente)', async () => {
+    const original = { ...baseCollection('NIC-REPO-DUP'), id: 'col-original', createdByTechnician: 'Técnico Original' };
+    await createCollection(pool, original);
+
+    const tentativaDuplicada = { ...baseCollection('NIC-REPO-DUP'), id: 'col-outra-tentativa', createdByTechnician: 'Outro Técnico' };
+    await expect(createCollection(pool, tentativaDuplicada)).rejects.toMatchObject({ code: 'CONJUNTO_JA_EXISTE' });
+
+    // O conjunto original não foi sobrescrito pela tentativa recusada.
+    const loaded = await getCollection(pool, 'NIC-REPO-DUP');
+    expect(loaded?.createdByTechnician).toBe('Técnico Original');
+  });
+
+  it('idempotente: repetir a própria tentativa de criação (mesmo id) não falha e devolve o que já existe', async () => {
+    const col = { ...baseCollection('NIC-REPO-RETRY'), id: 'col-retry-mesmo' };
+    await createCollection(pool, col);
+
+    const repeated = await createCollection(pool, { ...col });
+    expect(repeated.nic).toBe('NIC-REPO-RETRY');
+  });
+
   it('lista os conjuntos criados, mais recentes primeiro', async () => {
     await createCollection(pool, baseCollection('NIC-REPO-0002'));
     await createCollection(pool, baseCollection('NIC-REPO-0003'));

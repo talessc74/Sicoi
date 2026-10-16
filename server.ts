@@ -695,6 +695,9 @@ app.post('/api/collections', requireAuth, async (req: Request, res: Response) =>
     return res.status(201).json({ collection: persisted });
   } catch (error: any) {
     console.error('Erro ao criar conjunto:', error);
+    if (error?.code === 'CONJUNTO_JA_EXISTE') {
+      return res.status(409).json({ error: error.message, code: 'CONJUNTO_JA_EXISTE' });
+    }
     return res.status(500).json({ error: error?.message || 'Erro ao criar conjunto.', code: error?.code || 'CONJUNTO_ERRO_INTERNO' });
   }
 });
