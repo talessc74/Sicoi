@@ -81,20 +81,28 @@ export const STANDARD_SKELETAL_INVENTORY_TEMPLATES = [
   { anatomicalCode: 'MI_PE_ESQ', namePt: 'Tarso, Metatarsos e Falanges do Pé Esquerdo', region: 'membros_inferiores', side: 'esquerdo' }
 ] as const;
 
+// Gera as 32 posições permanentes (quadrantes 1-4) e as 20 posições decíduas
+// (quadrantes 5-8) de uma vez — qual conjunto fica editável/visível depende
+// da dentição escolhida (ver IndividualHypothesis.denticao em sgccco.ts),
+// não da presença ou ausência do registro aqui.
 export function generateInitialOdontogram(): ToothRecord[] {
   const teeth: ToothRecord[] = [];
   const quadrants = [
     { q: 1, start: 11, end: 18 },
     { q: 2, start: 21, end: 28 },
     { q: 3, start: 31, end: 38 },
-    { q: 4, start: 41, end: 48 }
+    { q: 4, start: 41, end: 48 },
+    { q: 5, start: 51, end: 55 },
+    { q: 6, start: 61, end: 65 },
+    { q: 7, start: 71, end: 75 },
+    { q: 8, start: 81, end: 85 }
   ];
 
   for (const quad of quadrants) {
     for (let t = quad.start; t <= quad.end; t++) {
       teeth.push({
         toothNumberFdi: t,
-        quadrant: quad.q as 1 | 2 | 3 | 4,
+        quadrant: quad.q as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8,
         condition: 'higido',
         notes: ''
       });
