@@ -38,6 +38,7 @@ import { AuditTimelineView } from './components/AuditTimelineView';
 import { GeminiForensicChatModal } from './components/GeminiForensicChatModal';
 import { NewCollectionModal } from './components/NewCollectionModal';
 import { ErrorNotice } from './components/ErrorNotice';
+import { CreditsView } from './components/CreditsView';
 import { toAppError, AppError } from './utils/errorMessages';
 import { Plus, ShieldCheck, Bot, Sparkles, Loader2, CheckCircle2 } from 'lucide-react';
 
@@ -56,7 +57,7 @@ const passwordSetupToken = new URLSearchParams(window.location.search).get('toke
 // caminho (dev via Vite appType:'spa', produção via app.get('*', ...)), então
 // uma URL como /fases/4 funciona tanto num "voltar" quanto num recarregamento
 // direto da página.
-const VALID_TABS = ['inicio', 'fases', 'documentos', 'configuracoes', 'ajuda', 'grafo', 'auditoria', 'pesquisa', 'estantes'] as const;
+const VALID_TABS = ['inicio', 'fases', 'documentos', 'configuracoes', 'ajuda', 'grafo', 'auditoria', 'pesquisa', 'estantes', 'creditos'] as const;
 type NavigableTab = (typeof VALID_TABS)[number];
 
 function isNavigableTab(value: string): value is NavigableTab {
@@ -103,6 +104,12 @@ export default function App() {
   const [selectedNic, setSelectedNic] = useState<string>('');
   const [activePhase, setActivePhase] = useState<PhaseNumber>(1);
   const [activeTab, setActiveTab] = useState<string>('inicio');
+  const [previousTab, setPreviousTab] = useState<string>('inicio');
+
+  const navigateToTab = (tab: string) => {
+    setPreviousTab(activeTab);
+    setActiveTab(tab);
+  };
   const [documentSearchQuery, setDocumentSearchQuery] = useState<string>('');
   const [laboratoryMode, setLaboratoryMode] = useState<boolean>(false);
   const [isQrModalOpen, setIsQrModalOpen] = useState<boolean>(false);
@@ -784,6 +791,11 @@ export default function App() {
             }}
           />
         )}
+
+        {/* Créditos de Design e Desenvolvimento */}
+        {activeTab === 'creditos' && (
+          <CreditsView onBack={() => setActiveTab(previousTab || 'inicio')} />
+        )}
       </main>
 
       {/* Public QR Code Inspection Modal */}
@@ -833,16 +845,23 @@ export default function App() {
           <span>SIGCOI · Sistema de Gestão da Coleção Osteológica Identificada · INC/DITEC/PF</span>
         </div>
         <div className="flex items-center gap-4 font-mono text-[11px] text-slate-400">
-          <button onClick={() => setActiveTab('auditoria')} className="hover:text-slate-600 dark:hover:text-slate-200">
+          <button onClick={() => navigateToTab('auditoria')} className="hover:text-slate-600 dark:hover:text-slate-200">
             Trilha de Auditoria
           </button>
           <span>·</span>
-          <button onClick={() => setActiveTab('documentos')} className="hover:text-slate-600 dark:hover:text-slate-200">
+          <button onClick={() => navigateToTab('documentos')} className="hover:text-slate-600 dark:hover:text-slate-200">
             Manual Normativo
           </button>
           <span>·</span>
-          <button onClick={() => setActiveTab('ajuda')} className="hover:text-slate-600 dark:hover:text-slate-200">
+          <button onClick={() => navigateToTab('ajuda')} className="hover:text-slate-600 dark:hover:text-slate-200">
             Guia de Ajuda
+          </button>
+          <span>·</span>
+          <button
+            onClick={() => navigateToTab('creditos')}
+            className="text-slate-600 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400 font-medium transition-colors"
+          >
+            Créditos de design e desenvolvimento
           </button>
           <span>·</span>
           <span>SHA-256 Ativo</span>
