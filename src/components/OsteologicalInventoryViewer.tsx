@@ -501,7 +501,7 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
           {/* Estruturas Complementares: Cartilagens e Ossículos */}
           <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-4">
             <h5 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-mono">
-              Estruturas Cartilaginosas e Ossículos Auditivos (Múltipla Escolha)
+              Cartilagens da laringe ossificadas / Ossículos da audição
             </h5>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
