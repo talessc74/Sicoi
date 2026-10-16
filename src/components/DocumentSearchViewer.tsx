@@ -191,6 +191,11 @@ export const DocumentSearchViewer: React.FC<DocumentSearchViewerProps> = ({
         <p className="text-xs text-slate-500 mb-3">
           Arquivos originais, sem alteração. Em caso de dúvida, valem sempre estes documentos.
         </p>
+        {OFFICIAL_DOCUMENTS.length === 0 && (
+          <p className="text-xs text-slate-600 dark:text-slate-300 p-3 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
+            A portaria da COI-INC, os POPs e os formulários oficiais serão anexados aqui pela curadoria.
+          </p>
+        )}
         <div className="grid sm:grid-cols-2 gap-3">
           {OFFICIAL_DOCUMENTS.map((doc) => (
             <a
@@ -260,7 +265,7 @@ export const DocumentSearchViewer: React.FC<DocumentSearchViewerProps> = ({
               Resumo das normas e procedimentos do SIGCOI
             </h2>
             <p className="text-xs text-slate-500 mt-1">
-              Texto de apoio escrito para o sistema, com busca por termo: procedimentos das fases, métodos, sigilo (LGPD) e segurança. Não substitui os documentos oficiais acima.
+              Texto de apoio escrito para o sistema, com busca por termo: procedimentos das fases, métodos, sigilo (LGPD) e segurança. Não substitui os documentos oficiais.
             </p>
           </div>
 

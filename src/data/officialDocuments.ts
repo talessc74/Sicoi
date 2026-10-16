@@ -14,15 +14,8 @@ export interface OfficialDocument {
   fileName: string; // dentro de docs/normativos/
 }
 
-export const OFFICIAL_DOCUMENTS: OfficialDocument[] = [
-  {
-    id: 'portaria-1415-2024',
-    title: 'Portaria DITEC/PF nº 1415/2024',
-    description:
-      'Institui a Coleção Osteológica Identificada do INC (COI-INC) e define finalidade, curadoria e regras de acesso. Inclui os Anexos 1 a 3 (termo de supervisão, formulário de acesso e termo de responsabilidade).',
-    kind: 'Portaria',
-    fileName: 'portaria-ditec-pf-1415-2024-coi-inc.pdf'
-  }
-];
+// Vazia por enquanto: a curadoria vai anexar os PDFs corretos da portaria da
+// COI-INC, dos POPs e dos formulários (out/2026).
+export const OFFICIAL_DOCUMENTS: OfficialDocument[] = [];
 
 export const officialDocumentUrl = (doc: OfficialDocument) => `/api/documentos/${doc.id}`;

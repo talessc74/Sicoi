@@ -32,9 +32,9 @@ describe('Manuais do Usuário na aba Documentos', () => {
     expect(screen.queryByText(/Fases 4 a 7/)).toBeNull();
   });
 
-  it('mostra os documentos oficiais no topo, com link protegido para o PDF original', () => {
+  it('mostra a área de documentos oficiais no topo, aguardando os PDFs da curadoria', () => {
     render(<DocumentSearchViewer currentUser={person('estudante')} />);
-    const link = screen.getByRole('link', { name: /Portaria DITEC\/PF nº 1415\/2024/ });
-    expect(link).toHaveAttribute('href', '/api/documentos/portaria-1415-2024');
+    expect(screen.getByText(/Documentos Oficiais da COI-INC/)).toBeInTheDocument();
+    expect(screen.getByText(/serão anexados aqui pela curadoria/)).toBeInTheDocument();
   });
 });
