@@ -414,84 +414,94 @@ export const Phase0Recebimento: React.FC<Phase0RecebimentoProps> = ({
             </FormSection>
 
             <FormSection title="Filiação">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="sm:col-span-2">
-                  <TextInput
-                    label="Nome do pai"
-                    disabled={disabled || Boolean(p0.paiNaoConsta)}
-                    suggested={fromIA.paiNome}
-                    value={p0.paiNaoConsta ? '' : p0.paiNome || ''}
-                    onChange={(v) => setField('paiNome', v)}
-                  />
-                </div>
-                <div className="flex items-end gap-3 pb-2.5">
-                  <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
-                    <input
-                      type="checkbox"
-                      disabled={disabled}
-                      checked={Boolean(p0.paiNaoConsta)}
-                      onChange={(e) => {
-                        setField('paiNaoConsta', e.target.checked);
-                        if (e.target.checked) setField('paiNome', '');
-                      }}
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">Mãe</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="sm:col-span-2">
+                      <TextInput
+                        label="Nome da mãe"
+                        disabled={disabled || Boolean(p0.maeNaoConsta)}
+                        suggested={fromIA.maeNome}
+                        value={p0.maeNaoConsta ? '' : p0.maeNome || ''}
+                        onChange={(v) => setField('maeNome', v)}
+                      />
+                    </div>
+                    <div className="flex items-end gap-3 pb-2.5">
+                      <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
+                        <input
+                          type="checkbox"
+                          disabled={disabled}
+                          checked={Boolean(p0.maeNaoConsta)}
+                          onChange={(e) => {
+                            setField('maeNaoConsta', e.target.checked);
+                            if (e.target.checked) setField('maeNome', '');
+                          }}
+                        />
+                        Não consta
+                      </label>
+                      <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
+                        <input type="checkbox" disabled={disabled} checked={Boolean(p0.maeFalecida)} onChange={(e) => setField('maeFalecida', e.target.checked)} />
+                        Falecida
+                      </label>
+                    </div>
+                    <SelectInput label="Naturalidade da mãe — UF" disabled={disabled} suggested={fromIA.maeNaturalUf} options={UF_OPTIONS} value={p0.maeNaturalUf || ''} onChange={(v) => setField('maeNaturalUf', v as BrazilianUf)} />
+                    <SelectInput
+                      label="Naturalidade da mãe — Cidade"
+                      disabled={disabled || !p0.maeNaturalUf}
+                      suggested={fromIA.maeNaturalCidade}
+                      options={citiesForUf(p0.maeNaturalUf)}
+                      value={p0.maeNaturalCidade || ''}
+                      onChange={(v) => setField('maeNaturalCidade', v)}
                     />
-                    Não consta
-                  </label>
-                  <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
-                    <input type="checkbox" disabled={disabled} checked={Boolean(p0.paiFalecido)} onChange={(e) => setField('paiFalecido', e.target.checked)} />
-                    Falecido
-                  </label>
+                    <SelectInput label="Estado civil da mãe" disabled={disabled} suggested={fromIA.maeEstadoCivil} options={ESTADO_CIVIL_OPTIONS} value={p0.maeEstadoCivil || ''} onChange={(v) => setField('maeEstadoCivil', v)} />
+                    <TextInput label="Profissão da mãe" disabled={disabled} suggested={fromIA.maeProfissao} value={p0.maeProfissao || ''} onChange={(v) => setField('maeProfissao', v)} />
+                  </div>
                 </div>
-                <SelectInput label="Naturalidade do pai — UF" disabled={disabled} suggested={fromIA.paiNaturalUf} options={UF_OPTIONS} value={p0.paiNaturalUf || ''} onChange={(v) => setField('paiNaturalUf', v as BrazilianUf)} />
-                <SelectInput
-                  label="Naturalidade do pai — Cidade"
-                  disabled={disabled || !p0.paiNaturalUf}
-                  suggested={fromIA.paiNaturalCidade}
-                  options={citiesForUf(p0.paiNaturalUf)}
-                  value={p0.paiNaturalCidade || ''}
-                  onChange={(v) => setField('paiNaturalCidade', v)}
-                />
-                <SelectInput label="Estado civil do pai" disabled={disabled} suggested={fromIA.paiEstadoCivil} options={ESTADO_CIVIL_OPTIONS} value={p0.paiEstadoCivil || ''} onChange={(v) => setField('paiEstadoCivil', v)} />
-                <TextInput label="Profissão do pai" disabled={disabled} suggested={fromIA.paiProfissao} value={p0.paiProfissao || ''} onChange={(v) => setField('paiProfissao', v)} />
 
-                <div className="sm:col-span-2">
-                  <TextInput
-                    label="Nome da mãe"
-                    disabled={disabled || Boolean(p0.maeNaoConsta)}
-                    suggested={fromIA.maeNome}
-                    value={p0.maeNaoConsta ? '' : p0.maeNome || ''}
-                    onChange={(v) => setField('maeNome', v)}
-                  />
-                </div>
-                <div className="flex items-end gap-3 pb-2.5">
-                  <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
-                    <input
-                      type="checkbox"
-                      disabled={disabled}
-                      checked={Boolean(p0.maeNaoConsta)}
-                      onChange={(e) => {
-                        setField('maeNaoConsta', e.target.checked);
-                        if (e.target.checked) setField('maeNome', '');
-                      }}
+                <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
+                  <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">Pai</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="sm:col-span-2">
+                      <TextInput
+                        label="Nome do pai"
+                        disabled={disabled || Boolean(p0.paiNaoConsta)}
+                        suggested={fromIA.paiNome}
+                        value={p0.paiNaoConsta ? '' : p0.paiNome || ''}
+                        onChange={(v) => setField('paiNome', v)}
+                      />
+                    </div>
+                    <div className="flex items-end gap-3 pb-2.5">
+                      <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
+                        <input
+                          type="checkbox"
+                          disabled={disabled}
+                          checked={Boolean(p0.paiNaoConsta)}
+                          onChange={(e) => {
+                            setField('paiNaoConsta', e.target.checked);
+                            if (e.target.checked) setField('paiNome', '');
+                          }}
+                        />
+                        Não consta
+                      </label>
+                      <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
+                        <input type="checkbox" disabled={disabled} checked={Boolean(p0.paiFalecido)} onChange={(e) => setField('paiFalecido', e.target.checked)} />
+                        Falecido
+                      </label>
+                    </div>
+                    <SelectInput label="Naturalidade do pai — UF" disabled={disabled} suggested={fromIA.paiNaturalUf} options={UF_OPTIONS} value={p0.paiNaturalUf || ''} onChange={(v) => setField('paiNaturalUf', v as BrazilianUf)} />
+                    <SelectInput
+                      label="Naturalidade do pai — Cidade"
+                      disabled={disabled || !p0.paiNaturalUf}
+                      suggested={fromIA.paiNaturalCidade}
+                      options={citiesForUf(p0.paiNaturalUf)}
+                      value={p0.paiNaturalCidade || ''}
+                      onChange={(v) => setField('paiNaturalCidade', v)}
                     />
-                    Não consta
-                  </label>
-                  <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
-                    <input type="checkbox" disabled={disabled} checked={Boolean(p0.maeFalecida)} onChange={(e) => setField('maeFalecida', e.target.checked)} />
-                    Falecida
-                  </label>
+                    <SelectInput label="Estado civil do pai" disabled={disabled} suggested={fromIA.paiEstadoCivil} options={ESTADO_CIVIL_OPTIONS} value={p0.paiEstadoCivil || ''} onChange={(v) => setField('paiEstadoCivil', v)} />
+                    <TextInput label="Profissão do pai" disabled={disabled} suggested={fromIA.paiProfissao} value={p0.paiProfissao || ''} onChange={(v) => setField('paiProfissao', v)} />
+                  </div>
                 </div>
-                <SelectInput label="Naturalidade da mãe — UF" disabled={disabled} suggested={fromIA.maeNaturalUf} options={UF_OPTIONS} value={p0.maeNaturalUf || ''} onChange={(v) => setField('maeNaturalUf', v as BrazilianUf)} />
-                <SelectInput
-                  label="Naturalidade da mãe — Cidade"
-                  disabled={disabled || !p0.maeNaturalUf}
-                  suggested={fromIA.maeNaturalCidade}
-                  options={citiesForUf(p0.maeNaturalUf)}
-                  value={p0.maeNaturalCidade || ''}
-                  onChange={(v) => setField('maeNaturalCidade', v)}
-                />
-                <SelectInput label="Estado civil da mãe" disabled={disabled} suggested={fromIA.maeEstadoCivil} options={ESTADO_CIVIL_OPTIONS} value={p0.maeEstadoCivil || ''} onChange={(v) => setField('maeEstadoCivil', v)} />
-                <TextInput label="Profissão da mãe" disabled={disabled} suggested={fromIA.maeProfissao} value={p0.maeProfissao || ''} onChange={(v) => setField('maeProfissao', v)} />
               </div>
             </FormSection>
 
@@ -527,7 +537,6 @@ export const Phase0Recebimento: React.FC<Phase0RecebimentoProps> = ({
                   value={p0.conjugeNaturalCidade || ''}
                   onChange={(v) => setField('conjugeNaturalCidade', v)}
                 />
-                <SelectInput label="Estado civil do cônjuge" disabled={disabled} suggested={fromIA.conjugeEstadoCivil} options={ESTADO_CIVIL_OPTIONS} value={p0.conjugeEstadoCivil || ''} onChange={(v) => setField('conjugeEstadoCivil', v)} />
                 <TextInput label="Profissão do cônjuge" disabled={disabled} suggested={fromIA.conjugeProfissao} value={p0.conjugeProfissao || ''} onChange={(v) => setField('conjugeProfissao', v)} />
               </div>
             </FormSection>
