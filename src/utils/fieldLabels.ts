@@ -7,7 +7,7 @@ const PHASE_NAMES: Record<string, string> = {
   phase3: 'Fase 3 · Acondicionamento',
   phase4: 'Fase 4 · Montagem e Inventário',
   phase5: 'Fase 5 · Alterações Ósseas',
-  phase6: 'Fase 6 · Galpão',
+  phase6: 'Fase 6 · Armazenamento Definitivo',
   legalOrigin: 'Procedência (restrito)',
   currentPhase: 'Fase atual'
 };

@@ -23,6 +23,7 @@ import {
   Actor
 } from './db/collectionsRepo';
 import { HistoryViolationError } from './db/historyGuard';
+import { redactCollectionForViewer, redactHistoryForViewer, restoreHiddenFields, SensitiveDataAccessError } from './db/collectionRedaction';
 import {
   listAdminActions,
   listDeletedCollections,
@@ -51,7 +52,7 @@ import {
 } from './db/aiInputValidation';
 import { findSimilarIndividuals } from './db/individualReferenceSearch';
 import { listPeople, createPerson, updatePerson, deletePerson, countPeople } from './db/peopleRepo';
-import { hasAdminAccess } from './src/utils/permissions';
+import { hasAdminAccess, canViewPhase0Identity } from './src/utils/permissions';
 import type { Phase0Data } from './src/types/sgccco';
 import {
   listAuthorizations,
@@ -657,10 +658,11 @@ app.post('/api/transcribe', async (req: Request, res: Response) => {
 // Lista todos os conjuntos osteológicos (dashboard, seletor de NIC) — exige
 // sessão: lista NICs, custódia e perfil biológico, dado forense demais pra
 // ficar público sem login (_local-adr-policy-203).
-app.get('/api/collections', requireAuth, async (_req: Request, res: Response) => {
+app.get('/api/collections', requireAuth, async (req: Request, res: Response) => {
   try {
     const pool = getPool();
-    const collections = await listCollections(pool);
+    const viewer = (req as any).currentPerson;
+    const collections = (await listCollections(pool)).map((c) => redactCollectionForViewer(c, viewer));
     return res.json({ collections });
   } catch (error: any) {
     console.error('Erro ao listar conjuntos:', error);
@@ -676,7 +678,7 @@ app.get('/api/collections/:nic', requireAuth, async (req: Request, res: Response
     if (!collection) {
       return res.status(404).json({ error: `Conjunto ${req.params.nic} não encontrado.`, code: 'CONJUNTO_NAO_ENCONTRADO' });
     }
-    return res.json({ collection });
+    return res.json({ collection: redactCollectionForViewer(collection, (req as any).currentPerson) });
   } catch (error: any) {
     console.error('Erro ao carregar conjunto:', error);
     return res.status(500).json({ error: error?.message || 'Erro ao carregar conjunto.', code: error?.code || 'CONJUNTO_ERRO_INTERNO' });
@@ -691,8 +693,9 @@ app.post('/api/collections', requireAuth, async (req: Request, res: Response) =>
       return res.status(400).json({ error: 'Corpo da requisição deve conter { collection } com um número de conjunto (COI) válido.', code: 'CONJUNTO_ERRO_INTERNO' });
     }
     const pool = getPool();
-    const persisted = await createCollection(pool, collection, actorFromSession(req));
-    return res.status(201).json({ collection: persisted });
+    const viewer = (req as any).currentPerson;
+    const persisted = await createCollection(pool, restoreHiddenFields(collection, null, viewer), actorFromSession(req));
+    return res.status(201).json({ collection: redactCollectionForViewer(persisted, viewer) });
   } catch (error: any) {
     console.error('Erro ao criar conjunto:', error);
     if (error?.code === 'CONJUNTO_JA_EXISTE') {
@@ -711,10 +714,15 @@ app.put('/api/collections/:nic', requireAuth, async (req: Request, res: Response
       return res.status(400).json({ error: 'O número do conjunto (COI) no corpo da requisição não confere com o da URL.', code: 'CONJUNTO_ERRO_INTERNO' });
     }
     const pool = getPool();
-    const saved = await saveCollection(pool, collection, actorFromSession(req));
-    return res.json({ collection: saved });
+    const viewer = (req as any).currentPerson;
+    const stored = await getCollection(pool, req.params.nic);
+    const saved = await saveCollection(pool, restoreHiddenFields(collection, stored, viewer), actorFromSession(req));
+    return res.json({ collection: redactCollectionForViewer(saved, viewer) });
   } catch (error: any) {
     console.error('Erro ao salvar conjunto:', error);
+    if (error instanceof SensitiveDataAccessError) {
+      return res.status(403).json({ error: error.message, code: error.code });
+    }
     // Tentativa de mexer no histórico (ou hash de assinatura nova que não confere) é
     // recusa do servidor, não falha dele.
     if (error instanceof HistoryViolationError) {
@@ -736,10 +744,14 @@ app.get('/api/collections/:nic/history', requireAuth, async (req: Request, res: 
       return res.status(404).json({ error: `Conjunto ${req.params.nic} não encontrado.`, code: 'CONJUNTO_NAO_ENCONTRADO' });
     }
     const changes = await listChangeLog(pool, req.params.nic);
+    // A corrente é conferida sobre os valores reais; só depois o que é restrito
+    // a quem está pedindo sai da resposta.
+    const chain = verifyChangeLogChain(changes, req.params.nic);
+    const visible = redactHistoryForViewer(collection.signatures, changes, (req as any).currentPerson);
     return res.json({
-      signatures: collection.signatures,
-      changes,
-      chain: verifyChangeLogChain(changes, req.params.nic)
+      signatures: visible.signatures,
+      changes: visible.changes,
+      chain
     });
   } catch (error: any) {
     console.error('Erro ao carregar histórico:', error);
@@ -862,7 +874,7 @@ app.post('/api/collections/:nic/photos', requireAuth, handlePhotoUpload, async (
     // se saveCollection recusar (fase travada, etc.), nada fica gravado.
     await attachPhotoBytes(pool, table, photoId, file.buffer, file.mimetype, file.size, width, height);
 
-    return res.status(201).json({ collection: saved, photo });
+    return res.status(201).json({ collection: redactCollectionForViewer(saved, (req as any).currentPerson), photo });
   } catch (error: any) {
     console.error('Erro ao registrar foto:', error);
     if (error instanceof HistoryViolationError) {
@@ -1861,6 +1873,11 @@ function sanitizePhase0Extraction(raw: any): Partial<Phase0Data> {
 
 app.post('/api/phase0/extract-death-certificate', requireAuth, async (req: Request, res: Response) => {
   try {
+    // Leitura da DO pela IA: só quem pode ver a Fase 0 (Técnico, Curador e
+    // Administrador — decisão da curadoria, out/2026, _local-adr-policy-207).
+    if (!canViewPhase0Identity((req as any).currentPerson)) {
+      return res.status(403).json({ error: 'A leitura da Declaração de Óbito é só para Técnico, Curador ou Administrador.', code: 'ACESSO_DADO_RESTRITO' });
+    }
     const { imageBase64, mimeType } = req.body || {};
     if (!imageBase64 || typeof imageBase64 !== 'string') {
       return res.status(400).json({ error: 'Nenhuma imagem codificada em base64 foi enviada.', code: 'IA_ENTRADA_VAZIA' });

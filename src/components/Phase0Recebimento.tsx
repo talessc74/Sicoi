@@ -6,10 +6,10 @@ import { PhotoSourceModal } from './PhotoSourceModal';
 import { calculateSha256, generateSignaturePayload } from '../services/auditService';
 import { extractDeathCertificateFields } from '../services/geminiService';
 import { getLatestPhaseSignature } from '../utils/signatures';
-import { canSignAsTechnician, canPerformRole } from '../utils/permissions';
+import { canSignAsTechnician, canPerformRole, canViewPhase0Identity } from '../utils/permissions';
 import { ErrorNotice } from './ErrorNotice';
 import { toAppError, AppError } from '../utils/errorMessages';
-import { Shield, FileText, Camera, CheckCircle2, AlertCircle, UserCheck, Plus, X } from 'lucide-react';
+import { Shield, FileText, Camera, CheckCircle2, AlertCircle, UserCheck, Plus, X, Lock } from 'lucide-react';
 
 interface Phase0RecebimentoProps {
   collection: OsteologicalCollection;
@@ -254,6 +254,28 @@ export const Phase0Recebimento: React.FC<Phase0RecebimentoProps> = ({
 
   const canSign = canActAsTechnician && !isLocked;
   const disabled = isLocked || !canAccess;
+
+  // Dados da DO (nome, documentos, filiação, causa da morte) são só para
+  // Técnico, Curador e Administrador — o servidor nem envia o conteúdo aos
+  // demais (db/collectionRedaction.ts, _local-adr-policy-207).
+  if (!canViewPhase0Identity(currentUser) || collection.phase0?.redacted) {
+    const isSigned = getLatestPhaseSignature(collection.signatures, 0)?.status === 'locked';
+    return (
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs text-sm space-y-2">
+        <div className="flex items-center gap-2 font-bold text-slate-900 dark:text-white">
+          <Lock className="w-4 h-4 text-slate-500" />
+          Fase 0 · Identificação e DO — acesso restrito
+        </div>
+        <p className="text-slate-600 dark:text-slate-300">
+          Esta fase guarda os dados pessoais da Declaração de Óbito (nome, documentos, filiação e causa da morte).
+          Por proteção de dados (LGPD e Portaria DITEC/PF nº 1415/2024), só Técnico, Curador e Administrador podem vê-la.
+        </p>
+        <p className="text-slate-500 dark:text-slate-400 text-xs">
+          Situação: {isSigned ? 'fase assinada.' : 'fase ainda não assinada.'}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

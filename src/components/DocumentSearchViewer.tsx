@@ -299,7 +299,7 @@ export const DocumentSearchViewer: React.FC<DocumentSearchViewerProps> = ({
                 <option value="3">Fase 3 · Acondicionamento Provisório</option>
                 <option value="4">Fase 4 · Montagem e Inventário & NMI</option>
                 <option value="5">Fase 5 · Alterações Ósseas & DICOM</option>
-                <option value="6">Fase 6 · Galpão Definitivo</option>
+                <option value="6">Fase 6 · Armazenamento Definitivo</option>
                 <option value="7">Fase 7 · Pesquisa & ABAC</option>
               </select>
             </div>
