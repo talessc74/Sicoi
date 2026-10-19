@@ -3,10 +3,9 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { OsteologicalInventoryViewer, CABECA_PESCOCO_OSSOS } from '../OsteologicalInventoryViewer';
-import type { OsteologicalInventoryData } from '../../types/sgccco';
 
 describe('OsteologicalInventoryViewer', () => {
-  it('renderiza os 23 ossos de Cabeça e Pescoço e a barra de seções', () => {
+  it('renderiza a barra das 8 seções e a lista corrida de Cabeça e Pescoço (sem prancha visual)', () => {
     render(
       <OsteologicalInventoryViewer
         inventory={{}}
@@ -17,17 +16,31 @@ describe('OsteologicalInventoryViewer', () => {
     expect(screen.getByText(/Inventário Osteológico por Regiões Anatômicas/i)).toBeInTheDocument();
     expect(screen.getByText('1. Cabeça e Pescoço')).toBeInTheDocument();
     expect(screen.getByText('2. Coluna Vertebral')).toBeInTheDocument();
+    expect(screen.getByText('3. Tórax & Esterno')).toBeInTheDocument();
+    expect(screen.getByText('4. Membro Superior Direito')).toBeInTheDocument();
+    expect(screen.getByText('5. Membro Superior Esquerdo')).toBeInTheDocument();
+    expect(screen.getByText('6. Ossos da Mão')).toBeInTheDocument();
+    expect(screen.getByText('7. Pelve, Bacia e Membros Inferiores')).toBeInTheDocument();
+    expect(screen.getByText('8. Ossos do Pé')).toBeInTheDocument();
 
-    // Verifica se os 23 ossos estão na tela
+    // Os 23 ossos de Cabeça e Pescoço aparecem direto, numa lista corrida —
+    // sem sub-aba de prancha, sem imagem.
     for (const bone of CABECA_PESCOCO_OSSOS) {
       expect(screen.getByText(bone)).toBeInTheDocument();
     }
+    expect(screen.queryByText(/Pranchas Anatômicas/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
 
-    // Verifica que a legenda possui os códigos P/F/I/A e Alterações ósseas
+    // Legenda P/F/I/A + alterações
     expect(screen.getByText('Alterações ósseas')).toBeInTheDocument();
+
+    // Estruturas complementares continuam existindo, só que sem a prancha ao lado.
+    expect(screen.getByText('Cartilagens da laringe ossificadas / Ossículos da audição')).toBeInTheDocument();
+    expect(screen.getByText('Ossículos da audição direitos')).toBeInTheDocument();
+    expect(screen.getByText('Ossículos da audição esquerdos')).toBeInTheDocument();
   });
 
-  it('permite marcar a presença de um osso com o código P/F/I/A', async () => {
+  it('permite marcar a presença de um osso com o código P/F/I/A em Cabeça e Pescoço', async () => {
     const user = userEvent.setup();
     const onUpdateInventory = vi.fn();
 
@@ -38,7 +51,6 @@ describe('OsteologicalInventoryViewer', () => {
       />
     );
 
-    // Clica no botão 'P' do osso Frontal
     const pButton = screen.getByTitle('Frontal — Presente sem fratura');
     await user.click(pButton);
 
@@ -51,7 +63,7 @@ describe('OsteologicalInventoryViewer', () => {
     );
   });
 
-  it('permite marcar todos os ossos da seção como P em lote', async () => {
+  it('permite marcar todos os ossos de uma seção como P em lote e limpar a seção', async () => {
     const user = userEvent.setup();
     const onUpdateInventory = vi.fn();
 
@@ -62,23 +74,24 @@ describe('OsteologicalInventoryViewer', () => {
       />
     );
 
-    const markAllP = screen.getByRole('button', { name: /Marcar Todos P/i });
-    await user.click(markAllP);
-
+    await user.click(screen.getByRole('button', { name: /Marcar Todos P/i }));
     expect(onUpdateInventory).toHaveBeenCalledWith(
       expect.objectContaining({
         cabecaPescoco: expect.objectContaining({
-          ossos: expect.objectContaining({
-            Frontal: 'P',
-            Mandíbula: 'P',
-            Hióide: 'P'
-          })
+          ossos: expect.objectContaining({ Frontal: 'P', Mandíbula: 'P', Hióide: 'P' })
         })
+      })
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Limpar' }));
+    expect(onUpdateInventory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cabecaPescoco: expect.objectContaining({ ossos: {} })
       })
     );
   });
 
-  it('permite selecionar estruturas complementares (cartilagens e ossículos)', async () => {
+  it('permite selecionar cartilagens e ossículos (estruturas complementares)', async () => {
     const user = userEvent.setup();
     const onUpdateInventory = vi.fn();
 
@@ -94,158 +107,12 @@ describe('OsteologicalInventoryViewer', () => {
 
     expect(onUpdateInventory).toHaveBeenCalledWith(
       expect.objectContaining({
-        cabecaPescoco: expect.objectContaining({
-          cartilagensLaringe: ['cricoide']
-        })
+        cabecaPescoco: expect.objectContaining({ cartilagensLaringe: ['cricoide'] })
       })
     );
   });
 
-  it('abre gaveta de alterações ósseas ao clicar no botão de exclamação do osso', async () => {
-    const user = userEvent.setup();
-    const onUpdateInventory = vi.fn();
-
-    const initialInventory: OsteologicalInventoryData = {
-      cabecaPescoco: {
-        ossos: {},
-        alteracoes: [{ tipo: 'lesao_ante_mortem', osso: 'Frontal', observacoes: 'Fratura cicatrizada' }]
-      }
-    };
-
-    render(
-      <OsteologicalInventoryViewer
-        inventory={initialInventory}
-        onUpdateInventory={onUpdateInventory}
-      />
-    );
-
-    // Verifica que o badge de alteração aparece no osso
-    expect(screen.getByText(/1 alteração/i)).toBeInTheDocument();
-
-    // Clica no botão vermelho de exclamação para abrir o drawer do osso Frontal
-    const altButton = screen.getByRole('button', { name: 'Alterações ósseas — Frontal' });
-    await user.click(altButton);
-
-    expect(screen.getByText('Alterações Ósseas — Frontal')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('Fratura cicatrizada')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Adicionar outro item nesta categoria/i })).toBeInTheDocument();
-  });
-
-  it('permite adicionar outro item na mesma categoria usando o botão de mais (+)', async () => {
-    const user = userEvent.setup();
-    const onUpdateInventory = vi.fn();
-
-    const initialInventory: OsteologicalInventoryData = {
-      cabecaPescoco: {
-        ossos: {},
-        alteracoes: [{ id: 'alt-1', tipo: 'lesao_ante_mortem', osso: 'Frontal', observacoes: 'Primeira fratura' }]
-      }
-    };
-
-    render(
-      <OsteologicalInventoryViewer
-        inventory={initialInventory}
-        onUpdateInventory={onUpdateInventory}
-      />
-    );
-
-    // Abre o drawer de alterações do osso Frontal
-    const altButton = screen.getByRole('button', { name: 'Alterações ósseas — Frontal' });
-    await user.click(altButton);
-
-    const addMoreBtn = screen.getByRole('button', { name: /Adicionar outro item nesta categoria/i });
-    await user.click(addMoreBtn);
-
-    expect(onUpdateInventory).toHaveBeenCalledWith(
-      expect.objectContaining({
-        cabecaPescoco: expect.objectContaining({
-          alteracoes: expect.arrayContaining([
-            expect.objectContaining({ tipo: 'lesao_ante_mortem', osso: 'Frontal' }),
-            expect.objectContaining({ tipo: 'lesao_ante_mortem', osso: 'Frontal' })
-          ])
-        })
-      })
-    );
-  });
-
-  it('permite selecionar "Sem alteração" desmarcando outras alterações do osso', async () => {
-    const user = userEvent.setup();
-    const onUpdateInventory = vi.fn();
-
-    const initialInventory: OsteologicalInventoryData = {
-      cabecaPescoco: {
-        ossos: {},
-        alteracoes: [{ id: 'alt-1', tipo: 'lesao_ante_mortem', osso: 'Frontal', observacoes: 'Lesão' }]
-      }
-    };
-
-    render(
-      <OsteologicalInventoryViewer
-        inventory={initialInventory}
-        onUpdateInventory={onUpdateInventory}
-      />
-    );
-
-    // Abre o drawer de alterações do osso Frontal
-    const altButton = screen.getByRole('button', { name: 'Alterações ósseas — Frontal' });
-    await user.click(altButton);
-
-    const semAltCheckbox = screen.getByRole('checkbox', { name: /Sem alteração/i });
-    await user.click(semAltCheckbox);
-
-    expect(onUpdateInventory).toHaveBeenCalledWith(
-      expect.objectContaining({
-        cabecaPescoco: expect.objectContaining({
-          alteracoes: [expect.objectContaining({ tipo: 'sem_alteracao', osso: 'Frontal' })]
-        })
-      })
-    );
-  });
-
-  it('ao clicar em outra seção exibe os ossos e os campos de contagem/identificação daquela região', async () => {
-    const user = userEvent.setup();
-
-    render(
-      <OsteologicalInventoryViewer
-        inventory={{}}
-        onUpdateInventory={vi.fn()}
-      />
-    );
-
-    const colunaBtn = screen.getByText('2. Coluna Vertebral');
-    await user.click(colunaBtn);
-
-    expect(screen.getByText('Sacro')).toBeInTheDocument();
-    expect(screen.getByText('Cóccix')).toBeInTheDocument();
-    expect(screen.getByText('Cervicais')).toBeInTheDocument();
-    expect(screen.getByText('Torácicas')).toBeInTheDocument();
-    expect(screen.getByText('Lombares')).toBeInTheDocument();
-  });
-
-  it('permite marcar a presença de um osso numa seção genérica (Coluna Vertebral)', async () => {
-    const user = userEvent.setup();
-    const onUpdateInventory = vi.fn();
-
-    render(
-      <OsteologicalInventoryViewer
-        inventory={{}}
-        onUpdateInventory={onUpdateInventory}
-      />
-    );
-
-    await user.click(screen.getByText('2. Coluna Vertebral'));
-    await user.click(screen.getByTitle('Sacro — Presente sem fratura'));
-
-    expect(onUpdateInventory).toHaveBeenCalledWith(
-      expect.objectContaining({
-        colunaVertebral: expect.objectContaining({
-          ossos: { Sacro: 'P' }
-        })
-      })
-    );
-  });
-
-  it('marcar um osso como Ausente (A) limpa as alterações ósseas já registradas (regra retroativa)', async () => {
+  it('marcar um osso como Ausente (A) limpa as alterações já registradas e desabilita o botão de alteração', async () => {
     const user = userEvent.setup();
     const onUpdateInventory = vi.fn();
 
@@ -281,11 +148,10 @@ describe('OsteologicalInventoryViewer', () => {
       />
     );
 
-    const altButton = screen.getByRole('button', { name: 'Alterações ósseas — Frontal' });
-    expect(altButton).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Alterações ósseas — Frontal' })).toBeDisabled();
   });
 
-  it('a contagem de falanges e sesamoides da Mão é compartilhada entre as abas Direita e Esquerda', async () => {
+  it('Coluna Vertebral lista cada vértebra como linha própria, cervicais→torácicas→lombares, Sacro e Cóccix por último', async () => {
     const user = userEvent.setup();
     const onUpdateInventory = vi.fn();
 
@@ -296,105 +162,183 @@ describe('OsteologicalInventoryViewer', () => {
       />
     );
 
-    await user.click(screen.getByText('4. Membro Superior Direito'));
-    expect(screen.getByText(/Falanges e Sesamoides da Mão/i)).toBeInTheDocument();
+    await user.click(screen.getByText('2. Coluna Vertebral'));
 
-    await user.click(screen.getByText('5. Membro Superior Esquerdo'));
+    expect(screen.getByText('C1')).toBeInTheDocument();
+    expect(screen.getByText('C7')).toBeInTheDocument();
+    expect(screen.getByText('T1')).toBeInTheDocument();
+    expect(screen.getByText('T12')).toBeInTheDocument();
+    expect(screen.getByText('L1')).toBeInTheDocument();
+    expect(screen.getByText('L5')).toBeInTheDocument();
+    expect(screen.getByText('Sacro')).toBeInTheDocument();
+    expect(screen.getByText('Cóccix')).toBeInTheDocument();
+
+    const boneNames = screen.getAllByTitle(/^(C1|C7|T1|T12|L1|L5|Sacro|Cóccix)$/).map(el => el.getAttribute('title'));
+    expect(boneNames.indexOf('C1')).toBeLessThan(boneNames.indexOf('T1'));
+    expect(boneNames.indexOf('T1')).toBeLessThan(boneNames.indexOf('L1'));
+    expect(boneNames.indexOf('L5')).toBeLessThan(boneNames.indexOf('Sacro'));
+    expect(boneNames.indexOf('Sacro')).toBeLessThan(boneNames.indexOf('Cóccix'));
+
+    await user.click(screen.getByTitle('T5 — Presente sem fratura'));
+    expect(onUpdateInventory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        colunaVertebral: expect.objectContaining({ ossos: { T5: 'P' } })
+      })
+    );
+  });
+
+  it('Tórax lista cada costela como linha própria, Direita e Esquerda', async () => {
+    const user = userEvent.setup();
+    const onUpdateInventory = vi.fn();
+
+    render(
+      <OsteologicalInventoryViewer
+        inventory={{}}
+        onUpdateInventory={onUpdateInventory}
+      />
+    );
+
+    await user.click(screen.getByText('3. Tórax & Esterno'));
+
+    expect(screen.getByText('Esterno - Manúbrio')).toBeInTheDocument();
+    expect(screen.getByText('1ª Costela Direita')).toBeInTheDocument();
+    expect(screen.getByText('12ª Costela Direita')).toBeInTheDocument();
+    expect(screen.getByText('1ª Costela Esquerda')).toBeInTheDocument();
+    expect(screen.getByText('12ª Costela Esquerda')).toBeInTheDocument();
+
+    await user.click(screen.getByTitle('1ª Costela Direita — Presente sem fratura'));
+    expect(onUpdateInventory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        torax: expect.objectContaining({ ossos: { '1ª Costela Direita': 'P' } })
+      })
+    );
+  });
+
+  it('Membro Superior Direito/Esquerdo não têm mais ossos da mão', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <OsteologicalInventoryViewer
+        inventory={{}}
+        onUpdateInventory={vi.fn()}
+      />
+    );
+
+    await user.click(screen.getByText('4. Membro Superior Direito'));
+    expect(screen.getByText('Clavícula Direita')).toBeInTheDocument();
+    expect(screen.getByText('Úmero Direito - Diáfise')).toBeInTheDocument();
+    expect(screen.queryByText('Escafóide Direito')).not.toBeInTheDocument();
+    expect(screen.queryByText('1º Metacarpal Direito')).not.toBeInTheDocument();
+  });
+
+  it('Ossos da Mão reúne o carpo/metacarpo dos dois lados e o pooled de falanges/sesamoides', async () => {
+    const user = userEvent.setup();
+    const onUpdateInventory = vi.fn();
+
+    render(
+      <OsteologicalInventoryViewer
+        inventory={{}}
+        onUpdateInventory={onUpdateInventory}
+      />
+    );
+
+    await user.click(screen.getByText('6. Ossos da Mão'));
+
+    expect(screen.getByText('Escafóide Direito')).toBeInTheDocument();
+    expect(screen.getByText('1º Metacarpal Direito')).toBeInTheDocument();
+    expect(screen.getByText('Escafóide Esquerdo')).toBeInTheDocument();
+    expect(screen.getByText('1º Metacarpal Esquerdo')).toBeInTheDocument();
     expect(screen.getByText(/Falanges e Sesamoides da Mão/i)).toBeInTheDocument();
 
     const sesamoidesInput = screen.getByPlaceholderText('Nº');
     await user.type(sesamoidesInput, '2');
-
     expect(onUpdateInventory).toHaveBeenCalledWith(
-      expect.objectContaining({
-        maoPooled: expect.objectContaining({ sesamoides: 2 })
-      })
+      expect.objectContaining({ maoPooled: expect.objectContaining({ sesamoides: 2 }) })
     );
   });
 
-  it('"Marcar seção P" marca todos os ossos da seção como Presente sem fratura', async () => {
+  it('Pelve, Bacia e Membros Inferiores vira uma seção só, com os dois lados, sem ossos do pé', async () => {
     const user = userEvent.setup();
-    const onUpdateInventory = vi.fn();
 
     render(
       <OsteologicalInventoryViewer
         inventory={{}}
-        onUpdateInventory={onUpdateInventory}
+        onUpdateInventory={vi.fn()}
       />
     );
 
-    await user.click(screen.getByText('6. Pelve & Bacia'));
-    await user.click(screen.getByRole('button', { name: 'Marcar seção P' }));
+    await user.click(screen.getByText('7. Pelve, Bacia e Membros Inferiores'));
 
-    expect(onUpdateInventory).toHaveBeenCalledWith(
-      expect.objectContaining({
-        pelveBacia: expect.objectContaining({
-          ossos: {
-            'Ílio Direito': 'P',
-            'Ísquio Direito': 'P',
-            'Púbis Direito': 'P',
-            'Ílio Esquerdo': 'P',
-            'Ísquio Esquerdo': 'P',
-            'Púbis Esquerdo': 'P'
-          }
-        })
-      })
-    );
+    expect(screen.getByText('Ílio Direito')).toBeInTheDocument();
+    expect(screen.getByText('Fêmur Direito - Diáfise')).toBeInTheDocument();
+    expect(screen.getByText('Ílio Esquerdo')).toBeInTheDocument();
+    expect(screen.getByText('Fêmur Esquerdo - Diáfise')).toBeInTheDocument();
+    expect(screen.queryByText('Calcâneo Direito')).not.toBeInTheDocument();
+    expect(screen.queryByText('1º Metatarsal Esquerdo')).not.toBeInTheDocument();
   });
 
-  it('"Limpar seção" remove todas as marcações de presença já registradas na seção', async () => {
+  it('Ossos do Pé reúne o tarso/metatarso dos dois lados e o pooled de falanges/sesamoides', async () => {
     const user = userEvent.setup();
-    const onUpdateInventory = vi.fn();
 
     render(
       <OsteologicalInventoryViewer
-        inventory={{
-          pelveBacia: {
-            ossos: { 'Ílio Direito': 'P', 'Ísquio Direito': 'F' },
-            alteracoes: []
-          }
-        }}
-        onUpdateInventory={onUpdateInventory}
+        inventory={{}}
+        onUpdateInventory={vi.fn()}
       />
     );
 
-    await user.click(screen.getByText('6. Pelve & Bacia'));
-    await user.click(screen.getByRole('button', { name: 'Limpar seção' }));
+    await user.click(screen.getByText('8. Ossos do Pé'));
 
-    expect(onUpdateInventory).toHaveBeenCalledWith(
-      expect.objectContaining({
-        pelveBacia: expect.objectContaining({ ossos: {} })
-      })
-    );
+    expect(screen.getByText('Calcâneo Direito')).toBeInTheDocument();
+    expect(screen.getByText('1º Metatarsal Direito')).toBeInTheDocument();
+    expect(screen.getByText('Calcâneo Esquerdo')).toBeInTheDocument();
+    expect(screen.getByText('1º Metatarsal Esquerdo')).toBeInTheDocument();
+    expect(screen.getByText(/Falanges e Sesamoides do Pé/i)).toBeInTheDocument();
   });
 
-  it('o pooled de falanges/sesamoides da Mão permanece visível ao trocar de aba Direita/Esquerda', async () => {
+  it('a contagem de "catalogados" de Cabeça e Pescoço inclui ossículos (estribo) e cartilagens, não só os 23 ossos', async () => {
     const user = userEvent.setup();
-    const onUpdateInventory = vi.fn();
 
     const { rerender } = render(
       <OsteologicalInventoryViewer
         inventory={{}}
-        onUpdateInventory={onUpdateInventory}
+        onUpdateInventory={vi.fn()}
       />
     );
 
-    await user.click(screen.getByText('4. Membro Superior Direito'));
-    await user.click(screen.getByPlaceholderText('Nº'));
-    fireEvent.change(screen.getByPlaceholderText('Nº'), { target: { value: '3' } });
+    expect(screen.getByText('0/31 catalogados')).toBeInTheDocument();
 
-    // Componente controlado: simula o pai aplicando o patch que onUpdateInventory recebeu.
     rerender(
       <OsteologicalInventoryViewer
-        inventory={{ maoPooled: { sesamoides: 3 } }}
-        onUpdateInventory={onUpdateInventory}
+        inventory={{
+          cabecaPescoco: {
+            ossos: { Frontal: 'P' },
+            ossiculosDireitos: ['estribo']
+          }
+        }}
+        onUpdateInventory={vi.fn()}
       />
     );
 
-    expect(screen.getByPlaceholderText('Nº')).toHaveValue(3);
+    expect(screen.getByText('2/31 catalogados')).toBeInTheDocument();
+  });
 
-    await user.click(screen.getByText('5. Membro Superior Esquerdo'));
+  it('"ausentes" marcado num grupo complementar conta como todos os itens do grupo determinados', () => {
+    render(
+      <OsteologicalInventoryViewer
+        inventory={{
+          cabecaPescoco: {
+            ossos: {},
+            cartilagensLaringe: ['ausentes'],
+            ossiculosDireitos: ['ausentes'],
+            ossiculosEsquerdos: ['ausentes']
+          }
+        }}
+        onUpdateInventory={vi.fn()}
+      />
+    );
 
-    expect(screen.getByPlaceholderText('Nº')).toHaveValue(3);
+    // 2 (cartilagens) + 3 (ossículos direitos) + 3 (ossículos esquerdos) = 8
+    expect(screen.getByText('8/31 catalogados')).toBeInTheDocument();
   });
 });
