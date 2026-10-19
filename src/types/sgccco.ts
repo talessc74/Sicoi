@@ -555,34 +555,9 @@ export interface OsteologicalSectionCabecaPescoco {
   alteracoes?: OsteologicalAlteracaoRegiao[];
 }
 
-// Contagem limitada (0..max, "+max" representado pelo valor max+1) e, quando
-// aplicável, quais elementos foram individualmente identificados — mesmo
-// padrão repetitivo pedido pelo Tales pra vértebras, costelas e falanges
-// (out/2026). `identificadas` guarda rótulos como 'nenhuma_identificada',
-// 'C1'..'C7'/'1ª'..'12ª' ou 'supranumeraria'.
-export interface OsteologicalCountIdentifySelection {
-  quantidade?: number;
-  identificadas?: string[];
-}
-
 export interface OsteologicalSimpleBoneSection {
   ossos: Record<string, OsteologicalPresenceCode>;
   alteracoes?: OsteologicalAlteracaoRegiao[];
-}
-
-export interface OsteologicalSectionColunaVertebral {
-  ossos: Record<string, OsteologicalPresenceCode>; // Sacro, Cóccix
-  alteracoes?: OsteologicalAlteracaoRegiao[];
-  cervicais?: OsteologicalCountIdentifySelection; // max 7
-  toracicas?: OsteologicalCountIdentifySelection; // max 12
-  lombares?: OsteologicalCountIdentifySelection; // max 5
-}
-
-export interface OsteologicalSectionTorax {
-  ossos: Record<string, OsteologicalPresenceCode>; // Esterno - Manúbrio/Corpo/Processo xifóide
-  alteracoes?: OsteologicalAlteracaoRegiao[];
-  costelasDireitas?: OsteologicalCountIdentifySelection; // max 12
-  costelasEsquerdas?: OsteologicalCountIdentifySelection; // max 12
 }
 
 // Falanges e sesamoides da mão/do pé — contados uma vez só (não por lado):
@@ -595,15 +570,21 @@ export interface OsteologicalPooledCounts {
   sesamoides?: number;
 }
 
+// Pedido dos pesquisadores (out/2026): cada vértebra e cada costela é um
+// elemento catalogável próprio (C1, T5, 1ª Costela Direita...), igual a
+// qualquer outro osso — nunca mais um contador de quantidade separado da
+// identificação. Por isso Coluna Vertebral e Tórax usam o mesmo
+// OsteologicalSimpleBoneSection de toda seção simples do inventário, e as
+// 3 seções de membro inferior (Pelve, MI Direito, MI Esquerdo) viram uma só.
 export interface OsteologicalInventoryData {
   cabecaPescoco?: OsteologicalSectionCabecaPescoco;
-  colunaVertebral?: OsteologicalSectionColunaVertebral;
-  torax?: OsteologicalSectionTorax;
+  colunaVertebral?: OsteologicalSimpleBoneSection;
+  torax?: OsteologicalSimpleBoneSection;
   membroSuperiorDireito?: OsteologicalSimpleBoneSection;
   membroSuperiorEsquerdo?: OsteologicalSimpleBoneSection;
-  pelveBacia?: OsteologicalSimpleBoneSection;
-  membroInferiorDireito?: OsteologicalSimpleBoneSection;
-  membroInferiorEsquerdo?: OsteologicalSimpleBoneSection;
+  ossosMao?: OsteologicalSimpleBoneSection;
+  pelveMembroInferior?: OsteologicalSimpleBoneSection;
+  ossosPe?: OsteologicalSimpleBoneSection;
   maoPooled?: OsteologicalPooledCounts;
   pePooled?: OsteologicalPooledCounts;
   [key: string]: unknown;

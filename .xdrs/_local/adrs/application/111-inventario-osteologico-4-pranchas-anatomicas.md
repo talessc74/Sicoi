@@ -7,6 +7,13 @@ valid-from: 2026-10-19
 
 # _local-adr-policy-111: Inventário Osteológico da Cabeça e Pescoço — Visualizador Interativo em 4 Pranchas Anatômicas com Contornos Orgânicos
 
+> **[SUPERADA em 2026-10-19 por `_local-adr-policy-113`]** — Os pesquisadores
+> pediram a remoção da prancha visual: Cabeça e Pescoço voltou a ser lista
+> corrida, igual às demais seções. `AnatomicMultiPlateSkullViewer.tsx`, as
+> imagens (`public/images/anatomical/cranio_*`) e o teste correspondente
+> foram removidos do repositório. Este documento fica como registro
+> histórico da decisão original — nunca apagado, só substituído.
+
 ## Context and Problem Statement
 
 Na Fase 4 (Inventário e Análise Osteológica), o técnico e o perito precisam
