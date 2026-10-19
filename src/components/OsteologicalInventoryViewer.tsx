@@ -6,7 +6,11 @@ import {
   OsteologicalAlteracaoRegiao
 } from '../types/sgccco';
 import { Info, Sparkles, Plus, Trash2, AlertCircle } from 'lucide-react';
-import { AnatomicExplodedSkullViewer } from './AnatomicExplodedSkullViewer';
+import {
+  AnatomicMultiPlateSkullViewer,
+  SkullSubgroupId,
+  SKULL_SUBGROUPS_CONFIG
+} from './AnatomicMultiPlateSkullViewer';
 
 interface OsteologicalInventoryViewerProps {
   inventory?: OsteologicalInventoryData;
@@ -141,6 +145,16 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
 }) => {
   const [currentSectionId, setCurrentSectionId] = useState<string>('cabeca_pescoco');
   const [selectedBone, setSelectedBone] = useState<string | null>(null);
+  const [activeSkullSubgroup, setActiveSkullSubgroup] = useState<SkullSubgroupId>('calota');
+
+  const findSubgroupForBone = (boneId: string): SkullSubgroupId => {
+    for (const [subId, config] of Object.entries(SKULL_SUBGROUPS_CONFIG)) {
+      if (config.bones.includes(boneId)) {
+        return subId as SkullSubgroupId;
+      }
+    }
+    return 'calota';
+  };
 
   const cabecaData = inventory.cabecaPescoco || {
     ossos: {},
@@ -172,6 +186,21 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
     if (readOnly) return;
     const newOssos: Record<string, OsteologicalPresenceCode> = {};
     for (const bone of CABECA_PESCOCO_OSSOS) {
+      newOssos[bone] = code;
+    }
+    onUpdateInventory({
+      ...inventory,
+      cabecaPescoco: {
+        ...cabecaData,
+        ossos: newOssos
+      }
+    });
+  };
+
+  const handleBulkMarkSubgroup = (code: OsteologicalPresenceCode) => {
+    if (readOnly) return;
+    const newOssos: Record<string, OsteologicalPresenceCode> = { ...cabecaData.ossos };
+    for (const bone of SKULL_SUBGROUPS_CONFIG[activeSkullSubgroup].bones) {
       newOssos[bone] = code;
     }
     onUpdateInventory({
@@ -465,23 +494,95 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
             </div>
           </div>
 
-          {/* Layout Split-Screen: Lista Pericial à Esquerda (7 cols) + Placa Anatômica Gravada à Direita (5 cols) */}
+          {/* Sub-Abas de Navegação das 4 Pranchas Especializadas de Cabeça e Pescoço */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs font-mono">
+              <span className="font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-sky-500 animate-pulse" />
+                Pranchas Anatômicas por Grupo de Ossos (Exercício 5)
+              </span>
+              <span className="text-slate-500 text-[11px] hidden sm:inline">
+                Selecione o grupo para focar e ampliar a visualização médica
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+              {(Object.keys(SKULL_SUBGROUPS_CONFIG) as SkullSubgroupId[]).map(subId => {
+                const cfg = SKULL_SUBGROUPS_CONFIG[subId];
+                const isCurrent = activeSkullSubgroup === subId;
+                const filledCount = cfg.bones.filter(b => !!cabecaData.ossos[b]).length;
+                const totalCount = cfg.bones.length;
+                const isComplete = filledCount === totalCount;
+
+                return (
+                  <button
+                    key={subId}
+                    type="button"
+                    onClick={() => setActiveSkullSubgroup(subId)}
+                    className={`p-2.5 rounded-xl border transition-all text-left flex flex-col justify-between gap-1.5 cursor-pointer ${
+                      isCurrent
+                        ? 'border-sky-500 bg-sky-50/70 dark:bg-sky-950/40 ring-2 ring-sky-400 dark:ring-sky-600 shadow-sm'
+                        : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-1">
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200 leading-tight">
+                        {cfg.title}
+                      </span>
+                      {isComplete && (
+                        <span className="text-emerald-600 dark:text-emerald-400 font-bold text-xs">✓</span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate w-full">
+                      {cfg.subtitle}
+                    </p>
+                    <div className="flex items-center justify-between text-[11px] font-mono text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800">
+                      <span className="text-[10px] font-semibold">{cfg.plateNumber.split('(')[0].trim()}</span>
+                      <span
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                          isComplete
+                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300'
+                            : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                        }`}
+                      >
+                        {filledCount}/{totalCount}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Layout Split-Screen: Lista Pericial à Esquerda (7 cols) + Placa Anatômica Especializada à Direita (5 cols) */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* Lado Esquerdo: Lista dos 23 Ossos + Cartilagens e Ossículos */}
+            {/* Lado Esquerdo: Lista dos Ossos do Grupo Selecionado */}
             <div className="lg:col-span-7 space-y-6">
-              {/* Lista dos 23 Ossos com Seleção Única e Alterações Ósseas */}
+              {/* Lista dos Ossos com Seleção Única e Alterações Ósseas */}
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h5 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-mono">
-                    Elementos Ósseos da Cabeça e Pescoço ({totalOssos})
-                  </h5>
-                  <span className="text-[11px] text-slate-500 font-mono">
-                    Clique no botão com <AlertCircle className="w-3.5 h-3.5 inline text-slate-500 align-text-bottom" /> para abrir as alterações ósseas do osso
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <h5 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-mono">
+                      {SKULL_SUBGROUPS_CONFIG[activeSkullSubgroup].title} ({SKULL_SUBGROUPS_CONFIG[activeSkullSubgroup].bones.length} {SKULL_SUBGROUPS_CONFIG[activeSkullSubgroup].bones.length === 1 ? 'osso' : 'ossos'})
+                    </h5>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      disabled={readOnly}
+                      onClick={() => handleBulkMarkSubgroup('P')}
+                      className="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 transition-all font-semibold"
+                    >
+                      Marcar grupo P
+                    </button>
+                    <span className="text-[11px] text-slate-500 font-mono hidden sm:inline">
+                      · <AlertCircle className="w-3 h-3 inline text-slate-500 align-text-bottom" /> para alterações
+                    </span>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
-                  {CABECA_PESCOCO_OSSOS.map((bone, index) => {
+                  {SKULL_SUBGROUPS_CONFIG[activeSkullSubgroup].bones.map((bone, index) => {
                     const currentCode = cabecaData.ossos[bone];
                     const isExpanded = !!expandedBones[bone];
                     const isSelected = selectedBone === bone;
@@ -725,109 +826,122 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
             </div>
           </div>
 
-          {/* Estruturas Complementares: Cartilagens e Ossículos */}
-          <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-4">
-            <h5 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-mono">
-              Cartilagens da laringe ossificadas / Ossículos da audição
-            </h5>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Cartilagens da laringe ossificadas */}
-              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-                <span className="block text-xs font-semibold text-slate-800 dark:text-slate-200 mb-2">
-                  Cartilagens da laringe ossificadas
+          {/* Estruturas Complementares: Cartilagens e Ossículos (Exibidos junto com Arcadas e Mandíbula na Prancha 4) */}
+          {activeSkullSubgroup === 'mandibula_cervical' && (
+            <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-4">
+              <div className="flex items-center justify-between">
+                <h5 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-mono">
+                  Cartilagens da laringe ossificadas / Ossículos da audição
+                </h5>
+                <span className="text-[10px] font-mono text-slate-500">
+                  Estruturas complementares da porção cervical e temporal
                 </span>
-                <div className="space-y-1.5 text-xs">
-                  {[
-                    { id: 'tireoidea', label: 'Tireóidea' },
-                    { id: 'cricoide', label: 'Cricoide' },
-                    { id: 'ausentes', label: 'Ausentes' }
-                  ].map(opt => {
-                    const checked = (cabecaData.cartilagensLaringe || []).includes(opt.id);
-                    return (
-                      <label key={opt.id} className="flex items-center gap-2 cursor-pointer text-slate-700 dark:text-slate-300">
-                        <input
-                          type="checkbox"
-                          disabled={readOnly}
-                          checked={checked}
-                          onChange={() => handleToggleCartilagem(opt.id)}
-                          className="rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                        />
-                        <span>{opt.label}</span>
-                      </label>
-                    );
-                  })}
-                </div>
               </div>
 
-              {/* Ossículos da audição direitos */}
-              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-                <span className="block text-xs font-semibold text-slate-800 dark:text-slate-200 mb-2">
-                  Ossículos da audição direitos
-                </span>
-                <div className="space-y-1.5 text-xs">
-                  {[
-                    { id: 'martelo', label: 'Martelo' },
-                    { id: 'bigorna', label: 'Bigorna' },
-                    { id: 'estribo', label: 'Estribo' },
-                    { id: 'ausentes', label: 'Ausentes' }
-                  ].map(opt => {
-                    const checked = (cabecaData.ossiculosDireitos || []).includes(opt.id);
-                    return (
-                      <label key={opt.id} className="flex items-center gap-2 cursor-pointer text-slate-700 dark:text-slate-300">
-                        <input
-                          type="checkbox"
-                          disabled={readOnly}
-                          checked={checked}
-                          onChange={() => handleToggleOssiculo('direitos', opt.id)}
-                          className="rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                        />
-                        <span>{opt.label}</span>
-                      </label>
-                    );
-                  })}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Cartilagens da laringe ossificadas */}
+                <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                  <span className="block text-xs font-semibold text-slate-800 dark:text-slate-200 mb-2">
+                    Cartilagens da laringe ossificadas
+                  </span>
+                  <div className="space-y-1.5 text-xs">
+                    {[
+                      { id: 'tireoidea', label: 'Tireóidea' },
+                      { id: 'cricoide', label: 'Cricoide' },
+                      { id: 'ausentes', label: 'Ausentes' }
+                    ].map(opt => {
+                      const checked = (cabecaData.cartilagensLaringe || []).includes(opt.id);
+                      return (
+                        <label key={opt.id} className="flex items-center gap-2 cursor-pointer text-slate-700 dark:text-slate-300">
+                          <input
+                            type="checkbox"
+                            disabled={readOnly}
+                            checked={checked}
+                            onChange={() => handleToggleCartilagem(opt.id)}
+                            className="rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                          />
+                          <span>{opt.label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
 
-              {/* Ossículos da audição esquerdos */}
-              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-                <span className="block text-xs font-semibold text-slate-800 dark:text-slate-200 mb-2">
-                  Ossículos da audição esquerdos
-                </span>
-                <div className="space-y-1.5 text-xs">
-                  {[
-                    { id: 'martelo', label: 'Martelo' },
-                    { id: 'bigorna', label: 'Bigorna' },
-                    { id: 'estribo', label: 'Estribo' },
-                    { id: 'ausentes', label: 'Ausentes' }
-                  ].map(opt => {
-                    const checked = (cabecaData.ossiculosEsquerdos || []).includes(opt.id);
-                    return (
-                      <label key={opt.id} className="flex items-center gap-2 cursor-pointer text-slate-700 dark:text-slate-300">
-                        <input
-                          type="checkbox"
-                          disabled={readOnly}
-                          checked={checked}
-                          onChange={() => handleToggleOssiculo('esquerdos', opt.id)}
-                          className="rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                        />
-                        <span>{opt.label}</span>
-                      </label>
-                    );
-                  })}
+                {/* Ossículos da audição direitos */}
+                <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                  <span className="block text-xs font-semibold text-slate-800 dark:text-slate-200 mb-2">
+                    Ossículos da audição direitos
+                  </span>
+                  <div className="space-y-1.5 text-xs">
+                    {[
+                      { id: 'martelo', label: 'Martelo' },
+                      { id: 'bigorna', label: 'Bigorna' },
+                      { id: 'estribo', label: 'Estribo' },
+                      { id: 'ausentes', label: 'Ausentes' }
+                    ].map(opt => {
+                      const checked = (cabecaData.ossiculosDireitos || []).includes(opt.id);
+                      return (
+                        <label key={opt.id} className="flex items-center gap-2 cursor-pointer text-slate-700 dark:text-slate-300">
+                          <input
+                            type="checkbox"
+                            disabled={readOnly}
+                            checked={checked}
+                            onChange={() => handleToggleOssiculo('direitos', opt.id)}
+                            className="rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                          />
+                          <span>{opt.label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Ossículos da audição esquerdos */}
+                <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                  <span className="block text-xs font-semibold text-slate-800 dark:text-slate-200 mb-2">
+                    Ossículos da audição esquerdos
+                  </span>
+                  <div className="space-y-1.5 text-xs">
+                    {[
+                      { id: 'martelo', label: 'Martelo' },
+                      { id: 'bigorna', label: 'Bigorna' },
+                      { id: 'estribo', label: 'Estribo' },
+                      { id: 'ausentes', label: 'Ausentes' }
+                    ].map(opt => {
+                      const checked = (cabecaData.ossiculosEsquerdos || []).includes(opt.id);
+                      return (
+                        <label key={opt.id} className="flex items-center gap-2 cursor-pointer text-slate-700 dark:text-slate-300">
+                          <input
+                            type="checkbox"
+                            disabled={readOnly}
+                            checked={checked}
+                            onChange={() => handleToggleOssiculo('esquerdos', opt.id)}
+                            className="rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                          />
+                          <span>{opt.label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Lado Direito: Placa Anatômica Gravada Interativa (Sticky durante rolagem) */}
+        {/* Lado Direito: Placa Anatômica Especializada Interativa (Sticky durante rolagem) */}
         <div className="lg:col-span-5 lg:sticky lg:top-4 space-y-3">
-          <AnatomicExplodedSkullViewer
+          <AnatomicMultiPlateSkullViewer
+            activeSubgroup={activeSkullSubgroup}
+            onSelectSubgroup={setActiveSkullSubgroup}
             ossos={cabecaData.ossos}
             selectedBone={selectedBone}
             onSelectBone={(bone) => {
               setSelectedBone(bone);
+              const targetSubgroup = findSubgroupForBone(bone);
+              if (targetSubgroup !== activeSkullSubgroup) {
+                setActiveSkullSubgroup(targetSubgroup);
+              }
               const el = document.getElementById(`bone-row-${bone.replace(/\s+/g, '-')}`);
               if (el) {
                 el.scrollIntoView({ behavior: 'smooth', block: 'center' });
