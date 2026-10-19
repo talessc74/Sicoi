@@ -555,8 +555,57 @@ export interface OsteologicalSectionCabecaPescoco {
   alteracoes?: OsteologicalAlteracaoRegiao[];
 }
 
+// Contagem limitada (0..max, "+max" representado pelo valor max+1) e, quando
+// aplicável, quais elementos foram individualmente identificados — mesmo
+// padrão repetitivo pedido pelo Tales pra vértebras, costelas e falanges
+// (out/2026). `identificadas` guarda rótulos como 'nenhuma_identificada',
+// 'C1'..'C7'/'1ª'..'12ª' ou 'supranumeraria'.
+export interface OsteologicalCountIdentifySelection {
+  quantidade?: number;
+  identificadas?: string[];
+}
+
+export interface OsteologicalSimpleBoneSection {
+  ossos: Record<string, OsteologicalPresenceCode>;
+  alteracoes?: OsteologicalAlteracaoRegiao[];
+}
+
+export interface OsteologicalSectionColunaVertebral {
+  ossos: Record<string, OsteologicalPresenceCode>; // Sacro, Cóccix
+  alteracoes?: OsteologicalAlteracaoRegiao[];
+  cervicais?: OsteologicalCountIdentifySelection; // max 7
+  toracicas?: OsteologicalCountIdentifySelection; // max 12
+  lombares?: OsteologicalCountIdentifySelection; // max 5
+}
+
+export interface OsteologicalSectionTorax {
+  ossos: Record<string, OsteologicalPresenceCode>; // Esterno - Manúbrio/Corpo/Processo xifóide
+  alteracoes?: OsteologicalAlteracaoRegiao[];
+  costelasDireitas?: OsteologicalCountIdentifySelection; // max 12
+  costelasEsquerdas?: OsteologicalCountIdentifySelection; // max 12
+}
+
+// Falanges e sesamoides da mão/do pé — contados uma vez só (não por lado):
+// decisão do Tales (out/2026), já que uma falange solta raramente dá pra
+// lateralizar com segurança. Sesamoides não tem teto fixo (intervalo aberto).
+export interface OsteologicalPooledCounts {
+  falangesProximais?: number;
+  falangesMedias?: number;
+  falangesDistais?: number;
+  sesamoides?: number;
+}
+
 export interface OsteologicalInventoryData {
   cabecaPescoco?: OsteologicalSectionCabecaPescoco;
+  colunaVertebral?: OsteologicalSectionColunaVertebral;
+  torax?: OsteologicalSectionTorax;
+  membroSuperiorDireito?: OsteologicalSimpleBoneSection;
+  membroSuperiorEsquerdo?: OsteologicalSimpleBoneSection;
+  pelveBacia?: OsteologicalSimpleBoneSection;
+  membroInferiorDireito?: OsteologicalSimpleBoneSection;
+  membroInferiorEsquerdo?: OsteologicalSimpleBoneSection;
+  maoPooled?: OsteologicalPooledCounts;
+  pePooled?: OsteologicalPooledCounts;
   [key: string]: unknown;
 }
 
