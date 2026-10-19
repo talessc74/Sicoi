@@ -25,140 +25,140 @@ const BONE_HOTSPOTS: BoneHotspot[] = [
   {
     id: 'Frontal',
     name: 'Frontal',
-    path: 'M 350 290 C 330 200, 370 140, 448 140 C 526 140, 566 200, 546 290 C 520 305, 480 305, 448 300 C 416 305, 376 305, 350 290 Z',
-    badge: { x: 448, y: 200 }
+    path: 'M 448 142 L 480 150 L 520 180 L 555 220 L 565 275 L 555 335 L 540 345 L 515 330 L 475 325 L 460 370 L 448 372 L 436 370 L 421 325 L 381 330 L 356 345 L 341 335 L 331 275 L 341 220 L 376 180 L 416 150 Z',
+    badge: { x: 448, y: 235 }
   },
   {
     id: 'Parietal direito',
     name: 'Parietal direito',
-    path: 'M 160 330 C 140 240, 240 215, 335 225 C 330 300, 290 380, 220 395 C 170 380, 160 350, 160 330 Z',
-    badge: { x: 240, y: 300 }
+    path: 'M 240 218 L 300 235 L 345 275 L 350 325 L 340 375 L 315 415 L 275 440 L 210 430 L 155 405 L 140 355 L 150 295 L 185 250 Z',
+    badge: { x: 245, y: 325 }
   },
   {
     id: 'Parietal esquerdo',
     name: 'Parietal esquerdo',
-    path: 'M 736 330 C 756 240, 656 215, 561 225 C 566 300, 606 380, 676 395 C 726 380, 736 350, 736 330 Z',
-    badge: { x: 656, y: 300 }
+    path: 'M 656 218 L 596 235 L 551 275 L 546 325 L 556 375 L 581 415 L 621 440 L 686 430 L 741 405 L 756 355 L 746 295 L 711 250 Z',
+    badge: { x: 651, y: 325 }
   },
   {
     id: 'Temporal direito',
     name: 'Temporal direito',
-    path: 'M 95 440 C 90 400, 200 390, 280 405 C 300 460, 260 520, 210 520 C 130 520, 95 480, 95 440 Z',
-    badge: { x: 195, y: 455 }
+    path: 'M 170 430 L 225 415 L 280 435 L 305 475 L 280 520 L 245 545 L 215 565 L 150 565 L 105 520 L 95 465 Z',
+    badge: { x: 195, y: 485 }
   },
   {
     id: 'Temporal esquerdo',
     name: 'Temporal esquerdo',
-    path: 'M 801 440 C 806 400, 696 390, 616 405 C 596 460, 636 520, 686 520 C 766 520, 801 480, 801 440 Z',
-    badge: { x: 701, y: 455 }
-  },
-  {
-    id: 'Occipital',
-    name: 'Occipital',
-    path: 'M 360 600 C 360 550, 536 550, 536 600 C 536 660, 480 670, 448 670 C 416 670, 360 660, 360 600 Z',
-    badge: { x: 448, y: 610 }
+    path: 'M 726 430 L 671 415 L 616 435 L 591 475 L 616 520 L 651 545 L 681 565 L 746 565 L 791 520 L 801 465 Z',
+    badge: { x: 701, y: 485 }
   },
   {
     id: 'Esfenóide',
     name: 'Esfenóide (Base)',
-    path: 'M 345 350 C 380 320, 516 320, 551 350 C 565 390, 520 410, 448 405 C 376 410, 331 390, 345 350 Z',
-    badge: { x: 448, y: 365 }
+    path: 'M 335 405 L 375 435 L 415 440 L 425 440 L 425 460 L 375 480 L 375 510 L 405 515 L 415 470 L 430 465 L 435 440 L 448 388 L 461 440 L 466 465 L 481 470 L 491 515 L 521 510 L 521 480 L 471 460 L 471 440 L 481 440 L 521 435 L 561 405 L 555 430 L 540 455 L 475 460 L 475 440 L 421 440 L 421 460 L 356 455 L 341 430 Z',
+    badge: { x: 525, y: 435 }
   },
   {
     id: 'Etmóide',
     name: 'Etmóide (Profundo)',
-    path: 'M 425 315 C 430 300, 466 300, 471 315 C 475 365, 421 365, 425 315 Z',
-    badge: { x: 448, y: 335 }
+    path: 'M 448 388 L 466 405 L 468 435 L 460 455 L 448 458 L 436 455 L 428 435 L 430 405 Z',
+    badge: { x: 448, y: 422 }
   },
   {
     id: 'Vômer',
     name: 'Vômer',
-    path: 'M 436 385 L 460 385 L 455 425 L 441 425 Z',
-    badge: { x: 448, y: 405 }
+    path: 'M 438 465 L 458 465 L 458 510 L 438 510 Z',
+    badge: { x: 448, y: 488 }
   },
   {
     id: 'Concha nasal inferior direita',
     name: 'Concha nasal inf. direita',
-    path: 'M 390 425 C 385 410, 420 410, 425 435 C 420 455, 385 455, 390 425 Z',
-    badge: { x: 405, y: 435 }
+    path: 'M 430 565 L 446 565 L 446 615 L 430 615 Z',
+    badge: { x: 438, y: 590 }
   },
   {
     id: 'Concha nasal inferior esquerda',
     name: 'Concha nasal inf. esquerda',
-    path: 'M 506 425 C 511 410, 476 410, 471 435 C 476 455, 511 455, 506 425 Z',
-    badge: { x: 491, y: 435 }
+    path: 'M 450 565 L 466 565 L 466 615 L 450 615 Z',
+    badge: { x: 458, y: 590 }
   },
   {
     id: 'Nasal direito',
     name: 'Nasal direito',
-    path: 'M 428 430 L 445 430 L 444 465 L 426 465 Z',
-    badge: { x: 436, y: 448 }
+    path: 'M 432 515 L 447 515 L 447 560 L 432 560 Z',
+    badge: { x: 439, y: 538 }
   },
   {
     id: 'Nasal esquerdo',
     name: 'Nasal esquerdo',
-    path: 'M 451 430 L 468 430 L 470 465 L 452 465 Z',
-    badge: { x: 460, y: 448 }
+    path: 'M 449 515 L 464 515 L 464 560 L 449 560 Z',
+    badge: { x: 457, y: 538 }
   },
   {
     id: 'Lacrimal direito',
     name: 'Lacrimal direito',
-    path: 'M 395 415 L 415 415 L 412 435 L 392 435 Z',
-    badge: { x: 404, y: 425 }
+    path: 'M 386 515 L 408 515 L 408 560 L 386 560 Z',
+    badge: { x: 398, y: 538 }
   },
   {
     id: 'Lacrimal esquerdo',
     name: 'Lacrimal esquerdo',
-    path: 'M 481 415 L 501 415 L 504 435 L 484 435 Z',
-    badge: { x: 492, y: 425 }
+    path: 'M 488 515 L 510 515 L 510 560 L 488 560 Z',
+    badge: { x: 498, y: 538 }
   },
   {
     id: 'Zigomático direito',
     name: 'Zigomático direito',
-    path: 'M 290 470 C 270 430, 360 415, 365 470 C 370 520, 305 530, 290 470 Z',
-    badge: { x: 330, y: 470 }
+    path: 'M 265 545 L 315 505 L 360 535 L 345 595 L 285 605 L 265 565 Z',
+    badge: { x: 315, y: 555 }
   },
   {
     id: 'Zigomático esquerdo',
     name: 'Zigomático esquerdo',
-    path: 'M 606 470 C 626 430, 536 415, 531 470 C 526 520, 591 530, 606 470 Z',
-    badge: { x: 566, y: 470 }
+    path: 'M 631 545 L 581 505 L 536 535 L 551 595 L 611 605 L 631 565 Z',
+    badge: { x: 581, y: 555 }
   },
   {
     id: 'Maxila direita',
     name: 'Maxila direita',
-    path: 'M 355 460 C 360 420, 440 420, 444 470 L 444 550 L 370 550 C 350 520, 350 490, 355 460 Z',
-    badge: { x: 405, y: 510 }
+    path: 'M 360 540 L 428 535 L 428 620 L 448 620 L 448 650 L 370 650 L 350 610 Z',
+    badge: { x: 390, y: 610 }
   },
   {
     id: 'Maxila esquerda',
     name: 'Maxila esquerda',
-    path: 'M 541 460 C 536 420, 456 420, 452 470 L 452 550 L 526 550 C 546 520, 546 490, 541 460 Z',
-    badge: { x: 491, y: 510 }
+    path: 'M 468 535 L 536 540 L 546 610 L 526 650 L 448 650 L 448 620 L 468 620 Z',
+    badge: { x: 506, y: 610 }
   },
   {
     id: 'Palatino direito',
     name: 'Palatino direito',
-    path: 'M 385 410 L 415 410 L 415 425 L 385 425 Z',
-    badge: { x: 400, y: 418 }
+    path: 'M 412 515 L 432 515 L 432 555 L 412 555 Z',
+    badge: { x: 422, y: 535 }
   },
   {
     id: 'Palatino esquerdo',
     name: 'Palatino esquerdo',
-    path: 'M 481 410 L 511 410 L 511 425 L 481 425 Z',
-    badge: { x: 496, y: 418 }
+    path: 'M 464 515 L 484 515 L 484 555 L 464 555 Z',
+    badge: { x: 474, y: 535 }
+  },
+  {
+    id: 'Occipital',
+    name: 'Occipital',
+    path: 'M 448 655 L 495 660 L 540 690 L 525 745 L 480 760 L 448 762 L 416 760 L 371 745 L 356 690 L 401 660 Z',
+    badge: { x: 448, y: 715 }
   },
   {
     id: 'Mandíbula',
     name: 'Mandíbula',
-    path: 'M 345 580 C 345 570, 551 570, 551 580 C 560 670, 510 755, 448 755 C 386 755, 336 670, 345 580 Z',
-    badge: { x: 448, y: 710 }
+    path: 'M 345 660 L 330 715 L 345 785 L 375 850 L 410 895 L 448 905 L 486 895 L 521 850 L 551 785 L 566 715 L 551 660 L 525 675 L 500 755 L 448 765 L 396 755 L 371 675 Z',
+    badge: { x: 448, y: 835 }
   },
   {
     id: 'Hióide',
     name: 'Hióide (Pescoço)',
-    path: 'M 390 765 C 410 755, 486 755, 506 765 C 506 795, 390 795, 390 765 Z',
-    badge: { x: 448, y: 775 }
+    path: 'M 385 918 L 420 935 L 448 935 L 476 935 L 511 918 L 500 958 L 466 960 L 448 960 L 430 960 L 396 958 Z',
+    badge: { x: 448, y: 948 }
   }
 ];
 
@@ -363,8 +363,8 @@ export const AnatomicExplodedSkullViewer: React.FC<AnatomicExplodedSkullViewerPr
             }}
           >
             <circle
-              cx={215}
-              cy={615}
+              cx={190}
+              cy={737}
               r={72}
               fill={hasOssD ? 'rgba(16, 185, 129, 0.28)' : 'transparent'}
               stroke={hasOssD ? '#059669' : 'transparent'}
@@ -373,8 +373,8 @@ export const AnatomicExplodedSkullViewer: React.FC<AnatomicExplodedSkullViewerPr
             />
             {hasOssD && (
               <g>
-                <circle cx={215} cy={555} r={12} fill="#059669" stroke="#fff" strokeWidth={2} />
-                <text x={215} y={559} textAnchor="middle" fontSize="11px" fontWeight="bold" fill="#fff">
+                <circle cx={190} cy={677} r={12} fill="#059669" stroke="#fff" strokeWidth={2} />
+                <text x={190} y={681} textAnchor="middle" fontSize="11px" fontWeight="bold" fill="#fff">
                   ✓
                 </text>
               </g>
@@ -391,9 +391,9 @@ export const AnatomicExplodedSkullViewer: React.FC<AnatomicExplodedSkullViewerPr
             }}
           >
             <circle
-              cx={681}
-              cy={615}
-              r={72}
+              cx={705}
+              cy={739}
+              r={71}
               fill={hasOssE ? 'rgba(16, 185, 129, 0.28)' : 'transparent'}
               stroke={hasOssE ? '#059669' : 'transparent'}
               strokeWidth={hasOssE ? 3 : 1}
@@ -401,8 +401,8 @@ export const AnatomicExplodedSkullViewer: React.FC<AnatomicExplodedSkullViewerPr
             />
             {hasOssE && (
               <g>
-                <circle cx={681} cy={555} r={12} fill="#059669" stroke="#fff" strokeWidth={2} />
-                <text x={681} y={559} textAnchor="middle" fontSize="11px" fontWeight="bold" fill="#fff">
+                <circle cx={705} cy={679} r={12} fill="#059669" stroke="#fff" strokeWidth={2} />
+                <text x={705} y={683} textAnchor="middle" fontSize="11px" fontWeight="bold" fill="#fff">
                   ✓
                 </text>
               </g>
@@ -420,7 +420,7 @@ export const AnatomicExplodedSkullViewer: React.FC<AnatomicExplodedSkullViewerPr
             }}
           >
             <path
-              d="M 380 810 C 400 795, 496 795, 516 810 C 516 880, 480 885, 448 885 C 416 885, 380 880, 380 810 Z"
+              d="M 385 960 L 448 1005 L 511 960 L 525 1015 L 510 1050 L 490 1065 L 448 1030 L 406 1065 L 386 1050 L 371 1015 Z"
               fill={hasTireoidea ? 'rgba(16, 185, 129, 0.32)' : 'transparent'}
               stroke={hasTireoidea ? '#059669' : 'transparent'}
               strokeWidth={hasTireoidea ? 3 : 1}
@@ -428,8 +428,8 @@ export const AnatomicExplodedSkullViewer: React.FC<AnatomicExplodedSkullViewerPr
             />
             {hasTireoidea && (
               <g>
-                <circle cx={448} cy={845} r={12} fill="#059669" stroke="#fff" strokeWidth={2} />
-                <text x={448} y={849} textAnchor="middle" fontSize="11px" fontWeight="bold" fill="#fff">
+                <circle cx={448} cy={1020} r={12} fill="#059669" stroke="#fff" strokeWidth={2} />
+                <text x={448} y={1024} textAnchor="middle" fontSize="11px" fontWeight="bold" fill="#fff">
                   ✓
                 </text>
               </g>
@@ -446,7 +446,7 @@ export const AnatomicExplodedSkullViewer: React.FC<AnatomicExplodedSkullViewerPr
             }}
           >
             <path
-              d="M 405 885 C 420 875, 476 875, 491 885 C 491 920, 405 920, 405 885 Z"
+              d="M 415 1060 L 448 1080 L 481 1060 L 495 1085 L 485 1115 L 448 1118 L 411 1115 L 401 1085 Z"
               fill={hasCricoide ? 'rgba(16, 185, 129, 0.32)' : 'transparent'}
               stroke={hasCricoide ? '#059669' : 'transparent'}
               strokeWidth={hasCricoide ? 3 : 1}
@@ -454,8 +454,8 @@ export const AnatomicExplodedSkullViewer: React.FC<AnatomicExplodedSkullViewerPr
             />
             {hasCricoide && (
               <g>
-                <circle cx={448} cy={900} r={12} fill="#059669" stroke="#fff" strokeWidth={2} />
-                <text x={448} y={904} textAnchor="middle" fontSize="11px" fontWeight="bold" fill="#fff">
+                <circle cx={448} cy={1090} r={12} fill="#059669" stroke="#fff" strokeWidth={2} />
+                <text x={448} y={1094} textAnchor="middle" fontSize="11px" fontWeight="bold" fill="#fff">
                   ✓
                 </text>
               </g>
