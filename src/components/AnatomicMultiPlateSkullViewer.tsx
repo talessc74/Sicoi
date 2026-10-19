@@ -38,198 +38,176 @@ export const SKULL_SUBGROUPS_CONFIG: Record<
   }
 > = {
   calota: {
-    title: 'Calota Craniana & Neurocrânio',
-    subtitle: 'Vistas Anterior, Lateral, Inferior e Assoalho',
-    plateNumber: 'Figura 5.3 (Pág. 33)',
-    imageSrc: '/images/anatomical/cranio_grupo1_calota.png',
-    bones: [
-      'Frontal',
-      'Parietal direito',
-      'Parietal esquerdo',
-      'Temporal direito',
-      'Temporal esquerdo',
-      'Occipital'
-    ],
+    title: "Calota Craniana & Neurocrânio",
+    subtitle: "Frontal, Parietais, Temporais e Occipital",
+    plateNumber: "Figura 5.3 (Pág. 33)",
+    imageSrc: "/images/anatomical/cranio_grupo1_calota.png",
+    bones: ["Frontal", "Parietal direito", "Parietal esquerdo", "Temporal direito", "Temporal esquerdo", "Occipital"],
     hotspots: [
       {
-        id: 'Frontal',
-        name: 'Frontal',
-        path: 'M 80 195 L 140 100 L 220 95 L 300 105 L 360 195 L 355 235 L 290 230 L 220 230 L 150 230 L 85 235 Z',
-        badge: { x: 220, y: 160 }
+        id: "Frontal",
+        name: "Frontal (Fronte & Cúpula)",
+        path: "M 281 170 L 283 249 L 75 249 L 75 140 L 123 111 L 169 95 L 195 95 L 253 128 Z M 656 130 L 664 130 L 688 157 L 707 194 L 723 259 L 710 279 L 620 279 L 620 193 Z",
+        badge: { x: 220, y: 150 }
       },
       {
-        id: 'Parietal direito',
-        name: 'Parietal direito',
-        path: 'M 445 170 L 490 115 L 550 95 L 630 105 L 680 145 L 630 215 L 570 220 L 510 215 L 460 205 Z',
-        badge: { x: 560, y: 155 }
+        id: "Parietal direito",
+        name: "Parietal direito",
+        path: "M 460 102 L 475 95 L 557 95 L 644 120 L 644 215 L 569 224 L 468 181 L 460 164 Z",
+        badge: { x: 540, y: 150 }
       },
       {
-        id: 'Parietal esquerdo',
-        name: 'Parietal esquerdo',
-        path: 'M 620 105 L 660 125 L 690 160 L 690 200 L 660 230 L 630 220 L 640 160 Z',
-        badge: { x: 665, y: 180 }
+        id: "Parietal esquerdo",
+        name: "Parietal esquerdo (Base Interna)",
+        path: "M 550 504 L 601 509 L 635 527 L 704 619 L 704 629 L 550 629 Z",
+        badge: { x: 660, y: 550 }
       },
       {
-        id: 'Temporal direito',
-        name: 'Temporal direito',
-        path: 'M 505 225 L 585 225 L 645 240 L 670 280 L 670 340 L 620 360 L 560 365 L 515 335 L 495 280 Z',
-        badge: { x: 575, y: 290 }
+        id: "Temporal direito",
+        name: "Temporal direito (Escama/Mastóide)",
+        path: "M 674 225 L 674 374 L 501 374 L 485 356 L 485 293 L 541 225 Z",
+        badge: { x: 580, y: 295 }
       },
       {
-        id: 'Temporal esquerdo',
-        name: 'Temporal esquerdo',
-        path: 'M 540 600 L 600 580 L 650 610 L 630 670 L 570 665 Z',
-        badge: { x: 600, y: 630 }
+        id: "Temporal esquerdo",
+        name: "Temporal esquerdo (Porção Petrosa)",
+        path: "M 672 610 L 679 623 L 679 719 L 588 719 L 550 698 L 550 626 L 566 610 Z",
+        badge: { x: 615, y: 665 }
       },
       {
-        id: 'Occipital',
-        name: 'Occipital',
-        path: 'M 130 680 L 195 660 L 330 660 L 410 680 L 415 780 L 365 845 L 270 860 L 175 845 L 130 780 Z',
-        badge: { x: 270, y: 760 }
+        id: "Occipital",
+        name: "Occipital (Base & Forame Magno)",
+        path: "M 346 630 L 359 656 L 351 781 L 310 864 L 105 856 L 111 630 Z M 460 246 L 467 245 L 504 248 L 504 282 L 455 268 L 454 261 Z M 691 700 L 691 766 L 683 812 L 671 835 L 653 854 L 581 854 L 565 814 L 565 752 L 576 700 Z",
+        badge: { x: 265, y: 760 }
       }
     ]
   },
-
   base_profunda: {
-    title: 'Base Craniana Profunda',
-    subtitle: 'Etmóide e Esfenóide Ampliados em Vistas Múltiplas',
-    plateNumber: 'Figura 5.4 (Pág. 35)',
-    imageSrc: '/images/anatomical/cranio_grupo2_base_profunda.png',
-    bones: ['Etmóide', 'Esfenóide'],
+    title: "Base Craniana Profunda",
+    subtitle: "Etmóide e Esfenóide Ampliados em Vistas Múltiplas",
+    plateNumber: "Figura 5.4 (Pág. 35)",
+    imageSrc: "/images/anatomical/cranio_grupo2_base_profunda.png",
+    bones: ["Etmóide", "Esfenóide"],
     hotspots: [
       {
-        id: 'Etmóide',
-        name: 'Osso Etmóide (Profundo)',
-        path: 'M 80 80 L 360 80 L 360 270 L 360 560 L 340 870 L 100 870 L 75 560 Z',
-        badge: { x: 220, y: 440 }
+        id: "Etmóide",
+        name: "Etmóide (Profundo)",
+        path: "M 188 75 L 211 92 L 239 172 L 239 214 L 223 245 L 191 269 L 147 269 L 120 248 L 108 226 L 105 159 L 126 92 L 147 75 Z M 162 320 L 255 379 L 279 480 L 228 551 L 126 545 L 89 518 L 65 477 L 99 383 Z M 135 650 L 212 654 L 242 674 L 247 686 L 237 790 L 222 833 L 202 858 L 107 853 L 85 725 L 102 677 Z",
+        badge: { x: 175, y: 440 }
       },
       {
-        id: 'Esfenóide',
-        name: 'Osso Esfenóide (Base)',
-        path: 'M 440 80 L 750 80 L 760 460 L 760 700 L 760 940 L 460 940 L 440 460 Z',
-        badge: { x: 610, y: 580 }
+        id: "Esfenóide",
+        name: "Esfenóide (Base)",
+        path: "M 554 75 L 579 93 L 604 173 L 604 215 L 590 247 L 560 269 L 514 269 L 487 247 L 475 224 L 470 197 L 474 154 L 485 110 L 501 86 L 517 75 Z M 691 272 L 626 436 L 602 459 L 455 452 L 360 280 Z M 692 513 L 703 563 L 651 685 L 413 699 L 380 546 L 396 509 Z M 365 794 L 382 761 L 709 767 L 667 860 L 600 942 L 459 949 L 392 858 Z",
+        badge: { x: 540, y: 360 }
       }
     ]
   },
-
   face: {
-    title: 'Esqueleto Facial Menor & Nariz',
-    subtitle: 'Nasais, Palatinos, Zigomáticos, Conchas, Lacrimais e Vômer',
-    plateNumber: 'Figura 5.2 (Pág. 31)',
-    imageSrc: '/images/anatomical/cranio_grupo3_face_pequenos.png',
-    bones: [
-      'Nasal direito',
-      'Nasal esquerdo',
-      'Palatino direito',
-      'Palatino esquerdo',
-      'Zigomático direito',
-      'Zigomático esquerdo',
-      'Concha nasal inferior direita',
-      'Concha nasal inferior esquerda',
-      'Lacrimal direito',
-      'Lacrimal esquerdo',
-      'Vômer'
-    ],
+    title: "Esqueleto Facial Menor & Nariz",
+    subtitle: "Nasais, Palatinos, Zigomáticos, Conchas, Lacrimais e Vômer",
+    plateNumber: "Figura 5.2 (Pág. 31)",
+    imageSrc: "/images/anatomical/cranio_grupo3_face_pequenos.png",
+    bones: ["Nasal direito", "Nasal esquerdo", "Palatino direito", "Palatino esquerdo", "Zigomático direito", "Zigomático esquerdo", "Concha nasal inferior direita", "Concha nasal inferior esquerda", "Lacrimal direito", "Lacrimal esquerdo", "Vômer"],
     hotspots: [
       {
-        id: 'Nasal direito',
-        name: 'Nasal direito',
-        path: 'M 190 80 L 260 80 L 258 240 L 190 240 Z',
-        badge: { x: 225, y: 160 }
+        id: "Nasal direito",
+        name: "Nasal direito",
+        path: "M 212 93 L 212 193 L 175 192 L 175 158 L 185 108 L 198 97 Z",
+        badge: { x: 195, y: 140 }
       },
       {
-        id: 'Nasal esquerdo',
-        name: 'Nasal esquerdo',
-        path: 'M 260 80 L 330 80 L 330 240 L 260 240 Z',
-        badge: { x: 295, y: 160 }
+        id: "Nasal esquerdo",
+        name: "Nasal esquerdo",
+        path: "M 212 93 L 233 112 L 244 182 L 242 190 L 238 193 L 212 192 Z",
+        badge: { x: 235, y: 140 }
       },
       {
-        id: 'Palatino direito',
-        name: 'Palatino direito',
-        path: 'M 460 70 L 600 70 L 600 260 L 460 260 Z',
-        badge: { x: 530, y: 165 }
+        id: "Palatino direito",
+        name: "Palatino direito",
+        path: "M 510 76 L 600 79 L 600 223 L 470 225 Z",
+        badge: { x: 535, y: 145 }
       },
       {
-        id: 'Palatino esquerdo',
-        name: 'Palatino esquerdo',
-        path: 'M 600 70 L 740 70 L 740 260 L 600 260 Z',
-        badge: { x: 670, y: 165 }
+        id: "Palatino esquerdo",
+        name: "Palatino esquerdo",
+        path: "M 600 76 L 668 79 L 711 223 L 600 225 Z",
+        badge: { x: 665, y: 145 }
       },
       {
-        id: 'Zigomático direito',
-        name: 'Zigomático direito',
-        path: 'M 130 250 L 280 250 L 300 480 L 130 480 Z',
-        badge: { x: 205, y: 365 }
+        id: "Zigomático direito",
+        name: "Zigomático direito",
+        path: "M 203 264 L 217 265 L 267 298 L 288 383 L 236 449 L 210 449 L 140 374 L 189 270 Z M 389 788 L 389 819 L 329 839 L 315 827 L 315 788 L 334 760 Z",
+        badge: { x: 240, y: 340 }
       },
       {
-        id: 'Zigomático esquerdo',
-        name: 'Zigomático esquerdo',
-        path: 'M 280 250 L 385 250 L 385 480 L 300 480 Z',
-        badge: { x: 335, y: 365 }
+        id: "Zigomático esquerdo",
+        name: "Zigomático esquerdo (Crânio E)",
+        path: "M 692 770 L 687 859 L 665 859 L 665 789 L 673 770 Z",
+        badge: { x: 705, y: 815 }
       },
       {
-        id: 'Concha nasal inferior direita',
-        name: 'Concha nasal inf. direita',
-        path: 'M 500 280 L 625 280 L 625 420 L 500 420 Z',
-        badge: { x: 560, y: 350 }
+        id: "Concha nasal inferior direita",
+        name: "Concha nasal inf. direita",
+        path: "M 520 337 L 561 302 L 595 314 L 595 360 L 591 366 L 564 360 Z M 599 810 L 599 854 L 575 854 L 575 810 Z",
+        badge: { x: 550, y: 330 }
       },
       {
-        id: 'Concha nasal inferior esquerda',
-        name: 'Concha nasal inf. esquerda',
-        path: 'M 625 280 L 750 280 L 750 420 L 625 420 Z',
-        badge: { x: 690, y: 350 }
+        id: "Concha nasal inferior esquerda",
+        name: "Concha nasal inf. esquerda",
+        path: "M 595 302 L 621 314 L 661 349 L 635 360 L 595 366 Z M 615 810 L 639 810 L 639 842 L 631 842 L 615 827 Z",
+        badge: { x: 640, y: 330 }
       },
       {
-        id: 'Lacrimal direito',
-        name: 'Lacrimal direito',
-        path: 'M 190 500 L 265 500 L 265 660 L 190 660 Z',
-        badge: { x: 228, y: 580 }
+        id: "Lacrimal direito",
+        name: "Lacrimal direito",
+        path: "M 215 526 L 249 557 L 249 565 L 220 614 L 210 619 L 184 590 L 181 584 L 181 569 L 189 546 Z",
+        badge: { x: 210, y: 570 }
       },
       {
-        id: 'Lacrimal esquerdo',
-        name: 'Lacrimal esquerdo',
-        path: 'M 265 500 L 340 500 L 340 660 L 265 660 Z',
-        badge: { x: 303, y: 580 }
+        id: "Lacrimal esquerdo",
+        name: "Lacrimal esquerdo (Órbita E)",
+        path: "M 630 776 L 640 775 L 659 783 L 659 814 L 630 814 Z",
+        badge: { x: 645, y: 790 }
       },
       {
-        id: 'Vômer',
-        name: 'Vômer',
-        path: 'M 530 450 L 670 450 L 670 650 L 530 650 Z',
-        badge: { x: 600, y: 550 }
+        id: "Vômer",
+        name: "Vômer (Septo Nasal)",
+        path: "M 579 471 L 619 481 L 613 543 L 598 599 L 594 599 L 577 477 Z M 617 810 L 617 859 L 598 859 L 598 810 Z",
+        badge: { x: 605, y: 525 }
       }
     ]
   },
-
   mandibula_cervical: {
-    title: 'Arcadas Dentárias & Mandíbula',
-    subtitle: 'Maxilas, Mandíbula, Hióide e Estruturas Anexas',
-    plateNumber: 'Figura 5.1 (Pág. 29)',
-    imageSrc: '/images/anatomical/cranio_grupo4_arcadas_mandibula.png',
-    bones: ['Mandíbula', 'Maxila direita', 'Maxila esquerda', 'Hióide'],
+    title: "Arcadas Dentárias & Mandíbula",
+    subtitle: "Maxilas, Mandíbula, Hióide e Estruturas Anexas",
+    plateNumber: "Figura 5.1 (Pág. 29)",
+    imageSrc: "/images/anatomical/cranio_grupo4_arcadas_mandibula.png",
+    bones: ["Mandíbula", "Maxila direita", "Maxila esquerda", "Hióide"],
     hotspots: [
       {
-        id: 'Mandíbula',
-        name: 'Mandíbula Completa e Ramo',
-        path: 'M 70 75 L 535 75 L 535 570 L 70 570 Z',
-        badge: { x: 250, y: 320 }
+        id: "Mandíbula",
+        name: "Mandíbula (Corpo, Ramos & Crânio)",
+        path: "M 302 119 L 309 145 L 264 268 L 108 309 L 80 286 L 80 200 L 164 82 L 210 86 Z M 311 377 L 311 446 L 259 514 L 201 548 L 91 564 L 80 557 L 80 473 L 238 356 Z M 565 289 L 541 331 L 491 379 L 396 392 L 371 386 L 349 366 L 349 352 L 410 235 L 444 233 Z M 260 793 L 298 780 L 359 780 L 469 886 L 469 903 L 347 914 L 289 874 L 260 841 Z M 673 903 L 656 924 L 597 912 L 551 880 L 540 835 L 679 835 L 679 886 Z",
+        badge: { x: 240, y: 200 }
       },
       {
-        id: 'Maxila direita',
-        name: 'Maxila direita (Lateral)',
-        path: 'M 545 75 L 750 75 L 750 330 L 545 330 Z',
-        badge: { x: 650, y: 195 }
+        id: "Maxila direita",
+        name: "Maxila direita (Lateral & Crânio)",
+        path: "M 698 79 L 726 122 L 734 160 L 732 236 L 709 250 L 658 252 L 615 245 L 595 230 L 590 213 L 589 154 L 596 126 L 608 107 L 689 77 Z M 609 750 L 609 844 L 544 844 L 535 839 L 535 750 Z",
+        badge: { x: 665, y: 170 }
       },
       {
-        id: 'Maxila esquerda',
-        name: 'Maxila esquerda (Medial)',
-        path: 'M 545 335 L 750 335 L 750 600 L 545 600 Z',
-        badge: { x: 650, y: 460 }
+        id: "Maxila esquerda",
+        name: "Maxila esquerda (Medial & Crânio)",
+        path: "M 729 412 L 738 434 L 730 500 L 707 518 L 603 550 L 574 515 L 595 418 L 628 363 Z M 684 779 L 684 844 L 610 844 L 610 750 L 662 764 Z",
+        badge: { x: 665, y: 455 }
       },
       {
-        id: 'Hióide',
-        name: 'Hióide (Cervical)',
-        path: 'M 250 870 L 520 870 L 520 950 L 250 950 Z',
-        badge: { x: 385, y: 910 }
+        id: "Hióide",
+        name: "Hióide (Cervical)",
+        path: "M 240 935 L 520 935 L 520 965 L 240 965 Z",
+        badge: { x: 380, y: 950 }
       }
     ]
   }
