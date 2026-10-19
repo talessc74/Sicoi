@@ -47,8 +47,10 @@ const TORAX_OSSOS = [
 ] as const;
 
 // Só os ossos do braço/cintura escapular — carpo e metacarpo saem pra
-// "Ossos da Mão" (seção própria, pedido dos pesquisadores).
-const MEMBRO_SUPERIOR_DIREITO_OSSOS = [
+// "Ossos da Mão" (seção própria, pedido dos pesquisadores). Direito e
+// Esquerdo numa seção só, mesma lógica de Ossos da Mão/Pé e de Pelve +
+// Membros Inferiores (pedido do Tales, out/2026).
+const MEMBROS_SUPERIORES_OSSOS = [
   'Clavícula Direita',
   'Escápula Direita',
   'Úmero Direito - Epífise Proximal',
@@ -59,10 +61,7 @@ const MEMBRO_SUPERIOR_DIREITO_OSSOS = [
   'Ulna Direita - Epífise Distal',
   'Rádio Direito - Epífise Proximal',
   'Rádio Direito - Diáfise',
-  'Rádio Direito - Epífise Distal'
-] as const;
-
-const MEMBRO_SUPERIOR_ESQUERDO_OSSOS = [
+  'Rádio Direito - Epífise Distal',
   'Clavícula Esquerda',
   'Escápula Esquerda',
   'Úmero Esquerdo - Epífise Proximal',
@@ -231,11 +230,10 @@ export const SECTIONS_CONFIG = [
   { id: 'cabeca_pescoco', label: '1. Cabeça e Pescoço', active: true, count: CABECA_PESCOCO_TOTAL_CATALOGAVEL },
   { id: 'coluna_vertebral', label: '2. Coluna Vertebral', active: true, count: COLUNA_VERTEBRAL_OSSOS.length },
   { id: 'torax', label: '3. Tórax & Esterno', active: true, count: TORAX_OSSOS.length },
-  { id: 'cintura_ms_dir', label: '4. Membro Superior Direito', active: true, count: MEMBRO_SUPERIOR_DIREITO_OSSOS.length },
-  { id: 'cintura_ms_esq', label: '5. Membro Superior Esquerdo', active: true, count: MEMBRO_SUPERIOR_ESQUERDO_OSSOS.length },
-  { id: 'ossos_mao', label: '6. Ossos da Mão', active: true, count: OSSOS_MAO.length },
-  { id: 'pelve_mi', label: '7. Pelve, Bacia e Membros Inferiores', active: true, count: PELVE_MEMBRO_INFERIOR_OSSOS.length },
-  { id: 'ossos_pe', label: '8. Ossos do Pé', active: true, count: OSSOS_PE.length }
+  { id: 'membros_superiores', label: '4. Membros Superiores', active: true, count: MEMBROS_SUPERIORES_OSSOS.length },
+  { id: 'ossos_mao', label: '5. Ossos da Mão', active: true, count: OSSOS_MAO.length },
+  { id: 'pelve_mi', label: '6. Pelve, Bacia e Membros Inferiores', active: true, count: PELVE_MEMBRO_INFERIOR_OSSOS.length },
+  { id: 'ossos_pe', label: '7. Ossos do Pé', active: true, count: OSSOS_PE.length }
 ] as const;
 
 const PRESENCE_DEFINITIONS: Record<
@@ -340,7 +338,7 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
 
   const generateAltId = () => `alt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
-  // --- Helpers genéricos: as 8 seções são todas um OsteologicalSimpleBoneSection
+  // --- Helpers genéricos: as seções são todas um OsteologicalSimpleBoneSection
   // (ossos + alterações), com a mesma lógica de presença/alteração — inclusive
   // Cabeça e Pescoço, que voltou a ser lista corrida como as demais (pedido dos
   // pesquisadores, out/2026: sem prancha visual, sem sub-aba por grupo de osso). ---
@@ -472,8 +470,7 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
     cabeca_pescoco: 'cabecaPescoco',
     coluna_vertebral: 'colunaVertebral',
     torax: 'torax',
-    cintura_ms_dir: 'membroSuperiorDireito',
-    cintura_ms_esq: 'membroSuperiorEsquerdo',
+    membros_superiores: 'membrosSuperiores',
     ossos_mao: 'ossosMao',
     pelve_mi: 'pelveMembroInferior',
     ossos_pe: 'ossosPe'
@@ -483,8 +480,7 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
     cabeca_pescoco: CABECA_PESCOCO_OSSOS,
     coluna_vertebral: COLUNA_VERTEBRAL_OSSOS,
     torax: TORAX_OSSOS,
-    cintura_ms_dir: MEMBRO_SUPERIOR_DIREITO_OSSOS,
-    cintura_ms_esq: MEMBRO_SUPERIOR_ESQUERDO_OSSOS,
+    membros_superiores: MEMBROS_SUPERIORES_OSSOS,
     ossos_mao: OSSOS_MAO,
     pelve_mi: PELVE_MEMBRO_INFERIOR_OSSOS,
     ossos_pe: OSSOS_PE
@@ -513,7 +509,7 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
           <div>
             <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-sky-600" />
-              Inventário Osteológico por Regiões Anatômicas (8 Seções)
+              Inventário Osteológico por Regiões Anatômicas ({SECTIONS_CONFIG.length} Seções)
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
               Registro forense estruturado com códigos P/F/I/A de presença e catalogação regional de alterações.
@@ -524,7 +520,7 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
           </span>
         </div>
 
-        {/* Grade de Navegação das 8 Seções */}
+        {/* Grade de Navegação das Seções */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3 text-xs">
           {SECTIONS_CONFIG.map(sec => {
             const isSelected = currentSectionId === sec.id;
@@ -557,7 +553,7 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
         </div>
       </div>
 
-      {/* Conteúdo da Seção Ativa — mesmo corpo genérico pras 8 seções: lista
+      {/* Conteúdo da Seção Ativa — mesmo corpo genérico pras seções: lista
           corrida de ossos com P/F/I/A + alteração embutida, mais os blocos
           extras que só algumas seções têm (cartilagens/ossículos em Cabeça e
           Pescoço; pooled de falanges/sesamoides em Ossos da Mão/Pé). */}
@@ -786,7 +782,7 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
   );
 };
 
-// --- Componentes reutilizáveis para as 8 seções ---
+// --- Componentes reutilizáveis para as seções ---
 // Lista corrida de ossos com código P/F/I/A único + alteração óssea
 // embutida por elemento, compartilhada por todas as seções do inventário —
 // inclusive Cabeça e Pescoço, que voltou a esse padrão (sem prancha

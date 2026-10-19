@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { OsteologicalInventoryViewer, CABECA_PESCOCO_OSSOS } from '../OsteologicalInventoryViewer';
 
 describe('OsteologicalInventoryViewer', () => {
-  it('renderiza a barra das 8 seções e a lista corrida de Cabeça e Pescoço (sem prancha visual)', () => {
+  it('renderiza a barra das 7 seções e a lista corrida de Cabeça e Pescoço (sem prancha visual)', () => {
     render(
       <OsteologicalInventoryViewer
         inventory={{}}
@@ -13,15 +13,14 @@ describe('OsteologicalInventoryViewer', () => {
       />
     );
 
-    expect(screen.getByText(/Inventário Osteológico por Regiões Anatômicas/i)).toBeInTheDocument();
+    expect(screen.getByText(/Inventário Osteológico por Regiões Anatômicas \(7 Seções\)/i)).toBeInTheDocument();
     expect(screen.getByText('1. Cabeça e Pescoço')).toBeInTheDocument();
     expect(screen.getByText('2. Coluna Vertebral')).toBeInTheDocument();
     expect(screen.getByText('3. Tórax & Esterno')).toBeInTheDocument();
-    expect(screen.getByText('4. Membro Superior Direito')).toBeInTheDocument();
-    expect(screen.getByText('5. Membro Superior Esquerdo')).toBeInTheDocument();
-    expect(screen.getByText('6. Ossos da Mão')).toBeInTheDocument();
-    expect(screen.getByText('7. Pelve, Bacia e Membros Inferiores')).toBeInTheDocument();
-    expect(screen.getByText('8. Ossos do Pé')).toBeInTheDocument();
+    expect(screen.getByText('4. Membros Superiores')).toBeInTheDocument();
+    expect(screen.getByText('5. Ossos da Mão')).toBeInTheDocument();
+    expect(screen.getByText('6. Pelve, Bacia e Membros Inferiores')).toBeInTheDocument();
+    expect(screen.getByText('7. Ossos do Pé')).toBeInTheDocument();
 
     // Os 23 ossos de Cabeça e Pescoço aparecem direto, numa lista corrida —
     // sem sub-aba de prancha, sem imagem.
@@ -243,21 +242,31 @@ describe('OsteologicalInventoryViewer', () => {
     );
   });
 
-  it('Membro Superior Direito/Esquerdo não têm mais ossos da mão', async () => {
+  it('Membros Superiores reúne Direito e Esquerdo numa seção só, sem ossos da mão', async () => {
     const user = userEvent.setup();
+    const onUpdateInventory = vi.fn();
 
     render(
       <OsteologicalInventoryViewer
         inventory={{}}
-        onUpdateInventory={vi.fn()}
+        onUpdateInventory={onUpdateInventory}
       />
     );
 
-    await user.click(screen.getByText('4. Membro Superior Direito'));
+    await user.click(screen.getByText('4. Membros Superiores'));
     expect(screen.getByText('Clavícula Direita')).toBeInTheDocument();
     expect(screen.getByText('Úmero Direito - Diáfise')).toBeInTheDocument();
+    expect(screen.getByText('Clavícula Esquerda')).toBeInTheDocument();
+    expect(screen.getByText('Úmero Esquerdo - Diáfise')).toBeInTheDocument();
     expect(screen.queryByText('Escafóide Direito')).not.toBeInTheDocument();
-    expect(screen.queryByText('1º Metacarpal Direito')).not.toBeInTheDocument();
+    expect(screen.queryByText('1º Metacarpal Esquerdo')).not.toBeInTheDocument();
+
+    await user.click(screen.getByTitle('Clavícula Esquerda — Presente sem fratura'));
+    expect(onUpdateInventory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        membrosSuperiores: expect.objectContaining({ ossos: { 'Clavícula Esquerda': 'P' } })
+      })
+    );
   });
 
   it('Ossos da Mão reúne o carpo/metacarpo dos dois lados e o pooled de falanges/sesamoides', async () => {
@@ -271,7 +280,7 @@ describe('OsteologicalInventoryViewer', () => {
       />
     );
 
-    await user.click(screen.getByText('6. Ossos da Mão'));
+    await user.click(screen.getByText('5. Ossos da Mão'));
 
     expect(screen.getByText('Escafóide Direito')).toBeInTheDocument();
     expect(screen.getByText('1º Metacarpal Direito')).toBeInTheDocument();
@@ -296,7 +305,7 @@ describe('OsteologicalInventoryViewer', () => {
       />
     );
 
-    await user.click(screen.getByText('7. Pelve, Bacia e Membros Inferiores'));
+    await user.click(screen.getByText('6. Pelve, Bacia e Membros Inferiores'));
 
     expect(screen.getByText('Ílio Direito')).toBeInTheDocument();
     expect(screen.getByText('Fêmur Direito - Diáfise')).toBeInTheDocument();
@@ -316,7 +325,7 @@ describe('OsteologicalInventoryViewer', () => {
       />
     );
 
-    await user.click(screen.getByText('8. Ossos do Pé'));
+    await user.click(screen.getByText('7. Ossos do Pé'));
 
     expect(screen.getByText('Calcâneo Direito')).toBeInTheDocument();
     expect(screen.getByText('1º Metatarsal Direito')).toBeInTheDocument();

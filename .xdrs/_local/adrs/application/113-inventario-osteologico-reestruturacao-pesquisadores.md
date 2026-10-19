@@ -1,6 +1,6 @@
 ---
 name: _local-adr-policy-113-inventario-osteologico-reestruturacao-pesquisadores
-description: 'O Inventário Osteológico (Fase 4, §15) tem 8 seções, todas como lista corrida de ossos com P/F/I/A + alteração embutida — sem prancha visual em nenhuma delas. Cada vértebra e cada costela é um elemento catalogável próprio (C1, T5, 1ª Costela Direita), nunca mais contagem separada da identificação. Carpo/metacarpo e tarso/metatarso vivem em seções próprias (Ossos da Mão/Ossos do Pé, ambos os lados); Pelve, Bacia e Membros Inferiores viraram uma seção só. Use antes de alterar a estrutura, a persistência ou a contagem de catalogados do inventário osteológico.'
+description: 'O Inventário Osteológico (Fase 4, §15) tem 7 seções, todas como lista corrida de ossos com P/F/I/A + alteração embutida — sem prancha visual em nenhuma delas. Cada vértebra e cada costela é um elemento catalogável próprio (C1, T5, 1ª Costela Direita), nunca mais contagem separada da identificação. Carpo/metacarpo e tarso/metatarso vivem em seções próprias (Ossos da Mão/Ossos do Pé, ambos os lados); Membros Superiores (Direito+Esquerdo) e Pelve+Bacia+Membros Inferiores (Direito+Esquerdo) viraram uma seção só cada. Use antes de alterar a estrutura, a persistência ou a contagem de catalogados do inventário osteológico.'
 apply-to: src/components/OsteologicalInventoryViewer.tsx, src/types/sgccco.ts, src/components/__tests__/OsteologicalInventoryViewer.test.tsx
 valid-from: 2026-10-19
 ---
@@ -10,9 +10,9 @@ valid-from: 2026-10-19
 ## Context and Problem Statement
 
 Os pesquisadores da curadoria trouxeram 5 pedidos sobre o Inventário
-Osteológico das 8 seções (até então: `_local-adr-policy-111` para a
-prancha visual de Cabeça e Pescoço, `_local-adr-policy-112` para as
-Seções 2-8):
+Osteológico das 8 seções originais (até então: `_local-adr-policy-111`
+para a prancha visual de Cabeça e Pescoço, `_local-adr-policy-112` para
+as Seções 2-8):
 
 1. A contagem de "catalogados" (badge `X/Y` em cada seção) não contava
    vértebras, costelas nem estruturas complementares (cartilagens,
@@ -31,14 +31,18 @@ Seções 2-8):
    pra outra seção própria ("Ossos do Pé"), mesma lógica da mão.
 
 O mesmo princípio do item 1, confirmado pelo Tales, se aplica às
-costelas do Tórax: também viram linhas individuais.
+costelas do Tórax: também viram linhas individuais. Logo em seguida,
+o mesmo raciocínio do item 5 (lados juntos numa seção só) se estendeu
+também a Membro Superior Direito/Esquerdo — viram uma seção só,
+"Membros Superiores".
 
 ## Decision Outcome
 
 **Lista corrida única em toda seção (inclusive Cabeça e Pescoço),
 vértebra/costela como elemento catalogável individual, Mão e Pé como
-seções próprias (ambos os lados), Pelve+Bacia+Membro Inferior
-unificados — mantendo as 8 seções no total, só reorganizadas.**
+seções próprias (ambos os lados), Membros Superiores e
+Pelve+Bacia+Membro Inferior unificados cada um numa seção só — de 8
+seções originais para 7, cada uma reorganizada.**
 
 ### Details
 
@@ -46,7 +50,7 @@ unificados — mantendo as 8 seções no total, só reorganizadas.**
   as 5 imagens (`public/images/anatomical/cranio_*`) e o teste
   correspondente foram removidos do repositório — não há mais
   prancha visual em seção nenhuma do inventário. A seção usa o mesmo
-  componente genérico `SimpleBoneRows` das demais 7 seções.
+  componente genérico `SimpleBoneRows` das demais seções.
 - **Coluna Vertebral** (`colunaVertebral: OsteologicalSimpleBoneSection`):
   26 linhas — C1-C7, T1-T12, L1-L5, Sacro, Cóccix, nessa ordem. O tipo
   `OsteologicalSectionColunaVertebral` (com `cervicais`/`toracicas`/`lombares`
@@ -55,8 +59,10 @@ unificados — mantendo as 8 seções no total, só reorganizadas.**
 - **Tórax** (`torax: OsteologicalSimpleBoneSection`): 27 linhas — Esterno
   (Manúbrio/Corpo/Processo xifóide) + 1ª-12ª Costela Direita + 1ª-12ª
   Costela Esquerda, cada uma com P/F/I/A próprio.
-- **Membro Superior Direito/Esquerdo**: só os ossos do braço/cintura
-  escapular (Clavícula, Escápula, Úmero, Ulna, Rádio — 11 por lado).
+- **Membros Superiores** (`membrosSuperiores`, 22 ossos): só os ossos do
+  braço/cintura escapular (Clavícula, Escápula, Úmero, Ulna, Rádio — 11
+  por lado), Direito e Esquerdo juntos na mesma seção — substitui as 2
+  seções antigas (Membro Superior Direito, Membro Superior Esquerdo).
   Carpo e metacarpo saem pra **Ossos da Mão** (`ossosMao`, 26 ossos,
   Direito+Esquerdo juntos, cada um identificado por lado).
 - **Pelve, Bacia e Membros Inferiores** (`pelveMembroInferior`, 26 ossos):
@@ -80,8 +86,8 @@ unificados — mantendo as 8 seções no total, só reorganizadas.**
 - **Regra retroativa de exclusão A×alteração** (`_local-adr-policy-109`)
   e o clique na linha do osso abrindo a gaveta de alterações (fix
   anterior, aplicado só à Cabeça e Pescoço e ao componente genérico)
-  continuam valendo — agora uniformemente nas 8 seções, já que todas
-  usam o mesmo `SimpleBoneRows`.
+  continuam valendo — agora uniformemente em todas as seções, já que
+  todas usam o mesmo `SimpleBoneRows`.
 
 ## References
 
