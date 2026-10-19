@@ -21,7 +21,7 @@ genérico com ação em lote ou estado compartilhado entre abas exige
 teste dessas duas categorias — tsc --noEmit roda de novo após a última
 edição de teste, sempre, antes do merge.
 
-### ADRs — Architectural Decisions (20 documentos)
+### ADRs — Architectural Decisions (22 documentos)
 
 Histórico protegido de conjuntos: servidor como fonte de verdade,
 assinaturas travadas, registro de alterações encadeado por hash.
@@ -55,6 +55,15 @@ quadrante, edêntulo em lote, dentes supranumerários. Alterações ósseas
 embutidas em cada osso do Inventário Osteológico, nunca mais um
 formulário único solto. Condutor por voz/conversa é opt-in. Documentos
 oficiais da COI-INC servidos autenticados, nunca numa pasta pública.
+Inventário osteológico interativo em 4 pranchas especializadas (Fase 4, §15):
+sub-abas por grupo anatômico, contornos vetoriais 1:1 fiéis extraídos via
+visão computacional (OpenCV) e sincronização bidirecional em tempo real,
+preservando o crânio panorâmico de Beauchêne via modal de alta resolução.
+Inventário osteológico pós-craniano (Seções 2 a 8, Fase 4): handlers
+parametrizados por região, contagem ordinal com identificação individual
+(vértebras e costelas), contagens pooled de falanges e sesamóides
+compartilhadas entre mãos/pés e regra estrita de exclusão mútua entre
+marcação de Ausente (A) e alterações ósseas.
 
 ### BDRs — Business Decisions (1 documento)
 
