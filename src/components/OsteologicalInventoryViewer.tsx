@@ -1836,7 +1836,10 @@ const PooledCountsCard: React.FC<PooledCountsCardProps> = ({ label, value, onCha
             min={0}
             disabled={readOnly}
             value={value.sesamoides ?? ''}
-            onChange={e => onChange({ sesamoides: e.target.value === '' ? undefined : Math.max(0, Number(e.target.value)) })}
+            onChange={e => {
+              const n = Number(e.target.value);
+              onChange({ sesamoides: e.target.value === '' || !Number.isFinite(n) ? undefined : Math.max(0, n) });
+            }}
             placeholder="Nº"
             className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-mono"
           />
