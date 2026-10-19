@@ -575,13 +575,14 @@ export interface OsteologicalPooledCounts {
 // qualquer outro osso — nunca mais um contador de quantidade separado da
 // identificação. Por isso Coluna Vertebral e Tórax usam o mesmo
 // OsteologicalSimpleBoneSection de toda seção simples do inventário, e as
-// 3 seções de membro inferior (Pelve, MI Direito, MI Esquerdo) viram uma só.
+// 3 seções de membro inferior (Pelve, MI Direito, MI Esquerdo) viram uma só —
+// mesmo princípio aplicado a Membro Superior Direito/Esquerdo, também
+// unificados numa seção só (pedido do Tales, out/2026).
 export interface OsteologicalInventoryData {
   cabecaPescoco?: OsteologicalSectionCabecaPescoco;
   colunaVertebral?: OsteologicalSimpleBoneSection;
   torax?: OsteologicalSimpleBoneSection;
-  membroSuperiorDireito?: OsteologicalSimpleBoneSection;
-  membroSuperiorEsquerdo?: OsteologicalSimpleBoneSection;
+  membrosSuperiores?: OsteologicalSimpleBoneSection;
   ossosMao?: OsteologicalSimpleBoneSection;
   pelveMembroInferior?: OsteologicalSimpleBoneSection;
   ossosPe?: OsteologicalSimpleBoneSection;

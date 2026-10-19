@@ -58,10 +58,10 @@ oficiais da COI-INC servidos autenticados, nunca numa pasta pública.
 Inventário osteológico interativo em 4 pranchas especializadas (Fase 4, §15)
 e inventário pós-craniano em 3 seções separadas de Pelve/Membro Inferior —
 **ambas superadas** por pedido dos pesquisadores: lista corrida sem prancha
-visual em todas as 8 seções, vértebra e costela como elemento catalogável
+visual em todas as 7 seções, vértebra e costela como elemento catalogável
 individual (não mais contagem ordinal), Ossos da Mão e Ossos do Pé como
-seções próprias reunindo os dois lados, e Pelve + Bacia + Membros
-Inferiores unificados numa seção só.
+seções próprias reunindo os dois lados, e Membros Superiores e
+Pelve + Bacia + Membros Inferiores unificados cada um numa seção só.
 
 ### BDRs — Business Decisions (1 documento)
 
