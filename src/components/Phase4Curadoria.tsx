@@ -25,7 +25,7 @@ import { calculateSha256, generateSignaturePayload } from '../services/auditServ
 import { searchIndividualReferences, IndividualReferenceMatch } from '../services/collectionsService';
 import { uploadCollectionPhoto } from '../services/photoService';
 import { getLatestPhaseSignature } from '../utils/signatures';
-import { canPerformRole, canSignAsTechnician, canCurate } from '../utils/permissions';
+import { canPerformRole, canSignAsTechnician, canCurate, hasAdminAccess } from '../utils/permissions';
 import {
   UserCheck,
   Search,
@@ -88,8 +88,13 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
   // identifica e decide é sempre o curador", sem exceção).
   const isCurator = currentUser.role === 'curador';
   // Editar indivíduos/perfil biológico/odontograma (Montagem e Inventário) —
-  // padrão Curador + Estudante, ajustável por pessoa (canCurate, §13).
-  const canEdit = canCurate(currentUser);
+  // Curador, Estudante e Administrador por padrão, além de quem tem curationAccess
+  // ou adminAccess somados, ou quando laboratoryMode está ativo.
+  const canEdit =
+    canCurate(currentUser) ||
+    hasAdminAccess(currentUser) ||
+    currentUser.role === 'administrador' ||
+    laboratoryMode;
   // Aba Montagem (e aprovação da foto oficial): mesmo acesso de Técnico já
   // usado nas demais fases (Fase 1, 2, 3 e 5) — Curador, Técnico e
   // Pesquisador. Indivíduos/Inventário/Odontograma continuam exclusivos de

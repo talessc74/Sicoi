@@ -193,14 +193,38 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
   const [descSupranumerarioMaxila, setDescSupranumerarioMaxila] = useState('');
   const [descSupranumerarioMandibula, setDescSupranumerarioMandibula] = useState('');
 
+  // Estado local para resposta tátil instantânea em iPads/dispositivos touch
+  const [localDenticao, setLocalDenticao] = useState<DenticaoMode>(denticao || 'permanente');
+  const [localMistaActiveDeciduous, setLocalMistaActiveDeciduous] = useState<number[]>(mistaActiveDeciduous || []);
+
+  React.useEffect(() => {
+    if (denticao) {
+      setLocalDenticao(denticao);
+    }
+  }, [denticao]);
+
+  React.useEffect(() => {
+    if (mistaActiveDeciduous) {
+      setLocalMistaActiveDeciduous(mistaActiveDeciduous);
+    }
+  }, [mistaActiveDeciduous]);
+
+  const activeDenticao = localDenticao || denticao || 'permanente';
+  const currentMistaActive = localMistaActiveDeciduous.length > 0 ? localMistaActiveDeciduous : (mistaActiveDeciduous || []);
+
+  const handleSelectDenticao = (newMode: DenticaoMode) => {
+    setLocalDenticao(newMode);
+    onSetDenticao?.(newMode);
+  };
+
   const getTooth = (num: number) => teeth.find(t => t.toothNumberFdi === num);
 
   // Verifica se o dente está ativo/habilitado conforme o modo de dentição
   const isToothActive = (num: number): boolean => {
-    if (denticao === 'permanente') {
+    if (activeDenticao === 'permanente') {
       return num < 50; // Apenas permanentes (11-48)
     }
-    if (denticao === 'decidua') {
+    if (activeDenticao === 'decidua') {
       return num >= 50; // Apenas decíduos (51-85)
     }
     // Dentição mista:
@@ -208,61 +232,62 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
     if ([18, 17, 16, 26, 27, 28, 48, 47, 46, 36, 37, 38].includes(num)) {
       return true;
     }
-    // Dentes decíduos (50-80): ativos se estiverem em mistaActiveDeciduous
+    // Dentes decíduos (50-80): ativos se estiverem em currentMistaActive
     if (num >= 50) {
-      return mistaActiveDeciduous.includes(num);
+      return currentMistaActive.includes(num);
     }
     // Dentes permanentes emparelhados (15..11, 21..25, 45..41, 31..35):
     // Ativos por padrão, a menos que o par decíduo correspondente tenha sido ativado!
     const deciduousPair = PAIR_MAP[num];
-    return !mistaActiveDeciduous.includes(deciduousPair);
+    return !currentMistaActive.includes(deciduousPair);
   };
 
   // Alterna ativação entre um dente decíduo e seu par permanente em dentição mista
   const handleToggleMistaPair = (clickedNum: number) => {
-    if (readOnly || denticao !== 'mista' || !onSetMistaActiveDeciduous) return;
+    if (readOnly || activeDenticao !== 'mista') return;
     const pair = PAIR_MAP[clickedNum];
     if (!pair) return;
 
     let updated: number[];
     if (clickedNum >= 50) {
       // Clicou no decíduo (dezenas 50, 60, 70, 80) -> ativa decíduo e desabilita o correspondente de 10..40
-      if (!mistaActiveDeciduous.includes(clickedNum)) {
-        updated = [...mistaActiveDeciduous, clickedNum];
+      if (!currentMistaActive.includes(clickedNum)) {
+        updated = [...currentMistaActive, clickedNum];
       } else {
-        updated = mistaActiveDeciduous;
+        updated = currentMistaActive;
       }
     } else {
       // Clicou no permanente (dezenas 10, 20, 30, 40) -> reabilita o permanente e desativa o par decíduo correspondente
-      updated = mistaActiveDeciduous.filter(d => d !== pair);
+      updated = currentMistaActive.filter(d => d !== pair);
     }
-    onSetMistaActiveDeciduous(updated);
+    setLocalMistaActiveDeciduous(updated);
+    onSetMistaActiveDeciduous?.(updated);
   };
 
   // Listas de números ativos por arcada para cálculo de ações em lote (Edêntulo)
   const getMaxilaActiveNumbers = (): number[] => {
-    if (denticao === 'permanente') {
+    if (activeDenticao === 'permanente') {
       return [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
     }
-    if (denticao === 'decidua') {
+    if (activeDenticao === 'decidua') {
       return [55, 54, 53, 52, 51, 61, 62, 63, 64, 65];
     }
     // Mista:
-    const upperRightPairs = [15, 14, 13, 12, 11].map(p => (mistaActiveDeciduous.includes(PAIR_MAP[p]) ? PAIR_MAP[p] : p));
-    const upperLeftPairs = [21, 22, 23, 24, 25].map(p => (mistaActiveDeciduous.includes(PAIR_MAP[p]) ? PAIR_MAP[p] : p));
+    const upperRightPairs = [15, 14, 13, 12, 11].map(p => (currentMistaActive.includes(PAIR_MAP[p]) ? PAIR_MAP[p] : p));
+    const upperLeftPairs = [21, 22, 23, 24, 25].map(p => (currentMistaActive.includes(PAIR_MAP[p]) ? PAIR_MAP[p] : p));
     return [18, 17, 16, ...upperRightPairs, ...upperLeftPairs, 26, 27, 28];
   };
 
   const getMandibulaActiveNumbers = (): number[] => {
-    if (denticao === 'permanente') {
+    if (activeDenticao === 'permanente') {
       return [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38];
     }
-    if (denticao === 'decidua') {
+    if (activeDenticao === 'decidua') {
       return [85, 84, 83, 82, 81, 71, 72, 73, 74, 75];
     }
     // Mista:
-    const lowerRightPairs = [45, 44, 43, 42, 41].map(p => (mistaActiveDeciduous.includes(PAIR_MAP[p]) ? PAIR_MAP[p] : p));
-    const lowerLeftPairs = [31, 32, 33, 34, 35].map(p => (mistaActiveDeciduous.includes(PAIR_MAP[p]) ? PAIR_MAP[p] : p));
+    const lowerRightPairs = [45, 44, 43, 42, 41].map(p => (currentMistaActive.includes(PAIR_MAP[p]) ? PAIR_MAP[p] : p));
+    const lowerLeftPairs = [31, 32, 33, 34, 35].map(p => (currentMistaActive.includes(PAIR_MAP[p]) ? PAIR_MAP[p] : p));
     return [48, 47, 46, ...lowerRightPairs, ...lowerLeftPairs, 36, 37, 38];
   };
 
@@ -487,7 +512,7 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
     }
 
     const handleClick = () => {
-      if (denticao === 'mista' && !active) {
+      if (activeDenticao === 'mista' && !active) {
         // Clicou no par inativo: ativa o dente e desativa seu correspondente
         handleToggleMistaPair(num);
       }
@@ -510,16 +535,16 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
         type="button"
         onClick={handleClick}
         title={tooltip}
-        className={`h-14 rounded-md border flex flex-col items-center justify-between p-1 text-center transition-all ${
+        className={`h-14 rounded-md border flex flex-col items-center justify-between p-1 text-center transition-all touch-manipulation select-none cursor-pointer ${
           !active
-            ? 'opacity-30 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:opacity-70 cursor-pointer'
+            ? 'opacity-30 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:opacity-70'
             : buttonThemeClass
         } ${
           isSelected
             ? 'ring-2 ring-sky-600 scale-105 z-10 shadow-md font-bold'
             : active
-            ? 'hover:scale-[1.02] hover:shadow-xs'
-            : ''
+            ? 'hover:scale-[1.02] hover:shadow-xs active:scale-95'
+            : 'active:scale-95'
         }`}
       >
         <span className="text-[10px] font-mono font-bold leading-none">{num}</span>
@@ -572,10 +597,9 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
             <button
               key={opt.id}
               type="button"
-              disabled={readOnly}
-              onClick={() => onSetDenticao?.(opt.id as DenticaoMode)}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-all ${
-                denticao === opt.id
+              onClick={() => handleSelectDenticao(opt.id as DenticaoMode)}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-all touch-manipulation select-none cursor-pointer active:scale-95 ${
+                activeDenticao === opt.id
                   ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-transparent shadow-xs font-bold'
                   : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100'
               }`}
@@ -584,7 +608,7 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
             </button>
           ))}
         </div>
-        {denticao === 'mista' && (
+        {activeDenticao === 'mista' && (
           <span className="text-[11px] text-slate-500 dark:text-slate-400 italic">
             * Clique em qualquer número decíduo para ativá-lo e desabilitar o par permanente (e vice-versa).
           </span>
@@ -605,7 +629,7 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
           {/* Matriz de Dentes da Maxila */}
           <div className="lg:col-span-3 overflow-x-auto p-3 bg-slate-50 dark:bg-slate-950/60 rounded-lg border border-slate-200 dark:border-slate-800 space-y-2">
-            {denticao === 'permanente' && (
+            {activeDenticao === 'permanente' && (
               <div>
                 <div className="text-[10px] uppercase font-mono text-slate-400 font-semibold mb-1 text-center">
                   Quadrante 1 (18–11) &emsp;|&emsp; Quadrante 2 (21–28)
@@ -617,7 +641,7 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
               </div>
             )}
 
-            {denticao === 'mista' && (
+            {activeDenticao === 'mista' && (
               <div className="space-y-2 min-w-[560px]">
                 <div>
                   <div className="text-[10px] uppercase font-mono text-slate-400 font-semibold mb-1 text-center">
@@ -652,7 +676,7 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
               </div>
             )}
 
-            {denticao === 'decidua' && (
+            {activeDenticao === 'decidua' && (
               <div className="min-w-[360px]">
                 <div className="text-[10px] uppercase font-mono text-slate-400 font-semibold mb-1 text-center">
                   Quadrante 5 (55–51) &emsp;|&emsp; Quadrante 6 (61–65)
@@ -675,7 +699,7 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
               type="button"
               disabled={readOnly}
               onClick={() => handleToggleEdentulo('maxila', 'ausente_ante_mortem')}
-              className={`w-full text-left p-2 rounded border flex items-center justify-between text-[11px] transition-colors ${
+              className={`w-full text-left p-2 rounded border flex items-center justify-between text-[11px] transition-colors touch-manipulation select-none cursor-pointer active:scale-95 ${
                 isMaxilaEdentuloAnte
                   ? 'bg-purple-600 text-white font-bold border-transparent'
                   : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100'
@@ -689,7 +713,7 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
               type="button"
               disabled={readOnly}
               onClick={() => handleToggleEdentulo('maxila', 'ausente_post_mortem')}
-              className={`w-full text-left p-2 rounded border flex items-center justify-between text-[11px] transition-colors ${
+              className={`w-full text-left p-2 rounded border flex items-center justify-between text-[11px] transition-colors touch-manipulation select-none cursor-pointer active:scale-95 ${
                 isMaxilaEdentuloPost
                   ? 'bg-amber-600 text-white font-bold border-transparent'
                   : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100'
@@ -785,7 +809,7 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
           {/* Matriz de Dentes da Mandíbula */}
           <div className="lg:col-span-3 overflow-x-auto p-3 bg-slate-50 dark:bg-slate-950/60 rounded-lg border border-slate-200 dark:border-slate-800 space-y-2">
-            {denticao === 'permanente' && (
+            {activeDenticao === 'permanente' && (
               <div>
                 <div className="grid grid-cols-16 gap-1 min-w-[560px]">
                   {[48, 47, 46, 45, 44, 43, 42, 41].map(num => renderToothButton(num))}
@@ -797,7 +821,7 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
               </div>
             )}
 
-            {denticao === 'mista' && (
+            {activeDenticao === 'mista' && (
               <div className="space-y-2 min-w-[560px]">
                 {/* Linha decídua alinhada acima de 45..41 e 31..35 */}
                 <div>
@@ -832,7 +856,7 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
               </div>
             )}
 
-            {denticao === 'decidua' && (
+            {activeDenticao === 'decidua' && (
               <div className="min-w-[360px]">
                 <div className="grid grid-cols-10 gap-1">
                   {[85, 84, 83, 82, 81].map(num => renderToothButton(num))}
@@ -855,7 +879,7 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
               type="button"
               disabled={readOnly}
               onClick={() => handleToggleEdentulo('mandibula', 'ausente_ante_mortem')}
-              className={`w-full text-left p-2 rounded border flex items-center justify-between text-[11px] transition-colors ${
+              className={`w-full text-left p-2 rounded border flex items-center justify-between text-[11px] transition-colors touch-manipulation select-none cursor-pointer active:scale-95 ${
                 isMandibulaEdentuloAnte
                   ? 'bg-purple-600 text-white font-bold border-transparent'
                   : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100'
@@ -869,7 +893,7 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
               type="button"
               disabled={readOnly}
               onClick={() => handleToggleEdentulo('mandibula', 'ausente_post_mortem')}
-              className={`w-full text-left p-2 rounded border flex items-center justify-between text-[11px] transition-colors ${
+              className={`w-full text-left p-2 rounded border flex items-center justify-between text-[11px] transition-colors touch-manipulation select-none cursor-pointer active:scale-95 ${
                 isMandibulaEdentuloPost
                   ? 'bg-amber-600 text-white font-bold border-transparent'
                   : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100'
@@ -982,7 +1006,7 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
                         key={condKey}
                         type="button"
                         onClick={() => handleChangePresence(condKey)}
-                        className={`p-2.5 rounded-lg border text-left flex flex-col justify-between transition-all ${
+                        className={`p-2.5 rounded-lg border text-left flex flex-col justify-between transition-all touch-manipulation select-none cursor-pointer active:scale-95 ${
                           isSelected
                             ? condKey.startsWith('ausente')
                               ? condKey === 'ausente_ante_mortem'
@@ -1026,7 +1050,7 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
                           key={cKey}
                           type="button"
                           onClick={() => handleToggleClinicalCondition(cKey)}
-                          className={`p-2 rounded-lg border text-left flex items-center justify-between text-xs transition-colors ${
+                          className={`p-2 rounded-lg border text-left flex items-center justify-between text-xs transition-colors touch-manipulation select-none cursor-pointer active:scale-95 ${
                             isChecked
                               ? 'bg-sky-600 text-white font-semibold border-transparent shadow-2xs'
                               : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100'
