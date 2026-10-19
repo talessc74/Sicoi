@@ -52,7 +52,8 @@ procedência só saem do servidor para quem pode vê-los — a tela
 esconder não basta. Criar um COI recusa duplicar um NIC já existente.
 Inventário Odontológico: dentição permanente/mista/decídua por par de
 quadrante, edêntulo em lote, dentes supranumerários. Alterações ósseas
-embutidas em cada osso do Inventário Osteológico, nunca mais um
+embutidas em cada osso do Inventário Osteológico em gaveta expansível
+(clique na linha ou botão !, chevron e stopPropagation), nunca mais um
 formulário único solto. Condutor por voz/conversa é opt-in. Documentos
 oficiais da COI-INC servidos autenticados, nunca numa pasta pública.
 Inventário osteológico interativo em 4 pranchas especializadas (Fase 4, §15)
