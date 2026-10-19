@@ -7,6 +7,14 @@ valid-from: 2026-10-19
 
 # _local-adr-policy-112: Inventário Osteológico Pós-Craniano (Seções 2 a 8, Fase 4)
 
+> **[SUPERADA em 2026-10-19 por `_local-adr-policy-113`]** — Os pesquisadores
+> pediram nova reestruturação: vértebras e costelas viraram linhas
+> individuais (não mais contagem+identificação ordinal), carpo/metacarpo e
+> tarso/metatarso saíram para seções próprias ("Ossos da Mão"/"Ossos do
+> Pé"), e Pelve & Bacia se uniu ao Membro Inferior numa seção só. Este
+> documento fica como registro histórico da decisão original — nunca
+> apagado, só substituído.
+
 ## Context and Problem Statement
 
 A Fase 4 da COI-INC prevê o inventário osteológico completo de 8 regiões anatômicas

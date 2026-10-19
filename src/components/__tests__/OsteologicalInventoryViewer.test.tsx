@@ -140,6 +140,35 @@ describe('OsteologicalInventoryViewer', () => {
     );
   });
 
+  it('clicar na linha do osso (fora dos botões) abre/recolhe a gaveta de alterações, sem interferir no clique dos botões P/F/I/A', async () => {
+    const user = userEvent.setup();
+    const onUpdateInventory = vi.fn();
+
+    render(
+      <OsteologicalInventoryViewer
+        inventory={{}}
+        onUpdateInventory={onUpdateInventory}
+      />
+    );
+
+    expect(screen.queryByText('Alterações Ósseas — Frontal')).not.toBeInTheDocument();
+
+    await user.click(screen.getByText('Frontal'));
+    expect(screen.getByText('Alterações Ósseas — Frontal')).toBeInTheDocument();
+
+    // Clicar no botão P não deve também fechar/alternar a gaveta (stopPropagation).
+    await user.click(screen.getByTitle('Frontal — Presente sem fratura'));
+    expect(screen.getByText('Alterações Ósseas — Frontal')).toBeInTheDocument();
+    expect(onUpdateInventory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cabecaPescoco: expect.objectContaining({ ossos: { Frontal: 'P' } })
+      })
+    );
+
+    await user.click(screen.getByText('Frontal'));
+    expect(screen.queryByText('Alterações Ósseas — Frontal')).not.toBeInTheDocument();
+  });
+
   it('desabilita o botão de alteração óssea quando o osso já está marcado como Ausente', () => {
     render(
       <OsteologicalInventoryViewer

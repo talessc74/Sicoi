@@ -24,8 +24,9 @@ Decisões de arquitetura e técnicas deste projeto, criadas por deliberação AR
 - [_local-adr-policy-108](application/108-inventario-odontologico-denticao.md) - Inventário Odontológico: dentição permanente/mista/decídua por par de quadrante anatômico, edêntulo em lote, dentes supranumerários
 - [_local-adr-policy-109](application/109-inventario-osteologico-alteracoes-por-osso.md) - Alterações ósseas embutidas em cada osso do Inventário Osteológico (botão de exclamação), nunca mais um formulário único solto com dropdown "osso afetado"
 - [_local-adr-policy-110](application/110-condutor-por-voz-opt-in.md) - Condutor por voz/conversa é opt-in: Fases 1 e 2 abrem no Formulário Manual por padrão, sem áudio automático
-- [_local-adr-policy-111](application/111-inventario-osteologico-4-pranchas-anatomicas.md) - Inventário Osteológico da Cabeça e Pescoço (Fase 4, §15): visualizador interativo em 4 pranchas especializadas com sub-abas, contornos vetoriais orgânicos (OpenCV) e sincronização bidirecional
-- [_local-adr-policy-112](application/112-inventario-osteologico-secoes-postcranianas.md) - Inventário Osteológico Pós-Craniano (Seções 2 a 8, Fase 4): handlers parametrizados por região, contagem ordinal seriada, contagens pooled de falanges e exclusão mútua Ausente x Alteração
+- [_local-adr-policy-111](application/111-inventario-osteologico-4-pranchas-anatomicas.md) - **[SUPERADA pela 113]** Inventário Osteológico da Cabeça e Pescoço (Fase 4, §15): visualizador interativo em 4 pranchas especializadas com sub-abas, contornos vetoriais orgânicos (OpenCV) e sincronização bidirecional
+- [_local-adr-policy-112](application/112-inventario-osteologico-secoes-postcranianas.md) - **[SUPERADA pela 113]** Inventário Osteológico Pós-Craniano (Seções 2 a 8, Fase 4): handlers parametrizados por região, contagem ordinal seriada, contagens pooled de falanges e exclusão mútua Ausente x Alteração
+- [_local-adr-policy-113](application/113-inventario-osteologico-reestruturacao-pesquisadores.md) - Inventário Osteológico: lista corrida em todas as 8 seções (sem prancha visual), vértebra/costela como elemento catalogável individual, Ossos da Mão/Ossos do Pé em seções próprias, Pelve+Bacia+Membro Inferior unificados
 
 ## Integration
 
