@@ -6,6 +6,7 @@ import {
   OsteologicalAlteracaoRegiao
 } from '../types/sgccco';
 import { Info, Sparkles, Plus, Trash2, AlertCircle } from 'lucide-react';
+import { AnatomicExplodedSkullViewer } from './AnatomicExplodedSkullViewer';
 
 interface OsteologicalInventoryViewerProps {
   inventory?: OsteologicalInventoryData;
@@ -139,6 +140,7 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
   readOnly = false
 }) => {
   const [currentSectionId, setCurrentSectionId] = useState<string>('cabeca_pescoco');
+  const [selectedBone, setSelectedBone] = useState<string | null>(null);
 
   const cabecaData = inventory.cabecaPescoco || {
     ossos: {},
@@ -463,38 +465,47 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
             </div>
           </div>
 
-          {/* Lista dos 23 Ossos com Seleção Única e Alterações Ósseas */}
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h5 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-mono">
-                Elementos Ósseos da Cabeça e Pescoço ({totalOssos})
-              </h5>
-              <span className="text-[11px] text-slate-500 font-mono">
-                Clique no botão com <AlertCircle className="w-3.5 h-3.5 inline text-slate-500 align-text-bottom" /> para abrir as alterações ósseas do osso
-              </span>
-            </div>
+          {/* Layout Split-Screen: Lista Pericial à Esquerda (7 cols) + Placa Anatômica Gravada à Direita (5 cols) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* Lado Esquerdo: Lista dos 23 Ossos + Cartilagens e Ossículos */}
+            <div className="lg:col-span-7 space-y-6">
+              {/* Lista dos 23 Ossos com Seleção Única e Alterações Ósseas */}
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h5 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-mono">
+                    Elementos Ósseos da Cabeça e Pescoço ({totalOssos})
+                  </h5>
+                  <span className="text-[11px] text-slate-500 font-mono">
+                    Clique no botão com <AlertCircle className="w-3.5 h-3.5 inline text-slate-500 align-text-bottom" /> para abrir as alterações ósseas do osso
+                  </span>
+                </div>
 
-            <div className="space-y-2">
-              {CABECA_PESCOCO_OSSOS.map((bone, index) => {
-                const currentCode = cabecaData.ossos[bone];
-                const isExpanded = !!expandedBones[bone];
-                const boneAlteracoes = (cabecaData.alteracoes || []).filter(a => a.osso === bone);
-                const hasSemAlteracao = boneAlteracoes.some(a => a.tipo === 'sem_alteracao');
-                const activeAlteracoes = boneAlteracoes.filter(a => a.tipo !== 'sem_alteracao');
+                <div className="space-y-2">
+                  {CABECA_PESCOCO_OSSOS.map((bone, index) => {
+                    const currentCode = cabecaData.ossos[bone];
+                    const isExpanded = !!expandedBones[bone];
+                    const isSelected = selectedBone === bone;
+                    const boneAlteracoes = (cabecaData.alteracoes || []).filter(a => a.osso === bone);
+                    const hasSemAlteracao = boneAlteracoes.some(a => a.tipo === 'sem_alteracao');
+                    const activeAlteracoes = boneAlteracoes.filter(a => a.tipo !== 'sem_alteracao');
 
-                return (
-                  <div
-                    key={bone}
-                    className={`rounded-xl border transition-all ${
-                      isExpanded
-                        ? 'border-red-400 dark:border-red-800 bg-white dark:bg-slate-900 shadow-xs ring-1 ring-red-200 dark:ring-red-950'
-                        : currentCode
-                          ? 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xs'
-                          : 'border-slate-200 dark:border-slate-800/80 bg-slate-50/60 dark:bg-slate-800/30'
-                    }`}
-                  >
-                    {/* Linha Principal do Osso */}
-                    <div className="flex flex-wrap items-center justify-between p-2.5 sm:p-3 gap-2">
+                    return (
+                      <div
+                        key={bone}
+                        id={`bone-row-${bone.replace(/\s+/g, '-')}`}
+                        onClick={() => setSelectedBone(bone)}
+                        className={`rounded-xl border transition-all ${
+                          isSelected
+                            ? 'border-sky-500 bg-sky-50/50 dark:bg-sky-950/40 ring-2 ring-sky-400 dark:ring-sky-600 shadow-md'
+                            : isExpanded
+                              ? 'border-red-400 dark:border-red-800 bg-white dark:bg-slate-900 shadow-xs ring-1 ring-red-200 dark:ring-red-950'
+                              : currentCode
+                                ? 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xs'
+                                : 'border-slate-200 dark:border-slate-800/80 bg-slate-50/60 dark:bg-slate-800/30'
+                        }`}
+                      >
+                        {/* Linha Principal do Osso */}
+                        <div className="flex flex-wrap items-center justify-between p-2.5 sm:p-3 gap-2">
                       <div className="flex items-center gap-2.5 min-w-0 pr-2">
                         <span className="text-[11px] font-mono text-slate-400 w-5 text-right flex-shrink-0">
                           {index + 1}.
@@ -808,8 +819,31 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
               </div>
             </div>
           </div>
-
         </div>
+
+        {/* Lado Direito: Placa Anatômica Gravada Interativa (Sticky durante rolagem) */}
+        <div className="lg:col-span-5 lg:sticky lg:top-4 space-y-3">
+          <AnatomicExplodedSkullViewer
+            ossos={cabecaData.ossos}
+            selectedBone={selectedBone}
+            onSelectBone={(bone) => {
+              setSelectedBone(bone);
+              const el = document.getElementById(`bone-row-${bone.replace(/\s+/g, '-')}`);
+              if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            }}
+            alteracoes={cabecaData.alteracoes}
+            cartilagensLaringe={cabecaData.cartilagensLaringe}
+            ossiculosDireitos={cabecaData.ossiculosDireitos}
+            ossiculosEsquerdos={cabecaData.ossiculosEsquerdos}
+            onToggleCartilagem={handleToggleCartilagem}
+            onToggleOssiculo={handleToggleOssiculo}
+            readOnly={readOnly}
+          />
+        </div>
+      </div>
+    </div>
       ) : (
         /* Placeholder para as Seções 2 a 8 */
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-10 text-center space-y-3">
