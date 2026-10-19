@@ -9,15 +9,19 @@ sobrescrevem `_core` quando os dois se sobrepõem.
 
 ## Content
 
-### EDRs — Engineering Decisions (3 documentos)
+### EDRs — Engineering Decisions (5 documentos)
 
 Manutenção dos Manuais do Usuário (`public/manuais/`) sincronizada com
 mudanças no site. CORS restrito a origens conhecidas. Tradutor de
 erros: código estável do servidor + dicionário de tradução no cliente —
 nunca casamento de texto, frase amigável por padrão com detalhe técnico
-expansível.
+expansível. Pendências por conjunto centralizadas numa função só,
+reaproveitada entre o painel inicial e as telas de fase. Componente
+genérico com ação em lote ou estado compartilhado entre abas exige
+teste dessas duas categorias — tsc --noEmit roda de novo após a última
+edição de teste, sempre, antes do merge.
 
-### ADRs — Architectural Decisions (15 documentos)
+### ADRs — Architectural Decisions (20 documentos)
 
 Histórico protegido de conjuntos: servidor como fonte de verdade,
 assinaturas travadas, registro de alterações encadeado por hash.
@@ -43,11 +47,19 @@ pessoa: acesso ajustável além do padrão do papel, exceto as assinaturas
 de Inventário e Científica. Autorizações de pesquisa reais (Fase 7,
 §13): escopo granular por projeto, revogação nunca é delete. Validação
 de forma/tamanho nas rotas públicas de IA — gap de autenticação
-permanece deliberadamente fora do escopo.
+permanece deliberadamente fora do escopo. Dados da DO (Fase 0) e de
+procedência só saem do servidor para quem pode vê-los — a tela
+esconder não basta. Criar um COI recusa duplicar um NIC já existente.
+Inventário Odontológico: dentição permanente/mista/decídua por par de
+quadrante, edêntulo em lote, dentes supranumerários. Alterações ósseas
+embutidas em cada osso do Inventário Osteológico, nunca mais um
+formulário único solto. Condutor por voz/conversa é opt-in. Documentos
+oficiais da COI-INC servidos autenticados, nunca numa pasta pública.
 
-### BDRs — Business Decisions (0 documentos)
+### BDRs — Business Decisions (1 documento)
 
-Nenhuma ainda.
+Número do conjunto (e da caixa) no formato COI-XXX — telas falam em
+"COI", POPs seguem chamando de NIC.
 
 ## Como adicionar uma policy
 
