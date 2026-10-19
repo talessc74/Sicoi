@@ -6,7 +6,10 @@ import {
   SkeletalElement,
   CurationVersionStatus,
   BiologicalConfidence,
-  OsteologicalInventoryData
+  OsteologicalInventoryData,
+  ToothPresenceCondition,
+  ToothClinicalCondition,
+  ToothRecord
 } from '../types/sgccco';
 import { OdontogramViewer } from './OdontogramViewer';
 import { OsteologicalInventoryViewer } from './OsteologicalInventoryViewer';
@@ -166,29 +169,67 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
     setSelectedIndividualId(newInd.id);
   };
 
-  const handleUpdateTooth = (num: number, condition: any, notes?: string) => {
+  const handleUpdateTooth = (
+    num: number,
+    update: {
+      presence?: ToothPresenceCondition;
+      clinicalConditions?: ToothClinicalCondition[];
+      condition?: ToothRecord['condition'];
+    } | any,
+    notes?: string
+  ) => {
     if (!currentInd) return;
     const updated = { ...collection };
     const ind = updated.phase4.individuals.find(i => i.id === currentInd.id);
     if (ind) {
-      ind.odontogram = ind.odontogram.map(t =>
-        t.toothNumberFdi === num ? { ...t, condition, notes: notes || '' } : t
-      );
+      ind.odontogram = ind.odontogram.map(t => {
+        if (t.toothNumberFdi !== num) return t;
+        if (typeof update === 'object' && update !== null && ('presence' in update || 'clinicalConditions' in update)) {
+          return {
+            ...t,
+            presence: update.presence ?? t.presence,
+            clinicalConditions: update.clinicalConditions ?? t.clinicalConditions,
+            condition: update.condition ?? t.condition,
+            notes: notes !== undefined ? notes : t.notes || ''
+          };
+        }
+        return { ...t, condition: update, notes: notes !== undefined ? notes : t.notes || '' };
+      });
       onUpdateCollection(updated);
     }
   };
 
   // Marcação em lote (Edêntulo ante/post-mortem) — só os dentes passados,
   // nunca o odontograma inteiro, pra não sobrescrever posições de outra
-  // arcada ou lado inativo do par de quadrante em dentição mista.
-  const handleBulkMarkTeeth = (toothNumbers: number[], condition: any) => {
+  // arcada ou dentes inativos da dentição mista.
+  const handleBulkMarkTeeth = (
+    toothNumbers: number[],
+    mark: {
+      presence: ToothPresenceCondition;
+      condition: ToothRecord['condition'];
+    } | any
+  ) => {
     if (!currentInd) return;
     const updated = { ...collection };
     const ind = updated.phase4.individuals.find(i => i.id === currentInd.id);
     if (ind) {
-      ind.odontogram = ind.odontogram.map(t =>
-        toothNumbers.includes(t.toothNumberFdi) ? { ...t, condition } : t
-      );
+      ind.odontogram = ind.odontogram.map(t => {
+        if (!toothNumbers.includes(t.toothNumberFdi)) return t;
+        if (typeof mark === 'object' && mark !== null && 'presence' in mark) {
+          return {
+            ...t,
+            presence: mark.presence,
+            clinicalConditions: mark.presence === 'articulado' ? ['higido'] : [],
+            condition: mark.condition
+          };
+        }
+        return {
+          ...t,
+          presence: mark === 'ausente_ante_mortem' || mark === 'ausente_post_mortem' ? mark : 'articulado',
+          clinicalConditions: mark === 'higido' ? ['higido'] : [],
+          condition: mark
+        };
+      });
       onUpdateCollection(updated);
     }
   };
@@ -464,7 +505,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
             }`}
           >
-            Inventário Odontológico (FDI / ISO 3950)
+            Inventário Odontológico
           </button>
           <button
             onClick={() => setActiveTab('montagem')}
@@ -837,6 +878,8 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
                 denticaoQuadrantePares: { ...currentInd.denticaoQuadrantePares, [q]: lado }
               })
             }
+            mistaActiveDeciduous={currentInd.mistaActiveDeciduous}
+            onSetMistaActiveDeciduous={(list) => handlePatchIndividual({ mistaActiveDeciduous: list })}
             supernumeraryTeeth={currentInd.supernumeraryTeeth}
             onSetSupernumeraryTeeth={(list) => handlePatchIndividual({ supernumeraryTeeth: list })}
             readOnly={isLocked || !canEdit}

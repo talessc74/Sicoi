@@ -1,40 +1,178 @@
 import React, { useState } from 'react';
-import { ToothRecord } from '../types/sgccco';
-import { Plus, X } from 'lucide-react';
+import {
+  ToothRecord,
+  ToothPresenceCondition,
+  ToothClinicalCondition
+} from '../types/sgccco';
+import { Plus, X, Check, Info } from 'lucide-react';
 
-type DenticaoMode = 'permanente' | 'mista' | 'decidua';
-type QuadrantePar = 1 | 2 | 3 | 4;
-type LadoPar = 'permanente' | 'decidua';
+export type DenticaoMode = 'permanente' | 'mista' | 'decidua';
 
-interface SupernumeraryTooth {
+export interface SupernumeraryTooth {
   id: string;
   descricaoPosicao: string;
+  arch?: 'maxila' | 'mandibula';
 }
 
-interface OdontogramViewerProps {
+export interface OdontogramViewerProps {
   teeth: ToothRecord[];
-  onUpdateTooth?: (toothNumber: number, condition: ToothRecord['condition'], notes?: string) => void;
-  onBulkMarkTeeth?: (toothNumbers: number[], condition: ToothRecord['condition']) => void;
+  onUpdateTooth?: (
+    toothNumber: number,
+    update: {
+      presence: ToothPresenceCondition;
+      clinicalConditions: ToothClinicalCondition[];
+      condition: ToothRecord['condition'];
+    },
+    notes?: string
+  ) => void;
+  onBulkMarkTeeth?: (
+    toothNumbers: number[],
+    mark: {
+      presence: ToothPresenceCondition;
+      condition: ToothRecord['condition'];
+    }
+  ) => void;
   denticao?: DenticaoMode;
   onSetDenticao?: (d: DenticaoMode) => void;
-  denticaoQuadrantePares?: Partial<Record<QuadrantePar, LadoPar>>;
-  onSetQuadrantePar?: (quadrante: QuadrantePar, lado: LadoPar) => void;
+  denticaoQuadrantePares?: Partial<Record<1 | 2 | 3 | 4, 'permanente' | 'decidua'>>;
+  onSetQuadrantePar?: (quadrante: 1 | 2 | 3 | 4, lado: 'permanente' | 'decidua') => void;
+  mistaActiveDeciduous?: number[];
+  onSetMistaActiveDeciduous?: (list: number[]) => void;
   supernumeraryTeeth?: SupernumeraryTooth[];
   onSetSupernumeraryTeeth?: (list: SupernumeraryTooth[]) => void;
   readOnly?: boolean;
 }
 
-// Par anatômico entre quadrante permanente (1-4) e seu correspondente
-// decíduo (5-8) — mesma posição na boca, nunca os dois ao mesmo tempo numa
-// dentição mista.
-const DECIDUOUS_QUADRANT_OF: Record<QuadrantePar, 5 | 6 | 7 | 8> = { 1: 5, 2: 6, 3: 7, 4: 8 };
-const PERMANENT_QUADRANT_OF: Record<5 | 6 | 7 | 8, QuadrantePar> = { 5: 1, 6: 2, 7: 3, 8: 4 };
-const QUADRANT_PAIR_LABEL: Record<QuadrantePar, string> = {
-  1: 'Superior Direito',
-  2: 'Superior Esquerdo',
-  3: 'Inferior Esquerdo',
-  4: 'Inferior Direito'
+// Mapeamento anatômico de pares entre dentes permanentes (11-15, 21-25, 31-35, 41-45)
+// e seus correspondentes decíduos (51-55, 61-65, 71-75, 81-85).
+export const PAIR_MAP: Record<number, number> = {
+  15: 55, 14: 54, 13: 53, 12: 52, 11: 51,
+  21: 61, 22: 62, 23: 63, 24: 64, 25: 65,
+  45: 85, 44: 84, 43: 83, 42: 82, 41: 81,
+  31: 71, 32: 72, 33: 73, 34: 74, 35: 75,
+  // Reverso (decíduo -> permanente)
+  55: 15, 54: 14, 53: 13, 52: 12, 51: 11,
+  61: 21, 62: 22, 63: 23, 64: 24, 65: 25,
+  85: 45, 84: 44, 83: 43, 82: 42, 81: 41,
+  71: 31, 72: 32, 73: 33, 74: 34, 75: 35
 };
+
+// Metadados das 4 opções obrigatórias do Estágio 1 (Presença)
+export const PRESENCE_CONDITIONS_META: Record<
+  ToothPresenceCondition,
+  { label: string; abbr: string; description: string }
+> = {
+  articulado: {
+    label: 'Articulado',
+    abbr: 'ART',
+    description: 'Elemento presente na arcada e articulado no alvéolo ósseo.'
+  },
+  desarticulado: {
+    label: 'Desarticulado',
+    abbr: 'DES',
+    description: 'Elemento presente avulso ou fora da articulação alveolar.'
+  },
+  ausente_ante_mortem: {
+    label: 'Ausente ante-mortem',
+    abbr: 'AAM',
+    description: 'Perda dentária ocorrida em vida com fechamento/reabsorção do alvéolo.'
+  },
+  ausente_post_mortem: {
+    label: 'Ausente post-mortem',
+    abbr: 'APM',
+    description: 'Perda dentária post-mortem com alvéolo ósseo aberto e vazio.'
+  }
+};
+
+// Metadados das 17 características clínicas do Estágio 2 (Múltipla escolha)
+export const CLINICAL_CONDITIONS_META: Record<
+  ToothClinicalCondition,
+  { label: string; abbr: string; category: 'irrupcao' | 'higido' | 'patologia' | 'intervencao' | 'alinhamento' }
+> = {
+  parcialmente_irrompido: { label: 'Parcialmente irrompido', abbr: 'PIR', category: 'irrupcao' },
+  nao_irrompido: { label: 'Não irrompido', abbr: 'NIR', category: 'irrupcao' },
+  higido: { label: 'Hígido', abbr: 'HIG', category: 'higido' },
+  cariado: { label: 'Cariado', abbr: 'CAR', category: 'patologia' },
+  mancha: { label: 'Mancha', abbr: 'MAN', category: 'patologia' },
+  resto_radicular: { label: 'Resto radicular', abbr: 'RAD', category: 'patologia' },
+  fratura: { label: 'Fratura', abbr: 'FRA', category: 'patologia' },
+  com_material_restaurador: { label: 'Com material restaurador', abbr: 'RES', category: 'intervencao' },
+  com_material_protetico: { label: 'Com material protético', abbr: 'PRO', category: 'intervencao' },
+  implante: { label: 'Implante', abbr: 'IMP', category: 'intervencao' },
+  aparelho_ortodontico: { label: 'Aparelho ortodôntico/ortopédico', abbr: 'ORT', category: 'intervencao' },
+  tartaro: { label: 'Tártaro', abbr: 'TAR', category: 'patologia' },
+  erosao: { label: 'Erosão', abbr: 'ERO', category: 'patologia' },
+  abrasao: { label: 'Abrasão', abbr: 'ABR', category: 'patologia' },
+  abfracao: { label: 'Abfração', abbr: 'ABF', category: 'patologia' },
+  giroversao: { label: 'Giroversão', abbr: 'GIR', category: 'alinhamento' },
+  apinhamento: { label: 'Apinhamento', abbr: 'API', category: 'alinhamento' }
+};
+
+// Deriva condição legada para manter 100% de compatibilidade reversa
+export function deriveLegacyCondition(
+  presence: ToothPresenceCondition,
+  clinicalConditions: ToothClinicalCondition[]
+): ToothRecord['condition'] {
+  if (presence === 'ausente_ante_mortem') return 'ausente_ante_mortem';
+  if (presence === 'ausente_post_mortem') return 'ausente_post_mortem';
+  if (clinicalConditions.includes('cariado')) return 'carie';
+  if (clinicalConditions.includes('com_material_restaurador') || clinicalConditions.includes('com_material_protetico') || clinicalConditions.includes('implante')) {
+    return 'restauracao';
+  }
+  if (clinicalConditions.includes('resto_radicular')) return 'raiz_residual';
+  if (clinicalConditions.includes('nao_irrompido')) return 'nao_erupcionado';
+  if (clinicalConditions.includes('abrasao') || clinicalConditions.includes('erosao') || clinicalConditions.includes('abfracao')) {
+    return 'desgaste_severo';
+  }
+  return 'higido';
+}
+
+// Normaliza ToothRecord suportando dados legados
+export function normalizeToothRecord(t: ToothRecord | undefined, toothNumber: number): {
+  presence: ToothPresenceCondition;
+  clinicalConditions: ToothClinicalCondition[];
+  notes: string;
+} {
+  if (!t) {
+    return {
+      presence: 'articulado',
+      clinicalConditions: ['higido'],
+      notes: ''
+    };
+  }
+
+  let presence: ToothPresenceCondition = t.presence || 'articulado';
+  if (!t.presence) {
+    if (t.condition === 'ausente_ante_mortem') presence = 'ausente_ante_mortem';
+    else if (t.condition === 'ausente_post_mortem') presence = 'ausente_post_mortem';
+    else presence = 'articulado';
+  }
+
+  let clinicalConditions: ToothClinicalCondition[] = t.clinicalConditions ? [...t.clinicalConditions] : [];
+  if (t.clinicalConditions === undefined) {
+    if (presence === 'ausente_ante_mortem' || presence === 'ausente_post_mortem') {
+      clinicalConditions = [];
+    } else if (t.condition === 'carie') {
+      clinicalConditions = ['cariado'];
+    } else if (t.condition === 'restauracao') {
+      clinicalConditions = ['com_material_restaurador'];
+    } else if (t.condition === 'desgaste_severo') {
+      clinicalConditions = ['abrasao'];
+    } else if (t.condition === 'raiz_residual') {
+      clinicalConditions = ['resto_radicular'];
+    } else if (t.condition === 'nao_erupcionado') {
+      clinicalConditions = ['nao_irrompido'];
+    } else {
+      clinicalConditions = ['higido'];
+    }
+  }
+
+  return {
+    presence,
+    clinicalConditions,
+    notes: t.notes || ''
+  };
+}
 
 export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
   teeth,
@@ -42,376 +180,876 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
   onBulkMarkTeeth,
   denticao = 'permanente',
   onSetDenticao,
-  denticaoQuadrantePares,
-  onSetQuadrantePar,
+  mistaActiveDeciduous = [],
+  onSetMistaActiveDeciduous,
   supernumeraryTeeth = [],
   onSetSupernumeraryTeeth,
   readOnly = false
 }) => {
-  const [selectedTooth, setSelectedTooth] = useState<ToothRecord | null>(null);
+  const [selectedToothNum, setSelectedToothNum] = useState<number | null>(null);
   const [toothNotes, setToothNotes] = useState('');
-  const [novaDescricaoSupranumerario, setNovaDescricaoSupranumerario] = useState('');
-
-  const conditionLabels: Record<ToothRecord['condition'], { label: string; color: string; bg: string }> = {
-    higido: { label: 'Hígido', color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-100 dark:bg-emerald-950/60 border-emerald-300' },
-    ausente_ante_mortem: { label: 'Ausente Ante-Mortem (Alvéolo Fechado)', color: 'text-purple-700 dark:text-purple-300', bg: 'bg-purple-100 dark:bg-purple-950/60 border-purple-300' },
-    ausente_post_mortem: { label: 'Ausente Post-Mortem (Alvéolo Aberto)', color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-100 dark:bg-amber-950/60 border-amber-300' },
-    carie: { label: 'Cárie Dentária', color: 'text-rose-700 dark:text-rose-300', bg: 'bg-rose-100 dark:bg-rose-950/60 border-rose-300' },
-    restauracao: { label: 'Restauração Odontológica', color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-100 dark:bg-blue-950/60 border-blue-300' },
-    desgaste_severo: { label: 'Desgaste Severo / Faceta', color: 'text-orange-700 dark:text-orange-300', bg: 'bg-orange-100 dark:bg-orange-950/60 border-orange-300' },
-    raiz_residual: { label: 'Raiz Residual', color: 'text-slate-700 dark:text-slate-300', bg: 'bg-slate-200 dark:bg-slate-800 border-slate-400' },
-    nao_erupcionado: { label: 'Não Erupcionado / Incluso', color: 'text-cyan-700 dark:text-cyan-300', bg: 'bg-cyan-100 dark:bg-cyan-950/60 border-cyan-300' }
-  };
+  const [showSupernumeraryMaxila, setShowSupernumeraryMaxila] = useState(false);
+  const [showSupernumeraryMandibula, setShowSupernumeraryMandibula] = useState(false);
+  const [descSupranumerarioMaxila, setDescSupranumerarioMaxila] = useState('');
+  const [descSupranumerarioMandibula, setDescSupranumerarioMandibula] = useState('');
 
   const getTooth = (num: number) => teeth.find(t => t.toothNumberFdi === num);
 
-  // Qual lado (permanente/decídua) está ativo pro par de quadrante que
-  // contém este número de dente — fora da dentição mista, o lado ativo é
-  // sempre o da própria dentição escolhida.
-  const activeSideForQuadrant = (quadrant: number): LadoPar => {
-    if (denticao !== 'mista') return denticao === 'decidua' ? 'decidua' : 'permanente';
-    const permQuadrant = (quadrant <= 4 ? quadrant : PERMANENT_QUADRANT_OF[quadrant as 5 | 6 | 7 | 8]) as QuadrantePar;
-    return denticaoQuadrantePares?.[permQuadrant] ?? 'permanente';
-  };
-  const isQuadrantEditable = (quadrant: number): boolean => {
-    const thisSide: LadoPar = quadrant <= 4 ? 'permanente' : 'decidua';
-    return activeSideForQuadrant(quadrant) === thisSide;
-  };
-
-  // Layout ISO 3950 (permanente):
-  // Upper Right (18 to 11) | Upper Left (21 to 28)
-  // Lower Right (48 to 41) | Lower Left (31 to 38)
-  const upperRight = [18, 17, 16, 15, 14, 13, 12, 11];
-  const upperLeft = [21, 22, 23, 24, 25, 26, 27, 28];
-  const lowerRight = [48, 47, 46, 45, 44, 43, 42, 41];
-  const lowerLeft = [31, 32, 33, 34, 35, 36, 37, 38];
-
-  // Mesmo posicionamento anatômico, dentição decídua.
-  const upperRightDeciduous = [55, 54, 53, 52, 51];
-  const upperLeftDeciduous = [61, 62, 63, 64, 65];
-  const lowerRightDeciduous = [85, 84, 83, 82, 81];
-  const lowerLeftDeciduous = [71, 72, 73, 74, 75];
-
-  const showPermanent = denticao === 'permanente' || denticao === 'mista';
-  const showDeciduous = denticao === 'decidua' || denticao === 'mista';
-
-  // Dentes editáveis de cada arcada agora — base das ações "Edêntulo em
-  // lote" abaixo, pra nunca tocar o lado inativo do par (mista) nem a outra
-  // arcada.
-  const maxilaEditableNumbers = [
-    ...(showPermanent ? upperRight.filter(n => isQuadrantEditable(1)) : []),
-    ...(showPermanent ? upperLeft.filter(n => isQuadrantEditable(2)) : []),
-    ...(showDeciduous ? upperRightDeciduous.filter(n => isQuadrantEditable(5)) : []),
-    ...(showDeciduous ? upperLeftDeciduous.filter(n => isQuadrantEditable(6)) : [])
-  ];
-  const mandibulaEditableNumbers = [
-    ...(showPermanent ? lowerLeft.filter(n => isQuadrantEditable(3)) : []),
-    ...(showPermanent ? lowerRight.filter(n => isQuadrantEditable(4)) : []),
-    ...(showDeciduous ? lowerLeftDeciduous.filter(n => isQuadrantEditable(7)) : []),
-    ...(showDeciduous ? lowerRightDeciduous.filter(n => isQuadrantEditable(8)) : [])
-  ];
-
-  const archIsAllCondition = (numbers: number[], condition: ToothRecord['condition']) =>
-    numbers.length > 0 && numbers.every(n => getTooth(n)?.condition === condition);
-
-  const handleSelectTooth = (t: ToothRecord) => {
-    setSelectedTooth(t);
-    setToothNotes(t.notes || '');
+  // Verifica se o dente está ativo/habilitado conforme o modo de dentição
+  const isToothActive = (num: number): boolean => {
+    if (denticao === 'permanente') {
+      return num < 50; // Apenas permanentes (11-48)
+    }
+    if (denticao === 'decidua') {
+      return num >= 50; // Apenas decíduos (51-85)
+    }
+    // Dentição mista:
+    // Molares permanentes (18..16, 26..28, 48..46, 36..38) sempre ativos
+    if ([18, 17, 16, 26, 27, 28, 48, 47, 46, 36, 37, 38].includes(num)) {
+      return true;
+    }
+    // Dentes decíduos (50-80): ativos se estiverem em mistaActiveDeciduous
+    if (num >= 50) {
+      return mistaActiveDeciduous.includes(num);
+    }
+    // Dentes permanentes emparelhados (15..11, 21..25, 45..41, 31..35):
+    // Ativos por padrão, a menos que o par decíduo correspondente tenha sido ativado!
+    const deciduousPair = PAIR_MAP[num];
+    return !mistaActiveDeciduous.includes(deciduousPair);
   };
 
-  const handleChangeCondition = (cond: ToothRecord['condition']) => {
-    if (selectedTooth && onUpdateTooth && !readOnly) {
-      onUpdateTooth(selectedTooth.toothNumberFdi, cond, toothNotes);
-      setSelectedTooth({ ...selectedTooth, condition: cond, notes: toothNotes });
+  // Alterna ativação entre um dente decíduo e seu par permanente em dentição mista
+  const handleToggleMistaPair = (clickedNum: number) => {
+    if (readOnly || denticao !== 'mista' || !onSetMistaActiveDeciduous) return;
+    const pair = PAIR_MAP[clickedNum];
+    if (!pair) return;
+
+    let updated: number[];
+    if (clickedNum >= 50) {
+      // Clicou no decíduo (dezenas 50, 60, 70, 80) -> ativa decíduo e desabilita o correspondente de 10..40
+      if (!mistaActiveDeciduous.includes(clickedNum)) {
+        updated = [...mistaActiveDeciduous, clickedNum];
+      } else {
+        updated = mistaActiveDeciduous;
+      }
+    } else {
+      // Clicou no permanente (dezenas 10, 20, 30, 40) -> reabilita o permanente e desativa o par decíduo correspondente
+      updated = mistaActiveDeciduous.filter(d => d !== pair);
+    }
+    onSetMistaActiveDeciduous(updated);
+  };
+
+  // Listas de números ativos por arcada para cálculo de ações em lote (Edêntulo)
+  const getMaxilaActiveNumbers = (): number[] => {
+    if (denticao === 'permanente') {
+      return [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
+    }
+    if (denticao === 'decidua') {
+      return [55, 54, 53, 52, 51, 61, 62, 63, 64, 65];
+    }
+    // Mista:
+    const upperRightPairs = [15, 14, 13, 12, 11].map(p => (mistaActiveDeciduous.includes(PAIR_MAP[p]) ? PAIR_MAP[p] : p));
+    const upperLeftPairs = [21, 22, 23, 24, 25].map(p => (mistaActiveDeciduous.includes(PAIR_MAP[p]) ? PAIR_MAP[p] : p));
+    return [18, 17, 16, ...upperRightPairs, ...upperLeftPairs, 26, 27, 28];
+  };
+
+  const getMandibulaActiveNumbers = (): number[] => {
+    if (denticao === 'permanente') {
+      return [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38];
+    }
+    if (denticao === 'decidua') {
+      return [85, 84, 83, 82, 81, 71, 72, 73, 74, 75];
+    }
+    // Mista:
+    const lowerRightPairs = [45, 44, 43, 42, 41].map(p => (mistaActiveDeciduous.includes(PAIR_MAP[p]) ? PAIR_MAP[p] : p));
+    const lowerLeftPairs = [31, 32, 33, 34, 35].map(p => (mistaActiveDeciduous.includes(PAIR_MAP[p]) ? PAIR_MAP[p] : p));
+    return [48, 47, 46, ...lowerRightPairs, ...lowerLeftPairs, 36, 37, 38];
+  };
+
+  const maxilaActiveNumbers = getMaxilaActiveNumbers();
+  const mandibulaActiveNumbers = getMandibulaActiveNumbers();
+
+  // Verifica estado de Edêntulo Ante-Mortem e Post-Mortem de forma dinâmica:
+  // Se qualquer dente for alterado para 'articulado' ou 'desarticulado', a condição
+  // every(...) se torna falsa automaticamente, desmarcando o botão, mas mantendo
+  // todos os outros dentes ausentes!
+  const isMaxilaEdentuloAnte =
+    maxilaActiveNumbers.length > 0 &&
+    maxilaActiveNumbers.every(n => {
+      const norm = normalizeToothRecord(getTooth(n), n);
+      return norm.presence === 'ausente_ante_mortem';
+    });
+
+  const isMaxilaEdentuloPost =
+    maxilaActiveNumbers.length > 0 &&
+    maxilaActiveNumbers.every(n => {
+      const norm = normalizeToothRecord(getTooth(n), n);
+      return norm.presence === 'ausente_post_mortem';
+    });
+
+  const isMandibulaEdentuloAnte =
+    mandibulaActiveNumbers.length > 0 &&
+    mandibulaActiveNumbers.every(n => {
+      const norm = normalizeToothRecord(getTooth(n), n);
+      return norm.presence === 'ausente_ante_mortem';
+    });
+
+  const isMandibulaEdentuloPost =
+    mandibulaActiveNumbers.length > 0 &&
+    mandibulaActiveNumbers.every(n => {
+      const norm = normalizeToothRecord(getTooth(n), n);
+      return norm.presence === 'ausente_post_mortem';
+    });
+
+  // Ações de marcação Edêntulo em lote por arcada
+  const handleToggleEdentulo = (
+    arch: 'maxila' | 'mandibula',
+    type: 'ausente_ante_mortem' | 'ausente_post_mortem'
+  ) => {
+    if (readOnly || !onBulkMarkTeeth) return;
+    const targetNumbers = arch === 'maxila' ? maxilaActiveNumbers : mandibulaActiveNumbers;
+    const isCurrentlyActive =
+      arch === 'maxila'
+        ? type === 'ausente_ante_mortem' ? isMaxilaEdentuloAnte : isMaxilaEdentuloPost
+        : type === 'ausente_ante_mortem' ? isMandibulaEdentuloAnte : isMandibulaEdentuloPost;
+
+    if (isCurrentlyActive) {
+      // Desmarca Edêntulo: restaura elementos para Articulado Hígido
+      onBulkMarkTeeth(targetNumbers, {
+        presence: 'articulado',
+        condition: 'higido'
+      });
+    } else {
+      // Marca todos os elementos ativos da arcada como Ausente
+      onBulkMarkTeeth(targetNumbers, {
+        presence: type,
+        condition: type
+      });
     }
   };
 
-  const handleSaveNotes = () => {
-    if (selectedTooth && onUpdateTooth && !readOnly) {
-      onUpdateTooth(selectedTooth.toothNumberFdi, selectedTooth.condition, toothNotes);
-      setSelectedTooth({ ...selectedTooth, notes: toothNotes });
-    }
-  };
-
-  const handleAddSupernumerary = () => {
-    if (!novaDescricaoSupranumerario.trim() || !onSetSupernumeraryTeeth) return;
+  // Gerenciamento de dentes supranumerários
+  const handleAddSupernumerary = (arch: 'maxila' | 'mandibula') => {
+    const text = arch === 'maxila' ? descSupranumerarioMaxila : descSupranumerarioMandibula;
+    if (!text.trim() || !onSetSupernumeraryTeeth) return;
     onSetSupernumeraryTeeth([
       ...supernumeraryTeeth,
-      { id: `supranumerario-${Date.now()}`, descricaoPosicao: novaDescricaoSupranumerario.trim() }
+      {
+        id: `supranumerario-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+        descricaoPosicao: text.trim(),
+        arch
+      }
     ]);
-    setNovaDescricaoSupranumerario('');
+    if (arch === 'maxila') setDescSupranumerarioMaxila('');
+    else setDescSupranumerarioMandibula('');
   };
+
   const handleRemoveSupernumerary = (id: string) => {
-    if (!onSetSupernumeraryTeeth) return;
+    if (readOnly || !onSetSupernumeraryTeeth) return;
     onSetSupernumeraryTeeth(supernumeraryTeeth.filter(s => s.id !== id));
   };
 
-  const renderToothButton = (num: number, editable: boolean, numberFirst: boolean) => {
-    const tooth = getTooth(num);
-    const cond = tooth ? conditionLabels[tooth.condition] : conditionLabels.higido;
-    const isSel = selectedTooth?.toothNumberFdi === num;
-    const content = (
-      <>
-        <span className="text-[10px] font-mono font-bold text-slate-800 dark:text-slate-100">{num}</span>
-        <span className="text-[9px] truncate max-w-full font-sans font-medium text-slate-600 dark:text-slate-300">
-          {tooth?.condition.substring(0, 3).toUpperCase()}
-        </span>
-      </>
+  // Seleção de dente individual para inspeção e edição
+  const handleSelectTooth = (num: number) => {
+    setSelectedToothNum(num);
+    const t = getTooth(num);
+    setToothNotes(t?.notes || '');
+  };
+
+  // Atualização do Estágio 1 (Presença)
+  const handleChangePresence = (newPresence: ToothPresenceCondition) => {
+    if (selectedToothNum === null || !onUpdateTooth || readOnly) return;
+    const current = normalizeToothRecord(getTooth(selectedToothNum), selectedToothNum);
+
+    let updatedClinical: ToothClinicalCondition[];
+    if (newPresence === 'ausente_ante_mortem' || newPresence === 'ausente_post_mortem') {
+      // Se ausente, aceita apenas a condição de ausência e limpa condições clínicas
+      updatedClinical = [];
+    } else {
+      // Se articulado ou desarticulado, mantém ou inicializa com 'higido' se estava vazio
+      updatedClinical = current.clinicalConditions.length > 0 ? current.clinicalConditions : ['higido'];
+    }
+
+    const legacyCondition = deriveLegacyCondition(newPresence, updatedClinical);
+    onUpdateTooth(
+      selectedToothNum,
+      {
+        presence: newPresence,
+        clinicalConditions: updatedClinical,
+        condition: legacyCondition
+      },
+      toothNotes
     );
+  };
+
+  // Atualização do Estágio 2 (Características Clínicas de Múltipla Escolha)
+  const handleToggleClinicalCondition = (cond: ToothClinicalCondition) => {
+    if (selectedToothNum === null || !onUpdateTooth || readOnly) return;
+    const current = normalizeToothRecord(getTooth(selectedToothNum), selectedToothNum);
+    if (current.presence === 'ausente_ante_mortem' || current.presence === 'ausente_post_mortem') return;
+
+    let updated: ToothClinicalCondition[];
+    if (cond === 'higido') {
+      // Clicou em Hígido: limpa anomalias patológicas e fixa apenas Hígido
+      updated = ['higido'];
+    } else {
+      const exists = current.clinicalConditions.includes(cond);
+      if (exists) {
+        updated = current.clinicalConditions.filter(c => c !== cond);
+        // Se ficou vazio, volta para 'higido'
+        if (updated.length === 0) updated = ['higido'];
+      } else {
+        // Remove 'higido' e adiciona a nova característica
+        updated = [...current.clinicalConditions.filter(c => c !== 'higido'), cond];
+      }
+    }
+
+    const legacyCondition = deriveLegacyCondition(current.presence, updated);
+    onUpdateTooth(
+      selectedToothNum,
+      {
+        presence: current.presence,
+        clinicalConditions: updated,
+        condition: legacyCondition
+      },
+      toothNotes
+    );
+  };
+
+  const handleSaveNotes = () => {
+    if (selectedToothNum === null || !onUpdateTooth || readOnly) return;
+    const current = normalizeToothRecord(getTooth(selectedToothNum), selectedToothNum);
+    const legacyCondition = deriveLegacyCondition(current.presence, current.clinicalConditions);
+    onUpdateTooth(
+      selectedToothNum,
+      {
+        presence: current.presence,
+        clinicalConditions: current.clinicalConditions,
+        condition: legacyCondition
+      },
+      toothNotes
+    );
+  };
+
+  // Cálculo de legenda e estilo de exibição do dente
+  const renderToothButton = (num: number) => {
+    const active = isToothActive(num);
+    const rawTooth = getTooth(num);
+    const norm = normalizeToothRecord(rawTooth, num);
+    const isSelected = selectedToothNum === num;
+
+    // Determina a legenda na unidade
+    let badgeText = '';
+    let isCountBadge = false;
+    let badgeColorClass = '';
+    let buttonThemeClass = '';
+
+    if (norm.presence === 'ausente_ante_mortem') {
+      badgeText = 'AAM';
+      buttonThemeClass = 'bg-purple-50 text-purple-800 border-purple-300 dark:bg-purple-950/60 dark:text-purple-200 dark:border-purple-800';
+      badgeColorClass = 'bg-purple-200 text-purple-900 dark:bg-purple-900 dark:text-purple-100';
+    } else if (norm.presence === 'ausente_post_mortem') {
+      badgeText = 'APM';
+      buttonThemeClass = 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-200 dark:border-amber-800';
+      badgeColorClass = 'bg-amber-200 text-amber-900 dark:bg-amber-900 dark:text-amber-100';
+    } else {
+      // Articulado ou Desarticulado
+      const count = norm.clinicalConditions.length;
+      if (count > 1) {
+        // REGRA DO USUÁRIO: Mais de uma opção marcada -> legenda deixa de ser letras e exibe o número "2", "3", "4"...
+        badgeText = `${count}`;
+        isCountBadge = true;
+        badgeColorClass = 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-bold';
+        buttonThemeClass = 'bg-indigo-50 text-indigo-900 border-indigo-300 dark:bg-indigo-950/60 dark:text-indigo-200 dark:border-indigo-800';
+      } else if (count === 1) {
+        const condMeta = CLINICAL_CONDITIONS_META[norm.clinicalConditions[0]];
+        badgeText = condMeta ? condMeta.abbr : 'ALT';
+        if (norm.clinicalConditions[0] === 'higido') {
+          buttonThemeClass = 'bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-200 dark:border-emerald-800';
+          badgeColorClass = 'bg-emerald-200 text-emerald-900 dark:bg-emerald-900 dark:text-emerald-100';
+        } else if (['cariado', 'fratura', 'resto_radicular', 'mancha'].includes(norm.clinicalConditions[0])) {
+          buttonThemeClass = 'bg-rose-50 text-rose-800 border-rose-300 dark:bg-rose-950/60 dark:text-rose-200 dark:border-rose-800';
+          badgeColorClass = 'bg-rose-200 text-rose-900 dark:bg-rose-900 dark:text-rose-100';
+        } else {
+          buttonThemeClass = 'bg-blue-50 text-blue-800 border-blue-300 dark:bg-blue-950/60 dark:text-blue-200 dark:border-blue-800';
+          badgeColorClass = 'bg-blue-200 text-blue-900 dark:bg-blue-900 dark:text-blue-100';
+        }
+      } else {
+        badgeText = norm.presence === 'articulado' ? 'ART' : 'DES';
+        buttonThemeClass = 'bg-slate-100 text-slate-800 border-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700';
+        badgeColorClass = 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200';
+      }
+
+      // Se for desarticulado, aplica borda tracejada diferenciadora
+      if (norm.presence === 'desarticulado') {
+        buttonThemeClass += ' border-dashed border-2';
+      }
+    }
+
+    const handleClick = () => {
+      if (denticao === 'mista' && !active) {
+        // Clicou no par inativo: ativa o dente e desativa seu correspondente
+        handleToggleMistaPair(num);
+      }
+      setSelectedToothNum(num);
+      const t = getTooth(num);
+      setToothNotes(t?.notes || '');
+    };
+
+    const tooltip = active
+      ? `Dente #${num}: ${PRESENCE_CONDITIONS_META[norm.presence].label}${
+          norm.clinicalConditions.length > 0
+            ? ` (${norm.clinicalConditions.map(c => CLINICAL_CONDITIONS_META[c]?.label || c).join(', ')})`
+            : ''
+        }`
+      : `Dente #${num}: Inativo na dentição mista (clique para ativar e desabilitar o par #${PAIR_MAP[num]})`;
+
     return (
       <button
         key={num}
-        disabled={!editable}
-        onClick={() => editable && tooth && handleSelectTooth(tooth)}
-        title={!editable ? 'Lado inativo deste par de quadrante na dentição mista.' : undefined}
-        className={`h-14 rounded-md border flex flex-col items-center justify-between p-1 text-center transition-all ${cond.bg} ${
-          isSel ? 'ring-2 ring-sky-600 scale-105 z-10' : editable ? 'hover:opacity-90' : 'opacity-35 cursor-not-allowed'
+        type="button"
+        onClick={handleClick}
+        title={tooltip}
+        className={`h-14 rounded-md border flex flex-col items-center justify-between p-1 text-center transition-all ${
+          !active
+            ? 'opacity-30 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:opacity-70 cursor-pointer'
+            : buttonThemeClass
+        } ${
+          isSelected
+            ? 'ring-2 ring-sky-600 scale-105 z-10 shadow-md font-bold'
+            : active
+            ? 'hover:scale-[1.02] hover:shadow-xs'
+            : ''
         }`}
       >
-        {numberFirst ? content : <>{content}</>}
+        <span className="text-[10px] font-mono font-bold leading-none">{num}</span>
+        <span
+          className={`text-[9px] font-mono px-1 py-0.5 rounded leading-none transition-all ${
+            isCountBadge ? 'shadow-xs scale-105' : ''
+          } ${badgeColorClass}`}
+        >
+          {badgeText}
+        </span>
       </button>
     );
   };
 
+  const selectedToothRecord = selectedToothNum !== null ? normalizeToothRecord(getTooth(selectedToothNum), selectedToothNum) : null;
+
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
-      <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-200 dark:border-slate-800">
+    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 space-y-4">
+      {/* Cabeçalho da Seção */}
+      <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
         <div>
           <h4 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-            Inventário Odontológico (Padrão FDI / ISO 3950)
+            Inventário Odontológico
           </h4>
           <p className="text-[11px] text-slate-500 dark:text-slate-400">
-            Clique num dente para inspecionar ou alterar a condição clínica.
+            Clique em uma unidade dentária para registrar a condição de presença e características clínicas.
           </p>
         </div>
         <div className="text-right">
           <span className="text-xs font-mono font-semibold text-slate-700 dark:text-slate-300">
-            {teeth.filter(t => t.condition !== 'higido').length} anomalias registradas
+            {[...maxilaActiveNumbers, ...mandibulaActiveNumbers].filter(n => {
+              const norm = normalizeToothRecord(getTooth(n), n);
+              return norm.presence !== 'articulado' || !norm.clinicalConditions.includes('higido');
+            }).length} anomalias registradas
           </span>
         </div>
       </div>
 
-      {/* Seletor de Dentição */}
-      <div className="flex flex-wrap items-center gap-3 mb-4">
-        <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Dentição:</span>
-        <div className="flex gap-1.5">
-          {(['permanente', 'mista', 'decidua'] as DenticaoMode[]).map((d) => (
+      {/* Seletor de Três Opções de Dentição (Logo abaixo da descrição e acima de Maxila) */}
+      <div className="flex flex-wrap items-center gap-3 p-2.5 bg-slate-50 dark:bg-slate-950/70 rounded-lg border border-slate-200 dark:border-slate-800">
+        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+          Tipo de Dentição:
+        </span>
+        <div className="flex gap-2">
+          {[
+            { id: 'permanente', label: 'Dentição permanente' },
+            { id: 'mista', label: 'Dentição mista' },
+            { id: 'decidua', label: 'Dentição decídua' }
+          ].map(opt => (
             <button
-              key={d}
+              key={opt.id}
               type="button"
               disabled={readOnly}
-              onClick={() => onSetDenticao?.(d)}
-              className={`px-2.5 py-1 rounded text-[11px] border transition-colors disabled:opacity-50 ${
-                denticao === d
-                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-semibold border-transparent'
+              onClick={() => onSetDenticao?.(opt.id as DenticaoMode)}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-all ${
+                denticao === opt.id
+                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-transparent shadow-xs font-bold'
                   : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100'
               }`}
             >
-              {d === 'permanente' ? 'Permanente' : d === 'mista' ? 'Mista' : 'Decídua'}
+              {opt.label}
             </button>
           ))}
         </div>
-
         {denticao === 'mista' && (
-          <div className="flex flex-wrap items-center gap-2 pl-2 border-l border-slate-200 dark:border-slate-700">
-            {([1, 2, 3, 4] as QuadrantePar[]).map((q) => {
-              const lado = denticaoQuadrantePares?.[q] ?? 'permanente';
-              return (
-                <div key={q} className="flex items-center gap-1 text-[10px]">
-                  <span className="text-slate-500 dark:text-slate-400">{QUADRANT_PAIR_LABEL[q]}:</span>
-                  {(['permanente', 'decidua'] as LadoPar[]).map((lv) => (
-                    <button
-                      key={lv}
-                      type="button"
-                      disabled={readOnly}
-                      onClick={() => onSetQuadrantePar?.(q, lv)}
-                      className={`px-1.5 py-0.5 rounded border transition-colors disabled:opacity-50 ${
-                        lado === lv
-                          ? 'bg-sky-600 text-white border-transparent font-semibold'
-                          : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700'
-                      }`}
-                    >
-                      {lv === 'permanente' ? 'Perm.' : 'Decíd.'}
-                    </button>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
+          <span className="text-[11px] text-slate-500 dark:text-slate-400 italic">
+            * Clique em qualquer número decíduo para ativá-lo e desabilitar o par permanente (e vice-versa).
+          </span>
         )}
       </div>
 
-      {/* Marcação em lote — Edêntulo */}
-      {!readOnly && (maxilaEditableNumbers.length > 0 || mandibulaEditableNumbers.length > 0) && (
-        <div className="flex flex-wrap items-center gap-2 mb-3 text-[11px]">
-          <span className="font-semibold text-slate-600 dark:text-slate-400">Edêntulo em lote:</span>
-          {maxilaEditableNumbers.length > 0 && (
-            <>
-              <button
-                type="button"
-                onClick={() => onBulkMarkTeeth?.(maxilaEditableNumbers, 'ausente_ante_mortem')}
-                className={`px-2 py-1 rounded border ${
-                  archIsAllCondition(maxilaEditableNumbers, 'ausente_ante_mortem')
-                    ? 'bg-purple-600 text-white border-transparent font-semibold'
-                    : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100'
-                }`}
-              >
-                Maxila — ante-mortem
-              </button>
-              <button
-                type="button"
-                onClick={() => onBulkMarkTeeth?.(maxilaEditableNumbers, 'ausente_post_mortem')}
-                className={`px-2 py-1 rounded border ${
-                  archIsAllCondition(maxilaEditableNumbers, 'ausente_post_mortem')
-                    ? 'bg-amber-600 text-white border-transparent font-semibold'
-                    : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100'
-                }`}
-              >
-                Maxila — post-mortem
-              </button>
-            </>
-          )}
-          {mandibulaEditableNumbers.length > 0 && (
-            <>
-              <button
-                type="button"
-                onClick={() => onBulkMarkTeeth?.(mandibulaEditableNumbers, 'ausente_ante_mortem')}
-                className={`px-2 py-1 rounded border ${
-                  archIsAllCondition(mandibulaEditableNumbers, 'ausente_ante_mortem')
-                    ? 'bg-purple-600 text-white border-transparent font-semibold'
-                    : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100'
-                }`}
-              >
-                Mandíbula — ante-mortem
-              </button>
-              <button
-                type="button"
-                onClick={() => onBulkMarkTeeth?.(mandibulaEditableNumbers, 'ausente_post_mortem')}
-                className={`px-2 py-1 rounded border ${
-                  archIsAllCondition(mandibulaEditableNumbers, 'ausente_post_mortem')
-                    ? 'bg-amber-600 text-white border-transparent font-semibold'
-                    : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100'
-                }`}
-              >
-                Mandíbula — post-mortem
-              </button>
-            </>
-          )}
-          <span className="text-slate-400 dark:text-slate-500">
-            Editar qualquer dente manualmente tira a marcação de edêntulo do botão.
+      {/* ARCADA SUPERIOR: Maxila (arcada superior) */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h5 className="text-xs uppercase font-mono font-bold text-slate-700 dark:text-slate-300">
+            Maxila (arcada superior)
+          </h5>
+          <span className="text-[10px] font-mono text-slate-400">
+            Lado Direito do Paciente ◄─────────► Lado Esquerdo do Paciente
           </span>
         </div>
-      )}
 
-      {/* Visual Chart ISO 3950 — Dentição Permanente */}
-      {showPermanent && (
-        <div className="overflow-x-auto pb-2">
-          <div className="min-w-[580px] space-y-4">
-            <div>
-              <div className="text-[10px] uppercase font-mono text-slate-400 font-semibold text-center mb-1">
-                Maxila (Arcada Superior)
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
+          {/* Matriz de Dentes da Maxila */}
+          <div className="lg:col-span-3 overflow-x-auto p-3 bg-slate-50 dark:bg-slate-950/60 rounded-lg border border-slate-200 dark:border-slate-800 space-y-2">
+            {denticao === 'permanente' && (
+              <div>
+                <div className="text-[10px] uppercase font-mono text-slate-400 font-semibold mb-1 text-center">
+                  Quadrante 1 (18–11) &emsp;|&emsp; Quadrante 2 (21–28)
+                </div>
+                <div className="grid grid-cols-16 gap-1 min-w-[560px]">
+                  {[18, 17, 16, 15, 14, 13, 12, 11].map(num => renderToothButton(num))}
+                  {[21, 22, 23, 24, 25, 26, 27, 28].map(num => renderToothButton(num))}
+                </div>
               </div>
-              <div className="grid grid-cols-16 gap-1 p-2 bg-slate-50 dark:bg-slate-950/60 rounded-lg border border-slate-200 dark:border-slate-800">
-                {upperRight.map(num => renderToothButton(num, isQuadrantEditable(1), true))}
-                {upperLeft.map(num => renderToothButton(num, isQuadrantEditable(2), true))}
-              </div>
-            </div>
+            )}
 
-            <div className="relative flex items-center justify-center">
-              <div className="border-t border-dashed border-slate-300 dark:border-slate-700 w-full"></div>
-              <span className="absolute bg-white dark:bg-slate-900 px-3 text-[10px] font-mono text-slate-400 uppercase">
-                Linha de Oclusão
-              </span>
-            </div>
+            {denticao === 'mista' && (
+              <div className="space-y-2 min-w-[560px]">
+                <div>
+                  <div className="text-[10px] uppercase font-mono text-slate-400 font-semibold mb-1 text-center">
+                    Dentição Permanente: 18..11 &emsp;|&emsp; 21..28
+                  </div>
+                  <div className="grid grid-cols-16 gap-1">
+                    {[18, 17, 16, 15, 14, 13, 12, 11].map(num => renderToothButton(num))}
+                    {[21, 22, 23, 24, 25, 26, 27, 28].map(num => renderToothButton(num))}
+                  </div>
+                </div>
 
-            <div>
-              <div className="grid grid-cols-16 gap-1 p-2 bg-slate-50 dark:bg-slate-950/60 rounded-lg border border-slate-200 dark:border-slate-800">
-                {lowerRight.map(num => renderToothButton(num, isQuadrantEditable(4), false))}
-                {lowerLeft.map(num => renderToothButton(num, isQuadrantEditable(3), false))}
+                {/* Linha decídua alinhada abaixo de 15..11 e 21..25 */}
+                <div>
+                  <div className="text-[10px] uppercase font-mono text-sky-600 dark:text-sky-400 font-semibold mb-1 text-center">
+                    Dentição Decídua correspondente (55..51 e 61..65):
+                  </div>
+                  <div className="grid grid-cols-16 gap-1">
+                    {/* Espaços vazios correspondentes a 18, 17, 16 */}
+                    <div className="col-span-3 flex items-center justify-center text-[10px] font-mono text-slate-400">
+                      (Molares permanentes)
+                    </div>
+                    {/* 55..51 abaixo de 15..11 */}
+                    {[55, 54, 53, 52, 51].map(num => renderToothButton(num))}
+                    {/* 61..65 abaixo de 21..25 */}
+                    {[61, 62, 63, 64, 65].map(num => renderToothButton(num))}
+                    {/* Espaços vazios correspondentes a 26, 27, 28 */}
+                    <div className="col-span-3 flex items-center justify-center text-[10px] font-mono text-slate-400">
+                      (Molares permanentes)
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div className="text-[10px] uppercase font-mono text-slate-400 font-semibold text-center mt-1">
-                Mandíbula (Arcada Inferior)
+            )}
+
+            {denticao === 'decidua' && (
+              <div className="min-w-[360px]">
+                <div className="text-[10px] uppercase font-mono text-slate-400 font-semibold mb-1 text-center">
+                  Quadrante 5 (55–51) &emsp;|&emsp; Quadrante 6 (61–65)
+                </div>
+                <div className="grid grid-cols-10 gap-1">
+                  {[55, 54, 53, 52, 51].map(num => renderToothButton(num))}
+                  {[61, 62, 63, 64, 65].map(num => renderToothButton(num))}
+                </div>
               </div>
+            )}
+          </div>
+
+          {/* Painel Lateral: Edêntulo em Lote & Dente Supranumerário da Maxila */}
+          <div className="lg:col-span-1 p-3 bg-slate-50 dark:bg-slate-950/70 rounded-lg border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
+            <span className="block font-semibold text-slate-700 dark:text-slate-300 text-[11px] uppercase font-mono">
+              Opções da Maxila:
+            </span>
+
+            <button
+              type="button"
+              disabled={readOnly}
+              onClick={() => handleToggleEdentulo('maxila', 'ausente_ante_mortem')}
+              className={`w-full text-left p-2 rounded border flex items-center justify-between text-[11px] transition-colors ${
+                isMaxilaEdentuloAnte
+                  ? 'bg-purple-600 text-white font-bold border-transparent'
+                  : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              <span>Edêntulo ante-mortem (Alvéolos fechados)</span>
+              {isMaxilaEdentuloAnte && <Check className="w-3.5 h-3.5 shrink-0" />}
+            </button>
+
+            <button
+              type="button"
+              disabled={readOnly}
+              onClick={() => handleToggleEdentulo('maxila', 'ausente_post_mortem')}
+              className={`w-full text-left p-2 rounded border flex items-center justify-between text-[11px] transition-colors ${
+                isMaxilaEdentuloPost
+                  ? 'bg-amber-600 text-white font-bold border-transparent'
+                  : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              <span>Edêntulo post-mortem (Alvéolos abertos)</span>
+              {isMaxilaEdentuloPost && <Check className="w-3.5 h-3.5 shrink-0" />}
+            </button>
+
+            {/* Dente Supranumerário Maxila */}
+            <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowSupernumeraryMaxila(!showSupernumeraryMaxila)}
+                className="w-full text-left font-medium text-sky-600 dark:text-sky-400 hover:underline flex items-center justify-between text-[11px]"
+              >
+                <span>Dente supranumerário (Maxila)</span>
+                <span>{showSupernumeraryMaxila ? '▲' : '▼'}</span>
+              </button>
+
+              {showSupernumeraryMaxila && (
+                <div className="mt-2 space-y-2">
+                  <label className="block text-[10px] font-bold uppercase font-mono text-slate-600 dark:text-slate-400">
+                    Descreva a posição
+                  </label>
+                  <div className="flex gap-1.5">
+                    <input
+                      type="text"
+                      disabled={readOnly}
+                      value={descSupranumerarioMaxila}
+                      onChange={e => setDescSupranumerarioMaxila(e.target.value)}
+                      placeholder="Ex: Mesiodente entre 11 e 21..."
+                      className="flex-1 p-1.5 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+                    />
+                    <button
+                      type="button"
+                      disabled={readOnly || !descSupranumerarioMaxila.trim()}
+                      onClick={() => handleAddSupernumerary('maxila')}
+                      className="px-2 py-1 bg-sky-600 text-white rounded text-xs font-semibold disabled:opacity-40"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {/* Lista de supranumerários da Maxila */}
+                  <div className="space-y-1">
+                    {supernumeraryTeeth
+                      .filter(s => s.arch === 'maxila' || !s.arch)
+                      .map(s => (
+                        <div
+                          key={s.id}
+                          className="flex items-center justify-between p-1.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[11px]"
+                        >
+                          <span className="truncate pr-1">{s.descricaoPosicao}</span>
+                          {!readOnly && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveSupernumerary(s.id)}
+                              className="text-slate-400 hover:text-rose-600"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* Visual Chart — Dentição Decídua */}
-      {showDeciduous && (
-        <div className="overflow-x-auto pb-2 mt-2">
-          <div className="min-w-[380px] space-y-4">
-            <div>
-              <div className="text-[10px] uppercase font-mono text-slate-400 font-semibold text-center mb-1">
-                Maxila Decídua (Arcada Superior)
-              </div>
-              <div className="grid grid-cols-10 gap-1 p-2 bg-slate-50 dark:bg-slate-950/60 rounded-lg border border-slate-200 dark:border-slate-800">
-                {upperRightDeciduous.map(num => renderToothButton(num, isQuadrantEditable(5), true))}
-                {upperLeftDeciduous.map(num => renderToothButton(num, isQuadrantEditable(6), true))}
-              </div>
-            </div>
+      {/* Linha de Oclusão */}
+      <div className="relative flex items-center justify-center my-3">
+        <div className="border-t border-dashed border-slate-300 dark:border-slate-700 w-full"></div>
+        <span className="absolute bg-white dark:bg-slate-900 px-3 text-[10px] font-mono text-slate-400 uppercase tracking-wider">
+          Linha de Oclusão
+        </span>
+      </div>
 
-            <div className="relative flex items-center justify-center">
-              <div className="border-t border-dashed border-slate-300 dark:border-slate-700 w-full"></div>
-              <span className="absolute bg-white dark:bg-slate-900 px-3 text-[10px] font-mono text-slate-400 uppercase">
-                Linha de Oclusão
-              </span>
-            </div>
+      {/* ARCADA INFERIOR: Mandíbula (arcada inferior) */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h5 className="text-xs uppercase font-mono font-bold text-slate-700 dark:text-slate-300">
+            Mandíbula (arcada inferior)
+          </h5>
+          <span className="text-[10px] font-mono text-slate-400">
+            Lado Direito do Paciente ◄─────────► Lado Esquerdo do Paciente
+          </span>
+        </div>
 
-            <div>
-              <div className="grid grid-cols-10 gap-1 p-2 bg-slate-50 dark:bg-slate-950/60 rounded-lg border border-slate-200 dark:border-slate-800">
-                {lowerRightDeciduous.map(num => renderToothButton(num, isQuadrantEditable(8), false))}
-                {lowerLeftDeciduous.map(num => renderToothButton(num, isQuadrantEditable(7), false))}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
+          {/* Matriz de Dentes da Mandíbula */}
+          <div className="lg:col-span-3 overflow-x-auto p-3 bg-slate-50 dark:bg-slate-950/60 rounded-lg border border-slate-200 dark:border-slate-800 space-y-2">
+            {denticao === 'permanente' && (
+              <div>
+                <div className="grid grid-cols-16 gap-1 min-w-[560px]">
+                  {[48, 47, 46, 45, 44, 43, 42, 41].map(num => renderToothButton(num))}
+                  {[31, 32, 33, 34, 35, 36, 37, 38].map(num => renderToothButton(num))}
+                </div>
+                <div className="text-[10px] uppercase font-mono text-slate-400 font-semibold mt-1 text-center">
+                  Quadrante 4 (48–41) &emsp;|&emsp; Quadrante 3 (31–38)
+                </div>
               </div>
-              <div className="text-[10px] uppercase font-mono text-slate-400 font-semibold text-center mt-1">
-                Mandíbula Decídua (Arcada Inferior)
+            )}
+
+            {denticao === 'mista' && (
+              <div className="space-y-2 min-w-[560px]">
+                {/* Linha decídua alinhada acima de 45..41 e 31..35 */}
+                <div>
+                  <div className="text-[10px] uppercase font-mono text-sky-600 dark:text-sky-400 font-semibold mb-1 text-center">
+                    Dentição Decídua correspondente (85..81 e 71..75):
+                  </div>
+                  <div className="grid grid-cols-16 gap-1">
+                    {/* Espaços vazios correspondentes a 48, 47, 46 */}
+                    <div className="col-span-3 flex items-center justify-center text-[10px] font-mono text-slate-400">
+                      (Molares permanentes)
+                    </div>
+                    {/* 85..81 acima de 45..41 */}
+                    {[85, 84, 83, 82, 81].map(num => renderToothButton(num))}
+                    {/* 71..75 acima de 31..35 */}
+                    {[71, 72, 73, 74, 75].map(num => renderToothButton(num))}
+                    {/* Espaços vazios correspondentes a 36, 37, 38 */}
+                    <div className="col-span-3 flex items-center justify-center text-[10px] font-mono text-slate-400">
+                      (Molares permanentes)
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="grid grid-cols-16 gap-1">
+                    {[48, 47, 46, 45, 44, 43, 42, 41].map(num => renderToothButton(num))}
+                    {[31, 32, 33, 34, 35, 36, 37, 38].map(num => renderToothButton(num))}
+                  </div>
+                  <div className="text-[10px] uppercase font-mono text-slate-400 font-semibold mt-1 text-center">
+                    Dentição Permanente: 48..41 &emsp;|&emsp; 31..38
+                  </div>
+                </div>
               </div>
+            )}
+
+            {denticao === 'decidua' && (
+              <div className="min-w-[360px]">
+                <div className="grid grid-cols-10 gap-1">
+                  {[85, 84, 83, 82, 81].map(num => renderToothButton(num))}
+                  {[71, 72, 73, 74, 75].map(num => renderToothButton(num))}
+                </div>
+                <div className="text-[10px] uppercase font-mono text-slate-400 font-semibold mt-1 text-center">
+                  Quadrante 8 (85–81) &emsp;|&emsp; Quadrante 7 (71–75)
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Painel Lateral: Edêntulo em Lote & Dente Supranumerário da Mandíbula */}
+          <div className="lg:col-span-1 p-3 bg-slate-50 dark:bg-slate-950/70 rounded-lg border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
+            <span className="block font-semibold text-slate-700 dark:text-slate-300 text-[11px] uppercase font-mono">
+              Opções da Mandíbula:
+            </span>
+
+            <button
+              type="button"
+              disabled={readOnly}
+              onClick={() => handleToggleEdentulo('mandibula', 'ausente_ante_mortem')}
+              className={`w-full text-left p-2 rounded border flex items-center justify-between text-[11px] transition-colors ${
+                isMandibulaEdentuloAnte
+                  ? 'bg-purple-600 text-white font-bold border-transparent'
+                  : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              <span>Edêntulo ante-mortem (Alvéolos fechados)</span>
+              {isMandibulaEdentuloAnte && <Check className="w-3.5 h-3.5 shrink-0" />}
+            </button>
+
+            <button
+              type="button"
+              disabled={readOnly}
+              onClick={() => handleToggleEdentulo('mandibula', 'ausente_post_mortem')}
+              className={`w-full text-left p-2 rounded border flex items-center justify-between text-[11px] transition-colors ${
+                isMandibulaEdentuloPost
+                  ? 'bg-amber-600 text-white font-bold border-transparent'
+                  : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              <span>Edêntulo post-mortem (Alvéolos abertos)</span>
+              {isMandibulaEdentuloPost && <Check className="w-3.5 h-3.5 shrink-0" />}
+            </button>
+
+            {/* Dente Supranumerário Mandíbula */}
+            <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowSupernumeraryMandibula(!showSupernumeraryMandibula)}
+                className="w-full text-left font-medium text-sky-600 dark:text-sky-400 hover:underline flex items-center justify-between text-[11px]"
+              >
+                <span>Dente supranumerário (Mandíbula)</span>
+                <span>{showSupernumeraryMandibula ? '▲' : '▼'}</span>
+              </button>
+
+              {showSupernumeraryMandibula && (
+                <div className="mt-2 space-y-2">
+                  <label className="block text-[10px] font-bold uppercase font-mono text-slate-600 dark:text-slate-400">
+                    Descreva a posição
+                  </label>
+                  <div className="flex gap-1.5">
+                    <input
+                      type="text"
+                      disabled={readOnly}
+                      value={descSupranumerarioMandibula}
+                      onChange={e => setDescSupranumerarioMandibula(e.target.value)}
+                      placeholder="Ex: Paracúspide lingual próximo ao 44..."
+                      className="flex-1 p-1.5 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+                    />
+                    <button
+                      type="button"
+                      disabled={readOnly || !descSupranumerarioMandibula.trim()}
+                      onClick={() => handleAddSupernumerary('mandibula')}
+                      className="px-2 py-1 bg-sky-600 text-white rounded text-xs font-semibold disabled:opacity-40"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {/* Lista de supranumerários da Mandíbula */}
+                  <div className="space-y-1">
+                    {supernumeraryTeeth
+                      .filter(s => s.arch === 'mandibula')
+                      .map(s => (
+                        <div
+                          key={s.id}
+                          className="flex items-center justify-between p-1.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[11px]"
+                        >
+                          <span className="truncate pr-1">{s.descricaoPosicao}</span>
+                          {!readOnly && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveSupernumerary(s.id)}
+                              className="text-slate-400 hover:text-rose-600"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* Editor do Dente Selecionado */}
-      {selectedTooth && (
-        <div className="mt-4 p-4 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs">
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+      {/* PAINEL DE INSPEÇÃO E EDIÇÃO DO ELEMENTO SELECIONADO (2 ESTÁGIOS) */}
+      {selectedToothNum !== null && selectedToothRecord && (
+        <div className="mt-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs space-y-4">
+          {/* Cabeçalho do Elemento */}
+          <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-200 dark:border-slate-800">
             <div>
-              <span className="font-bold text-sm text-slate-900 dark:text-white font-mono">
-                Dente #{selectedTooth.toothNumberFdi}
+              <span className="font-bold text-base text-slate-900 dark:text-white font-mono">
+                Dente #{selectedToothNum}
               </span>
               <span className="text-slate-500 ml-2 font-mono">
-                (Quadrante {selectedTooth.quadrant})
+                ({selectedToothNum >= 50 ? 'Dentição Decídua' : 'Dentição Permanente'} · Quadrante {Math.floor(selectedToothNum / 10)})
               </span>
             </div>
-            <span className={`px-2 py-0.5 rounded font-medium border ${conditionLabels[selectedTooth.condition].bg} ${conditionLabels[selectedTooth.condition].color}`}>
-              {conditionLabels[selectedTooth.condition].label}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-slate-500 text-[11px]">Condição Atual:</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-200 px-2 py-0.5 rounded bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700">
+                {PRESENCE_CONDITIONS_META[selectedToothRecord.presence].label}
+                {selectedToothRecord.clinicalConditions.length > 0 &&
+                  ` (${selectedToothRecord.clinicalConditions.map(c => CLINICAL_CONDITIONS_META[c]?.label || c).join(', ')})`}
+              </span>
+            </div>
           </div>
 
-          {!readOnly && (
-            <div className="space-y-3">
+          {!readOnly ? (
+            <div className="space-y-4">
+              {/* ESTÁGIO 1: CONDIÇÃO DE PRESENÇA (OBRIGATÓRIA - UMA DAS 4 OPÇÕES) */}
               <div>
-                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                  Alterar Condição Clínica:
+                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 uppercase font-mono mb-2">
+                  1. Condição de Presença (Obrigatória — Seleção Única):
                 </label>
-                <div className="flex flex-wrap gap-1.5">
-                  {(Object.keys(conditionLabels) as ToothRecord['condition'][]).map(cond => (
-                    <button
-                      key={cond}
-                      onClick={() => handleChangeCondition(cond)}
-                      className={`px-2 py-1 rounded text-[11px] border transition-colors ${
-                        selectedTooth.condition === cond
-                          ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-semibold'
-                          : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100'
-                      }`}
-                    >
-                      {conditionLabels[cond].label.split('(')[0].trim()}
-                    </button>
-                  ))}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {(Object.keys(PRESENCE_CONDITIONS_META) as ToothPresenceCondition[]).map(condKey => {
+                    const meta = PRESENCE_CONDITIONS_META[condKey];
+                    const isSelected = selectedToothRecord.presence === condKey;
+                    return (
+                      <button
+                        key={condKey}
+                        type="button"
+                        onClick={() => handleChangePresence(condKey)}
+                        className={`p-2.5 rounded-lg border text-left flex flex-col justify-between transition-all ${
+                          isSelected
+                            ? condKey.startsWith('ausente')
+                              ? condKey === 'ausente_ante_mortem'
+                                ? 'bg-purple-600 text-white font-bold border-transparent shadow-xs'
+                                : 'bg-amber-600 text-white font-bold border-transparent shadow-xs'
+                              : 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-bold border-transparent shadow-xs'
+                            : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between w-full mb-1">
+                          <span className="font-bold text-xs">{meta.label}</span>
+                          {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
+                        </div>
+                        <span className={`text-[10px] leading-tight ${isSelected ? 'opacity-90' : 'text-slate-500'}`}>
+                          {meta.description}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
-              <div>
+              {/* ESTÁGIO 2: CARACTERÍSTICAS CLÍNICAS (MÚLTIPLA SELEÇÃO — APENAS SE ARTICULADO OU DESARTICULADO) */}
+              {(selectedToothRecord.presence === 'articulado' || selectedToothRecord.presence === 'desarticulado') ? (
+                <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 uppercase font-mono">
+                      2. Características Clínicas (Múltipla Seleção):
+                    </label>
+                    <span className="text-[11px] text-slate-500">
+                      Pode marcar mais de uma opção simultaneamente.
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-1.5">
+                    {(Object.keys(CLINICAL_CONDITIONS_META) as ToothClinicalCondition[]).map(cKey => {
+                      const meta = CLINICAL_CONDITIONS_META[cKey];
+                      const isChecked = selectedToothRecord.clinicalConditions.includes(cKey);
+                      return (
+                        <button
+                          key={cKey}
+                          type="button"
+                          onClick={() => handleToggleClinicalCondition(cKey)}
+                          className={`p-2 rounded-lg border text-left flex items-center justify-between text-xs transition-colors ${
+                            isChecked
+                              ? 'bg-sky-600 text-white font-semibold border-transparent shadow-2xs'
+                              : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100'
+                          }`}
+                        >
+                          <span className="truncate pr-1 text-[11px]">{meta.label}</span>
+                          {isChecked && <Check className="w-3 h-3 shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 text-xs flex items-center gap-2">
+                  <Info className="w-4 h-4 shrink-0 text-slate-400" />
+                  <span>
+                    O elemento está marcado como <strong>{PRESENCE_CONDITIONS_META[selectedToothRecord.presence].label}</strong>. Características clínicas aplicam-se apenas quando o elemento é <strong>Articulado</strong> ou <strong>Desarticulado</strong>.
+                  </span>
+                </div>
+              )}
+
+              {/* Observações Antropológicas / Detalhes de Desgaste ou Restauração */}
+              <div className="pt-3 border-t border-slate-200 dark:border-slate-800">
                 <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
                   Observações Antropológicas / Detalhes de Desgaste ou Restauração:
                 </label>
@@ -419,70 +1057,27 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
                   <input
                     type="text"
                     value={toothNotes}
-                    onChange={(e) => setToothNotes(e.target.value)}
-                    placeholder="Ex: Restauração oclusal com amálgama; cúspide vestibular fraturada..."
-                    className="flex-1 p-2 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                    onChange={e => setToothNotes(e.target.value)}
+                    placeholder="Ex: Restauração em resina composta na face oclusal; faceta de desgaste severo..."
+                    className="flex-1 p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs"
                   />
                   <button
+                    type="button"
                     onClick={handleSaveNotes}
-                    className="px-3 py-1.5 rounded bg-sky-600 text-white font-medium hover:bg-sky-500 transition-colors"
+                    className="px-3 py-1.5 rounded-lg bg-sky-600 text-white font-semibold hover:bg-sky-500 transition-colors text-xs whitespace-nowrap"
                   >
                     Salvar Nota
                   </button>
                 </div>
               </div>
             </div>
+          ) : (
+            <div className="text-slate-500 text-xs italic">
+              Modo somente leitura ativado. Não é possível alterar as características deste elemento.
+            </div>
           )}
         </div>
       )}
-
-      {/* Dentes Supranumerários */}
-      <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800">
-        <h5 className="text-[11px] font-mono uppercase font-bold text-slate-500 dark:text-slate-400 mb-2">
-          Dentes Supranumerários
-        </h5>
-        <div className="space-y-2">
-          {supernumeraryTeeth.length === 0 && (
-            <p className="text-[11px] text-slate-400 italic">Nenhum dente supranumerário registrado.</p>
-          )}
-          {supernumeraryTeeth.map((s) => (
-            <div key={s.id} className="flex items-center gap-2">
-              <div className="flex-1 p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs">
-                {s.descricaoPosicao}
-              </div>
-              {!readOnly && (
-                <button
-                  type="button"
-                  aria-label="Remover dente supranumerário"
-                  onClick={() => handleRemoveSupernumerary(s.id)}
-                  className="shrink-0 w-8 h-8 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950 flex items-center justify-center"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-          ))}
-          {!readOnly && (
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={novaDescricaoSupranumerario}
-                placeholder="Descreva a posição (ex: mesiodente entre os incisivos centrais superiores)"
-                onChange={(e) => setNovaDescricaoSupranumerario(e.target.value)}
-                className="flex-1 p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
-              />
-              <button
-                type="button"
-                onClick={handleAddSupernumerary}
-                className="text-xs px-2.5 py-1.5 rounded-lg bg-sky-50 dark:bg-sky-950 text-sky-700 dark:text-sky-300 font-medium flex items-center gap-1 whitespace-nowrap"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Adicionar</span>
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   );
 };

@@ -19,28 +19,42 @@ FDI padrão.
 
 1. **Dentição por indivíduo** (`IndividualHypothesis.denticao`):
    `'permanente'` (padrão) | `'mista'` | `'decidua'`. `generateInitialOdontogram`
-   passa a gerar as 32 posições permanentes (quadrantes 1-4) e as 20
-   decíduas (quadrantes 5-8) de uma vez — qual conjunto é editável depende
-   só da dentição escolhida, nunca da presença do registro.
-2. **Dentição mista — par de quadrante** (`denticaoQuadrantePares`, chave
-   1-4): cada par anatômico (1↔5 sup. direito, 2↔6 sup. esquerdo, 3↔7 inf.
-   esquerdo, 4↔8 inf. direito) guarda qual lado (`'permanente'` ou
-   `'decidua'`) está em uso agora. O lado inativo do par fica
-   desabilitado na tela — nunca registra as duas dentições ao mesmo tempo
-   pra mesma posição anatômica.
-3. **Edêntulo em lote**: botões "ante-mortem"/"post-mortem" por arcada
-   (maxila/mandíbula), restritos aos dentes editáveis no momento (respeita
-   o lado ativo do par em dentição mista). O botão reflete se a arcada
-   inteira já está naquela condição — editar um dente manualmente já tira
-   a marcação, sem precisar de campo extra.
-4. **Dentes supranumerários** (`supernumeraryTeeth`): lista livre de
-   descrição de posição, já que não ocupam uma posição FDI padrão.
+   gera as 32 posições permanentes (quadrantes 1-4) e as 20 decíduas (quadrantes 5-8)
+   inicializadas com `presence: 'articulado'` e `clinicalConditions: ['higido']`.
+2. **Dentição mista — pareamento elemento a elemento**:
+   - Maxila: abaixo de 15..11 aparecem 55..51; abaixo de 21..25 aparecem 61..65.
+   - Mandíbula: acima de 45..41 aparecem 85..81; acima de 31..35 aparecem 71..75.
+   - Molares permanentes (18..16, 26..28, 48..46, 36..38) permanecem ativos.
+   - Clicar num dente decíduo (dezenas 50-80) o ativa e desabilita automaticamente
+     o par permanente correspondente (dezenas 10-40). Clicar no permanente
+     reabilita o permanente e desativa o decíduo correspondente.
+3. **Marcação em dois estágios por unidade**:
+   - **Estágio 1 (Presença — Seleção Única Obrigatória)**:
+     `Articulado`, `Desarticulado`, `Ausente ante-mortem`, `Ausente post-mortem`.
+     Se ausente (ante ou post-mortem), aceita exclusivamente essa condição e
+     não exibe o Estágio 2.
+   - **Estágio 2 (Características Clínicas — Múltipla Seleção de 17 opções)**:
+     Aparece apenas quando marcado como `Articulado` ou `Desarticulado`.
+     Opções: Parcialmente irrompido, Não irrompido, Hígido, Cariado, Mancha,
+     Resto radicular, Fratura, Com material restaurador, Com material protético,
+     Implante, Aparelho ortodôntico/ortopédico, Tártaro, Erosão, Abrasão,
+     Abfração, Giroversão, Apinhamento.
+   - **Legenda na unidade**:
+     - `AAM` para ausente ante-mortem; `APM` para ausente post-mortem.
+     - Se articulado/desarticulado com 1 opção: sigla de 3 letras (`HIG`, `CAR`, `FRA`, etc.).
+     - Se articulado/desarticulado com mais de 1 opção: a legenda de letras é
+       substituída pela contagem numérica de características marcadas (`"2"`, `"3"`, `"4"`, ...).
+     - Se nenhuma opção clínica selecionada: `ART` ou `DES`.
+4. **Edêntulo em lote dinâmico por arcada**:
+   - Botões "Edêntulo ante-mortem (Alvéolos fechados)" e "Edêntulo post-mortem (Alvéolos abertos)"
+     ao lado de cada arcada (Maxila e Mandíbula).
+   - O estado marcado reflete se todos os dentes ativos da arcada estão ausentes.
+   - Alterar manualmente qualquer dente para `Articulado` ou `Desarticulado`
+     desmarca a opção "Edêntulo" daquela arcada, mantendo todos os demais dentes como ausentes.
+5. **Dentes supranumerários por arcada**:
+   - Ao clicar em "Dente supranumerário", expande o campo "Descreva a posição".
+   - Suporta múltiplos dentes supranumerários por arcada com remoção individual.
 
 ### Details
 
-- Pendente nesta sequência (não decidido ainda): o modelo de condição do
-  dente em dois estágios (Estágio 1 obrigatório + Estágio 2 com múltiplas
-  condições clínicas) depende da lista exata das 17 opções do Estágio 2 —
-  ainda não confirmada com a curadoria.
-- Cobertura: suíte geral (`npx vitest run`); sem teste dedicado a
-  `OdontogramViewer.tsx` ainda.
+- Cobertura: Testes unitários de regras de negócio em `src/components/__tests__/odontogramLogic.test.ts` (15 testes cobrindo pareamento anatômico, metadados, conversão reversa e normalização de legados).

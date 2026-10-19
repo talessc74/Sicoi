@@ -103,6 +103,8 @@ export function generateInitialOdontogram(): ToothRecord[] {
       teeth.push({
         toothNumberFdi: t,
         quadrant: quad.q as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8,
+        presence: 'articulado',
+        clinicalConditions: ['higido'],
         condition: 'higido',
         notes: ''
       });
@@ -397,10 +399,10 @@ export const INITIAL_COLLECTIONS: OsteologicalCollection[] = [
           },
           odontogram: [
             ...generateInitialOdontogram().map((t) => {
-              if (t.toothNumberFdi === 16) return { ...t, condition: 'carie' as const, notes: 'Cárie oclusal extensa profunda' };
-              if (t.toothNumberFdi === 36) return { ...t, condition: 'ausente_ante_mortem' as const, notes: 'Reabsorção alveolar óssea completa' };
-              if (t.toothNumberFdi === 21) return { ...t, condition: 'restauracao' as const, notes: 'Amálgama distal' };
-              if (t.toothNumberFdi === 48) return { ...t, condition: 'nao_erupcionado' as const, notes: 'Incluso no ramo mandibular' };
+              if (t.toothNumberFdi === 16) return { ...t, presence: 'articulado' as const, clinicalConditions: ['cariado' as const], condition: 'carie' as const, notes: 'Cárie oclusal extensa profunda' };
+              if (t.toothNumberFdi === 36) return { ...t, presence: 'ausente_ante_mortem' as const, clinicalConditions: [], condition: 'ausente_ante_mortem' as const, notes: 'Reabsorção alveolar óssea completa' };
+              if (t.toothNumberFdi === 21) return { ...t, presence: 'articulado' as const, clinicalConditions: ['com_material_restaurador' as const], condition: 'restauracao' as const, notes: 'Amálgama distal' };
+              if (t.toothNumberFdi === 48) return { ...t, presence: 'articulado' as const, clinicalConditions: ['nao_irrompido' as const], condition: 'nao_erupcionado' as const, notes: 'Incluso no ramo mandibular' };
               return t;
             })
           ]

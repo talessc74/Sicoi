@@ -498,17 +498,45 @@ export interface IndividualHypothesis {
   // ou em "permanente"/"decídua" equivale a todos os pares no mesmo lado.
   denticao?: 'permanente' | 'mista' | 'decidua';
   denticaoQuadrantePares?: Partial<Record<1 | 2 | 3 | 4, 'permanente' | 'decidua'>>;
+  mistaActiveDeciduous?: number[];
 
-  // Dentes extras além das 32 posições FDI padrão — nunca ocupam uma posição
-  // do odontogram, só descrevem onde foram observados.
-  supernumeraryTeeth?: { id: string; descricaoPosicao: string }[];
+  // Dentes extras além das posições FDI padrão — nunca ocupam uma posição
+  // fixa do odontograma, registram a posição anatômica descrita.
+  supernumeraryTeeth?: { id: string; descricaoPosicao: string; arch?: 'maxila' | 'mandibula' }[];
 }
+
+export type ToothPresenceCondition =
+  | 'articulado'
+  | 'desarticulado'
+  | 'ausente_ante_mortem'
+  | 'ausente_post_mortem';
+
+export type ToothClinicalCondition =
+  | 'parcialmente_irrompido'
+  | 'nao_irrompido'
+  | 'higido'
+  | 'cariado'
+  | 'mancha'
+  | 'resto_radicular'
+  | 'fratura'
+  | 'com_material_restaurador'
+  | 'com_material_protetico'
+  | 'implante'
+  | 'aparelho_ortodontico'
+  | 'tartaro'
+  | 'erosao'
+  | 'abrasao'
+  | 'abfracao'
+  | 'giroversao'
+  | 'apinhamento';
 
 export interface ToothRecord {
   toothNumberFdi: number;
   // 1-4: dentição permanente (ISO 3950). 5-8: dentição decídua, no mesmo
   // posicionamento anatômico do seu par (5↔1, 6↔2, 7↔3, 8↔4).
   quadrant: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+  presence?: ToothPresenceCondition;
+  clinicalConditions?: ToothClinicalCondition[];
   condition: 'higido' | 'ausente_ante_mortem' | 'ausente_post_mortem' | 'carie' | 'restauracao' | 'desgaste_severo' | 'raiz_residual' | 'nao_erupcionado';
   notes?: string;
 }
