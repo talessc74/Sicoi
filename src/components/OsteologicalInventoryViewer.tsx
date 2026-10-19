@@ -8,7 +8,7 @@ import {
   OsteologicalCountIdentifySelection,
   OsteologicalPooledCounts
 } from '../types/sgccco';
-import { Info, Sparkles, Plus, Trash2, AlertCircle } from 'lucide-react';
+import { Info, Sparkles, Plus, Trash2, AlertCircle, ChevronDown } from 'lucide-react';
 import {
   AnatomicMultiPlateSkullViewer,
   SkullSubgroupId,
@@ -871,7 +871,7 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                       Marcar grupo P
                     </button>
                     <span className="text-[11px] text-slate-500 font-mono hidden sm:inline">
-                      · <AlertCircle className="w-3 h-3 inline text-slate-500 align-text-bottom" /> para alterações
+                      · Clique no osso ou no <AlertCircle className="w-3 h-3 inline text-slate-500 align-text-bottom" /> para abrir opções de alterações
                     </span>
                   </div>
                 </div>
@@ -889,7 +889,6 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                       <div
                         key={bone}
                         id={`bone-row-${bone.replace(/\s+/g, '-')}`}
-                        onClick={() => setSelectedBone(bone)}
                         className={`rounded-xl border transition-all ${
                           isSelected
                             ? 'border-sky-500 bg-sky-50/50 dark:bg-sky-950/40 ring-2 ring-sky-400 dark:ring-sky-600 shadow-md'
@@ -900,79 +899,107 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                                 : 'border-slate-200 dark:border-slate-800/80 bg-slate-50/60 dark:bg-slate-800/30'
                         }`}
                       >
-                        {/* Linha Principal do Osso */}
-                        <div className="flex flex-wrap items-center justify-between p-2.5 sm:p-3 gap-2">
-                      <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                        <span className="text-[11px] font-mono text-slate-400 w-5 text-right flex-shrink-0">
-                          {index + 1}.
-                        </span>
-                        <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate" title={bone}>
-                          {bone}
-                        </span>
-
-                        {/* Badges de Alterações Ósseas Registradas */}
-                        {hasSemAlteracao && (
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-semibold border border-emerald-200 dark:border-emerald-800">
-                            Sem alteração
-                          </span>
-                        )}
-                        {activeAlteracoes.length > 0 && (
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300 font-bold border border-red-200 dark:border-red-800 flex items-center gap-1">
-                            <AlertCircle className="w-3 h-3 text-red-600 dark:text-red-400" />
-                            {activeAlteracoes.length} {activeAlteracoes.length === 1 ? 'alteração' : 'alterações'}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Grupo de Ações: P / F / I / A + Botão de Alterações Ósseas */}
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        {(['P', 'F', 'I', 'A'] as OsteologicalPresenceCode[]).map(code => {
-                          const isSelected = currentCode === code;
-                          const config = PRESENCE_DEFINITIONS[code];
-                          return (
-                            <button
-                              key={code}
-                              type="button"
-                              disabled={readOnly}
-                              onClick={() => handleSetBonePresence(bone, code)}
-                              title={`${bone} — ${config.desc}`}
-                              className={`w-7 h-7 rounded-lg text-xs font-mono font-bold transition-all border ${
-                                isSelected
-                                  ? config.activeBtnClass
-                                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'
-                              } ${readOnly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer active:scale-95'}`}
-                            >
-                              {code}
-                            </button>
-                          );
-                        })}
-
-                        <div className="w-[1px] h-5 bg-slate-200 dark:bg-slate-700 mx-0.5" />
-
-                        {/* Botão de Alterações Ósseas (ilumina em vermelho quando selecionado/expandido ou quando possui alterações) —
-                            desabilitado com o osso Ausente: alteração e ausência são mutuamente exclusivas. */}
-                        <button
-                          type="button"
-                          disabled={readOnly || currentCode === 'A'}
-                          onClick={() => toggleExpandBone(bone)}
-                          title={currentCode === 'A' ? `Osso ausente — não há alteração a registrar em ${bone}` : `Alterações ósseas — ${bone}`}
-                          aria-label={`Alterações ósseas — ${bone}`}
-                          className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all border ${
-                            isExpanded || activeAlteracoes.length > 0
-                              ? isExpanded
-                                ? 'bg-red-700 text-white border-red-800 ring-2 ring-red-400/50 shadow-xs'
-                                : 'bg-red-600 text-white border-red-700 shadow-xs hover:bg-red-700 active:scale-95'
-                              : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-red-50 hover:text-red-600 hover:border-red-300 dark:hover:bg-red-950/40 dark:hover:text-red-400 active:scale-95'
-                          } ${readOnly || currentCode === 'A' ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                        {/* Linha Principal do Osso: clicar no item seleciona o osso e abre a gaveta de opções/alterações */}
+                        <div
+                          onClick={() => {
+                            setSelectedBone(bone);
+                            if (currentCode !== 'A') {
+                              toggleExpandBone(bone);
+                            }
+                          }}
+                          title={
+                            currentCode === 'A'
+                              ? `Osso ausente — não há alteração a registrar em ${bone}`
+                              : `Clique para expandir/recolher opções e alterações de ${bone}`
+                          }
+                          className="flex flex-wrap items-center justify-between p-2.5 sm:p-3 gap-2 cursor-pointer hover:bg-slate-100/50 dark:hover:bg-slate-800/40 rounded-t-xl transition-colors"
                         >
-                          <AlertCircle className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
+                          <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                            <span className="text-[11px] font-mono text-slate-400 w-5 text-right flex-shrink-0">
+                              {index + 1}.
+                            </span>
+                            <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate" title={bone}>
+                              {bone}
+                            </span>
 
-                    {/* Drawer Expansível de Alterações Ósseas — Específico do Osso */}
-                    {isExpanded && (
-                      <div className="border-t border-red-200 dark:border-red-900/60 bg-red-50/20 dark:bg-red-950/20 p-4 rounded-b-xl space-y-3">
+                            {/* Badges de Alterações Ósseas Registradas */}
+                            {hasSemAlteracao && (
+                              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-semibold border border-emerald-200 dark:border-emerald-800">
+                                Sem alteração
+                              </span>
+                            )}
+                            {activeAlteracoes.length > 0 && (
+                              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300 font-bold border border-red-200 dark:border-red-800 flex items-center gap-1">
+                                <AlertCircle className="w-3 h-3 text-red-600 dark:text-red-400" />
+                                {activeAlteracoes.length} {activeAlteracoes.length === 1 ? 'alteração' : 'alterações'}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Grupo de Ações: P / F / I / A + Botão de Alterações Ósseas + Seta Chevron */}
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            {(['P', 'F', 'I', 'A'] as OsteologicalPresenceCode[]).map(code => {
+                              const isSelected = currentCode === code;
+                              const config = PRESENCE_DEFINITIONS[code];
+                              return (
+                                <button
+                                  key={code}
+                                  type="button"
+                                  disabled={readOnly}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSetBonePresence(bone, code);
+                                  }}
+                                  title={`${bone} — ${config.desc}`}
+                                  className={`w-7 h-7 rounded-lg text-xs font-mono font-bold transition-all border ${
+                                    isSelected
+                                      ? config.activeBtnClass
+                                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'
+                                  } ${readOnly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer active:scale-95'}`}
+                                >
+                                  {code}
+                                </button>
+                              );
+                            })}
+
+                            <div className="w-[1px] h-5 bg-slate-200 dark:bg-slate-700 mx-0.5" />
+
+                            {/* Botão de Alterações Ósseas (ilumina em vermelho quando selecionado/expandido ou quando possui alterações) —
+                                desabilitado com o osso Ausente: alteração e ausência são mutuamente exclusivas. */}
+                            <button
+                              type="button"
+                              disabled={readOnly || currentCode === 'A'}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleExpandBone(bone);
+                              }}
+                              title={currentCode === 'A' ? `Osso ausente — não há alteração a registrar em ${bone}` : `Alterações ósseas — ${bone}`}
+                              aria-label={`Alterações ósseas — ${bone}`}
+                              className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all border ${
+                                isExpanded || activeAlteracoes.length > 0
+                                  ? isExpanded
+                                    ? 'bg-red-700 text-white border-red-800 ring-2 ring-red-400/50 shadow-xs'
+                                    : 'bg-red-600 text-white border-red-700 shadow-xs hover:bg-red-700 active:scale-95'
+                                  : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-red-50 hover:text-red-600 hover:border-red-300 dark:hover:bg-red-950/40 dark:hover:text-red-400 active:scale-95'
+                              } ${readOnly || currentCode === 'A' ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                            >
+                              <AlertCircle className="w-4 h-4" />
+                            </button>
+
+                            <ChevronDown
+                              className={`w-4 h-4 text-slate-400 dark:text-slate-500 transition-transform duration-200 ${
+                                isExpanded ? 'transform rotate-180 text-red-600 dark:text-red-400' : ''
+                              }`}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Drawer Expansível de Alterações Ósseas — Específico do Osso */}
+                        {isExpanded && (
+                          <div
+                            onClick={(e) => e.stopPropagation()}
+                            className="border-t border-red-200 dark:border-red-900/60 bg-red-50/20 dark:bg-red-950/20 p-4 rounded-b-xl space-y-3"
+                          >
                         <div className="flex items-center justify-between pb-2 border-b border-red-200/80 dark:border-red-900/50">
                           <div className="flex items-center gap-2">
                             <span className="w-2.5 h-2.5 rounded-full bg-red-600" />
@@ -1239,6 +1266,10 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
               if (targetSubgroup !== activeSkullSubgroup) {
                 setActiveSkullSubgroup(targetSubgroup);
               }
+              // Ao clicar no osso na prancha anatômica, abre o drawer de alterações (se não estiver Ausente)
+              if (cabecaData.ossos[bone] !== 'A') {
+                setExpandedBones(prev => ({ ...prev, [bone]: true }));
+              }
               const el = document.getElementById(`bone-row-${bone.replace(/\s+/g, '-')}`);
               if (el) {
                 el.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1478,7 +1509,20 @@ const SimpleBoneRows: React.FC<SimpleBoneRowsProps> = ({
                   : 'border-slate-200 dark:border-slate-800/80 bg-slate-50/60 dark:bg-slate-800/30'
             }`}
           >
-            <div className="flex flex-wrap items-center justify-between p-2.5 sm:p-3 gap-2">
+            {/* Linha Principal do Osso: clicar no item abre/recolhe a gaveta de opções/alterações */}
+            <div
+              onClick={() => {
+                if (currentCode !== 'A') {
+                  onToggleExpand(bone);
+                }
+              }}
+              title={
+                currentCode === 'A'
+                  ? `Osso ausente — não há alteração a registrar em ${bone}`
+                  : `Clique para expandir/recolher opções e alterações de ${bone}`
+              }
+              className="flex flex-wrap items-center justify-between p-2.5 sm:p-3 gap-2 cursor-pointer hover:bg-slate-100/50 dark:hover:bg-slate-800/40 rounded-t-xl transition-colors"
+            >
               <div className="flex items-center gap-2.5 min-w-0 pr-2">
                 <span className="text-[11px] font-mono text-slate-400 w-5 text-right flex-shrink-0">{index + 1}.</span>
                 <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate" title={bone}>
@@ -1507,7 +1551,10 @@ const SimpleBoneRows: React.FC<SimpleBoneRowsProps> = ({
                       key={code}
                       type="button"
                       disabled={readOnly}
-                      onClick={() => onSetPresence(bone, code)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSetPresence(bone, code);
+                      }}
                       title={`${bone} — ${config.desc}`}
                       className={`w-7 h-7 rounded-lg text-xs font-mono font-bold transition-all border ${
                         isSelected
@@ -1525,7 +1572,10 @@ const SimpleBoneRows: React.FC<SimpleBoneRowsProps> = ({
                 <button
                   type="button"
                   disabled={readOnly || currentCode === 'A'}
-                  onClick={() => onToggleExpand(bone)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleExpand(bone);
+                  }}
                   title={currentCode === 'A' ? `Osso ausente — não há alteração a registrar em ${bone}` : `Alterações ósseas — ${bone}`}
                   aria-label={`Alterações ósseas — ${bone}`}
                   className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all border ${
@@ -1538,11 +1588,21 @@ const SimpleBoneRows: React.FC<SimpleBoneRowsProps> = ({
                 >
                   <AlertCircle className="w-4 h-4" />
                 </button>
+
+                <ChevronDown
+                  className={`w-4 h-4 text-slate-400 dark:text-slate-500 transition-transform duration-200 ${
+                    isExpanded ? 'transform rotate-180 text-red-600 dark:text-red-400' : ''
+                  }`}
+                />
               </div>
             </div>
 
+            {/* Drawer Expansível de Alterações Ósseas — Específico do Osso */}
             {isExpanded && (
-              <div className="border-t border-red-200 dark:border-red-900/60 bg-red-50/20 dark:bg-red-950/20 p-4 rounded-b-xl space-y-3">
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="border-t border-red-200 dark:border-red-900/60 bg-red-50/20 dark:bg-red-950/20 p-4 rounded-b-xl space-y-3"
+              >
                 <div className="flex items-center justify-between pb-2 border-b border-red-200/80 dark:border-red-900/50">
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-red-600" />
