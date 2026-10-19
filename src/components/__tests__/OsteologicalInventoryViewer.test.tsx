@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { OsteologicalInventoryViewer, CABECA_PESCOCO_OSSOS } from '../OsteologicalInventoryViewer';
 import type { OsteologicalInventoryData } from '../../types/sgccco';
@@ -254,7 +254,7 @@ describe('OsteologicalInventoryViewer', () => {
         inventory={{
           cabecaPescoco: {
             ossos: { Frontal: 'P' },
-            alteracoes: [{ id: 'alt-1', tipo: 'fratura', osso: 'Frontal', observacoes: 'teste' }]
+            alteracoes: [{ id: 'alt-1', tipo: 'lesao_ante_mortem', osso: 'Frontal', observacoes: 'teste' }]
           }
         }}
         onUpdateInventory={onUpdateInventory}
@@ -310,5 +310,91 @@ describe('OsteologicalInventoryViewer', () => {
         maoPooled: expect.objectContaining({ sesamoides: 2 })
       })
     );
+  });
+
+  it('"Marcar seção P" marca todos os ossos da seção como Presente sem fratura', async () => {
+    const user = userEvent.setup();
+    const onUpdateInventory = vi.fn();
+
+    render(
+      <OsteologicalInventoryViewer
+        inventory={{}}
+        onUpdateInventory={onUpdateInventory}
+      />
+    );
+
+    await user.click(screen.getByText('6. Pelve & Bacia'));
+    await user.click(screen.getByRole('button', { name: 'Marcar seção P' }));
+
+    expect(onUpdateInventory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pelveBacia: expect.objectContaining({
+          ossos: {
+            'Ílio Direito': 'P',
+            'Ísquio Direito': 'P',
+            'Púbis Direito': 'P',
+            'Ílio Esquerdo': 'P',
+            'Ísquio Esquerdo': 'P',
+            'Púbis Esquerdo': 'P'
+          }
+        })
+      })
+    );
+  });
+
+  it('"Limpar seção" remove todas as marcações de presença já registradas na seção', async () => {
+    const user = userEvent.setup();
+    const onUpdateInventory = vi.fn();
+
+    render(
+      <OsteologicalInventoryViewer
+        inventory={{
+          pelveBacia: {
+            ossos: { 'Ílio Direito': 'P', 'Ísquio Direito': 'F' },
+            alteracoes: []
+          }
+        }}
+        onUpdateInventory={onUpdateInventory}
+      />
+    );
+
+    await user.click(screen.getByText('6. Pelve & Bacia'));
+    await user.click(screen.getByRole('button', { name: 'Limpar seção' }));
+
+    expect(onUpdateInventory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pelveBacia: expect.objectContaining({ ossos: {} })
+      })
+    );
+  });
+
+  it('o pooled de falanges/sesamoides da Mão permanece visível ao trocar de aba Direita/Esquerda', async () => {
+    const user = userEvent.setup();
+    const onUpdateInventory = vi.fn();
+
+    const { rerender } = render(
+      <OsteologicalInventoryViewer
+        inventory={{}}
+        onUpdateInventory={onUpdateInventory}
+      />
+    );
+
+    await user.click(screen.getByText('4. Membro Superior Direito'));
+    await user.click(screen.getByPlaceholderText('Nº'));
+    fireEvent.change(screen.getByPlaceholderText('Nº'), { target: { value: '3' } });
+
+    // Componente controlado: simula o pai aplicando o patch que onUpdateInventory recebeu.
+    rerender(
+      <OsteologicalInventoryViewer
+        inventory={{ maoPooled: { sesamoides: 3 } }}
+        onUpdateInventory={onUpdateInventory}
+      />
+    );
+
+    expect(screen.getByPlaceholderText('Nº')).toHaveValue(3);
+
+    await user.click(screen.getByText('5. Membro Superior Esquerdo'));
+
+    expect(screen.getByPlaceholderText('Nº')).toHaveValue(3);
   });
 });
