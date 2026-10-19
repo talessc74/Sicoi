@@ -39,7 +39,8 @@ import {
   FileCheck,
   Sparkles,
   HelpCircle,
-  ExternalLink
+  ExternalLink,
+  Plus
 } from 'lucide-react';
 
 interface Phase4CuradoriaProps {
@@ -104,6 +105,53 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
 
   const individuals = collection.phase4.individuals || [];
   const currentInd = individuals.find(i => i.id === selectedIndividualId) || individuals[0];
+
+  const fallbackInd: IndividualHypothesis = {
+    id: `IND-${collection.nic.split('-')[2] || '01'}-01`,
+    code: 'IND-01',
+    confidence: 'alta',
+    justification: 'Hipótese biológica fundamentada em concordância anatômica e antimeria.',
+    associatedBoxId: collection.phase1.preliminaryBoxes[0]?.id || 'CX-01',
+    status: 'ativo',
+    biologicalProfile: {
+      sexEstimate: {
+        value: 'indeterminado',
+        methodCode: 'Phenice 1969',
+        bibliographicRef: 'Phenice (1969)',
+        notes: ''
+      },
+      ageCategory: {
+        value: 'adulto_medio',
+        estimatedRangeYears: '30 - 45 anos',
+        methodCode: 'Suchey-Brooks 1990',
+        bibliographicRef: 'Suchey-Brooks (1990)',
+        notes: ''
+      },
+      statureCm: {
+        estimatedValue: 170.0,
+        marginErrorCm: 3.5,
+        methodCode: 'Trotter & Gleser 1952',
+        measuredElement: 'Fêmur direito',
+        bibliographicRef: 'Trotter & Gleser 1952'
+      },
+      ancestryIndication: {
+        traitsObserved: '',
+        methodCode: 'Hefner 2009',
+        bibliographicRef: 'Hefner 2009'
+      }
+    },
+    odontogram: generateInitialOdontogram()
+  };
+
+  const activeInd = currentInd || fallbackInd;
+
+  // Auto-inicializa o IND-01 ao entrar no Inventário Odontológico caso a coleção
+  // ainda não possua nenhum indivíduo cadastrado, eliminando tela em branco.
+  React.useEffect(() => {
+    if (activeTab === 'odontograma' && individuals.length === 0 && !isLocked && canEdit) {
+      handleAddIndividual();
+    }
+  }, [activeTab, individuals.length, isLocked, canEdit]);
 
   // Elementos do inventário
   const elements = collection.phase4.skeletalElements || [];
@@ -178,25 +226,28 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
     } | any,
     notes?: string
   ) => {
-    if (!currentInd) return;
     const updated = { ...collection };
-    const ind = updated.phase4.individuals.find(i => i.id === currentInd.id);
-    if (ind) {
-      ind.odontogram = ind.odontogram.map(t => {
-        if (t.toothNumberFdi !== num) return t;
-        if (typeof update === 'object' && update !== null && ('presence' in update || 'clinicalConditions' in update)) {
-          return {
-            ...t,
-            presence: update.presence ?? t.presence,
-            clinicalConditions: update.clinicalConditions ?? t.clinicalConditions,
-            condition: update.condition ?? t.condition,
-            notes: notes !== undefined ? notes : t.notes || ''
-          };
-        }
-        return { ...t, condition: update, notes: notes !== undefined ? notes : t.notes || '' };
-      });
-      onUpdateCollection(updated);
+    const targetId = currentInd?.id || activeInd.id;
+    let ind = updated.phase4.individuals.find(i => i.id === targetId);
+    if (!ind) {
+      ind = { ...activeInd };
+      updated.phase4.individuals = [...individuals, ind];
+      setSelectedIndividualId(ind.id);
     }
+    ind.odontogram = ind.odontogram.map(t => {
+      if (t.toothNumberFdi !== num) return t;
+      if (typeof update === 'object' && update !== null && ('presence' in update || 'clinicalConditions' in update)) {
+        return {
+          ...t,
+          presence: update.presence ?? t.presence,
+          clinicalConditions: update.clinicalConditions ?? t.clinicalConditions,
+          condition: update.condition ?? t.condition,
+          notes: notes !== undefined ? notes : t.notes || ''
+        };
+      }
+      return { ...t, condition: update, notes: notes !== undefined ? notes : t.notes || '' };
+    });
+    onUpdateCollection(updated);
   };
 
   // Marcação em lote (Edêntulo ante/post-mortem) — só os dentes passados,
@@ -209,39 +260,46 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
       condition: ToothRecord['condition'];
     } | any
   ) => {
-    if (!currentInd) return;
     const updated = { ...collection };
-    const ind = updated.phase4.individuals.find(i => i.id === currentInd.id);
-    if (ind) {
-      ind.odontogram = ind.odontogram.map(t => {
-        if (!toothNumbers.includes(t.toothNumberFdi)) return t;
-        if (typeof mark === 'object' && mark !== null && 'presence' in mark) {
-          return {
-            ...t,
-            presence: mark.presence,
-            clinicalConditions: mark.presence === 'articulado' ? ['higido'] : [],
-            condition: mark.condition
-          };
-        }
+    const targetId = currentInd?.id || activeInd.id;
+    let ind = updated.phase4.individuals.find(i => i.id === targetId);
+    if (!ind) {
+      ind = { ...activeInd };
+      updated.phase4.individuals = [...individuals, ind];
+      setSelectedIndividualId(ind.id);
+    }
+    ind.odontogram = ind.odontogram.map(t => {
+      if (!toothNumbers.includes(t.toothNumberFdi)) return t;
+      if (typeof mark === 'object' && mark !== null && 'presence' in mark) {
         return {
           ...t,
-          presence: mark === 'ausente_ante_mortem' || mark === 'ausente_post_mortem' ? mark : 'articulado',
-          clinicalConditions: mark === 'higido' ? ['higido'] : [],
-          condition: mark
+          presence: mark.presence,
+          clinicalConditions: mark.presence === 'articulado' ? ['higido'] : [],
+          condition: mark.condition
         };
-      });
-      onUpdateCollection(updated);
-    }
+      }
+      return {
+        ...t,
+        presence: mark === 'ausente_ante_mortem' || mark === 'ausente_post_mortem' ? mark : 'articulado',
+        clinicalConditions: mark === 'higido' ? ['higido'] : [],
+        condition: mark
+      };
+    });
+    onUpdateCollection(updated);
   };
 
   const handlePatchIndividual = (patch: Partial<IndividualHypothesis>) => {
-    if (!currentInd) return;
     const updated = { ...collection };
-    const ind = updated.phase4.individuals.find(i => i.id === currentInd.id);
-    if (ind) {
+    const targetId = currentInd?.id || activeInd.id;
+    let ind = updated.phase4.individuals.find(i => i.id === targetId);
+    if (!ind) {
+      ind = { ...activeInd, ...patch };
+      updated.phase4.individuals = [...individuals, ind];
+      setSelectedIndividualId(ind.id);
+    } else {
       Object.assign(ind, patch);
-      onUpdateCollection(updated);
     }
+    onUpdateCollection(updated);
   };
 
   const handleUpdateElementPresence = (elemId: string, presence: any, quality: any) => {
@@ -864,23 +922,56 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
       )}
 
       {/* Conteúdo da Aba 3: Inventário Odontológico */}
-      {activeTab === 'odontograma' && currentInd && (
+      {activeTab === 'odontograma' && (
         <div className="space-y-4">
+          {/* Seletor de Indivíduo para o Inventário Odontológico */}
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 font-mono">
+                Indivíduo em Análise:
+              </span>
+              {(individuals.length > 0 ? individuals : [fallbackInd]).map(ind => (
+                <button
+                  key={ind.id}
+                  type="button"
+                  onClick={() => setSelectedIndividualId(ind.id)}
+                  className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-all ${
+                    activeInd.id === ind.id
+                      ? 'bg-sky-600 text-white shadow-xs'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
+                  }`}
+                >
+                  {ind.code}
+                </button>
+              ))}
+            </div>
+            {!isLocked && canEdit && (
+              <button
+                type="button"
+                onClick={handleAddIndividual}
+                className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-semibold flex items-center gap-1"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Novo Indivíduo</span>
+              </button>
+            )}
+          </div>
+
           <OdontogramViewer
-            teeth={currentInd.odontogram}
+            teeth={activeInd.odontogram}
             onUpdateTooth={handleUpdateTooth}
             onBulkMarkTeeth={handleBulkMarkTeeth}
-            denticao={currentInd.denticao}
+            denticao={activeInd.denticao}
             onSetDenticao={(d) => handlePatchIndividual({ denticao: d })}
-            denticaoQuadrantePares={currentInd.denticaoQuadrantePares}
+            denticaoQuadrantePares={activeInd.denticaoQuadrantePares}
             onSetQuadrantePar={(q, lado) =>
               handlePatchIndividual({
-                denticaoQuadrantePares: { ...currentInd.denticaoQuadrantePares, [q]: lado }
+                denticaoQuadrantePares: { ...activeInd.denticaoQuadrantePares, [q]: lado }
               })
             }
-            mistaActiveDeciduous={currentInd.mistaActiveDeciduous}
+            mistaActiveDeciduous={activeInd.mistaActiveDeciduous}
             onSetMistaActiveDeciduous={(list) => handlePatchIndividual({ mistaActiveDeciduous: list })}
-            supernumeraryTeeth={currentInd.supernumeraryTeeth}
+            supernumeraryTeeth={activeInd.supernumeraryTeeth}
             onSetSupernumeraryTeeth={(list) => handlePatchIndividual({ supernumeraryTeeth: list })}
             readOnly={isLocked || !canEdit}
           />
