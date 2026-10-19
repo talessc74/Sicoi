@@ -20,6 +20,10 @@ Decisões de arquitetura e técnicas deste projeto, criadas por deliberação AR
 - [_local-adr-policy-104](application/104-navegacao-sincronizada-com-url.md) - activeTab/activePhase sincronizados com a URL real (sem roteador) — o botão "voltar" do navegador/celular volta uma tela dentro do app
 - [_local-adr-policy-105](application/105-fase-0-recebimento.md) - Fase 0 (Recebimento): transcrição da Declaração de Óbito, manual ou por foto com extração via Gemini, assinatura única — nunca o padrão de assinatura dupla de Fase 4/5
 - [_local-adr-policy-106](application/106-busca-referencia-entre-individuos.md) - Busca de referência real entre indivíduos (Fase 4, §15): determinística, sem IA — compara perfil biológico com outros conjuntos do acervo
+- [_local-adr-policy-107](application/107-coi-recusa-duplicar-nic.md) - Criar um COI recusa duplicar um NIC já existente: createCollection distingue retentativa da própria criação (mesmo id) de duplicata real (id diferente) — só a primeira é idempotente
+- [_local-adr-policy-108](application/108-inventario-odontologico-denticao.md) - Inventário Odontológico: dentição permanente/mista/decídua por par de quadrante anatômico, edêntulo em lote, dentes supranumerários
+- [_local-adr-policy-109](application/109-inventario-osteologico-alteracoes-por-osso.md) - Alterações ósseas embutidas em cada osso do Inventário Osteológico (botão de exclamação), nunca mais um formulário único solto com dropdown "osso afetado"
+- [_local-adr-policy-110](application/110-condutor-por-voz-opt-in.md) - Condutor por voz/conversa é opt-in: Fases 1 e 2 abrem no Formulário Manual por padrão, sem áudio automático
 
 ## Integration
 
@@ -38,3 +42,4 @@ Decisões de arquitetura e técnicas deste projeto, criadas por deliberação AR
 - [_local-adr-policy-205](controls/205-autorizacoes-de-pesquisa-reais.md) - Autorizações de pesquisa reais (Fase 7, §13): escopo granular por projeto/NIC/validade, persistidas em Postgres — revogação nunca é delete
 - [_local-adr-policy-206](controls/206-validacao-entrada-rotas-ia.md) - Validação de forma/tamanho nas rotas públicas de IA — gap de autenticação permanece deliberadamente fora do escopo
 - [_local-adr-policy-207](controls/207-dados-restritos-saem-so-para-quem-pode-ver.md) - Dados da DO (Fase 0) e de procedência só saem do servidor para quem pode vê-los; a tela esconder não basta
+- [_local-adr-policy-208](controls/208-documentos-oficiais-autenticados.md) - Documentos oficiais da COI-INC (Portaria, POPs, Formulários): arquivo original fora da pasta pública, só sai autenticado por GET /api/documentos/:id restrito a uma lista fechada de ids
