@@ -97,10 +97,10 @@ export const PRESENCE_CONDITIONS_META: Record<
   }
 };
 
-// Metadados das 17 características clínicas do Estágio 2 (Múltipla escolha)
+// Metadados das 18 características clínicas do Estágio 2 (Múltipla escolha)
 export const CLINICAL_CONDITIONS_META: Record<
   ToothClinicalCondition,
-  { label: string; abbr: string; category: 'irrupcao' | 'higido' | 'patologia' | 'intervencao' | 'alinhamento' }
+  { label: string; abbr: string; category: 'irrupcao' | 'higido' | 'patologia' | 'intervencao' | 'alinhamento' | 'outro' }
 > = {
   parcialmente_irrompido: { label: 'Parcialmente irrompido', abbr: 'PIR', category: 'irrupcao' },
   nao_irrompido: { label: 'Não irrompido', abbr: 'NIR', category: 'irrupcao' },
@@ -118,7 +118,8 @@ export const CLINICAL_CONDITIONS_META: Record<
   abrasao: { label: 'Abrasão', abbr: 'ABR', category: 'patologia' },
   abfracao: { label: 'Abfração', abbr: 'ABF', category: 'patologia' },
   giroversao: { label: 'Giroversão', abbr: 'GIR', category: 'alinhamento' },
-  apinhamento: { label: 'Apinhamento', abbr: 'API', category: 'alinhamento' }
+  apinhamento: { label: 'Apinhamento', abbr: 'API', category: 'alinhamento' },
+  outro: { label: 'Outro', abbr: 'OUT', category: 'outro' }
 };
 
 // Deriva condição legada para manter 100% de compatibilidade reversa

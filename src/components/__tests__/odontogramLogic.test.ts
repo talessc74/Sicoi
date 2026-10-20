@@ -85,9 +85,9 @@ describe('Inventário Odontológico — Regras de Negócio e Lógica', () => {
       expect(PRESENCE_CONDITIONS_META.ausente_post_mortem.abbr).toBe('APM');
     });
 
-    it('possui exatamente as 17 opções clínicas de múltipla escolha do Estágio 2', () => {
+    it('possui exatamente as 18 opções clínicas de múltipla escolha do Estágio 2', () => {
       const keys = Object.keys(CLINICAL_CONDITIONS_META);
-      expect(keys).toHaveLength(17);
+      expect(keys).toHaveLength(18);
       expect(keys).toContain('parcialmente_irrompido');
       expect(keys).toContain('nao_irrompido');
       expect(keys).toContain('higido');
@@ -105,6 +105,7 @@ describe('Inventário Odontológico — Regras de Negócio e Lógica', () => {
       expect(keys).toContain('abfracao');
       expect(keys).toContain('giroversao');
       expect(keys).toContain('apinhamento');
+      expect(keys).toContain('outro');
     });
   });
 

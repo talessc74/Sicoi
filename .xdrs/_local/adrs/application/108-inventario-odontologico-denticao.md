@@ -33,12 +33,12 @@ FDI padrão.
      `Articulado`, `Desarticulado`, `Ausente ante-mortem`, `Ausente post-mortem`.
      Se ausente (ante ou post-mortem), aceita exclusivamente essa condição e
      não exibe o Estágio 2.
-   - **Estágio 2 (Características Clínicas — Múltipla Seleção de 17 opções)**:
+   - **Estágio 2 (Características Clínicas — Múltipla Seleção de 18 opções)**:
      Aparece apenas quando marcado como `Articulado` ou `Desarticulado`.
      Opções: Parcialmente irrompido, Não irrompido, Hígido, Cariado, Mancha,
      Resto radicular, Fratura, Com material restaurador, Com material protético,
      Implante, Aparelho ortodôntico/ortopédico, Tártaro, Erosão, Abrasão,
-     Abfração, Giroversão, Apinhamento.
+     Abfração, Giroversão, Apinhamento, Outro.
    - **Legenda na unidade**:
      - `AAM` para ausente ante-mortem; `APM` para ausente post-mortem.
      - Se articulado/desarticulado com 1 opção: sigla de 3 letras (`HIG`, `CAR`, `FRA`, etc.).

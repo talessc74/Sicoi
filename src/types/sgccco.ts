@@ -528,7 +528,8 @@ export type ToothClinicalCondition =
   | 'abrasao'
   | 'abfracao'
   | 'giroversao'
-  | 'apinhamento';
+  | 'apinhamento'
+  | 'outro';
 
 export interface ToothRecord {
   toothNumberFdi: number;
