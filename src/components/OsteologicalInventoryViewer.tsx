@@ -715,7 +715,7 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                     Visualização por Lado Anatômico:
                   </span>
                   <span className="text-[11px] text-slate-500 font-mono">
-                    (Direito: {direitoBones.length} ossos · Esquerdo: {esquerdoBones.length} ossos)
+                    (Esquerdo: {esquerdoBones.length} ossos · Direito: {direitoBones.length} ossos)
                   </span>
                 </div>
 
@@ -729,18 +729,7 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                         : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
                   >
-                    Duas Colunas (D + E)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSideFilter('direito')}
-                    className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
-                      sideFilter === 'direito'
-                        ? 'bg-sky-600 text-white font-bold shadow-xs'
-                        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                    }`}
-                  >
-                    Lado Direito ({direitoBones.length})
+                    Duas Colunas (E + D)
                   </button>
                   <button
                     type="button"
@@ -753,53 +742,23 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                   >
                     Lado Esquerdo ({esquerdoBones.length})
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setSideFilter('direito')}
+                    className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+                      sideFilter === 'direito'
+                        ? 'bg-sky-600 text-white font-bold shadow-xs'
+                        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    Lado Direito ({direitoBones.length})
+                  </button>
                 </div>
               </div>
             )}
 
             {isBilateral ? (
               <div className={sideFilter === 'ambos' ? 'grid grid-cols-1 lg:grid-cols-2 gap-5 items-start' : 'space-y-4'}>
-                {(sideFilter === 'ambos' || sideFilter === 'direito') && (
-                  <div className="p-3.5 rounded-xl border border-sky-200 dark:border-sky-900/60 bg-sky-50/20 dark:bg-sky-950/20 space-y-3">
-                    <div className="flex items-center justify-between pb-2 border-b border-sky-200/70 dark:border-sky-900/50">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-sky-600" />
-                        <h5 className="font-bold text-xs uppercase font-mono tracking-wider text-sky-950 dark:text-sky-200">
-                          Lado Direito ({direitoBones.length} ossos)
-                        </h5>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[11px] font-mono text-slate-500">
-                          {direitoBones.filter(b => sectionData.ossos[b]).length}/{direitoBones.length} catalogados
-                        </span>
-                        {!readOnly && (
-                          <button
-                            type="button"
-                            onClick={() => handleBulkMarkGeneric(sectionKey, direitoBones, 'P')}
-                            className="px-2 py-0.5 rounded text-[10px] font-mono font-medium border border-emerald-300 dark:border-emerald-800 bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 transition-colors"
-                            title="Marcar todos os ossos do Lado Direito como P"
-                          >
-                            Todos P (D)
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    <SimpleBoneRows
-                      bones={direitoBones}
-                      section={sectionData}
-                      readOnly={readOnly}
-                      expandedBones={expandedBonesBySection[sectionKey] || {}}
-                      onToggleExpand={bone => toggleExpandBoneGeneric(sectionKey, bone)}
-                      onSetPresence={(bone, code) => handleSetPresenceGeneric(sectionKey, bone, code)}
-                      onToggleAlteracao={(bone, tipo) => handleToggleAlteracaoGeneric(sectionKey, bone, tipo)}
-                      onAddAlteracaoItem={(bone, tipo) => handleAddAlteracaoItemGeneric(sectionKey, bone, tipo)}
-                      onRemoveAlteracaoItem={id => handleRemoveAlteracaoItemGeneric(sectionKey, id)}
-                      onUpdateAlteracaoItem={(id, obs) => handleUpdateAlteracaoItemGeneric(sectionKey, id, obs)}
-                    />
-                  </div>
-                )}
-
                 {(sideFilter === 'ambos' || sideFilter === 'esquerdo') && (
                   <div className="p-3.5 rounded-xl border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/20 dark:bg-indigo-950/20 space-y-3">
                     <div className="flex items-center justify-between pb-2 border-b border-indigo-200/70 dark:border-indigo-900/50">
@@ -828,6 +787,47 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
 
                     <SimpleBoneRows
                       bones={esquerdoBones}
+                      section={sectionData}
+                      readOnly={readOnly}
+                      expandedBones={expandedBonesBySection[sectionKey] || {}}
+                      onToggleExpand={bone => toggleExpandBoneGeneric(sectionKey, bone)}
+                      onSetPresence={(bone, code) => handleSetPresenceGeneric(sectionKey, bone, code)}
+                      onToggleAlteracao={(bone, tipo) => handleToggleAlteracaoGeneric(sectionKey, bone, tipo)}
+                      onAddAlteracaoItem={(bone, tipo) => handleAddAlteracaoItemGeneric(sectionKey, bone, tipo)}
+                      onRemoveAlteracaoItem={id => handleRemoveAlteracaoItemGeneric(sectionKey, id)}
+                      onUpdateAlteracaoItem={(id, obs) => handleUpdateAlteracaoItemGeneric(sectionKey, id, obs)}
+                    />
+                  </div>
+                )}
+
+                {(sideFilter === 'ambos' || sideFilter === 'direito') && (
+                  <div className="p-3.5 rounded-xl border border-sky-200 dark:border-sky-900/60 bg-sky-50/20 dark:bg-sky-950/20 space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-sky-200/70 dark:border-sky-900/50">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-sky-600" />
+                        <h5 className="font-bold text-xs uppercase font-mono tracking-wider text-sky-950 dark:text-sky-200">
+                          Lado Direito ({direitoBones.length} ossos)
+                        </h5>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-mono text-slate-500">
+                          {direitoBones.filter(b => sectionData.ossos[b]).length}/{direitoBones.length} catalogados
+                        </span>
+                        {!readOnly && (
+                          <button
+                            type="button"
+                            onClick={() => handleBulkMarkGeneric(sectionKey, direitoBones, 'P')}
+                            className="px-2 py-0.5 rounded text-[10px] font-mono font-medium border border-emerald-300 dark:border-emerald-800 bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 transition-colors"
+                            title="Marcar todos os ossos do Lado Direito como P"
+                          >
+                            Todos P (D)
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <SimpleBoneRows
+                      bones={direitoBones}
                       section={sectionData}
                       readOnly={readOnly}
                       expandedBones={expandedBonesBySection[sectionKey] || {}}
@@ -897,34 +897,6 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
 
                   <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
                     <span className="block text-xs font-semibold text-slate-800 dark:text-slate-200 mb-2">
-                      Ossículos da audição direitos
-                    </span>
-                    <div className="space-y-1.5 text-xs">
-                      {[
-                        { id: 'martelo', label: 'Martelo' },
-                        { id: 'bigorna', label: 'Bigorna' },
-                        { id: 'estribo', label: 'Estribo' },
-                        { id: 'ausentes', label: 'Ausentes' }
-                      ].map(opt => {
-                        const checked = (cabecaExtra.ossiculosDireitos || []).includes(opt.id);
-                        return (
-                          <label key={opt.id} className="flex items-center gap-2 cursor-pointer text-slate-700 dark:text-slate-300">
-                            <input
-                              type="checkbox"
-                              disabled={readOnly}
-                              checked={checked}
-                              onChange={() => handleToggleOssiculo('direitos', opt.id)}
-                              className="rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                            />
-                            <span>{opt.label}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-                    <span className="block text-xs font-semibold text-slate-800 dark:text-slate-200 mb-2">
                       Ossículos da audição esquerdos
                     </span>
                     <div className="space-y-1.5 text-xs">
@@ -942,6 +914,34 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                               disabled={readOnly}
                               checked={checked}
                               onChange={() => handleToggleOssiculo('esquerdos', opt.id)}
+                              className="rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                            />
+                            <span>{opt.label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                    <span className="block text-xs font-semibold text-slate-800 dark:text-slate-200 mb-2">
+                      Ossículos da audição direitos
+                    </span>
+                    <div className="space-y-1.5 text-xs">
+                      {[
+                        { id: 'martelo', label: 'Martelo' },
+                        { id: 'bigorna', label: 'Bigorna' },
+                        { id: 'estribo', label: 'Estribo' },
+                        { id: 'ausentes', label: 'Ausentes' }
+                      ].map(opt => {
+                        const checked = (cabecaExtra.ossiculosDireitos || []).includes(opt.id);
+                        return (
+                          <label key={opt.id} className="flex items-center gap-2 cursor-pointer text-slate-700 dark:text-slate-300">
+                            <input
+                              type="checkbox"
+                              disabled={readOnly}
+                              checked={checked}
+                              onChange={() => handleToggleOssiculo('direitos', opt.id)}
                               className="rounded border-slate-300 text-sky-600 focus:ring-sky-500"
                             />
                             <span>{opt.label}</span>
@@ -1000,24 +1000,24 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                     Costelas — Quantidade (Rolagem) e Identificação
                   </h5>
                   <span className="text-[10px] font-mono text-slate-500">
-                    Costelas Direitas e Costelas Esquerdas (0 a 12 e +12)
+                    Costelas Esquerdas e Costelas Direitas (0 a 12 e +12)
                   </span>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <CountIdentifyField
-                    label="Costelas direitas"
-                    max={12}
-                    ordinais={COSTELAS_ORDINAIS}
-                    value={inventory.torax?.costelasDireitas || {}}
-                    onChange={patch => updateCountIdentify('torax', 'costelasDireitas', patch)}
-                    readOnly={readOnly}
-                  />
                   <CountIdentifyField
                     label="Costelas esquerdas"
                     max={12}
                     ordinais={COSTELAS_ORDINAIS}
                     value={inventory.torax?.costelasEsquerdas || {}}
                     onChange={patch => updateCountIdentify('torax', 'costelasEsquerdas', patch)}
+                    readOnly={readOnly}
+                  />
+                  <CountIdentifyField
+                    label="Costelas direitas"
+                    max={12}
+                    ordinais={COSTELAS_ORDINAIS}
+                    value={inventory.torax?.costelasDireitas || {}}
+                    onChange={patch => updateCountIdentify('torax', 'costelasDireitas', patch)}
                     readOnly={readOnly}
                   />
                 </div>
