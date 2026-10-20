@@ -54,7 +54,14 @@ FDI padrão.
 5. **Dentes supranumerários por arcada**:
    - Ao clicar em "Dente supranumerário", expande o campo "Descreva a posição".
    - Suporta múltiplos dentes supranumerários por arcada com remoção individual.
+6. **Seleção múltipla e edição em lote de dentes**:
+   - Modo de seleção múltipla ativável via botão dedicado na barra de ferramentas (`Seleção múltipla (Ativa)`),
+     atalhos de arcada inteira (`+ Maxila`, `+ Mandíbula`), ou teclas modificadoras no desktop (`Ctrl`, `Cmd`, `Shift`).
+   - Painel inferior adapta-se para edição em lote quando mais de 1 dente estiver selecionado:
+     - **Estágio 1**: aplica presença a todos os dentes selecionados (se ausente, limpa condições clínicas; se articulado, restaura hígido).
+     - **Estágio 2**: permite alternar características clínicas coletivamente (solidamente marcado se todos possuem, indicador parcial se alguns possuem; clique alterna para todos, preservando condições individuais prévias).
+     - **Observações antropológicas**: permite aplicar notas em lote a todos os dentes selecionados.
 
 ### Details
 
-- Cobertura: Testes unitários de regras de negócio em `src/components/__tests__/odontogramLogic.test.ts` (15 testes cobrindo pareamento anatômico, metadados, conversão reversa e normalização de legados).
+- Cobertura: Testes unitários de regras de negócio em `src/components/__tests__/odontogramLogic.test.ts` (22 testes cobrindo pareamento anatômico, metadados, conversão reversa, normalização de legados e operações em lote de seleção múltipla).

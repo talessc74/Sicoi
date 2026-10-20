@@ -11,7 +11,7 @@ import {
   ToothClinicalCondition,
   ToothRecord
 } from '../types/sgccco';
-import { OdontogramViewer } from './OdontogramViewer';
+import { OdontogramViewer, ToothBatchUpdate } from './OdontogramViewer';
 import { OsteologicalInventoryViewer } from './OsteologicalInventoryViewer';
 import { PhotoSourceModal } from './PhotoSourceModal';
 import { ErrorNotice } from './ErrorNotice';
@@ -255,15 +255,42 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
     onUpdateCollection(updated);
   };
 
-  // Marcação em lote (Edêntulo ante/post-mortem) — só os dentes passados,
+  // Atualização em lote de múltiplos dentes com especificações individuais (seleção múltipla do Odontograma)
+  const handleBulkUpdateTeeth = (updates: ToothBatchUpdate[]) => {
+    const updated = { ...collection };
+    const targetId = currentInd?.id || activeInd.id;
+    let ind = updated.phase4.individuals.find(i => i.id === targetId);
+    if (!ind) {
+      ind = { ...activeInd };
+      updated.phase4.individuals = [...individuals, ind];
+      setSelectedIndividualId(ind.id);
+    }
+    const updateMap = new Map(updates.map(u => [u.toothNumber, u]));
+    ind.odontogram = ind.odontogram.map(t => {
+      const u = updateMap.get(t.toothNumberFdi);
+      if (!u) return t;
+      return {
+        ...t,
+        presence: u.update.presence ?? t.presence,
+        clinicalConditions: u.update.clinicalConditions ?? t.clinicalConditions,
+        condition: u.update.condition ?? t.condition,
+        notes: u.notes !== undefined ? u.notes : t.notes || ''
+      };
+    });
+    onUpdateCollection(updated);
+  };
+
+  // Marcação em lote (Edêntulo ante/post-mortem ou lote de dentes) — só os dentes passados,
   // nunca o odontograma inteiro, pra não sobrescrever posições de outra
   // arcada ou dentes inativos da dentição mista.
   const handleBulkMarkTeeth = (
     toothNumbers: number[],
     mark: {
       presence: ToothPresenceCondition;
+      clinicalConditions?: ToothClinicalCondition[];
       condition: ToothRecord['condition'];
-    } | any
+    } | any,
+    notes?: string
   ) => {
     const updated = { ...collection };
     const targetId = currentInd?.id || activeInd.id;
@@ -279,15 +306,19 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
         return {
           ...t,
           presence: mark.presence,
-          clinicalConditions: mark.presence === 'articulado' ? ['higido'] : [],
-          condition: mark.condition
+          clinicalConditions: mark.clinicalConditions !== undefined
+            ? mark.clinicalConditions
+            : (mark.presence === 'articulado' ? ['higido'] : []),
+          condition: mark.condition ?? t.condition,
+          notes: notes !== undefined ? notes : t.notes || ''
         };
       }
       return {
         ...t,
         presence: mark === 'ausente_ante_mortem' || mark === 'ausente_post_mortem' ? mark : 'articulado',
         clinicalConditions: mark === 'higido' ? ['higido'] : [],
-        condition: mark
+        condition: mark,
+        notes: notes !== undefined ? notes : t.notes || ''
       };
     });
     onUpdateCollection(updated);
@@ -965,6 +996,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
           <OdontogramViewer
             teeth={activeInd.odontogram}
             onUpdateTooth={handleUpdateTooth}
+            onBulkUpdateTeeth={handleBulkUpdateTeeth}
             onBulkMarkTeeth={handleBulkMarkTeeth}
             denticao={activeInd.denticao}
             onSetDenticao={(d) => handlePatchIndividual({ denticao: d })}

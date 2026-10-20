@@ -38,8 +38,9 @@ conexão com a Rede PCI Conecta: onde a busca por semelhança ajudaria,
 e onde cruzaria a missão declarada do SIGCOI. Leitura de conjuntos,
 histórico e grafo exige sessão autenticada: nenhuma dessas rotas é
 pública, e `/api/status` não devolve mais fragmento real de chave.
-Navegação sincronizada com a URL (sem roteador): o botão "voltar" do
-navegador/celular volta uma tela dentro do app, em vez de sair do site.
+Navegação sincronizada com a URL (sem roteador) e persistência de sessão: o botão "voltar" do
+navegador/celular volta uma tela dentro do app em vez de sair do site, e refresh ou reabertura de aba
+restauram exatamente a fase, aba e conjunto ativos sem clobbering para COI-032 / Fase 1.
 Fase 0 (Recebimento): transcrição da Declaração de Óbito com assinatura
 única, nunca o padrão dual-sign de Fase 4/5. Busca de referência real
 entre indivíduos (Fase 4, §15): determinística, sem IA. ABAC por
@@ -51,7 +52,7 @@ permanece deliberadamente fora do escopo. Dados da DO (Fase 0) e de
 procedência só saem do servidor para quem pode vê-los — a tela
 esconder não basta. Criar um COI recusa duplicar um NIC já existente.
 Inventário Odontológico: dentição permanente/mista/decídua por par de
-quadrante, edêntulo em lote, dentes supranumerários. Alterações ósseas
+quadrante, edêntulo e seleção múltipla de dentes em lote, dentes supranumerários. Alterações ósseas
 embutidas em cada osso do Inventário Osteológico em gaveta expansível
 (clique na linha ou botão !, chevron e stopPropagation), nunca mais um
 formulário único solto. Condutor por voz/conversa é opt-in. Documentos

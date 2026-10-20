@@ -4,7 +4,7 @@ import {
   ToothPresenceCondition,
   ToothClinicalCondition
 } from '../types/sgccco';
-import { Plus, X, Check, Info } from 'lucide-react';
+import { Plus, X, Check, Info, CheckSquare, Layers } from 'lucide-react';
 
 export type DenticaoMode = 'permanente' | 'mista' | 'decidua';
 
@@ -12,6 +12,16 @@ export interface SupernumeraryTooth {
   id: string;
   descricaoPosicao: string;
   arch?: 'maxila' | 'mandibula';
+}
+
+export interface ToothBatchUpdate {
+  toothNumber: number;
+  update: {
+    presence: ToothPresenceCondition;
+    clinicalConditions: ToothClinicalCondition[];
+    condition: ToothRecord['condition'];
+  };
+  notes?: string;
 }
 
 export interface OdontogramViewerProps {
@@ -25,12 +35,15 @@ export interface OdontogramViewerProps {
     },
     notes?: string
   ) => void;
+  onBulkUpdateTeeth?: (updates: ToothBatchUpdate[]) => void;
   onBulkMarkTeeth?: (
     toothNumbers: number[],
     mark: {
       presence: ToothPresenceCondition;
+      clinicalConditions?: ToothClinicalCondition[];
       condition: ToothRecord['condition'];
-    }
+    },
+    notes?: string
   ) => void;
   denticao?: DenticaoMode;
   onSetDenticao?: (d: DenticaoMode) => void;
@@ -174,9 +187,93 @@ export function normalizeToothRecord(t: ToothRecord | undefined, toothNumber: nu
   };
 }
 
+/**
+ * Calcula atualizações em lote de Presença para dentes selecionados
+ */
+export function calculateBatchPresenceUpdate(
+  selectedNumbers: number[],
+  getToothRecord: (num: number) => ToothRecord | undefined,
+  newPresence: ToothPresenceCondition,
+  notes?: string
+): ToothBatchUpdate[] {
+  return selectedNumbers.map(num => {
+    const current = normalizeToothRecord(getToothRecord(num), num);
+    let updatedClinical: ToothClinicalCondition[];
+
+    if (newPresence === 'ausente_ante_mortem' || newPresence === 'ausente_post_mortem') {
+      updatedClinical = [];
+    } else {
+      updatedClinical = current.clinicalConditions.length > 0 ? current.clinicalConditions : ['higido'];
+    }
+
+    const legacyCondition = deriveLegacyCondition(newPresence, updatedClinical);
+    return {
+      toothNumber: num,
+      update: {
+        presence: newPresence,
+        clinicalConditions: updatedClinical,
+        condition: legacyCondition
+      },
+      notes: notes !== undefined ? notes : current.notes
+    };
+  });
+}
+
+/**
+ * Calcula atualizações em lote de Características Clínicas para dentes selecionados
+ */
+export function calculateBatchClinicalToggle(
+  selectedNumbers: number[],
+  getToothRecord: (num: number) => ToothRecord | undefined,
+  cond: ToothClinicalCondition,
+  notes?: string
+): ToothBatchUpdate[] {
+  const allHave = selectedNumbers.every(num => {
+    const current = normalizeToothRecord(getToothRecord(num), num);
+    return current.clinicalConditions.includes(cond);
+  });
+
+  return selectedNumbers.map(num => {
+    const current = normalizeToothRecord(getToothRecord(num), num);
+    let updatedPresence = current.presence;
+    if (updatedPresence === 'ausente_ante_mortem' || updatedPresence === 'ausente_post_mortem') {
+      updatedPresence = 'articulado';
+    }
+
+    let updatedClinical: ToothClinicalCondition[];
+    if (cond === 'higido') {
+      updatedClinical = ['higido'];
+    } else if (allHave) {
+      // Todos têm -> desmarca
+      updatedClinical = current.clinicalConditions.filter(c => c !== cond);
+      if (updatedClinical.length === 0) updatedClinical = ['higido'];
+    } else {
+      // Nem todos têm -> adiciona a todos
+      const withoutHigido = current.clinicalConditions.filter(c => c !== 'higido');
+      if (!withoutHigido.includes(cond)) {
+        updatedClinical = [...withoutHigido, cond];
+      } else {
+        updatedClinical = withoutHigido;
+      }
+    }
+
+    const legacyCondition = deriveLegacyCondition(updatedPresence, updatedClinical);
+    return {
+      toothNumber: num,
+      update: {
+        presence: updatedPresence,
+        clinicalConditions: updatedClinical,
+        condition: legacyCondition
+      },
+      notes: notes !== undefined ? notes : current.notes
+    };
+  });
+}
+
 export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
   teeth,
   onUpdateTooth,
+  onBulkUpdateTeeth,
   onBulkMarkTeeth,
   denticao = 'permanente',
   onSetDenticao,
@@ -186,7 +283,8 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
   onSetSupernumeraryTeeth,
   readOnly = false
 }) => {
-  const [selectedToothNum, setSelectedToothNum] = useState<number | null>(null);
+  const [selectedToothNums, setSelectedToothNums] = useState<number[]>([]);
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [toothNotes, setToothNotes] = useState('');
   const [showSupernumeraryMaxila, setShowSupernumeraryMaxila] = useState(false);
   const [showSupernumeraryMandibula, setShowSupernumeraryMandibula] = useState(false);
@@ -215,6 +313,13 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
   const handleSelectDenticao = (newMode: DenticaoMode) => {
     setLocalDenticao(newMode);
     onSetDenticao?.(newMode);
+    setSelectedToothNums(prev =>
+      prev.filter(n => {
+        if (newMode === 'permanente') return n < 50;
+        if (newMode === 'decidua') return n >= 50;
+        return true;
+      })
+    );
   };
 
   const getTooth = (num: number) => teeth.find(t => t.toothNumberFdi === num);
@@ -294,10 +399,7 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
   const maxilaActiveNumbers = getMaxilaActiveNumbers();
   const mandibulaActiveNumbers = getMandibulaActiveNumbers();
 
-  // Verifica estado de Edêntulo Ante-Mortem e Post-Mortem de forma dinâmica:
-  // Se qualquer dente for alterado para 'articulado' ou 'desarticulado', a condição
-  // every(...) se torna falsa automaticamente, desmarcando o botão, mas mantendo
-  // todos os outros dentes ausentes!
+  // Verifica estado de Edêntulo Ante-Mortem e Post-Mortem de forma dinâmica
   const isMaxilaEdentuloAnte =
     maxilaActiveNumbers.length > 0 &&
     maxilaActiveNumbers.every(n => {
@@ -339,15 +441,15 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
         : type === 'ausente_ante_mortem' ? isMandibulaEdentuloAnte : isMandibulaEdentuloPost;
 
     if (isCurrentlyActive) {
-      // Desmarca Edêntulo: restaura elementos para Articulado Hígido
       onBulkMarkTeeth(targetNumbers, {
         presence: 'articulado',
+        clinicalConditions: ['higido'],
         condition: 'higido'
       });
     } else {
-      // Marca todos os elementos ativos da arcada como Ausente
       onBulkMarkTeeth(targetNumbers, {
         presence: type,
+        clinicalConditions: [],
         condition: type
       });
     }
@@ -374,86 +476,111 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
     onSetSupernumeraryTeeth(supernumeraryTeeth.filter(s => s.id !== id));
   };
 
-  // Seleção de dente individual para inspeção e edição
-  const handleSelectTooth = (num: number) => {
-    setSelectedToothNum(num);
-    const t = getTooth(num);
-    setToothNotes(t?.notes || '');
+  // Seleção e atalhos de marcação múltipla
+  const handleSelectAllMaxila = () => {
+    setSelectedToothNums(maxilaActiveNumbers);
+    setIsMultiSelectMode(true);
   };
 
-  // Atualização do Estágio 1 (Presença)
+  const handleSelectAllMandibula = () => {
+    setSelectedToothNums(mandibulaActiveNumbers);
+    setIsMultiSelectMode(true);
+  };
+
+  const handleClearSelection = () => {
+    setSelectedToothNums([]);
+  };
+
+  const handleRemoveFromSelection = (num: number) => {
+    setSelectedToothNums(prev => prev.filter(n => n !== num));
+  };
+
+  // Atualização do Estágio 1 (Presença) — suporta único ou seleção múltipla
   const handleChangePresence = (newPresence: ToothPresenceCondition) => {
-    if (selectedToothNum === null || !onUpdateTooth || readOnly) return;
-    const current = normalizeToothRecord(getTooth(selectedToothNum), selectedToothNum);
+    if (selectedToothNums.length === 0 || readOnly) return;
 
-    let updatedClinical: ToothClinicalCondition[];
-    if (newPresence === 'ausente_ante_mortem' || newPresence === 'ausente_post_mortem') {
-      // Se ausente, aceita apenas a condição de ausência e limpa condições clínicas
-      updatedClinical = [];
-    } else {
-      // Se articulado ou desarticulado, mantém ou inicializa com 'higido' se estava vazio
-      updatedClinical = current.clinicalConditions.length > 0 ? current.clinicalConditions : ['higido'];
-    }
-
-    const legacyCondition = deriveLegacyCondition(newPresence, updatedClinical);
-    onUpdateTooth(
-      selectedToothNum,
-      {
-        presence: newPresence,
-        clinicalConditions: updatedClinical,
-        condition: legacyCondition
-      },
-      toothNotes
+    const updates = calculateBatchPresenceUpdate(
+      selectedToothNums,
+      getTooth,
+      newPresence,
+      selectedToothNums.length === 1 ? toothNotes : undefined
     );
+
+    if (onBulkUpdateTeeth) {
+      onBulkUpdateTeeth(updates);
+    } else if (onBulkMarkTeeth) {
+      const condition = deriveLegacyCondition(newPresence, newPresence.startsWith('ausente') ? [] : ['higido']);
+      onBulkMarkTeeth(
+        selectedToothNums,
+        {
+          presence: newPresence,
+          clinicalConditions: newPresence.startsWith('ausente') ? [] : ['higido'],
+          condition
+        },
+        selectedToothNums.length === 1 ? toothNotes : undefined
+      );
+    } else if (onUpdateTooth) {
+      updates.forEach(u => onUpdateTooth(u.toothNumber, u.update, u.notes));
+    }
   };
 
   // Atualização do Estágio 2 (Características Clínicas de Múltipla Escolha)
   const handleToggleClinicalCondition = (cond: ToothClinicalCondition) => {
-    if (selectedToothNum === null || !onUpdateTooth || readOnly) return;
-    const current = normalizeToothRecord(getTooth(selectedToothNum), selectedToothNum);
-    if (current.presence === 'ausente_ante_mortem' || current.presence === 'ausente_post_mortem') return;
+    if (selectedToothNums.length === 0 || readOnly) return;
 
-    let updated: ToothClinicalCondition[];
-    if (cond === 'higido') {
-      // Clicou em Hígido: limpa anomalias patológicas e fixa apenas Hígido
-      updated = ['higido'];
-    } else {
-      const exists = current.clinicalConditions.includes(cond);
-      if (exists) {
-        updated = current.clinicalConditions.filter(c => c !== cond);
-        // Se ficou vazio, volta para 'higido'
-        if (updated.length === 0) updated = ['higido'];
-      } else {
-        // Remove 'higido' e adiciona a nova característica
-        updated = [...current.clinicalConditions.filter(c => c !== 'higido'), cond];
-      }
-    }
-
-    const legacyCondition = deriveLegacyCondition(current.presence, updated);
-    onUpdateTooth(
-      selectedToothNum,
-      {
-        presence: current.presence,
-        clinicalConditions: updated,
-        condition: legacyCondition
-      },
-      toothNotes
+    const updates = calculateBatchClinicalToggle(
+      selectedToothNums,
+      getTooth,
+      cond,
+      selectedToothNums.length === 1 ? toothNotes : undefined
     );
+
+    if (onBulkUpdateTeeth) {
+      onBulkUpdateTeeth(updates);
+    } else if (onUpdateTooth) {
+      updates.forEach(u => onUpdateTooth(u.toothNumber, u.update, u.notes));
+    }
   };
 
   const handleSaveNotes = () => {
-    if (selectedToothNum === null || !onUpdateTooth || readOnly) return;
-    const current = normalizeToothRecord(getTooth(selectedToothNum), selectedToothNum);
-    const legacyCondition = deriveLegacyCondition(current.presence, current.clinicalConditions);
-    onUpdateTooth(
-      selectedToothNum,
-      {
-        presence: current.presence,
-        clinicalConditions: current.clinicalConditions,
-        condition: legacyCondition
-      },
-      toothNotes
-    );
+    if (selectedToothNums.length === 0 || readOnly) return;
+
+    if (selectedToothNums.length === 1) {
+      const num = selectedToothNums[0];
+      const current = normalizeToothRecord(getTooth(num), num);
+      const legacyCondition = deriveLegacyCondition(current.presence, current.clinicalConditions);
+      if (onUpdateTooth) {
+        onUpdateTooth(
+          num,
+          {
+            presence: current.presence,
+            clinicalConditions: current.clinicalConditions,
+            condition: legacyCondition
+          },
+          toothNotes
+        );
+      }
+    } else {
+      const updates: ToothBatchUpdate[] = selectedToothNums.map(num => {
+        const current = normalizeToothRecord(getTooth(num), num);
+        const legacyCondition = deriveLegacyCondition(current.presence, current.clinicalConditions);
+        return {
+          toothNumber: num,
+          update: {
+            presence: current.presence,
+            clinicalConditions: current.clinicalConditions,
+            condition: legacyCondition
+          },
+          notes: toothNotes
+        };
+      });
+
+      if (onBulkUpdateTeeth) {
+        onBulkUpdateTeeth(updates);
+      } else if (onUpdateTooth) {
+        updates.forEach(u => onUpdateTooth(u.toothNumber, u.update, u.notes));
+      }
+    }
   };
 
   // Cálculo de legenda e estilo de exibição do dente
@@ -461,7 +588,7 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
     const active = isToothActive(num);
     const rawTooth = getTooth(num);
     const norm = normalizeToothRecord(rawTooth, num);
-    const isSelected = selectedToothNum === num;
+    const isSelected = selectedToothNums.includes(num);
 
     // Determina a legenda na unidade
     let badgeText = '';
@@ -481,7 +608,6 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
       // Articulado ou Desarticulado
       const count = norm.clinicalConditions.length;
       if (count > 1) {
-        // REGRA DO USUÁRIO: Mais de uma opção marcada -> legenda deixa de ser letras e exibe o número "2", "3", "4"...
         badgeText = `${count}`;
         isCountBadge = true;
         badgeColorClass = 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-bold';
@@ -505,20 +631,30 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
         badgeColorClass = 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200';
       }
 
-      // Se for desarticulado, aplica borda tracejada diferenciadora
       if (norm.presence === 'desarticulado') {
         buttonThemeClass += ' border-dashed border-2';
       }
     }
 
-    const handleClick = () => {
+    const handleClick = (e: React.MouseEvent) => {
       if (activeDenticao === 'mista' && !active) {
-        // Clicou no par inativo: ativa o dente e desativa seu correspondente
         handleToggleMistaPair(num);
       }
-      setSelectedToothNum(num);
-      const t = getTooth(num);
-      setToothNotes(t?.notes || '');
+      const isMultiModifier = e.ctrlKey || e.metaKey || e.shiftKey || isMultiSelectMode;
+      if (isMultiModifier) {
+        setSelectedToothNums(prev => {
+          const next = prev.includes(num) ? prev.filter(n => n !== num) : [...prev, num];
+          if (next.length === 1) {
+            const single = getTooth(next[0]);
+            setToothNotes(single?.notes || '');
+          }
+          return next;
+        });
+      } else {
+        setSelectedToothNums([num]);
+        const t = getTooth(num);
+        setToothNotes(t?.notes || '');
+      }
     };
 
     const tooltip = active
@@ -535,18 +671,23 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
         type="button"
         onClick={handleClick}
         title={tooltip}
-        className={`h-14 rounded-md border flex flex-col items-center justify-between p-1 text-center transition-all touch-manipulation select-none cursor-pointer ${
+        className={`h-14 rounded-md border flex flex-col items-center justify-between p-1 text-center transition-all touch-manipulation select-none cursor-pointer relative ${
           !active
             ? 'opacity-30 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:opacity-70'
             : buttonThemeClass
         } ${
           isSelected
-            ? 'ring-2 ring-sky-600 scale-105 z-10 shadow-md font-bold'
+            ? 'ring-3 ring-sky-500 scale-105 z-10 shadow-md font-bold'
             : active
             ? 'hover:scale-[1.02] hover:shadow-xs active:scale-95'
             : 'active:scale-95'
         }`}
       >
+        {isSelected && selectedToothNums.length > 1 && (
+          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-sky-600 text-white rounded-full flex items-center justify-center text-[8px] font-bold shadow-xs">
+            ✓
+          </span>
+        )}
         <span className="text-[10px] font-mono font-bold leading-none">{num}</span>
         <span
           className={`text-[9px] font-mono px-1 py-0.5 rounded leading-none transition-all ${
@@ -559,7 +700,20 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
     );
   };
 
-  const selectedToothRecord = selectedToothNum !== null ? normalizeToothRecord(getTooth(selectedToothNum), selectedToothNum) : null;
+  const isMulti = selectedToothNums.length > 1;
+  const selectedRecords = selectedToothNums.map(n => ({
+    num: n,
+    norm: normalizeToothRecord(getTooth(n), n)
+  }));
+  const singleSelectedRecord = selectedToothNums.length === 1 ? selectedRecords[0].norm : null;
+  const commonPresence =
+    selectedRecords.length > 0 &&
+    selectedRecords.every(r => r.norm.presence === selectedRecords[0].norm.presence)
+      ? selectedRecords[0].norm.presence
+      : null;
+  const hasArticulatedInSelection = selectedRecords.some(
+    r => r.norm.presence === 'articulado' || r.norm.presence === 'desarticulado'
+  );
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 space-y-4">
@@ -570,7 +724,7 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
             Inventário Odontológico
           </h4>
           <p className="text-[11px] text-slate-500 dark:text-slate-400">
-            Clique em uma unidade dentária para registrar a condição de presença e características clínicas.
+            Clique em uma ou mais unidades dentárias para registrar a condição de presença e características clínicas.
           </p>
         </div>
         <div className="text-right">
@@ -583,36 +737,81 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
         </div>
       </div>
 
-      {/* Seletor de Três Opções de Dentição (Logo abaixo da descrição e acima de Maxila) */}
-      <div className="flex flex-wrap items-center gap-3 p-2.5 bg-slate-50 dark:bg-slate-950/70 rounded-lg border border-slate-200 dark:border-slate-800">
-        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-          Tipo de Dentição:
-        </span>
-        <div className="flex gap-2">
-          {[
-            { id: 'permanente', label: 'Dentição permanente' },
-            { id: 'mista', label: 'Dentição mista' },
-            { id: 'decidua', label: 'Dentição decídua' }
-          ].map(opt => (
-            <button
-              key={opt.id}
-              type="button"
-              onClick={() => handleSelectDenticao(opt.id as DenticaoMode)}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-all touch-manipulation select-none cursor-pointer active:scale-95 ${
-                activeDenticao === opt.id
-                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-transparent shadow-xs font-bold'
-                  : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100'
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-        {activeDenticao === 'mista' && (
-          <span className="text-[11px] text-slate-500 dark:text-slate-400 italic">
-            * Clique em qualquer número decíduo para ativá-lo e desabilitar o par permanente (e vice-versa).
+      {/* Barra de Ferramentas: Tipo de Dentição & Seleção Múltipla */}
+      <div className="flex flex-wrap items-center justify-between gap-3 p-2.5 bg-slate-50 dark:bg-slate-950/70 rounded-lg border border-slate-200 dark:border-slate-800">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+            Tipo de Dentição:
           </span>
-        )}
+          <div className="flex gap-2">
+            {[
+              { id: 'permanente', label: 'Dentição permanente' },
+              { id: 'mista', label: 'Dentição mista' },
+              { id: 'decidua', label: 'Dentição decídua' }
+            ].map(opt => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => handleSelectDenticao(opt.id as DenticaoMode)}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-all touch-manipulation select-none cursor-pointer active:scale-95 ${
+                  activeDenticao === opt.id
+                    ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-transparent shadow-xs font-bold'
+                    : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          {activeDenticao === 'mista' && (
+            <span className="text-[11px] text-slate-500 dark:text-slate-400 italic">
+              * Clique em qualquer número decíduo para ativá-lo e desabilitar o par permanente (e vice-versa).
+            </span>
+          )}
+        </div>
+
+        {/* Ferramentas de Seleção Múltipla */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setIsMultiSelectMode(!isMultiSelectMode)}
+            className={`px-2.5 py-1.5 rounded-md text-xs font-medium border flex items-center gap-1.5 transition-all touch-manipulation select-none cursor-pointer active:scale-95 ${
+              isMultiSelectMode
+                ? 'bg-sky-600 text-white border-transparent shadow-xs font-bold'
+                : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100'
+            }`}
+            title="Ative para clicar em múltiplos dentes sem precisar segurar Ctrl/Cmd (ideal no iPad)"
+          >
+            <CheckSquare className="w-3.5 h-3.5" />
+            <span>Seleção múltipla {isMultiSelectMode ? '(Ativa)' : ''}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleSelectAllMaxila}
+            className="px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-100 text-[11px] text-slate-700 dark:text-slate-300 touch-manipulation select-none cursor-pointer"
+            title="Selecionar todos os dentes ativos da Maxila"
+          >
+            + Maxila
+          </button>
+          <button
+            type="button"
+            onClick={handleSelectAllMandibula}
+            className="px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-100 text-[11px] text-slate-700 dark:text-slate-300 touch-manipulation select-none cursor-pointer"
+            title="Selecionar todos os dentes ativos da Mandíbula"
+          >
+            + Mandíbula
+          </button>
+          {selectedToothNums.length > 0 && (
+            <button
+              type="button"
+              onClick={handleClearSelection}
+              className="px-2 py-1 rounded border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-[11px] text-rose-700 dark:text-rose-300 touch-manipulation select-none cursor-pointer"
+            >
+              Desmarcar ({selectedToothNums.length})
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ARCADA SUPERIOR: Maxila (arcada superior) */}
@@ -967,40 +1166,89 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
         </div>
       </div>
 
-      {/* PAINEL DE INSPEÇÃO E EDIÇÃO DO ELEMENTO SELECIONADO (2 ESTÁGIOS) */}
-      {selectedToothNum !== null && selectedToothRecord && (
+      {/* PAINEL DE INSPEÇÃO E EDIÇÃO DO ELEMENTO SELECIONADO (INDIVIDUAL OU EM LOTE) */}
+      {selectedToothNums.length > 0 && (
         <div className="mt-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs space-y-4">
-          {/* Cabeçalho do Elemento */}
+          {/* Cabeçalho do Elemento ou da Seleção em Lote */}
           <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-200 dark:border-slate-800">
-            <div>
-              <span className="font-bold text-base text-slate-900 dark:text-white font-mono">
-                Dente #{selectedToothNum}
-              </span>
-              <span className="text-slate-500 ml-2 font-mono">
-                ({selectedToothNum >= 50 ? 'Dentição Decídua' : 'Dentição Permanente'} · Quadrante {Math.floor(selectedToothNum / 10)})
-              </span>
+            <div className="flex flex-wrap items-center gap-2">
+              {isMulti ? (
+                <>
+                  <div className="flex items-center gap-1.5">
+                    <Layers className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+                    <span className="font-bold text-sm text-slate-900 dark:text-white font-mono">
+                      {selectedToothNums.length} dentes selecionados:
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1 max-w-xl">
+                    {selectedToothNums.map(n => (
+                      <span
+                        key={n}
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-sky-100 dark:bg-sky-950/80 border border-sky-300 dark:border-sky-800 text-sky-900 dark:text-sky-200 font-mono text-[10px] font-bold"
+                      >
+                        #{n}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFromSelection(n)}
+                          className="hover:text-rose-600 text-slate-400 transition-colors"
+                          title={`Remover dente #${n} da seleção`}
+                        >
+                          <X className="w-2.5 h-2.5" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <span className="font-bold text-base text-slate-900 dark:text-white font-mono">
+                    Dente #{selectedToothNums[0]}
+                  </span>
+                  <span className="text-slate-500 ml-2 font-mono">
+                    ({selectedToothNums[0] >= 50 ? 'Dentição Decídua' : 'Dentição Permanente'} · Quadrante {Math.floor(selectedToothNums[0] / 10)})
+                  </span>
+                </div>
+              )}
             </div>
+
             <div className="flex items-center gap-2">
-              <span className="text-slate-500 text-[11px]">Condição Atual:</span>
+              <span className="text-slate-500 text-[11px]">Condição:</span>
               <span className="font-semibold text-slate-800 dark:text-slate-200 px-2 py-0.5 rounded bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700">
-                {PRESENCE_CONDITIONS_META[selectedToothRecord.presence].label}
-                {selectedToothRecord.clinicalConditions.length > 0 &&
-                  ` (${selectedToothRecord.clinicalConditions.map(c => CLINICAL_CONDITIONS_META[c]?.label || c).join(', ')})`}
+                {isMulti ? (
+                  commonPresence ? (
+                    `${PRESENCE_CONDITIONS_META[commonPresence].label}`
+                  ) : (
+                    'Condições Variadas'
+                  )
+                ) : singleSelectedRecord ? (
+                  `${PRESENCE_CONDITIONS_META[singleSelectedRecord.presence].label}${
+                    singleSelectedRecord.clinicalConditions.length > 0
+                      ? ` (${singleSelectedRecord.clinicalConditions.map(c => CLINICAL_CONDITIONS_META[c]?.label || c).join(', ')})`
+                      : ''
+                  }`
+                ) : null}
               </span>
+              <button
+                type="button"
+                onClick={handleClearSelection}
+                className="px-2 py-1 rounded border border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 text-[11px] font-medium transition-colors cursor-pointer"
+              >
+                Fechar / Desmarcar
+              </button>
             </div>
           </div>
 
           {!readOnly ? (
             <div className="space-y-4">
-              {/* ESTÁGIO 1: CONDIÇÃO DE PRESENÇA (OBRIGATÓRIA - UMA DAS 4 OPÇÕES) */}
+              {/* ESTÁGIO 1: CONDIÇÃO DE PRESENÇA (OBRIGATÓRIA - SELEÇÃO ÚNICA OU EM LOTE) */}
               <div>
                 <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 uppercase font-mono mb-2">
-                  1. Condição de Presença (Obrigatória — Seleção Única):
+                  1. Condição de Presença {isMulti ? `(Aplicar aos ${selectedToothNums.length} dentes)` : '(Obrigatória — Seleção Única)'}:
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {(Object.keys(PRESENCE_CONDITIONS_META) as ToothPresenceCondition[]).map(condKey => {
                     const meta = PRESENCE_CONDITIONS_META[condKey];
-                    const isSelected = selectedToothRecord.presence === condKey;
+                    const isSelected = isMulti ? commonPresence === condKey : singleSelectedRecord?.presence === condKey;
                     return (
                       <button
                         key={condKey}
@@ -1030,11 +1278,11 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
               </div>
 
               {/* ESTÁGIO 2: CARACTERÍSTICAS CLÍNICAS (MÚLTIPLA SELEÇÃO — APENAS SE ARTICULADO OU DESARTICULADO) */}
-              {(selectedToothRecord.presence === 'articulado' || selectedToothRecord.presence === 'desarticulado') ? (
+              {(isMulti ? hasArticulatedInSelection : (singleSelectedRecord?.presence === 'articulado' || singleSelectedRecord?.presence === 'desarticulado')) ? (
                 <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
                   <div className="flex items-center justify-between">
                     <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 uppercase font-mono">
-                      2. Características Clínicas (Múltipla Seleção):
+                      2. Características Clínicas (Múltipla Seleção {isMulti ? `em ${selectedToothNums.length} dentes` : ''}):
                     </label>
                     <span className="text-[11px] text-slate-500">
                       Pode marcar mais de uma opção simultaneamente.
@@ -1044,20 +1292,33 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-1.5">
                     {(Object.keys(CLINICAL_CONDITIONS_META) as ToothClinicalCondition[]).map(cKey => {
                       const meta = CLINICAL_CONDITIONS_META[cKey];
-                      const isChecked = selectedToothRecord.clinicalConditions.includes(cKey);
+                      const allHave = isMulti
+                        ? selectedRecords.every(r => r.norm.clinicalConditions.includes(cKey))
+                        : (singleSelectedRecord?.clinicalConditions.includes(cKey) || false);
+                      const someHave = isMulti && !allHave && selectedRecords.some(r => r.norm.clinicalConditions.includes(cKey));
+
                       return (
                         <button
                           key={cKey}
                           type="button"
                           onClick={() => handleToggleClinicalCondition(cKey)}
                           className={`p-2 rounded-lg border text-left flex items-center justify-between text-xs transition-colors touch-manipulation select-none cursor-pointer active:scale-95 ${
-                            isChecked
+                            allHave
                               ? 'bg-sky-600 text-white font-semibold border-transparent shadow-2xs'
+                              : someHave
+                              ? 'bg-sky-50 dark:bg-sky-950/70 text-sky-800 dark:text-sky-200 border-sky-400 font-semibold'
                               : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100'
                           }`}
                         >
-                          <span className="truncate pr-1 text-[11px]">{meta.label}</span>
-                          {isChecked && <Check className="w-3 h-3 shrink-0" />}
+                          <div className="flex items-center gap-1 min-w-0">
+                            <span className="truncate pr-1 text-[11px]">{meta.label}</span>
+                            {someHave && (
+                              <span className="text-[9px] px-1 py-0.2 rounded bg-sky-200 dark:bg-sky-800 text-sky-900 dark:text-sky-100 font-mono">
+                                parcial
+                              </span>
+                            )}
+                          </div>
+                          {allHave && <Check className="w-3 h-3 shrink-0" />}
                         </button>
                       );
                     })}
@@ -1067,7 +1328,7 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
                 <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 text-xs flex items-center gap-2">
                   <Info className="w-4 h-4 shrink-0 text-slate-400" />
                   <span>
-                    O elemento está marcado como <strong>{PRESENCE_CONDITIONS_META[selectedToothRecord.presence].label}</strong>. Características clínicas aplicam-se apenas quando o elemento é <strong>Articulado</strong> ou <strong>Desarticulado</strong>.
+                    Os dentes selecionados estão marcados como ausentes. Características clínicas aplicam-se apenas a dentes <strong>Articulados</strong> ou <strong>Desarticulados</strong>.
                   </span>
                 </div>
               )}
@@ -1075,29 +1336,35 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
               {/* Observações Antropológicas / Detalhes de Desgaste ou Restauração */}
               <div className="pt-3 border-t border-slate-200 dark:border-slate-800">
                 <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                  Observações Antropológicas / Detalhes de Desgaste ou Restauração:
+                  {isMulti
+                    ? `Observações Antropológicas em Lote (${selectedToothNums.length} dentes):`
+                    : 'Observações Antropológicas / Detalhes de Desgaste ou Restauração:'}
                 </label>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     value={toothNotes}
                     onChange={e => setToothNotes(e.target.value)}
-                    placeholder="Ex: Restauração em resina composta na face oclusal; faceta de desgaste severo..."
+                    placeholder={
+                      isMulti
+                        ? `Digite uma anotação para aplicar a todos os ${selectedToothNums.length} dentes...`
+                        : "Ex: Restauração em resina composta na face oclusal; faceta de desgaste severo..."
+                    }
                     className="flex-1 p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs"
                   />
                   <button
                     type="button"
                     onClick={handleSaveNotes}
-                    className="px-3 py-1.5 rounded-lg bg-sky-600 text-white font-semibold hover:bg-sky-500 transition-colors text-xs whitespace-nowrap"
+                    className="px-3 py-1.5 rounded-lg bg-sky-600 text-white font-semibold hover:bg-sky-500 transition-colors text-xs whitespace-nowrap touch-manipulation cursor-pointer"
                   >
-                    Salvar Nota
+                    {isMulti ? `Salvar Nota nos ${selectedToothNums.length} dentes` : 'Salvar Nota'}
                   </button>
                 </div>
               </div>
             </div>
           ) : (
             <div className="text-slate-500 text-xs italic">
-              Modo somente leitura ativado. Não é possível alterar as características deste elemento.
+              Modo somente leitura ativado. Não é possível alterar as características dos elementos.
             </div>
           )}
         </div>

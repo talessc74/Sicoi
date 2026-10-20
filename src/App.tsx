@@ -46,17 +46,14 @@ import { Plus, ShieldCheck, Bot, Sparkles, Loader2, CheckCircle2 } from 'lucide-
 // sistema — ver _local-adr-policy-202): chega como ?token=... na URL. Sem
 // roteador nesta SPA — lido uma vez, fora do componente, porque não muda
 // durante a sessão da aba.
-const passwordSetupToken = new URLSearchParams(window.location.search).get('token');
+const passwordSetupToken = typeof window !== 'undefined'
+  ? new URLSearchParams(window.location.search).get('token')
+  : null;
 
-// Navegação por estado de aba (activeTab/activePhase), sem roteador — o botão
-// "voltar" físico do navegador/celular não tinha efeito nenhum dentro do app
-// (saía do site inteiro em vez de voltar uma tela). As funções abaixo traduzem
-// esse estado pra uma URL real e de volta, pra sincronizar com o histórico do
-// navegador via history.pushState/popstate (ver os efeitos logo após os
-// useState, dentro do componente). server.ts já serve index.html pra qualquer
-// caminho (dev via Vite appType:'spa', produção via app.get('*', ...)), então
-// uma URL como /fases/4 funciona tanto num "voltar" quanto num recarregamento
-// direto da página.
+// Navegação por estado de aba (activeTab/activePhase) e coleção selecionada (selectedNic),
+// sem roteador — sincronizado bidirecionalmente com a URL real (history.pushState/popstate)
+// e com localStorage para sobreviver a recarregamentos de página (refresh) e restauração
+// de aba no Safari/celular/iPad (ver ADR 104).
 const VALID_TABS = ['inicio', 'fases', 'documentos', 'configuracoes', 'ajuda', 'grafo', 'auditoria', 'pesquisa', 'estantes', 'creditos'] as const;
 type NavigableTab = (typeof VALID_TABS)[number];
 
@@ -64,22 +61,96 @@ function isNavigableTab(value: string): value is NavigableTab {
   return (VALID_TABS as readonly string[]).includes(value);
 }
 
-function pathForNavState(tab: string, phase: number): string {
+function isPhaseNumber(val: number): val is PhaseNumber {
+  return Number.isInteger(val) && val >= 0 && val <= 7;
+}
+
+export const STORAGE_KEYS = {
+  ACTIVE_TAB: 'sigcoi_active_tab',
+  ACTIVE_PHASE: 'sigcoi_active_phase',
+  SELECTED_NIC: 'sigcoi_selected_nic',
+} as const;
+
+export function safeLocalStorageGet(key: string): string | null {
+  try {
+    return typeof window !== 'undefined' ? window.localStorage.getItem(key) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function safeLocalStorageSet(key: string, value: string): void {
+  try {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(key, value);
+    }
+  } catch {
+    // Ignore in private browsing or quota exceeded
+  }
+}
+
+export interface NavState {
+  activeTab: NavigableTab;
+  activePhase: PhaseNumber;
+  nic: string | null;
+}
+
+export function pathForNavState(tab: string, phase: number): string {
   if (tab === 'inicio') return '/';
   if (tab === 'fases') return `/fases/${phase}`;
   return `/${tab}`;
 }
 
-function parseNavStateFromPath(pathname: string): { activeTab: NavigableTab; activePhase: number } | null {
+export function fullUrlForNavState(tab: string, phase: number, nic: string | null): string {
+  const path = pathForNavState(tab, phase);
+  const includeNic = ['fases', 'auditoria', 'grafo', 'estantes', 'pesquisa'].includes(tab) && Boolean(nic);
+  return includeNic ? `${path}?nic=${encodeURIComponent(nic!)}` : path;
+}
+
+export function parseNavState(pathname: string, search: string): NavState {
+  const nicFromUrl = new URLSearchParams(search).get('nic')?.trim() || null;
   const segments = pathname.split('/').filter(Boolean);
-  if (segments.length === 0) return { activeTab: 'inicio', activePhase: 1 };
-  const [tab, phaseSegment] = segments;
-  if (!isNavigableTab(tab)) return null;
-  if (tab === 'fases') {
-    const phase = Number(phaseSegment);
-    return { activeTab: 'fases', activePhase: phase >= 0 && phase <= 7 ? phase : 1 };
+
+  if (segments.length === 0) {
+    // Acesso direto à raiz (ou refresh na home): abre sempre no Início (Dashboard principal)
+    return {
+      activeTab: 'inicio',
+      activePhase: 1,
+      nic: nicFromUrl || safeLocalStorageGet(STORAGE_KEYS.SELECTED_NIC)
+    };
   }
-  return { activeTab: tab, activePhase: 1 };
+
+  const [tab, phaseSegment] = segments;
+  if (!isNavigableTab(tab)) {
+    return {
+      activeTab: 'inicio',
+      activePhase: 1,
+      nic: nicFromUrl || safeLocalStorageGet(STORAGE_KEYS.SELECTED_NIC)
+    };
+  }
+
+  if (tab === 'fases') {
+    const parsedPhase = Number(phaseSegment);
+    const validPhase = isPhaseNumber(parsedPhase);
+    const phase: PhaseNumber = validPhase
+      ? parsedPhase
+      : (() => {
+          const savedPhase = Number(safeLocalStorageGet(STORAGE_KEYS.ACTIVE_PHASE));
+          return isPhaseNumber(savedPhase) ? savedPhase : 1;
+        })();
+
+    return {
+      activeTab: 'fases',
+      activePhase: phase,
+      nic: nicFromUrl || safeLocalStorageGet(STORAGE_KEYS.SELECTED_NIC)
+    };
+  }
+
+  return {
+    activeTab: tab,
+    activePhase: 1,
+    nic: nicFromUrl || safeLocalStorageGet(STORAGE_KEYS.SELECTED_NIC)
+  };
 }
 
 export default function App() {
@@ -101,10 +172,18 @@ export default function App() {
   const [people, setPeople] = useState<UserProfile[]>([]);
   const [collections, setCollections] = useState<OsteologicalCollection[]>([]);
   const [authorizations, setAuthorizations] = useState<ResearchAuthorization[]>([]);
-  const [selectedNic, setSelectedNic] = useState<string>('');
-  const [activePhase, setActivePhase] = useState<PhaseNumber>(1);
-  const [activeTab, setActiveTab] = useState<string>('inicio');
-  const [previousTab, setPreviousTab] = useState<string>('inicio');
+
+  // Inicialização de navegação sincronizada: lê direto da URL e do localStorage
+  // no primeiro render, garantindo que refresh e reabertura de aba restaurem
+  // exatamente a fase, aba e coleção em que o usuário estava trabalhando.
+  const initialNav = passwordSetupToken
+    ? { activeTab: 'inicio' as NavigableTab, activePhase: 1 as PhaseNumber, nic: null }
+    : parseNavState(window.location.pathname, window.location.search);
+
+  const [selectedNic, setSelectedNic] = useState<string>(() => initialNav.nic || safeLocalStorageGet(STORAGE_KEYS.SELECTED_NIC) || '');
+  const [activePhase, setActivePhase] = useState<PhaseNumber>(() => initialNav.activePhase);
+  const [activeTab, setActiveTab] = useState<string>(() => initialNav.activeTab);
+  const [previousTab, setPreviousTab] = useState<string>(() => initialNav.activeTab);
 
   const navigateToTab = (tab: string) => {
     setPreviousTab(activeTab);
@@ -142,8 +221,42 @@ export default function App() {
       fetchAuthorizations()
     ]);
     setCollections(loadedCollections);
-    setSelectedNic(loadedCollections[0]?.nic || '');
-    setActivePhase(loadedCollections[0]?.currentPhase || 1);
+
+    // Seleção resiliente do NIC:
+    // 1. NIC já selecionado no estado React ou vindo da URL (?nic=...)
+    // 2. NIC persistido no localStorage
+    // 3. Primeiro conjunto do banco (fallback)
+    setSelectedNic((currentSelected) => {
+      const urlNic = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('nic')?.trim() : null;
+      const savedNic = safeLocalStorageGet(STORAGE_KEYS.SELECTED_NIC);
+      const candidates = [currentSelected, urlNic, savedNic].filter(Boolean) as string[];
+      const matched = candidates.find((cand) => loadedCollections.some((c) => c.nic === cand));
+      const finalNic = matched || loadedCollections[0]?.nic || '';
+      if (finalNic) {
+        safeLocalStorageSet(STORAGE_KEYS.SELECTED_NIC, finalNic);
+      }
+      return finalNic;
+    });
+
+    // Fase ativa resiliente:
+    // NUNCA sobrescreve a fase se a URL (/fases/X) ou a navegação atual já determinou uma fase válida!
+    setActivePhase((currentPhase) => {
+      const navFromUrl = typeof window !== 'undefined'
+        ? parseNavState(window.location.pathname, window.location.search)
+        : null;
+      if (navFromUrl && navFromUrl.activeTab === 'fases' && isPhaseNumber(navFromUrl.activePhase)) {
+        return navFromUrl.activePhase;
+      }
+      if (isPhaseNumber(currentPhase)) {
+        return currentPhase;
+      }
+      const urlNic = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('nic')?.trim() : null;
+      const savedNic = safeLocalStorageGet(STORAGE_KEYS.SELECTED_NIC);
+      const targetNic = [urlNic, savedNic].find((n) => n && loadedCollections.some((c) => c.nic === n)) || loadedCollections[0]?.nic;
+      const col = loadedCollections.find((c) => c.nic === targetNic);
+      return (col?.currentPhase ?? 1) as PhaseNumber;
+    });
+
     setPeople(loadedPeople);
     setAuthorizations(loadedAuthorizations);
   };
@@ -169,6 +282,7 @@ export default function App() {
     setPeople([]);
     setAuthorizations([]);
     setActiveTab('inicio');
+    safeLocalStorageSet(STORAGE_KEYS.ACTIVE_TAB, 'inicio');
   };
 
   // hasStartedRef evita que o StrictMode (que invoca efeitos duas vezes em
@@ -213,7 +327,7 @@ export default function App() {
     })();
   }, []);
 
-  // Sincroniza activeTab/activePhase com a URL real (history.pushState), pra o
+  // Sincroniza activeTab/activePhase e selectedNic com a URL real (history.pushState), pra o
   // botão "voltar" do navegador/celular voltar uma tela dentro do app em vez de
   // sair do site. skipNextNavPushRef evita o efeito de baixo reagir à própria
   // mudança disparada por um popstate (senão cada "voltar" empilharia um
@@ -221,34 +335,30 @@ export default function App() {
   const skipNextNavPushRef = useRef(false);
 
   useEffect(() => {
-    // Restaura o estado inicial a partir da URL (ex.: recarregar em /fases/4
-    // volta pra Fase 4) — ignorado quando há um token de definição de senha na
-    // query string, caminho isolado que não usa activeTab/activePhase.
-    const parsedInitial = passwordSetupToken ? null : parseNavStateFromPath(window.location.pathname);
-    if (parsedInitial) {
-      skipNextNavPushRef.current = true;
-      setActiveTab(parsedInitial.activeTab);
-      setActivePhase(parsedInitial.activePhase as PhaseNumber);
+    // Sincroniza a entrada inicial no histórico sem adicionar uma nova (replaceState)
+    if (!passwordSetupToken) {
+      const targetUrl = fullUrlForNavState(activeTab, activePhase, selectedNic);
+      const currentUrl = window.location.pathname + window.location.search;
+      if (currentUrl !== targetUrl) {
+        window.history.replaceState({ activeTab, activePhase, selectedNic }, '', targetUrl);
+      }
     }
-    // replaceState (nunca pushState) aqui: só anexamos o estado de navegação à
-    // entrada do histórico que já existe, sem criar uma nova.
-    window.history.replaceState(
-      { activeTab: parsedInitial?.activeTab ?? 'inicio', activePhase: parsedInitial?.activePhase ?? 1 },
-      '',
-      window.location.pathname + window.location.search
-    );
 
     function handlePopState(event: PopStateEvent) {
-      const state = event.state as { activeTab?: string; activePhase?: number } | null;
-      const parsedFromState =
-        state?.activeTab && isNavigableTab(state.activeTab)
-          ? { activeTab: state.activeTab, activePhase: state.activePhase ?? 1 }
-          : null;
-      const parsed = parsedFromState ?? parseNavStateFromPath(window.location.pathname);
-      if (!parsed) return;
+      const state = event.state as { activeTab?: string; activePhase?: number; selectedNic?: string } | null;
+      const parsed = parseNavState(window.location.pathname, window.location.search);
+      const targetTab = state?.activeTab && isNavigableTab(state.activeTab) ? (state.activeTab as NavigableTab) : parsed.activeTab;
+      const targetPhase = typeof state?.activePhase === 'number' && isPhaseNumber(state.activePhase)
+        ? (state.activePhase as PhaseNumber)
+        : parsed.activePhase;
+      const targetNic = state?.selectedNic || parsed.nic;
+
       skipNextNavPushRef.current = true;
-      setActiveTab(parsed.activeTab);
-      setActivePhase(parsed.activePhase as PhaseNumber);
+      setActiveTab(targetTab);
+      setActivePhase(targetPhase);
+      if (targetNic) {
+        setSelectedNic(targetNic);
+      }
     }
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
@@ -260,11 +370,20 @@ export default function App() {
       skipNextNavPushRef.current = false;
       return;
     }
-    const path = pathForNavState(activeTab, activePhase);
-    if (window.location.pathname !== path) {
-      window.history.pushState({ activeTab, activePhase }, '', path);
+
+    // Persiste no localStorage para sobreviver a recarregamento ou fechamento de aba
+    safeLocalStorageSet(STORAGE_KEYS.ACTIVE_TAB, activeTab);
+    safeLocalStorageSet(STORAGE_KEYS.ACTIVE_PHASE, String(activePhase));
+    if (selectedNic) {
+      safeLocalStorageSet(STORAGE_KEYS.SELECTED_NIC, selectedNic);
     }
-  }, [activeTab, activePhase]);
+
+    const targetUrl = fullUrlForNavState(activeTab, activePhase, selectedNic);
+    const currentUrl = window.location.pathname + window.location.search;
+    if (currentUrl !== targetUrl) {
+      window.history.pushState({ activeTab, activePhase, selectedNic }, '', targetUrl);
+    }
+  }, [activeTab, activePhase, selectedNic]);
 
   // Cadastra uma nova pessoa (papel de acesso) — só o Administrador logado pode
   // (o servidor reconfere). A pessoa criada ainda não tem senha: o Administrador

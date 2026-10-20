@@ -4,7 +4,9 @@ import {
   PRESENCE_CONDITIONS_META,
   CLINICAL_CONDITIONS_META,
   deriveLegacyCondition,
-  normalizeToothRecord
+  normalizeToothRecord,
+  calculateBatchPresenceUpdate,
+  calculateBatchClinicalToggle
 } from '../OdontogramViewer';
 import { ToothRecord } from '../../types/sgccco';
 
@@ -171,6 +173,115 @@ describe('Inventário Odontológico — Regras de Negócio e Lógica', () => {
       const norm = normalizeToothRecord(modern, 21);
       expect(norm.presence).toBe('desarticulado');
       expect(norm.clinicalConditions).toEqual(['fratura', 'com_material_restaurador']);
+    });
+  });
+
+  describe('Operações em Lote e Seleção Múltipla de Dentes (calculateBatchPresenceUpdate & calculateBatchClinicalToggle)', () => {
+    const teethMap: Record<number, ToothRecord> = {
+      11: {
+        toothNumberFdi: 11,
+        quadrant: 1,
+        presence: 'articulado',
+        clinicalConditions: ['higido'],
+        condition: 'higido',
+        notes: 'Nota 11'
+      },
+      12: {
+        toothNumberFdi: 12,
+        quadrant: 1,
+        presence: 'articulado',
+        clinicalConditions: ['cariado'],
+        condition: 'carie',
+        notes: 'Nota 12'
+      },
+      13: {
+        toothNumberFdi: 13,
+        quadrant: 1,
+        presence: 'ausente_ante_mortem',
+        clinicalConditions: [],
+        condition: 'ausente_ante_mortem',
+        notes: 'Nota 13'
+      }
+    };
+
+    const getTooth = (num: number) => teethMap[num];
+
+    it('aplica ausente_post_mortem em lote limpando condições clínicas', () => {
+      const updates = calculateBatchPresenceUpdate([11, 12], getTooth, 'ausente_post_mortem');
+      expect(updates).toHaveLength(2);
+      expect(updates[0].toothNumber).toBe(11);
+      expect(updates[0].update.presence).toBe('ausente_post_mortem');
+      expect(updates[0].update.clinicalConditions).toEqual([]);
+      expect(updates[0].update.condition).toBe('ausente_post_mortem');
+      expect(updates[0].notes).toBe('Nota 11');
+
+      expect(updates[1].toothNumber).toBe(12);
+      expect(updates[1].update.presence).toBe('ausente_post_mortem');
+      expect(updates[1].update.clinicalConditions).toEqual([]);
+      expect(updates[1].update.condition).toBe('ausente_post_mortem');
+    });
+
+    it('reativa dentes ausentes para articulado restaurando higido', () => {
+      const updates = calculateBatchPresenceUpdate([13], getTooth, 'articulado');
+      expect(updates).toHaveLength(1);
+      expect(updates[0].update.presence).toBe('articulado');
+      expect(updates[0].update.clinicalConditions).toEqual(['higido']);
+      expect(updates[0].update.condition).toBe('higido');
+    });
+
+    it('adiciona característica clínica em lote preservando características individuais prévias', () => {
+      // 11 é higido, 12 é cariado. Adicionar 'tartaro' deve colocar [tartaro] no 11 e [cariado, tartaro] no 12!
+      const updates = calculateBatchClinicalToggle([11, 12], getTooth, 'tartaro');
+      expect(updates).toHaveLength(2);
+
+      expect(updates[0].toothNumber).toBe(11);
+      expect(updates[0].update.clinicalConditions).toEqual(['tartaro']);
+      expect(updates[0].update.presence).toBe('articulado');
+
+      expect(updates[1].toothNumber).toBe(12);
+      expect(updates[1].update.clinicalConditions).toEqual(['cariado', 'tartaro']);
+      expect(updates[1].update.presence).toBe('articulado');
+    });
+
+    it('remove característica clínica de todos quando todos os dentes selecionados já a possuem', () => {
+      const allTartaroMap: Record<number, ToothRecord> = {
+        11: {
+          toothNumberFdi: 11,
+          quadrant: 1,
+          presence: 'articulado',
+          clinicalConditions: ['tartaro'],
+          condition: 'higido'
+        },
+        12: {
+          toothNumberFdi: 12,
+          quadrant: 1,
+          presence: 'articulado',
+          clinicalConditions: ['cariado', 'tartaro'],
+          condition: 'carie'
+        }
+      };
+
+      const updates = calculateBatchClinicalToggle([11, 12], n => allTartaroMap[n], 'tartaro');
+      expect(updates[0].update.clinicalConditions).toEqual(['higido']); // Ficou vazio, restaurou higido
+      expect(updates[1].update.clinicalConditions).toEqual(['cariado']); // Manteve cariado
+    });
+
+    it('redefine todos os dentes para higido quando cond é higido', () => {
+      const updates = calculateBatchClinicalToggle([11, 12], getTooth, 'higido');
+      expect(updates[0].update.clinicalConditions).toEqual(['higido']);
+      expect(updates[1].update.clinicalConditions).toEqual(['higido']);
+    });
+
+    it('converte dente ausente em articulado quando recebe característica clínica', () => {
+      const updates = calculateBatchClinicalToggle([13], getTooth, 'fratura');
+      expect(updates[0].update.presence).toBe('articulado');
+      expect(updates[0].update.clinicalConditions).toEqual(['fratura']);
+    });
+
+    it('propaga anotação customizada quando fornecida em lote', () => {
+      const updates = calculateBatchPresenceUpdate([11, 12], getTooth, 'desarticulado', 'Dentes encontrados no fundo da urna');
+      expect(updates[0].notes).toBe('Dentes encontrados no fundo da urna');
+      expect(updates[1].notes).toBe('Dentes encontrados no fundo da urna');
     });
   });
 });
