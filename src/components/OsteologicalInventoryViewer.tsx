@@ -14,13 +14,25 @@ import { Info, Sparkles, Plus, Trash2, AlertCircle, ChevronDown } from 'lucide-r
 // Osso ausente ('A') e alteração óssea ('!') são mutuamente exclusivos — não
 // faz sentido catalogar uma alteração num osso que não foi encontrado (pedido
 // do Tales, out/2026, aplicado retroativamente à Cabeça e Pescoço também).
-function clearAlteracoesIfAusente(
+export function clearAlteracoesIfAusente(
   alteracoes: OsteologicalAlteracaoRegiao[] | undefined,
   bone: string,
   newCode: OsteologicalPresenceCode | undefined
 ): OsteologicalAlteracaoRegiao[] | undefined {
   if (newCode !== 'A' || !alteracoes) return alteracoes;
   return alteracoes.filter(a => a.osso !== bone);
+}
+
+export function applyBulkPresence(
+  currentOssos: Record<string, OsteologicalPresenceCode>,
+  currentAlteracoes: OsteologicalAlteracaoRegiao[] | undefined,
+  bones: readonly string[],
+  code: OsteologicalPresenceCode
+): { ossos: Record<string, OsteologicalPresenceCode>; alteracoes: OsteologicalAlteracaoRegiao[] | undefined } {
+  const newOssos = { ...currentOssos };
+  for (const bone of bones) newOssos[bone] = code;
+  const newAlteracoes = code === 'A' ? (currentAlteracoes || []).filter(a => !bones.includes(a.osso || '')) : currentAlteracoes;
+  return { ossos: newOssos, alteracoes: newAlteracoes };
 }
 
 // Coluna Vertebral: Sacro e Cóccix possuem presença P/F/I/A individual.
@@ -398,9 +410,12 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
   const handleBulkMarkGeneric = (sectionKey: string, bones: readonly string[], code: OsteologicalPresenceCode) => {
     if (readOnly) return;
     const section = getSimpleSection(sectionKey);
-    const newOssos = { ...section.ossos };
-    for (const bone of bones) newOssos[bone] = code;
-    const newAlteracoes = code === 'A' ? (section.alteracoes || []).filter(a => !bones.includes(a.osso || '')) : section.alteracoes;
+    const { ossos: newOssos, alteracoes: newAlteracoes } = applyBulkPresence(
+      section.ossos,
+      section.alteracoes,
+      bones,
+      code
+    );
     updateSimpleSection(sectionKey, { ossos: newOssos, alteracoes: newAlteracoes });
   };
 
@@ -662,18 +677,44 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                 </div>
 
                 {!readOnly && (
-                  <div className="flex items-center gap-1.5 text-xs">
+                  <div className="flex flex-wrap items-center gap-1.5 text-xs">
                     <button
                       type="button"
                       onClick={() => handleBulkMarkGeneric(sectionKey, bones, 'P')}
                       className="px-2.5 py-1 rounded-lg border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200 hover:bg-emerald-100 transition-colors text-[11px] font-medium"
+                      title="Marcar todos os ossos desta seção como P (Presente sem fratura)"
                     >
                       Marcar Todos P
                     </button>
                     <button
                       type="button"
+                      onClick={() => handleBulkMarkGeneric(sectionKey, bones, 'F')}
+                      className="px-2.5 py-1 rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-200 hover:bg-amber-100 transition-colors text-[11px] font-medium"
+                      title="Marcar todos os ossos desta seção como F (Presente com fratura)"
+                    >
+                      Marcar Todos F
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleBulkMarkGeneric(sectionKey, bones, 'I')}
+                      className="px-2.5 py-1 rounded-lg border border-purple-300 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/60 text-purple-800 dark:text-purple-200 hover:bg-purple-100 transition-colors text-[11px] font-medium"
+                      title="Marcar todos os ossos desta seção como I (Incompleto)"
+                    >
+                      Marcar Todos I
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleBulkMarkGeneric(sectionKey, bones, 'A')}
+                      className="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/80 text-slate-800 dark:text-slate-200 hover:bg-slate-200 transition-colors text-[11px] font-medium"
+                      title="Marcar todos os ossos desta seção como A (Ausente)"
+                    >
+                      Marcar Todos A
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => handleClearSectionGeneric(sectionKey)}
                       className="px-2.5 py-1 rounded-lg border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-200 hover:bg-rose-100 transition-colors text-[11px] font-medium"
+                      title="Limpar todas as marcações de presença desta seção"
                     >
                       Limpar
                     </button>
@@ -770,17 +811,31 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-[11px] font-mono text-slate-500">
-                          {esquerdoBones.filter(b => sectionData.ossos[b]).length}/{esquerdoBones.length} catalogados
+                          {esquerdoBones.filter(b => sectionData.ossos[b]).length}/{esquerdoBones.length}
                         </span>
                         {!readOnly && (
-                          <button
-                            type="button"
-                            onClick={() => handleBulkMarkGeneric(sectionKey, esquerdoBones, 'P')}
-                            className="px-2 py-0.5 rounded text-[10px] font-mono font-medium border border-emerald-300 dark:border-emerald-800 bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 transition-colors"
-                            title="Marcar todos os ossos do Lado Esquerdo como P"
-                          >
-                            Todos P (E)
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] font-mono text-slate-400">Todos:</span>
+                            {(['P', 'F', 'I', 'A'] as const).map(code => (
+                              <button
+                                key={code}
+                                type="button"
+                                onClick={() => handleBulkMarkGeneric(sectionKey, esquerdoBones, code)}
+                                className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border transition-colors ${
+                                  code === 'P'
+                                    ? 'border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300'
+                                    : code === 'F'
+                                      ? 'border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300'
+                                      : code === 'I'
+                                        ? 'border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-300'
+                                        : 'border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300'
+                                } bg-white dark:bg-slate-900`}
+                                title={`Marcar todos os ossos do Lado Esquerdo como ${code}`}
+                              >
+                                {code}
+                              </button>
+                            ))}
+                          </div>
                         )}
                       </div>
                     </div>
@@ -811,17 +866,31 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-[11px] font-mono text-slate-500">
-                          {direitoBones.filter(b => sectionData.ossos[b]).length}/{direitoBones.length} catalogados
+                          {direitoBones.filter(b => sectionData.ossos[b]).length}/{direitoBones.length}
                         </span>
                         {!readOnly && (
-                          <button
-                            type="button"
-                            onClick={() => handleBulkMarkGeneric(sectionKey, direitoBones, 'P')}
-                            className="px-2 py-0.5 rounded text-[10px] font-mono font-medium border border-emerald-300 dark:border-emerald-800 bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 transition-colors"
-                            title="Marcar todos os ossos do Lado Direito como P"
-                          >
-                            Todos P (D)
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] font-mono text-slate-400">Todos:</span>
+                            {(['P', 'F', 'I', 'A'] as const).map(code => (
+                              <button
+                                key={code}
+                                type="button"
+                                onClick={() => handleBulkMarkGeneric(sectionKey, direitoBones, code)}
+                                className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border transition-colors ${
+                                  code === 'P'
+                                    ? 'border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300'
+                                    : code === 'F'
+                                      ? 'border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300'
+                                      : code === 'I'
+                                        ? 'border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-300'
+                                        : 'border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300'
+                                } bg-white dark:bg-slate-900`}
+                                title={`Marcar todos os ossos do Lado Direito como ${code}`}
+                              >
+                                {code}
+                              </button>
+                            ))}
+                          </div>
                         )}
                       </div>
                     </div>

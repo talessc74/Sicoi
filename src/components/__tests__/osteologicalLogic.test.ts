@@ -13,7 +13,8 @@ import {
   TORACICAS_ORDINAIS,
   LOMBARES_ORDINAIS,
   TORAX_OSSOS,
-  COSTELAS_ORDINAIS
+  COSTELAS_ORDINAIS,
+  applyBulkPresence
 } from '../OsteologicalInventoryViewer';
 
 describe('Inventário Osteológico — Lógica Bilateral (Lado Direito / Lado Esquerdo)', () => {
@@ -94,6 +95,50 @@ describe('Inventário Osteológico — Lógica Bilateral (Lado Direito / Lado Es
     it('configura ordinais de costelas de 1ª a 12ª', () => {
       expect(COSTELAS_ORDINAIS).toEqual([
         '1ª', '2ª', '3ª', '4ª', '5ª', '6ª', '7ª', '8ª', '9ª', '10ª', '11ª', '12ª'
+      ]);
+    });
+  });
+
+  describe('Ações de Marcação em Lote (Marcar Todos P, F, I, A)', () => {
+    const testBones = ['Clavícula Esquerda', 'Escápula Esquerda'];
+
+    it('marca todos os ossos da lista como P', () => {
+      const res = applyBulkPresence({}, [], testBones, 'P');
+      expect(res.ossos).toEqual({
+        'Clavícula Esquerda': 'P',
+        'Escápula Esquerda': 'P'
+      });
+    });
+
+    it('marca todos os ossos da lista como F', () => {
+      const res = applyBulkPresence({}, [], testBones, 'F');
+      expect(res.ossos).toEqual({
+        'Clavícula Esquerda': 'F',
+        'Escápula Esquerda': 'F'
+      });
+    });
+
+    it('marca todos os ossos da lista como I', () => {
+      const res = applyBulkPresence({}, [], testBones, 'I');
+      expect(res.ossos).toEqual({
+        'Clavícula Esquerda': 'I',
+        'Escápula Esquerda': 'I'
+      });
+    });
+
+    it('marca todos os ossos da lista como A e remove alterações ósseas desses ossos', () => {
+      const initialAlts = [
+        { id: 'alt-1', tipo: 'artrose' as const, osso: 'Clavícula Esquerda', observacoes: '' },
+        { id: 'alt-2', tipo: 'fratura' as const, osso: 'Úmero Esquerdo', observacoes: '' }
+      ];
+      const res = applyBulkPresence({ 'Clavícula Esquerda': 'P' }, initialAlts, testBones, 'A');
+      expect(res.ossos).toEqual({
+        'Clavícula Esquerda': 'A',
+        'Escápula Esquerda': 'A'
+      });
+      // Alteração da Clavícula Esquerda deve ser removida; alteração do Úmero (não incluído) é mantida
+      expect(res.alteracoes).toEqual([
+        { id: 'alt-2', tipo: 'fratura', osso: 'Úmero Esquerdo', observacoes: '' }
       ]);
     });
   });

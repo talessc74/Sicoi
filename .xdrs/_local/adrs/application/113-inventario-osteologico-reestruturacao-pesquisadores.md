@@ -89,7 +89,10 @@ seções originais para 7, cada uma reorganizada.**
   como todos os itens daquele grupo determinados (mesmo raciocínio do
   código `A` num osso comum) — não como mais um item à parte.
 - **Visualização bilateral em 2 colunas e ergonomia visual de tela**:
-  Nas 4 seções apendiculares bilaterais (Membros Superiores, Membros Inferiores, Ossos da Mão, Ossos do Pé), bem como no Tórax (Costelas) e Cabeça/Pescoço (Ossículos), a interface organiza os elementos em duas colunas ergonomicamente alinhadas ao monitor do usuário: a coluna do **Lado Esquerdo** fica posicionada à esquerda da tela e a do **Lado Direito** fica posicionada à direita da tela, eliminando incongruências espaciais e fadiga visual de catalogação. A interface fornece controles de visualização ("Duas Colunas (E + D)", "Lado Esquerdo", "Lado Direito") e botões rápidos de preenchimento por lado ("Todos P (E)", "Todos P (D)").
+  Nas 4 seções apendiculares bilaterais (Membros Superiores, Membros Inferiores, Ossos da Mão, Ossos do Pé), bem como no Tórax (Costelas) e Cabeça/Pescoço (Ossículos), a interface organiza os elementos em duas colunas ergonomicamente alinhadas ao monitor do usuário: a coluna do **Lado Esquerdo** fica posicionada à esquerda da tela e a do **Lado Direito** fica posicionada à direita da tela, eliminando incongruências espaciais e fadiga visual de catalogação. A interface fornece controles de visualização ("Duas Colunas (E + D)", "Lado Esquerdo", "Lado Direito").
+- **Ações rápidas de preenchimento em lote completas (P, F, I, A)**:
+  A barra de ações de cada seção agora oferece botões dedicados de marcação em lote para todos os estados de presença:
+  "Marcar Todos P" (Presente sem fratura), "Marcar Todos F" (Presente com fratura), "Marcar Todos I" (Incompleto) e "Marcar Todos A" (Ausente, com limpeza retroativa de alterações ósseas conforme ADR 109), além de "Limpar". Nas seções bilaterais com duas colunas, cada coluna de lado (Esquerdo e Direito) conta com atalhos compactos equivalentes ("Todos: [P] [F] [I] [A]"), acelerando o fluxo de trabalho pericial.
 - **Regra retroativa de exclusão A×alteração** (`_local-adr-policy-109`)
   e o clique na linha do osso abrindo a gaveta de alterações (fix
   anterior, aplicado só à Cabeça e Pescoço e ao componente genérico)
