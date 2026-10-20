@@ -618,7 +618,7 @@ export interface OsteologicalPooledCounts {
 // Inventário Osteológico — 7 seções por regiões anatômicas:
 // 1. Cabeça e Pescoço (estruturas complementares: cartilagens/ossículos)
 // 2. Coluna Vertebral (Sacro, Cóccix + contagem e identificação de vértebras cervicais, torácicas, lombares)
-// 3. Tórax & Esterno (Esterno Manúbrio/Corpo/Xifóide + contagem e identificação de costelas direitas/esquerdas)
+// 3. Tórax (Esterno Manúbrio/Corpo/Xifóide + contagem e identificação de costelas direitas/esquerdas)
 // 4. Membros Superiores (bilateral D/E)
 // 5. Ossos da Mão (bilateral D/E + pooled de falanges/sesamoides)
 // 6. Membros Inferiores (bilateral D/E)

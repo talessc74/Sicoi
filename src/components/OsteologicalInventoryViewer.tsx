@@ -266,7 +266,7 @@ const TORAX_TOTAL_CATALOGAVEL = TORAX_OSSOS.length + 2; // 5 (3 partes do Estern
 export const SECTIONS_CONFIG = [
   { id: 'cabeca_pescoco', label: '1. Cabeça e Pescoço', active: true, count: CABECA_PESCOCO_TOTAL_CATALOGAVEL },
   { id: 'coluna_vertebral', label: '2. Coluna Vertebral', active: true, count: COLUNA_TOTAL_CATALOGAVEL },
-  { id: 'torax', label: '3. Tórax & Esterno', active: true, count: TORAX_TOTAL_CATALOGAVEL },
+  { id: 'torax', label: '3. Tórax', active: true, count: TORAX_TOTAL_CATALOGAVEL },
   { id: 'membros_superiores', label: '4. Membros Superiores', active: true, count: MEMBROS_SUPERIORES_OSSOS.length },
   { id: 'ossos_mao', label: '5. Ossos da Mão', active: true, count: OSSOS_MAO.length },
   { id: 'pelve_mi', label: '6. Membros Inferiores', active: true, count: PELVE_MEMBRO_INFERIOR_OSSOS.length },

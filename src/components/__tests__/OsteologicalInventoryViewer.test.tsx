@@ -16,7 +16,7 @@ describe('OsteologicalInventoryViewer', () => {
     expect(screen.getByText(/Inventário Osteológico por Regiões Anatômicas \(7 Seções\)/i)).toBeInTheDocument();
     expect(screen.getByText('1. Cabeça e Pescoço')).toBeInTheDocument();
     expect(screen.getByText('2. Coluna Vertebral')).toBeInTheDocument();
-    expect(screen.getByText('3. Tórax & Esterno')).toBeInTheDocument();
+    expect(screen.getByText('3. Tórax')).toBeInTheDocument();
     expect(screen.getByText('4. Membros Superiores')).toBeInTheDocument();
     expect(screen.getByText('5. Ossos da Mão')).toBeInTheDocument();
     expect(screen.getByText('6. Membros Inferiores')).toBeInTheDocument();
@@ -224,7 +224,7 @@ describe('OsteologicalInventoryViewer', () => {
       />
     );
 
-    await user.click(screen.getByText('3. Tórax & Esterno'));
+    await user.click(screen.getByText('3. Tórax'));
 
     expect(screen.getByText('Esterno - Manúbrio')).toBeInTheDocument();
     expect(screen.getByText('Esterno - Corpo')).toBeInTheDocument();
