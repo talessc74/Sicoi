@@ -54,9 +54,13 @@ FDI padrão.
 5. **Dentes supranumerários por arcada**:
    - Ao clicar em "Dente supranumerário", expande o campo "Descreva a posição".
    - Suporta múltiplos dentes supranumerários por arcada com remoção individual.
-6. **Seleção múltipla e edição em lote de dentes**:
+6. **Seleção múltipla cumulativa e edição em lote de dentes**:
    - Modo de seleção múltipla ativável via botão dedicado na barra de ferramentas (`Seleção múltipla (Ativa)`),
-     atalhos de arcada inteira (`+ Maxila`, `+ Mandíbula`), ou teclas modificadoras no desktop (`Ctrl`, `Cmd`, `Shift`).
+     atalhos de arcada com união/acumulação (`+ Maxila`, `+ Mandíbula`), atalho global (`+ Todos / ✓ Todos (Boca toda)`),
+     ou teclas modificadoras no desktop (`Ctrl`, `Cmd`, `Shift`).
+   - Os atalhos de arcada acumulam seleções (união), permitindo selecionar Maxila e Mandíbula simultaneamente
+     (32 dentes no modo permanente). Clicar no atalho de uma arcada já totalmente selecionada desmarca apenas aquela
+     arcada, preservando a seleção da outra.
    - Painel inferior adapta-se para edição em lote quando mais de 1 dente estiver selecionado:
      - **Estágio 1**: aplica presença a todos os dentes selecionados (se ausente, limpa condições clínicas; se articulado, restaura hígido).
      - **Estágio 2**: permite alternar características clínicas coletivamente (solidamente marcado se todos possuem, indicador parcial se alguns possuem; clique alterna para todos, preservando condições individuais prévias).
@@ -64,4 +68,4 @@ FDI padrão.
 
 ### Details
 
-- Cobertura: Testes unitários de regras de negócio em `src/components/__tests__/odontogramLogic.test.ts` (22 testes cobrindo pareamento anatômico, metadados, conversão reversa, normalização de legados e operações em lote de seleção múltipla).
+- Cobertura: Testes unitários de regras de negócio em `src/components/__tests__/odontogramLogic.test.ts` (29 testes cobrindo pareamento anatômico, metadados, conversão reversa, normalização de legados, operações em lote e seleção múltipla cumulativa entre arcadas).

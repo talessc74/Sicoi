@@ -270,6 +270,31 @@ export function calculateBatchClinicalToggle(
   });
 }
 
+/**
+ * Alterna a seleção de dentes de uma arcada (Maxila ou Mandíbula), acumulando com a seleção existente
+ * ou desmarcando apenas a arcada se todos os dentes dela já estiverem selecionados.
+ */
+export function toggleArchSelection(currentSelected: number[], archNumbers: number[]): number[] {
+  const isArchFullySelected = archNumbers.length > 0 && archNumbers.every(n => currentSelected.includes(n));
+  if (isArchFullySelected) {
+    return currentSelected.filter(n => !archNumbers.includes(n));
+  }
+  return Array.from(new Set([...currentSelected, ...archNumbers]));
+}
+
+/**
+ * Alterna a seleção de todos os dentes ativos da boca.
+ * Se todos já estiverem selecionados, limpa a seleção.
+ * Caso contrário, seleciona todos os dentes ativos.
+ */
+export function toggleSelectAll(currentSelected: number[], allNumbers: number[]): number[] {
+  const isAllFullySelected = allNumbers.length > 0 && allNumbers.every(n => currentSelected.includes(n));
+  if (isAllFullySelected) {
+    return [];
+  }
+  return [...allNumbers];
+}
+
 export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
   teeth,
   onUpdateTooth,
@@ -398,6 +423,14 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
 
   const maxilaActiveNumbers = getMaxilaActiveNumbers();
   const mandibulaActiveNumbers = getMandibulaActiveNumbers();
+  const allActiveNumbers = [...maxilaActiveNumbers, ...mandibulaActiveNumbers];
+
+  const isAllMaxilaSelected =
+    maxilaActiveNumbers.length > 0 && maxilaActiveNumbers.every(n => selectedToothNums.includes(n));
+  const isAllMandibulaSelected =
+    mandibulaActiveNumbers.length > 0 && mandibulaActiveNumbers.every(n => selectedToothNums.includes(n));
+  const isAllBocaSelected =
+    allActiveNumbers.length > 0 && allActiveNumbers.every(n => selectedToothNums.includes(n));
 
   // Verifica estado de Edêntulo Ante-Mortem e Post-Mortem de forma dinâmica
   const isMaxilaEdentuloAnte =
@@ -477,13 +510,18 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
   };
 
   // Seleção e atalhos de marcação múltipla
-  const handleSelectAllMaxila = () => {
-    setSelectedToothNums(maxilaActiveNumbers);
+  const handleToggleSelectMaxila = () => {
+    setSelectedToothNums(prev => toggleArchSelection(prev, maxilaActiveNumbers));
     setIsMultiSelectMode(true);
   };
 
-  const handleSelectAllMandibula = () => {
-    setSelectedToothNums(mandibulaActiveNumbers);
+  const handleToggleSelectMandibula = () => {
+    setSelectedToothNums(prev => toggleArchSelection(prev, mandibulaActiveNumbers));
+    setIsMultiSelectMode(true);
+  };
+
+  const handleToggleSelectAll = () => {
+    setSelectedToothNums(prev => toggleSelectAll(prev, allActiveNumbers));
     setIsMultiSelectMode(true);
   };
 
@@ -729,7 +767,7 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
         </div>
         <div className="text-right">
           <span className="text-xs font-mono font-semibold text-slate-700 dark:text-slate-300">
-            {[...maxilaActiveNumbers, ...mandibulaActiveNumbers].filter(n => {
+            {allActiveNumbers.filter(n => {
               const norm = normalizeToothRecord(getTooth(n), n);
               return norm.presence !== 'articulado' || !norm.clinicalConditions.includes('higido');
             }).length} anomalias registradas
@@ -788,25 +826,49 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
 
           <button
             type="button"
-            onClick={handleSelectAllMaxila}
-            className="px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-100 text-[11px] text-slate-700 dark:text-slate-300 touch-manipulation select-none cursor-pointer"
-            title="Selecionar todos os dentes ativos da Maxila"
+            onClick={handleToggleSelectAll}
+            className={`px-2 py-1 rounded border text-[11px] touch-manipulation select-none cursor-pointer transition-colors active:scale-95 ${
+              isAllBocaSelected
+                ? 'bg-sky-100 dark:bg-sky-950/80 border-sky-400 dark:border-sky-700 text-sky-800 dark:text-sky-200 font-semibold'
+                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+            title="Selecionar ou desmarcar todos os dentes ativos da arcada superior e inferior"
           >
-            + Maxila
+            {isAllBocaSelected ? '✓ Todos (Boca toda)' : '+ Todos'}
           </button>
+
           <button
             type="button"
-            onClick={handleSelectAllMandibula}
-            className="px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-100 text-[11px] text-slate-700 dark:text-slate-300 touch-manipulation select-none cursor-pointer"
-            title="Selecionar todos os dentes ativos da Mandíbula"
+            onClick={handleToggleSelectMaxila}
+            className={`px-2 py-1 rounded border text-[11px] touch-manipulation select-none cursor-pointer transition-colors active:scale-95 ${
+              isAllMaxilaSelected
+                ? 'bg-sky-100 dark:bg-sky-950/80 border-sky-400 dark:border-sky-700 text-sky-800 dark:text-sky-200 font-semibold'
+                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+            title="Acumular ou desmarcar todos os dentes ativos da Maxila (Superior)"
           >
-            + Mandíbula
+            {isAllMaxilaSelected ? '✓ Maxila' : '+ Maxila'}
           </button>
+
+          <button
+            type="button"
+            onClick={handleToggleSelectMandibula}
+            className={`px-2 py-1 rounded border text-[11px] touch-manipulation select-none cursor-pointer transition-colors active:scale-95 ${
+              isAllMandibulaSelected
+                ? 'bg-sky-100 dark:bg-sky-950/80 border-sky-400 dark:border-sky-700 text-sky-800 dark:text-sky-200 font-semibold'
+                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+            title="Acumular ou desmarcar todos os dentes ativos da Mandíbula (Inferior)"
+          >
+            {isAllMandibulaSelected ? '✓ Mandíbula' : '+ Mandíbula'}
+          </button>
+
           {selectedToothNums.length > 0 && (
             <button
               type="button"
               onClick={handleClearSelection}
-              className="px-2 py-1 rounded border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-[11px] text-rose-700 dark:text-rose-300 touch-manipulation select-none cursor-pointer"
+              className="px-2 py-1 rounded border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-[11px] text-rose-700 dark:text-rose-300 touch-manipulation select-none cursor-pointer font-medium active:scale-95"
+              title="Desmarcar todos os dentes selecionados"
             >
               Desmarcar ({selectedToothNums.length})
             </button>
@@ -1181,7 +1243,7 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-1 max-w-xl">
-                    {selectedToothNums.map(n => (
+                    {[...selectedToothNums].sort((a, b) => a - b).map(n => (
                       <span
                         key={n}
                         className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-sky-100 dark:bg-sky-950/80 border border-sky-300 dark:border-sky-800 text-sky-900 dark:text-sky-200 font-mono text-[10px] font-bold"

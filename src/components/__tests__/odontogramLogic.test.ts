@@ -6,7 +6,9 @@ import {
   deriveLegacyCondition,
   normalizeToothRecord,
   calculateBatchPresenceUpdate,
-  calculateBatchClinicalToggle
+  calculateBatchClinicalToggle,
+  toggleArchSelection,
+  toggleSelectAll
 } from '../OdontogramViewer';
 import { ToothRecord } from '../../types/sgccco';
 
@@ -282,6 +284,86 @@ describe('Inventário Odontológico — Regras de Negócio e Lógica', () => {
       const updates = calculateBatchPresenceUpdate([11, 12], getTooth, 'desarticulado', 'Dentes encontrados no fundo da urna');
       expect(updates[0].notes).toBe('Dentes encontrados no fundo da urna');
       expect(updates[1].notes).toBe('Dentes encontrados no fundo da urna');
+    });
+  });
+
+  describe('Seleção Múltipla e Atalhos entre Arcadas (toggleArchSelection & toggleSelectAll)', () => {
+    const maxilaTeeth = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
+    const mandibulaTeeth = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38];
+    const allTeeth = [...maxilaTeeth, ...mandibulaTeeth];
+
+    it('permite selecionar Maxila e depois Mandíbula acumulando ambas as arcadas simultaneamente (32 dentes)', () => {
+      // 1. Usuário clica + Maxila com seleção vazia
+      const step1 = toggleArchSelection([], maxilaTeeth);
+      expect(step1).toHaveLength(16);
+      expect(maxilaTeeth.every(n => step1.includes(n))).toBe(true);
+
+      // 2. Usuário clica + Mandíbula -> NÃO substitui, ACUMULA!
+      const step2 = toggleArchSelection(step1, mandibulaTeeth);
+      expect(step2).toHaveLength(32);
+      expect(maxilaTeeth.every(n => step2.includes(n))).toBe(true);
+      expect(mandibulaTeeth.every(n => step2.includes(n))).toBe(true);
+    });
+
+    it('permite desmarcar apenas a Maxila mantendo a Mandíbula selecionada', () => {
+      const allSelected = [...maxilaTeeth, ...mandibulaTeeth];
+      // Clicar na Maxila quando já está totalmente selecionada remove apenas a Maxila
+      const afterDeselectMaxila = toggleArchSelection(allSelected, maxilaTeeth);
+      expect(afterDeselectMaxila).toHaveLength(16);
+      expect(mandibulaTeeth.every(n => afterDeselectMaxila.includes(n))).toBe(true);
+      expect(maxilaTeeth.some(n => afterDeselectMaxila.includes(n))).toBe(false);
+    });
+
+    it('permite desmarcar apenas a Mandíbula mantendo a Maxila selecionada', () => {
+      const allSelected = [...maxilaTeeth, ...mandibulaTeeth];
+      const afterDeselectMandibula = toggleArchSelection(allSelected, mandibulaTeeth);
+      expect(afterDeselectMandibula).toHaveLength(16);
+      expect(maxilaTeeth.every(n => afterDeselectMandibula.includes(n))).toBe(true);
+      expect(mandibulaTeeth.some(n => afterDeselectMandibula.includes(n))).toBe(false);
+    });
+
+    it('completa a seleção da arcada se apenas alguns dentes estavam previamente selecionados sem perder a outra arcada', () => {
+      // Dentes previamente selecionados: 11 (Maxila) e 41, 42 (Mandíbula)
+      const initial = [11, 41, 42];
+      const result = toggleArchSelection(initial, maxilaTeeth);
+      // Deve conter todos os 16 dentes da Maxila + os 2 da Mandíbula (total 18)
+      expect(result).toHaveLength(18);
+      expect(maxilaTeeth.every(n => result.includes(n))).toBe(true);
+      expect(result).toContain(41);
+      expect(result).toContain(42);
+    });
+
+    it('toggleSelectAll seleciona todos os dentes ativos da boca quando parcial ou vazio', () => {
+      const step1 = toggleSelectAll([], allTeeth);
+      expect(step1).toHaveLength(32);
+      expect(allTeeth.every(n => step1.includes(n))).toBe(true);
+
+      const step2 = toggleSelectAll([11, 21], allTeeth);
+      expect(step2).toHaveLength(32);
+      expect(allTeeth.every(n => step2.includes(n))).toBe(true);
+    });
+
+    it('toggleSelectAll limpa toda a seleção se todos os dentes já estiverem selecionados', () => {
+      const step = toggleSelectAll(allTeeth, allTeeth);
+      expect(step).toEqual([]);
+    });
+
+    it('aplica presença e condições clínicas em lote em dentes de ambas as arcadas simultaneamente', () => {
+      const mockRecord = (num: number): ToothRecord => ({
+        toothNumberFdi: num,
+        quadrant: Math.floor(num / 10) as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8,
+        presence: 'articulado',
+        clinicalConditions: ['higido'],
+        condition: 'higido'
+      });
+
+      // Seleção de 32 dentes (Maxila + Mandíbula)
+      const selectedBothArches = [...maxilaTeeth, ...mandibulaTeeth];
+      const updates = calculateBatchPresenceUpdate(selectedBothArches, mockRecord, 'ausente_ante_mortem');
+
+      expect(updates).toHaveLength(32);
+      expect(updates.every(u => u.update.presence === 'ausente_ante_mortem')).toBe(true);
+      expect(updates.every(u => u.update.clinicalConditions.length === 0)).toBe(true);
     });
   });
 });
