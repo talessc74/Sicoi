@@ -755,9 +755,6 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                   <span className="font-semibold text-slate-700 dark:text-slate-300 text-xs flex items-center gap-1.5">
                     Visualização por Lado Anatômico:
                   </span>
-                  <span className="text-[11px] text-slate-500 font-mono">
-                    (Esquerdo: {esquerdoBones.length} ossos · Direito: {direitoBones.length} ossos)
-                  </span>
                 </div>
 
                 <div className="inline-flex rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-0.5 shadow-2xs">
@@ -770,7 +767,7 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                         : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
                   >
-                    Duas Colunas (E + D)
+                    Duas Colunas
                   </button>
                   <button
                     type="button"
@@ -781,7 +778,7 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                         : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
                   >
-                    Lado Esquerdo ({esquerdoBones.length})
+                    Lado Esquerdo
                   </button>
                   <button
                     type="button"
@@ -792,7 +789,7 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                         : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
                   >
-                    Lado Direito ({direitoBones.length})
+                    Lado Direito
                   </button>
                 </div>
               </div>
@@ -806,7 +803,7 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                       <div className="flex items-center gap-2">
                         <span className="w-2.5 h-2.5 rounded-full bg-indigo-600" />
                         <h5 className="font-bold text-xs uppercase font-mono tracking-wider text-indigo-950 dark:text-indigo-200">
-                          Lado Esquerdo ({esquerdoBones.length} ossos)
+                          Lado Esquerdo
                         </h5>
                       </div>
                       <div className="flex items-center gap-2">
@@ -861,7 +858,7 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                       <div className="flex items-center gap-2">
                         <span className="w-2.5 h-2.5 rounded-full bg-sky-600" />
                         <h5 className="font-bold text-xs uppercase font-mono tracking-wider text-sky-950 dark:text-sky-200">
-                          Lado Direito ({direitoBones.length} ossos)
+                          Lado Direito
                         </h5>
                       </div>
                       <div className="flex items-center gap-2">

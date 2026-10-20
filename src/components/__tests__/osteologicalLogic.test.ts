@@ -128,8 +128,8 @@ describe('Inventário Osteológico — Lógica Bilateral (Lado Direito / Lado Es
 
     it('marca todos os ossos da lista como A e remove alterações ósseas desses ossos', () => {
       const initialAlts = [
-        { id: 'alt-1', tipo: 'artrose' as const, osso: 'Clavícula Esquerda', observacoes: '' },
-        { id: 'alt-2', tipo: 'fratura' as const, osso: 'Úmero Esquerdo', observacoes: '' }
+        { id: 'alt-1', tipo: 'patologia' as const, osso: 'Clavícula Esquerda', observacoes: '' },
+        { id: 'alt-2', tipo: 'lesao_peri_mortem' as const, osso: 'Úmero Esquerdo', observacoes: '' }
       ];
       const res = applyBulkPresence({ 'Clavícula Esquerda': 'P' }, initialAlts, testBones, 'A');
       expect(res.ossos).toEqual({
@@ -138,7 +138,7 @@ describe('Inventário Osteológico — Lógica Bilateral (Lado Direito / Lado Es
       });
       // Alteração da Clavícula Esquerda deve ser removida; alteração do Úmero (não incluído) é mantida
       expect(res.alteracoes).toEqual([
-        { id: 'alt-2', tipo: 'fratura', osso: 'Úmero Esquerdo', observacoes: '' }
+        { id: 'alt-2', tipo: 'lesao_peri_mortem', osso: 'Úmero Esquerdo', observacoes: '' }
       ]);
     });
   });
