@@ -232,7 +232,7 @@ export const SECTIONS_CONFIG = [
   { id: 'torax', label: '3. Tórax & Esterno', active: true, count: TORAX_OSSOS.length },
   { id: 'membros_superiores', label: '4. Membros Superiores', active: true, count: MEMBROS_SUPERIORES_OSSOS.length },
   { id: 'ossos_mao', label: '5. Ossos da Mão', active: true, count: OSSOS_MAO.length },
-  { id: 'pelve_mi', label: '6. Pelve, Bacia e Membros Inferiores', active: true, count: PELVE_MEMBRO_INFERIOR_OSSOS.length },
+  { id: 'pelve_mi', label: '6. Membros Inferiores', active: true, count: PELVE_MEMBRO_INFERIOR_OSSOS.length },
   { id: 'ossos_pe', label: '7. Ossos do Pé', active: true, count: OSSOS_PE.length }
 ] as const;
 

@@ -19,7 +19,7 @@ describe('OsteologicalInventoryViewer', () => {
     expect(screen.getByText('3. Tórax & Esterno')).toBeInTheDocument();
     expect(screen.getByText('4. Membros Superiores')).toBeInTheDocument();
     expect(screen.getByText('5. Ossos da Mão')).toBeInTheDocument();
-    expect(screen.getByText('6. Pelve, Bacia e Membros Inferiores')).toBeInTheDocument();
+    expect(screen.getByText('6. Membros Inferiores')).toBeInTheDocument();
     expect(screen.getByText('7. Ossos do Pé')).toBeInTheDocument();
 
     // Os 23 ossos de Cabeça e Pescoço aparecem direto, numa lista corrida —
@@ -295,7 +295,7 @@ describe('OsteologicalInventoryViewer', () => {
     );
   });
 
-  it('Pelve, Bacia e Membros Inferiores vira uma seção só, com os dois lados, sem ossos do pé', async () => {
+  it('Membros Inferiores vira uma seção só, com os dois lados, sem ossos do pé', async () => {
     const user = userEvent.setup();
 
     render(
@@ -305,7 +305,7 @@ describe('OsteologicalInventoryViewer', () => {
       />
     );
 
-    await user.click(screen.getByText('6. Pelve, Bacia e Membros Inferiores'));
+    await user.click(screen.getByText('6. Membros Inferiores'));
 
     expect(screen.getByText('Ílio Direito')).toBeInTheDocument();
     expect(screen.getByText('Fêmur Direito - Diáfise')).toBeInTheDocument();

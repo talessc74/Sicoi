@@ -65,7 +65,7 @@ seções originais para 7, cada uma reorganizada.**
   seções antigas (Membro Superior Direito, Membro Superior Esquerdo).
   Carpo e metacarpo saem pra **Ossos da Mão** (`ossosMao`, 26 ossos,
   Direito+Esquerdo juntos, cada um identificado por lado).
-- **Pelve, Bacia e Membros Inferiores** (`pelveMembroInferior`, 26 ossos):
+- **Membros Inferiores** (`pelveMembroInferior`, 26 ossos — rotulado na interface como "6. Membros Inferiores"):
   Ílio/Ísquio/Púbis + Fêmur/Patela/Tíbia/Fíbula, Direito e Esquerdo juntos
   na mesma seção — substitui as 3 seções antigas (Pelve & Bacia, Membro
   Inferior Direito, Membro Inferior Esquerdo). Tarso e metatarso saem pra
