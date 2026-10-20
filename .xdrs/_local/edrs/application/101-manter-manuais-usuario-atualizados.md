@@ -46,10 +46,19 @@ policy não se aplica — não é necessário tocar neles.
 - O versionamento vive no próprio nome do arquivo, não em metadata externa
   — isso torna o histórico rastreável só pelo Git, sem infraestrutura
   extra.
+- **Consolidação dos Manuais (out/2026)**: O manual inicial das "Fases 4 a 7"
+  foi descontinuado e absorvido integralmente pelo "Manual SIGCOI — Guia Completo"
+  (atualmente v14), garantindo uma fonte única de consulta operacional para todas as 8 fases (Fases 0 a 7).
+- **Manuais de Acesso Restrito (`adminOnly`)**: Manuais que tratam de procedimentos
+  administrativos sensíveis (como `manual-administrador-contas-v8.html`, que orienta sobre
+  bootstrapping de credenciais, reset de senhas e concessão de privilégios) recebem a flag
+  `adminOnly: true` em `src/data/userManuals.ts` e só são renderizados na aba Documentos
+  para usuários com `hasAdminAccess(currentUser)`.
 
 ## References
 
-- Arquivos: `public/manuais/manual-sigcoi-completo-v1.html`,
-  `public/manuais/manual-sigcoi-fases-4-a-7-v1.html`,
-  `src/data/userManuals.ts`
+- Arquivos: `public/manuais/manual-sigcoi-completo-*.html`,
+  `public/manuais/manual-administrador-contas-*.html`,
+  `src/data/userManuals.ts`,
+  `src/components/DocumentSearchViewer.tsx`
 - PR: nicoledamascena-art/SIGCOI#6

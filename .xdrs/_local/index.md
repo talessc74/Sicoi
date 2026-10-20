@@ -12,7 +12,7 @@ sobrescrevem `_core` quando os dois se sobrepõem.
 ### EDRs — Engineering Decisions (5 documentos)
 
 Manutenção dos Manuais do Usuário (`public/manuais/`) sincronizada com
-mudanças no site. CORS restrito a origens conhecidas. Tradutor de
+mudanças no site, consolidação das 8 fases no Manual Completo e manuais restritos (`adminOnly`). CORS restrito a origens conhecidas. Tradutor de
 erros: código estável do servidor + dicionário de tradução no cliente —
 nunca casamento de texto, frase amigável por padrão com detalhe técnico
 expansível. Pendências por conjunto centralizadas numa função só,
@@ -21,7 +21,7 @@ genérico com ação em lote ou estado compartilhado entre abas exige
 teste dessas duas categorias — tsc --noEmit roda de novo após a última
 edição de teste, sempre, antes do merge.
 
-### ADRs — Architectural Decisions (23 documentos)
+### ADRs — Architectural Decisions (25 documentos)
 
 Histórico protegido de conjuntos: servidor como fonte de verdade,
 assinaturas travadas, registro de alterações encadeado por hash.
@@ -29,11 +29,11 @@ Exclusão administrativa reversível (Zona de Risco): soft delete +
 trilha própria + papel reconferido no servidor. Identidade visual por
 papel: cor + ícone fixos, só no indicador de identidade. Login real:
 sessão no servidor (cookie httpOnly) como única fonte de identidade,
-nunca um actorId declarado pelo cliente. Fotos reais (Fase 1 e 2):
-captura pela câmera, guardadas como bytes direto no Postgres já
-existente — sem conta de armazenamento externa. Busca por semelhança
-entre ossos: recuperação real no Postgres primeiro, explicação por IA
-depois — nunca o inverso. Exploração (sem decisão de implementar) de
+nunca um actorId declarado pelo cliente. Fotos reais (Fases 0, 1, 2 e 4):
+escolha entre captura pela câmera ou upload da galeria/arquivo, foto de montagem
+e guarda de bytes direto no Postgres já existente — sem conta de armazenamento externa.
+Busca por semelhança entre ossos: recuperação real no Postgres primeiro,
+explicação por IA depois — nunca o inverso. Exploração (sem decisão de implementar) de
 conexão com a Rede PCI Conecta: onde a busca por semelhança ajudaria,
 e onde cruzaria a missão declarada do SIGCOI. Leitura de conjuntos,
 histórico e grafo exige sessão autenticada: nenhuma dessas rotas é
@@ -41,9 +41,9 @@ pública, e `/api/status` não devolve mais fragmento real de chave.
 Navegação sincronizada com a URL (sem roteador) e persistência de sessão: o botão "voltar" do
 navegador/celular volta uma tela dentro do app em vez de sair do site, e refresh ou reabertura de aba
 restauram exatamente a fase, aba e conjunto ativos sem clobbering para COI-032 / Fase 1.
-Fase 0 (Recebimento): transcrição da Declaração de Óbito com assinatura
-única, nunca o padrão dual-sign de Fase 4/5. Busca de referência real
-entre indivíduos (Fase 4, §15): determinística, sem IA. ABAC por
+Fase 0 (Identificação e DO): transcrição da Declaração de Óbito antes da Fase 1 (Análise Preliminar),
+com cálculo de idade, filiação materna prioritária e assinatura única do Técnico, nunca o padrão dual-sign de Fase 4/5.
+Busca de referência real entre indivíduos (Fase 4, §15): determinística, sem IA. ABAC por
 pessoa: acesso ajustável além do padrão do papel, exceto as assinaturas
 de Inventário e Científica. Autorizações de pesquisa reais (Fase 7,
 §13): escopo granular por projeto, revogação nunca é delete. Validação
@@ -64,6 +64,11 @@ visual em todas as 7 seções, vértebra e costela como elemento catalogável
 individual (não mais contagem ordinal), Ossos da Mão e Ossos do Pé como
 seções próprias reunindo os dois lados, e Membros Superiores e
 Pelve + Bacia + Membros Inferiores unificados cada um numa seção só.
+Dupla assinatura técnica e científica nas Fases 4 e 5: separando a conclusão operacional/física
+(Montagem / Marcação Óssea, por Técnico ou Curador) da consolidação pericial/científica
+(Inventário Anatômico / Laudo de Patologias, privativa do Curador).
+Página de Créditos Institucionais (Quem fez o SIGCOI, /creditos): catálogo tipado de membros
+das equipes multidisciplinares com navegação contextual de retorno.
 
 ### BDRs — Business Decisions (1 documento)
 

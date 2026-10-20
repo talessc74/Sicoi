@@ -1,15 +1,15 @@
 ---
 name: _local-adr-policy-105-fase-0-recebimento
-description: Fase 0 (Recebimento) transcreve os dados da Declaração de Óbito antes da Fase 1 — manual ou por foto com extração real via Gemini — com assinatura única do Técnico, nunca o padrão de assinatura dupla de Fase 4/5. Use antes de alterar o fluxo de fases, o modelo de assinatura, ou qualquer extração por IA a partir de imagem.
+description: Fase 0 (Identificação e DO) transcreve os dados da Declaração de Óbito antes da Fase 1 (Análise Preliminar) — manual ou por foto com extração real via Gemini — com cálculo automático de idade no óbito, filiação com mãe primária e assinatura única do Técnico, nunca o padrão de assinatura dupla de Fase 4/5. Use antes de alterar o fluxo de fases, o modelo de assinatura, ou qualquer extração por IA a partir de imagem.
 apply-to: src/types/sgccco.ts (Phase0Data, Phase0ChildRecord, PhaseNumber), src/data/phaseDefaults.ts (createEmptyPhase0Data), src/components/Phase0Recebimento.tsx, src/services/geminiService.ts (extractDeathCertificateFields), server.ts (rota /api/phase0/extract-death-certificate), db/historyGuard.ts (SIGNABLE_PHASES), src/components/PhaseProgressRibbon.tsx, src/components/AuditTimelineView.tsx, src/components/HomeDashboard.tsx, src/App.tsx
 valid-from: 2026-10-14
 ---
 
-# _local-adr-policy-105: Fase 0 — Recebimento
+# _local-adr-policy-105: Fase 0 — Identificação e DO
 
 ## Context and Problem Statement
 
-O processo real da COI-INC começa antes da Fase 1 (Recebimento & A.1): a
+O processo real da COI-INC começa antes da Fase 1 (Análise Preliminar): a
 Declaração de Óbito (D.O.) chega em papel ou foto, e os dados pessoais e do
 óbito precisam ser transcritos por alguém antes de qualquer trabalho
 osteológico começar. Até esta decisão, o sistema não tinha lugar nenhum
@@ -31,13 +31,17 @@ opcional, de forma que conjuntos criados antes desta decisão (sem
 
 ### Details
 
+- **Nomenclatura Oficial**: A fase foi oficialmente nomeada **"Identificação e DO"**
+  (e a Fase 1 renomeada para **"Análise Preliminar"**), refletindo o fluxo normativo da COI-INC.
 - **Campos da D.O.** (`Phase0Data`): identificação (nome, sexo, cor,
   nacionalidade, naturalidade — cidade/UF separados, com `BrazilianUf`
-  fechado nos 27 estados —, nascimento, idade preenchida manualmente pelo
-  Técnico — nunca calculada —, estado civil, profissão, CPF, RG), filiação
-  (pai/mãe: nome, falecido(a), natural, estado civil, profissão), cônjuge,
-  dados do óbito (local, cidade/UF, data, hora, médico/CRM, causa da
-  morte), destino (cemitério, data de inumação/exumação), e `filhos:
+  fechado nos 27 estados —, nascimento, data de falecimento, estado civil, profissão, CPF, RG), filiação
+  (mãe e pai: nome, falecido(a), natural, estado civil, profissão — ordem ajustada com mãe primeiro por praxe pericial),
+  cônjuge, dados do óbito (local, cidade/UF, data, hora, médico/CRM, causa da
+  morte), destino (cemitério, data de inumação/exumação), e `filhos: Phase0ChildRecord[]`.
+- **Cálculo automático de idade**: Em vez de digitação redundante propensa a erro, a função
+  `calculateAgeAtDeath` calcula automaticamente a idade em anos a partir de `nascimento` e
+  `dataFalecimento`, com possibilidade de ajuste pelo operador se a certidão divergir.
   Phase0ChildRecord[]` — lista estruturada (id/nome/idade), não um campo de
   texto livre. Todo campo é opcional: a D.O. real frequentemente chega
   incompleta.

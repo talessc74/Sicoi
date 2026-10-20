@@ -1,11 +1,11 @@
 ---
 name: _local-adr-policy-301-fotos-reais-postgres
-description: Fotos de Fase 1 e Fase 2 passam de placeholder (URL fixa, hash de metadado) para captura real pela câmera, guardadas como bytes direto no Postgres já existente. Use antes de tocar em qualquer coisa relacionada a foto, upload de arquivo, ou armazenamento de dados binários.
-apply-to: db/migrations/018_photo_storage.sql, db/migrations/019_photo_bytes_in_postgres.sql, server.ts (rota de upload/download de foto), db/collectionsRepo.ts (syncPhotos), src/components/Phase1Recebimento.tsx, src/components/Phase2Limpeza.tsx, src/components/PopConversationalConductor.tsx, src/types/sgccco.ts
+description: Fotos de Fase 0, 1, 2 e 4 passam de placeholder para captura real pela câmera ou upload de galeria/arquivo, guardadas como bytes direto no Postgres já existente. Use antes de tocar em qualquer coisa relacionada a foto, upload de arquivo, ou armazenamento de dados binários.
+apply-to: db/migrations/018_photo_storage.sql, db/migrations/019_photo_bytes_in_postgres.sql, db/migrations/021_foto1_foto4_1_justificativa.sql, db/migrations/022_phase4_assembly_photo.sql, server.ts (rota de upload/download de foto e foto de montagem), db/collectionsRepo.ts (syncPhotos, attachPhotoBytes, insertPhase4AssemblyPhotoMetadata), src/components/PhotoSourceModal.tsx, src/services/photoService.ts, src/components/Phase0Recebimento.tsx, src/components/Phase1Recebimento.tsx, src/components/Phase2Limpeza.tsx, src/components/Phase4Curadoria.tsx, src/components/PopConversationalConductor.tsx, src/types/sgccco.ts
 valid-from: 2026-10-02
 ---
 
-# _local-adr-policy-301: Fotos reais (Fase 1 e 2) guardadas no Postgres
+# _local-adr-policy-301: Fotos reais (Fases 0, 1, 2 e 4) guardadas no Postgres com escolha de câmera ou galeria
 
 ## Context and Problem Statement
 
@@ -147,15 +147,29 @@ tinha previsto:
   token CSRF recusado (403) → edição de um campo qualquer da Fase 1 não
   apaga a foto já gravada.
 
+### Round 3 — Escolha de câmera ou galeria e foto de montagem da Fase 4 (out/2026)
+
+A implementação inicial previa captura exclusiva pela câmera do dispositivo. A experiência em laboratório revelou dois cenários indispensáveis que motivaram a expansão desta decisão:
+
+1. **Escolha de fonte (Câmera ou Galeria/Arquivo)**: Em tablets e estações desktop de laboratório pericial, muitas vezes as fotos já foram capturadas por câmeras DSLR periciais dedicadas ou scanner de bancada. O modal `PhotoSourceModal.tsx` e o serviço unificado `photoService.ts` foram introduzidos em todas as fases com registro de imagem (Fases 0, 1, 2 e 4), perguntando explicitamente ao operador: "Tirar foto agora (Câmera)" ou "Escolher da galeria/arquivo".
+2. **Foto de Montagem da Fase 4 (Curadoria & NMI)**: A migração `022_phase4_assembly_photo.sql` introduziu a tabela dedicada `phase4_assembly_photos` para armazenar a foto do esqueleto montado em posição anatômica. A aprovação desta foto é pré-requisito mandatório para a assinatura da Fase 4, seguindo o mesmo padrão de bytes no Postgres (`BYTEA`) e cálculo de hash SHA-256 no servidor.
+3. **Fotos da Fase 0 (Identificação e DO)**: Permite anexar a imagem da Declaração de Óbito original com extração automatizada de campos via IA (Gemini), persistida com o mesmo padrão.
+
 ## References
 
 - Arquivos: `db/migrations/018_photo_storage.sql`,
-  `db/migrations/019_photo_bytes_in_postgres.sql`, `server.ts`,
-  `db/collectionsRepo.ts` (upload/download de foto ficou direto nestes
-  dois arquivos — não existe `src/services/photoService.ts` separado),
+  `db/migrations/019_photo_bytes_in_postgres.sql`,
+  `db/migrations/021_foto1_foto4_1_justificativa.sql`,
+  `db/migrations/022_phase4_assembly_photo.sql`,
+  `server.ts`,
+  `db/collectionsRepo.ts` (`attachPhotoBytes`, `insertPhase4AssemblyPhotoMetadata`),
+  `src/components/PhotoSourceModal.tsx`,
+  `src/services/photoService.ts`,
+  `src/components/Phase0Recebimento.tsx`,
   `src/components/Phase1Recebimento.tsx`,
-  `src/components/PopConversationalConductor.tsx`,
-  `src/components/Phase2Limpeza.tsx`
+  `src/components/Phase2Limpeza.tsx`,
+  `src/components/Phase4Curadoria.tsx`,
+  `src/components/PopConversationalConductor.tsx`
 - Policy relacionada: `_local-adr-policy-202` (servidor como fonte de
   verdade, lição do episódio de lançamento sobre PRs pequenos e
   revertíveis), `_local-adr-policy-201` (nada forense se apaga
