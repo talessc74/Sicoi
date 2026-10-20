@@ -588,6 +588,22 @@ export interface OsteologicalSimpleBoneSection {
   alteracoes?: OsteologicalAlteracaoRegiao[];
 }
 
+export interface OsteologicalCountIdentifySelection {
+  quantidade?: number;
+  identificadas?: string[];
+}
+
+export interface OsteologicalSectionColunaVertebral extends OsteologicalSimpleBoneSection {
+  cervicais?: OsteologicalCountIdentifySelection;
+  toracicas?: OsteologicalCountIdentifySelection;
+  lombares?: OsteologicalCountIdentifySelection;
+}
+
+export interface OsteologicalSectionTorax extends OsteologicalSimpleBoneSection {
+  costelasDireitas?: OsteologicalCountIdentifySelection;
+  costelasEsquerdas?: OsteologicalCountIdentifySelection;
+}
+
 // Falanges e sesamoides da mão/do pé — contados uma vez só (não por lado):
 // decisão do Tales (out/2026), já que uma falange solta raramente dá pra
 // lateralizar com segurança. Sesamoides não tem teto fixo (intervalo aberto).
@@ -598,18 +614,18 @@ export interface OsteologicalPooledCounts {
   sesamoides?: number;
 }
 
-// Pedido dos pesquisadores (out/2026): cada vértebra e cada costela é um
-// elemento catalogável próprio (C1, T5, 1ª Costela Direita...), igual a
-// qualquer outro osso — nunca mais um contador de quantidade separado da
-// identificação. Por isso Coluna Vertebral e Tórax usam o mesmo
-// OsteologicalSimpleBoneSection de toda seção simples do inventário, e as
-// 3 seções de membro inferior (Pelve, MI Direito, MI Esquerdo) viram uma só —
-// mesmo princípio aplicado a Membro Superior Direito/Esquerdo, também
-// unificados numa seção só (pedido do Tales, out/2026).
+// Inventário Osteológico — 7 seções por regiões anatômicas:
+// 1. Cabeça e Pescoço (estruturas complementares: cartilagens/ossículos)
+// 2. Coluna Vertebral (Sacro, Cóccix + contagem e identificação de vértebras cervicais, torácicas, lombares)
+// 3. Tórax & Esterno (Esterno Manúbrio/Corpo/Xifóide + contagem e identificação de costelas direitas/esquerdas)
+// 4. Membros Superiores (bilateral D/E)
+// 5. Ossos da Mão (bilateral D/E + pooled de falanges/sesamoides)
+// 6. Membros Inferiores (bilateral D/E)
+// 7. Ossos do Pé (bilateral D/E + pooled de falanges/sesamoides)
 export interface OsteologicalInventoryData {
   cabecaPescoco?: OsteologicalSectionCabecaPescoco;
-  colunaVertebral?: OsteologicalSimpleBoneSection;
-  torax?: OsteologicalSimpleBoneSection;
+  colunaVertebral?: OsteologicalSectionColunaVertebral;
+  torax?: OsteologicalSectionTorax;
   membrosSuperiores?: OsteologicalSimpleBoneSection;
   ossosMao?: OsteologicalSimpleBoneSection;
   pelveMembroInferior?: OsteologicalSimpleBoneSection;

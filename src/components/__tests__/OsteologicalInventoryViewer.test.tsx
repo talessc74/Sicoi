@@ -179,7 +179,7 @@ describe('OsteologicalInventoryViewer', () => {
     expect(screen.getByRole('button', { name: 'Alterações ósseas — Frontal' })).toBeDisabled();
   });
 
-  it('Coluna Vertebral lista cada vértebra como linha própria, cervicais→torácicas→lombares, Sacro e Cóccix por último', async () => {
+  it('Coluna Vertebral apresenta contagem e identificação de vértebras e ossos simples Sacro e Cóccix', async () => {
     const user = userEvent.setup();
     const onUpdateInventory = vi.fn();
 
@@ -192,30 +192,28 @@ describe('OsteologicalInventoryViewer', () => {
 
     await user.click(screen.getByText('2. Coluna Vertebral'));
 
+    expect(screen.getByText('Sacro')).toBeInTheDocument();
+    expect(screen.getByText('Cóccix')).toBeInTheDocument();
+    expect(screen.getByText('Vértebras cervicais')).toBeInTheDocument();
+    expect(screen.getByText('Vértebras torácicas')).toBeInTheDocument();
+    expect(screen.getByText('Vértebras lombares')).toBeInTheDocument();
+
     expect(screen.getByText('C1')).toBeInTheDocument();
     expect(screen.getByText('C7')).toBeInTheDocument();
     expect(screen.getByText('T1')).toBeInTheDocument();
     expect(screen.getByText('T12')).toBeInTheDocument();
     expect(screen.getByText('L1')).toBeInTheDocument();
     expect(screen.getByText('L5')).toBeInTheDocument();
-    expect(screen.getByText('Sacro')).toBeInTheDocument();
-    expect(screen.getByText('Cóccix')).toBeInTheDocument();
 
-    const boneNames = screen.getAllByTitle(/^(C1|C7|T1|T12|L1|L5|Sacro|Cóccix)$/).map(el => el.getAttribute('title'));
-    expect(boneNames.indexOf('C1')).toBeLessThan(boneNames.indexOf('T1'));
-    expect(boneNames.indexOf('T1')).toBeLessThan(boneNames.indexOf('L1'));
-    expect(boneNames.indexOf('L5')).toBeLessThan(boneNames.indexOf('Sacro'));
-    expect(boneNames.indexOf('Sacro')).toBeLessThan(boneNames.indexOf('Cóccix'));
-
-    await user.click(screen.getByTitle('T5 — Presente sem fratura'));
+    await user.click(screen.getByTitle('Sacro — Presente sem fratura'));
     expect(onUpdateInventory).toHaveBeenCalledWith(
       expect.objectContaining({
-        colunaVertebral: expect.objectContaining({ ossos: { T5: 'P' } })
+        colunaVertebral: expect.objectContaining({ ossos: { Sacro: 'P' } })
       })
     );
   });
 
-  it('Tórax lista cada costela como linha própria, Direita e Esquerda', async () => {
+  it('Tórax apresenta contagem e identificação de costelas e Esterno', async () => {
     const user = userEvent.setup();
     const onUpdateInventory = vi.fn();
 
@@ -229,15 +227,18 @@ describe('OsteologicalInventoryViewer', () => {
     await user.click(screen.getByText('3. Tórax & Esterno'));
 
     expect(screen.getByText('Esterno - Manúbrio')).toBeInTheDocument();
-    expect(screen.getByText('1ª Costela Direita')).toBeInTheDocument();
-    expect(screen.getByText('12ª Costela Direita')).toBeInTheDocument();
-    expect(screen.getByText('1ª Costela Esquerda')).toBeInTheDocument();
-    expect(screen.getByText('12ª Costela Esquerda')).toBeInTheDocument();
+    expect(screen.getByText('Esterno - Corpo')).toBeInTheDocument();
+    expect(screen.getByText('Esterno - Processo xifóide')).toBeInTheDocument();
+    expect(screen.getByText('Costelas direitas')).toBeInTheDocument();
+    expect(screen.getByText('Costelas esquerdas')).toBeInTheDocument();
 
-    await user.click(screen.getByTitle('1ª Costela Direita — Presente sem fratura'));
+    expect(screen.getAllByText('1ª').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('12ª').length).toBeGreaterThanOrEqual(1);
+
+    await user.click(screen.getByTitle('Esterno - Manúbrio — Presente sem fratura'));
     expect(onUpdateInventory).toHaveBeenCalledWith(
       expect.objectContaining({
-        torax: expect.objectContaining({ ossos: { '1ª Costela Direita': 'P' } })
+        torax: expect.objectContaining({ ossos: { 'Esterno - Manúbrio': 'P' } })
       })
     );
   });

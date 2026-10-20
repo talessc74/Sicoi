@@ -7,7 +7,13 @@ import {
   PELVE_MEMBRO_INFERIOR_OSSOS,
   OSSOS_MAO,
   OSSOS_PE,
-  CABECA_PESCOCO_OSSOS
+  CABECA_PESCOCO_OSSOS,
+  COLUNA_VERTEBRAL_OSSOS,
+  CERVICAIS_ORDINAIS,
+  TORACICAS_ORDINAIS,
+  LOMBARES_ORDINAIS,
+  TORAX_OSSOS,
+  COSTELAS_ORDINAIS
 } from '../OsteologicalInventoryViewer';
 
 describe('Inventário Osteológico — Lógica Bilateral (Lado Direito / Lado Esquerdo)', () => {
@@ -64,5 +70,31 @@ describe('Inventário Osteológico — Lógica Bilateral (Lado Direito / Lado Es
     expect(direito.every(b => b.includes('Direit'))).toBe(true);
     expect(esquerdo.every(b => b.includes('Esquerd'))).toBe(true);
     expect(direito.length + esquerdo.length).toBe(OSSOS_PE.length);
+  });
+
+  describe('Estrutura de Coluna Vertebral e Tórax (Contagem e Identificação Ordinal)', () => {
+    it('configura ossos simples de Coluna Vertebral como Sacro e Cóccix', () => {
+      expect(COLUNA_VERTEBRAL_OSSOS).toEqual(['Sacro', 'Cóccix']);
+    });
+
+    it('configura ordinais de vértebras cervicais, torácicas e lombares', () => {
+      expect(CERVICAIS_ORDINAIS).toEqual(['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7']);
+      expect(TORACICAS_ORDINAIS).toEqual(['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12']);
+      expect(LOMBARES_ORDINAIS).toEqual(['L1', 'L2', 'L3', 'L4', 'L5']);
+    });
+
+    it('configura ossos simples de Tórax como as 3 partes do Esterno', () => {
+      expect(TORAX_OSSOS).toEqual([
+        'Esterno - Manúbrio',
+        'Esterno - Corpo',
+        'Esterno - Processo xifóide'
+      ]);
+    });
+
+    it('configura ordinais de costelas de 1ª a 12ª', () => {
+      expect(COSTELAS_ORDINAIS).toEqual([
+        '1ª', '2ª', '3ª', '4ª', '5ª', '6ª', '7ª', '8ª', '9ª', '10ª', '11ª', '12ª'
+      ]);
+    });
   });
 });

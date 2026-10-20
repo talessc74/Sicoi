@@ -6,7 +6,8 @@ import {
   OsteologicalAlteracaoRegiao,
   OsteologicalSimpleBoneSection,
   OsteologicalSectionCabecaPescoco,
-  OsteologicalPooledCounts
+  OsteologicalPooledCounts,
+  OsteologicalCountIdentifySelection
 } from '../types/sgccco';
 import { Info, Sparkles, Plus, Trash2, AlertCircle, ChevronDown } from 'lucide-react';
 
@@ -22,28 +23,26 @@ function clearAlteracoesIfAusente(
   return alteracoes.filter(a => a.osso !== bone);
 }
 
-// Pedido dos pesquisadores (out/2026): cada vértebra e cada costela é um
-// elemento catalogável próprio — nunca mais um contador de quantidade
-// separado da identificação. Vértebras primeiro (cervicais → torácicas →
-// lombares), Sacro e Cóccix por último.
-const COLUNA_VERTEBRAL_OSSOS = [
-  'C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7',
-  'T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12',
-  'L1', 'L2', 'L3', 'L4', 'L5',
-  'Sacro',
-  'Cóccix'
-] as const;
+// Coluna Vertebral: Sacro e Cóccix possuem presença P/F/I/A individual.
+// As vértebras (cervicais, torácicas, lombares) voltam ao padrão original dos docs:
+// contagem numérica (rolagem) + identificação ordinal múltipla escolha com supranumerária.
+export const COLUNA_VERTEBRAL_OSSOS = ['Sacro', 'Cóccix'] as const;
 
-const TORAX_OSSOS = [
+export const CERVICAIS_ORDINAIS = ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7'] as const;
+export const TORACICAS_ORDINAIS = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12'] as const;
+export const LOMBARES_ORDINAIS = ['L1', 'L2', 'L3', 'L4', 'L5'] as const;
+
+// Tórax: Esterno (Manúbrio, Corpo, Processo xifóide) possui presença P/F/I/A individual.
+// As costelas (direitas e esquerdas) voltam ao padrão original dos docs:
+// contagem numérica (rolagem 0 a 12 e +12) + identificação ordinal múltipla escolha (1ª a 12ª) com supranumerária.
+export const TORAX_OSSOS = [
   'Esterno - Manúbrio',
   'Esterno - Corpo',
-  'Esterno - Processo xifóide',
-  '1ª Costela Direita', '2ª Costela Direita', '3ª Costela Direita', '4ª Costela Direita',
-  '5ª Costela Direita', '6ª Costela Direita', '7ª Costela Direita', '8ª Costela Direita',
-  '9ª Costela Direita', '10ª Costela Direita', '11ª Costela Direita', '12ª Costela Direita',
-  '1ª Costela Esquerda', '2ª Costela Esquerda', '3ª Costela Esquerda', '4ª Costela Esquerda',
-  '5ª Costela Esquerda', '6ª Costela Esquerda', '7ª Costela Esquerda', '8ª Costela Esquerda',
-  '9ª Costela Esquerda', '10ª Costela Esquerda', '11ª Costela Esquerda', '12ª Costela Esquerda'
+  'Esterno - Processo xifóide'
+] as const;
+
+export const COSTELAS_ORDINAIS = [
+  '1ª', '2ª', '3ª', '4ª', '5ª', '6ª', '7ª', '8ª', '9ª', '10ª', '11ª', '12ª'
 ] as const;
 
 // Só os ossos do braço/cintura escapular — carpo e metacarpo saem pra
@@ -249,10 +248,13 @@ function countCabecaComplementares(data: {
 const CABECA_PESCOCO_TOTAL_CATALOGAVEL =
   CABECA_PESCOCO_OSSOS.length + CARTILAGENS_LARINGE_OPTIONS.length + OSSICULOS_OPTIONS.length * 2;
 
+const COLUNA_TOTAL_CATALOGAVEL = COLUNA_VERTEBRAL_OSSOS.length + 3; // 5 (Sacro, Cóccix + Cervicais, Torácicas, Lombares)
+const TORAX_TOTAL_CATALOGAVEL = TORAX_OSSOS.length + 2; // 5 (3 partes do Esterno + Costelas Direitas e Esquerdas)
+
 export const SECTIONS_CONFIG = [
   { id: 'cabeca_pescoco', label: '1. Cabeça e Pescoço', active: true, count: CABECA_PESCOCO_TOTAL_CATALOGAVEL },
-  { id: 'coluna_vertebral', label: '2. Coluna Vertebral', active: true, count: COLUNA_VERTEBRAL_OSSOS.length },
-  { id: 'torax', label: '3. Tórax & Esterno', active: true, count: TORAX_OSSOS.length },
+  { id: 'coluna_vertebral', label: '2. Coluna Vertebral', active: true, count: COLUNA_TOTAL_CATALOGAVEL },
+  { id: 'torax', label: '3. Tórax & Esterno', active: true, count: TORAX_TOTAL_CATALOGAVEL },
   { id: 'membros_superiores', label: '4. Membros Superiores', active: true, count: MEMBROS_SUPERIORES_OSSOS.length },
   { id: 'ossos_mao', label: '5. Ossos da Mão', active: true, count: OSSOS_MAO.length },
   { id: 'pelve_mi', label: '6. Membros Inferiores', active: true, count: PELVE_MEMBRO_INFERIOR_OSSOS.length },
@@ -514,7 +516,25 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
     const sectionKey = SECTION_KEY_BY_ID[sectionId];
     if (!sectionKey) return 0;
     const baseCount = Object.keys(getSimpleSection(sectionKey).ossos).length;
-    return sectionId === 'cabeca_pescoco' ? baseCount + countCabecaComplementares(cabecaExtra) : baseCount;
+    if (sectionId === 'cabeca_pescoco') {
+      return baseCount + countCabecaComplementares(cabecaExtra);
+    }
+    if (sectionId === 'coluna_vertebral') {
+      const col = inventory.colunaVertebral;
+      let count = baseCount;
+      if (col?.cervicais?.quantidade !== undefined || (col?.cervicais?.identificadas?.length || 0) > 0) count++;
+      if (col?.toracicas?.quantidade !== undefined || (col?.toracicas?.identificadas?.length || 0) > 0) count++;
+      if (col?.lombares?.quantidade !== undefined || (col?.lombares?.identificadas?.length || 0) > 0) count++;
+      return count;
+    }
+    if (sectionId === 'torax') {
+      const tx = inventory.torax;
+      let count = baseCount;
+      if (tx?.costelasDireitas?.quantidade !== undefined || (tx?.costelasDireitas?.identificadas?.length || 0) > 0) count++;
+      if (tx?.costelasEsquerdas?.quantidade !== undefined || (tx?.costelasEsquerdas?.identificadas?.length || 0) > 0) count++;
+      return count;
+    }
+    return baseCount;
   };
 
   const configuredSectionsCount = SECTIONS_CONFIG.filter(sec => getSectionAssignedCount(sec.id) > 0).length;
@@ -523,6 +543,20 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
     if (readOnly) return;
     const current = (inventory[key] as OsteologicalPooledCounts) || {};
     onUpdateInventory({ ...inventory, [key]: { ...current, ...patch } });
+  };
+
+  const updateCountIdentify = (
+    sectionKey: 'colunaVertebral' | 'torax',
+    field: string,
+    patch: Partial<OsteologicalCountIdentifySelection>
+  ) => {
+    if (readOnly) return;
+    const current = (inventory as any)[sectionKey] || { ossos: {} };
+    const currentField: OsteologicalCountIdentifySelection = current[field] || {};
+    onUpdateInventory({
+      ...inventory,
+      [sectionKey]: { ...current, [field]: { ...currentField, ...patch } }
+    });
   };
 
   return (
@@ -920,6 +954,76 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
               </div>
             )}
 
+            {currentSectionId === 'coluna_vertebral' && (
+              <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h5 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-mono">
+                    Vértebras — Quantidade (Rolagem) e Identificação
+                  </h5>
+                  <span className="text-[10px] font-mono text-slate-500">
+                    Cervicais (0 a 7 e +7), Torácicas (0 a 12 e +12), Lombares (0 a 5 e +5)
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <CountIdentifyField
+                    label="Vértebras cervicais"
+                    max={7}
+                    ordinais={CERVICAIS_ORDINAIS}
+                    value={inventory.colunaVertebral?.cervicais || {}}
+                    onChange={patch => updateCountIdentify('colunaVertebral', 'cervicais', patch)}
+                    readOnly={readOnly}
+                  />
+                  <CountIdentifyField
+                    label="Vértebras torácicas"
+                    max={12}
+                    ordinais={TORACICAS_ORDINAIS}
+                    value={inventory.colunaVertebral?.toracicas || {}}
+                    onChange={patch => updateCountIdentify('colunaVertebral', 'toracicas', patch)}
+                    readOnly={readOnly}
+                  />
+                  <CountIdentifyField
+                    label="Vértebras lombares"
+                    max={5}
+                    ordinais={LOMBARES_ORDINAIS}
+                    value={inventory.colunaVertebral?.lombares || {}}
+                    onChange={patch => updateCountIdentify('colunaVertebral', 'lombares', patch)}
+                    readOnly={readOnly}
+                  />
+                </div>
+              </div>
+            )}
+
+            {currentSectionId === 'torax' && (
+              <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h5 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-mono">
+                    Costelas — Quantidade (Rolagem) e Identificação
+                  </h5>
+                  <span className="text-[10px] font-mono text-slate-500">
+                    Costelas Direitas e Costelas Esquerdas (0 a 12 e +12)
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <CountIdentifyField
+                    label="Costelas direitas"
+                    max={12}
+                    ordinais={COSTELAS_ORDINAIS}
+                    value={inventory.torax?.costelasDireitas || {}}
+                    onChange={patch => updateCountIdentify('torax', 'costelasDireitas', patch)}
+                    readOnly={readOnly}
+                  />
+                  <CountIdentifyField
+                    label="Costelas esquerdas"
+                    max={12}
+                    ordinais={COSTELAS_ORDINAIS}
+                    value={inventory.torax?.costelasEsquerdas || {}}
+                    onChange={patch => updateCountIdentify('torax', 'costelasEsquerdas', patch)}
+                    readOnly={readOnly}
+                  />
+                </div>
+              </div>
+            )}
+
             {currentSectionId === 'ossos_mao' && (
               <PooledCountsCard
                 region="da Mão"
@@ -1298,6 +1402,140 @@ const PooledCountsCard: React.FC<PooledCountsCardProps> = ({ region, value, onCh
             placeholder="Nº"
             className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-mono"
           />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+interface CountIdentifyFieldProps {
+  label: string;
+  max: number;
+  ordinais: readonly string[];
+  value: OsteologicalCountIdentifySelection;
+  onChange: (patch: Partial<OsteologicalCountIdentifySelection>) => void;
+  readOnly: boolean;
+}
+
+const CountIdentifyField: React.FC<CountIdentifyFieldProps> = ({
+  label,
+  max,
+  ordinais,
+  value,
+  onChange,
+  readOnly
+}) => {
+  const identificadas = value.identificadas || [];
+  const nenhumaMarcada = identificadas.includes('nenhuma_identificada');
+  const supranumerariaMarcada = identificadas.includes('supranumeraria');
+
+  const toggleIdentificada = (id: string) => {
+    if (readOnly) return;
+    if (id === 'nenhuma_identificada') {
+      onChange({ identificadas: nenhumaMarcada ? [] : ['nenhuma_identificada'] });
+      return;
+    }
+    const withoutNenhuma = identificadas.filter((i: string) => i !== 'nenhuma_identificada');
+    const updated = withoutNenhuma.includes(id)
+      ? withoutNenhuma.filter((i: string) => i !== id)
+      : [...withoutNenhuma, id];
+    onChange({ identificadas: updated });
+  };
+
+  return (
+    <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 space-y-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200 dark:border-slate-800">
+        <div>
+          <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase font-mono">
+            {label}
+          </span>
+          <span className="block text-[10px] text-slate-500 font-mono">
+            Rolagem (0 a {max} e +{max}) e elementos identificados
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <label className="text-[11px] font-mono text-slate-600 dark:text-slate-400">
+            Contagem:
+          </label>
+          <select
+            disabled={readOnly}
+            value={value.quantidade ?? ''}
+            onChange={e => onChange({ quantidade: e.target.value === '' ? undefined : Number(e.target.value) })}
+            className="p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-mono font-semibold"
+            aria-label={`Contagem de ${label}`}
+          >
+            <option value="">Selecione...</option>
+            {Array.from({ length: max + 1 }, (_, n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+            <option value={max + 1}>{`+${max}`}</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
+          Elementos identificados (Múltipla escolha):
+        </label>
+        <div className="flex flex-wrap gap-1.5 text-[11px]">
+          <label
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border cursor-pointer transition-colors ${
+              nenhumaMarcada
+                ? 'bg-slate-200 dark:bg-slate-700 border-slate-400 text-slate-900 dark:text-white font-semibold'
+                : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+          >
+            <input
+              type="checkbox"
+              disabled={readOnly}
+              checked={nenhumaMarcada}
+              onChange={() => toggleIdentificada('nenhuma_identificada')}
+              className="rounded border-slate-300 text-slate-700 focus:ring-slate-500"
+            />
+            <span>Nenhuma identificada</span>
+          </label>
+
+          {ordinais.map(ord => {
+            const isChecked = identificadas.includes(ord);
+            return (
+              <label
+                key={ord}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border cursor-pointer font-mono transition-colors ${
+                  isChecked
+                    ? 'bg-sky-100 dark:bg-sky-950/80 border-sky-400 text-sky-900 dark:text-sky-200 font-bold'
+                    : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  disabled={readOnly}
+                  checked={isChecked}
+                  onChange={() => toggleIdentificada(ord)}
+                  className="rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                />
+                <span>{ord}</span>
+              </label>
+            );
+          })}
+
+          <label
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border cursor-pointer transition-colors ${
+              supranumerariaMarcada
+                ? 'bg-amber-100 dark:bg-amber-950/80 border-amber-400 text-amber-900 dark:text-amber-200 font-bold'
+                : 'border-amber-300 dark:border-amber-800 bg-white dark:bg-slate-900 text-amber-800 dark:text-amber-300 hover:bg-amber-50'
+            }`}
+          >
+            <input
+              type="checkbox"
+              disabled={readOnly}
+              checked={supranumerariaMarcada}
+              onChange={() => toggleIdentificada('supranumeraria')}
+              className="rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+            />
+            <span>Supranumerária</span>
+          </label>
         </div>
       </div>
     </div>

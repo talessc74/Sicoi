@@ -51,14 +51,19 @@ seções originais para 7, cada uma reorganizada.**
   correspondente foram removidos do repositório — não há mais
   prancha visual em seção nenhuma do inventário. A seção usa o mesmo
   componente genérico `SimpleBoneRows` das demais seções.
-- **Coluna Vertebral** (`colunaVertebral: OsteologicalSimpleBoneSection`):
-  26 linhas — C1-C7, T1-T12, L1-L5, Sacro, Cóccix, nessa ordem. O tipo
-  `OsteologicalSectionColunaVertebral` (com `cervicais`/`toracicas`/`lombares`
-  de contagem+identificação) e `OsteologicalCountIdentifySelection` foram
-  removidos — nenhuma seção usa mais esse padrão.
-- **Tórax** (`torax: OsteologicalSimpleBoneSection`): 27 linhas — Esterno
-  (Manúbrio/Corpo/Processo xifóide) + 1ª-12ª Costela Direita + 1ª-12ª
-  Costela Esquerda, cada uma com P/F/I/A próprio.
+- **Coluna Vertebral** (`colunaVertebral: OsteologicalSectionColunaVertebral`):
+  Conforme especificação dos docs, as vértebras utilizam o padrão de contagem numérica (caixa de seleção rolagem)
+  e identificação múltipla escolha de elementos individualizados (com "Nenhuma identificada" e "Supranumerária"):
+  - Vértebras cervicais: rolagem 0 a 7 e +7; C1 a C7
+  - Vértebras torácicas: rolagem 0 a 12 e +12; T1 a T12
+  - Vértebras lombares: rolagem 0 a 5 e +5; L1 a L5
+  - Sacro e Cóccix: catalogados individualmente com códigos P/F/I/A e alterações ósseas.
+- **Tórax** (`torax: OsteologicalSectionTorax`):
+  Conforme especificação dos docs, as costelas utilizam o padrão de contagem numérica (caixa de seleção rolagem 0 a 12 e +12)
+  e identificação múltipla escolha de costelas individualizadas (1ª a 12ª, com "Nenhuma identificada" e "Supranumerária"):
+  - Costelas direitas: rolagem 0 a 12 e +12; 1ª a 12ª
+  - Costelas esquerdas: rolagem 0 a 12 e +12; 1ª a 12ª
+  - Esterno (Manúbrio, Corpo, Processo xifóide): catalogado com códigos P/F/I/A e alterações ósseas.
 - **Membros Superiores** (`membrosSuperiores`, 22 ossos): só os ossos do
   braço/cintura escapular (Clavícula, Escápula, Úmero, Ulna, Rádio — 11
   por lado), Direito e Esquerdo juntos na mesma seção — substitui as 2
