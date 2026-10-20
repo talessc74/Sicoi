@@ -83,6 +83,11 @@ seções originais para 7, cada uma reorganizada.**
   para 31. Dentro de um grupo complementar, marcar "Ausentes" conta
   como todos os itens daquele grupo determinados (mesmo raciocínio do
   código `A` num osso comum) — não como mais um item à parte.
+- **Visualização bilateral em 2 colunas e filtro por lado**:
+  Nas 4 seções apendiculares bilaterais (Membros Superiores, Membros Inferiores, Ossos da Mão, Ossos do Pé),
+  os elementos são organizados anatômica e visualmente em duas colunas (Lado Direito e Lado Esquerdo).
+  A interface fornece controles de visualização ("Duas Colunas (D + E)", "Lado Direito", "Lado Esquerdo")
+  e botões rápidos de preenchimento por lado ("Todos P (D)", "Todos P (E)"), otimizando a catalogação forense.
 - **Regra retroativa de exclusão A×alteração** (`_local-adr-policy-109`)
   e o clique na linha do osso abrindo a gaveta de alterações (fix
   anterior, aplicado só à Cabeça e Pescoço e ao componente genérico)

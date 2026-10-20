@@ -50,7 +50,7 @@ const TORAX_OSSOS = [
 // "Ossos da Mão" (seção própria, pedido dos pesquisadores). Direito e
 // Esquerdo numa seção só, mesma lógica de Ossos da Mão/Pé e de Pelve +
 // Membros Inferiores (pedido do Tales, out/2026).
-const MEMBROS_SUPERIORES_OSSOS = [
+export const MEMBROS_SUPERIORES_OSSOS = [
   'Clavícula Direita',
   'Escápula Direita',
   'Úmero Direito - Epífise Proximal',
@@ -77,7 +77,7 @@ const MEMBROS_SUPERIORES_OSSOS = [
 
 // Carpo + metacarpo das duas mãos, numa seção própria (pedido dos
 // pesquisadores) — cada osso ainda identificado por lado dentro da lista.
-const OSSOS_MAO = [
+export const OSSOS_MAO = [
   'Escafóide Direito',
   'Semilunar Direito',
   'Piramidal Direito',
@@ -109,7 +109,7 @@ const OSSOS_MAO = [
 // Pelve/Bacia e Membro Inferior unidos numa seção só (pedido dos
 // pesquisadores) — tarso e metatarso saem pra "Ossos do Pé". Lado ainda
 // identificado por osso, não mais por seção.
-const PELVE_MEMBRO_INFERIOR_OSSOS = [
+export const PELVE_MEMBRO_INFERIOR_OSSOS = [
   'Ílio Direito',
   'Ísquio Direito',
   'Púbis Direito',
@@ -139,7 +139,7 @@ const PELVE_MEMBRO_INFERIOR_OSSOS = [
 ] as const;
 
 // Tarso + metatarso dos dois pés, seção própria — mesma lógica de Ossos da Mão.
-const OSSOS_PE = [
+export const OSSOS_PE = [
   'Calcâneo Direito',
   'Tálus Direito',
   'Navicular Direito',
@@ -165,6 +165,29 @@ const OSSOS_PE = [
   '4º Metatarsal Esquerdo',
   '5º Metatarsal Esquerdo'
 ] as const;
+
+export const BILATERAL_SECTION_IDS = [
+  'membros_superiores',
+  'pelve_mi',
+  'ossos_mao',
+  'ossos_pe'
+] as const;
+
+export type BilateralSectionId = typeof BILATERAL_SECTION_IDS[number];
+
+export function isBilateralSection(sectionId: string): boolean {
+  return (BILATERAL_SECTION_IDS as readonly string[]).includes(sectionId);
+}
+
+export function partitionBonesBySide(bones: readonly string[]): {
+  direito: string[];
+  esquerdo: string[];
+} {
+  return {
+    direito: bones.filter(b => /direit/i.test(b)),
+    esquerdo: bones.filter(b => /esquerd/i.test(b))
+  };
+}
 
 interface OsteologicalInventoryViewerProps {
   inventory?: OsteologicalInventoryData;
@@ -325,6 +348,7 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
   readOnly = false
 }) => {
   const [currentSectionId, setCurrentSectionId] = useState<string>('cabeca_pescoco');
+  const [sideFilter, setSideFilter] = useState<'ambos' | 'direito' | 'esquerdo'>('ambos');
 
   // Controle de expansão da drawer de alterações, por seção — evita colisão
   // entre ossos de nomes iguais em seções diferentes.
@@ -564,6 +588,9 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
         const sectionData = getSimpleSection(sectionKey);
         const sectionLabel = (SECTIONS_CONFIG.find(s => s.id === currentSectionId)?.label || '').replace(/^\d+\.\s*/, '');
 
+        const isBilateral = isBilateralSection(currentSectionId);
+        const { direito: direitoBones, esquerdo: esquerdoBones } = partitionBonesBySide(bones);
+
         return (
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-6">
             <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-200 dark:border-slate-800">
@@ -647,18 +674,153 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
               </div>
             </div>
 
-            <SimpleBoneRows
-              bones={bones}
-              section={sectionData}
-              readOnly={readOnly}
-              expandedBones={expandedBonesBySection[sectionKey] || {}}
-              onToggleExpand={bone => toggleExpandBoneGeneric(sectionKey, bone)}
-              onSetPresence={(bone, code) => handleSetPresenceGeneric(sectionKey, bone, code)}
-              onToggleAlteracao={(bone, tipo) => handleToggleAlteracaoGeneric(sectionKey, bone, tipo)}
-              onAddAlteracaoItem={(bone, tipo) => handleAddAlteracaoItemGeneric(sectionKey, bone, tipo)}
-              onRemoveAlteracaoItem={id => handleRemoveAlteracaoItemGeneric(sectionKey, id)}
-              onUpdateAlteracaoItem={(id, obs) => handleUpdateAlteracaoItemGeneric(sectionKey, id, obs)}
-            />
+            {isBilateral && (
+              <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-slate-700 dark:text-slate-300 text-xs flex items-center gap-1.5">
+                    Visualização por Lado Anatômico:
+                  </span>
+                  <span className="text-[11px] text-slate-500 font-mono">
+                    (Direito: {direitoBones.length} ossos · Esquerdo: {esquerdoBones.length} ossos)
+                  </span>
+                </div>
+
+                <div className="inline-flex rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-0.5 shadow-2xs">
+                  <button
+                    type="button"
+                    onClick={() => setSideFilter('ambos')}
+                    className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+                      sideFilter === 'ambos'
+                        ? 'bg-sky-600 text-white font-bold shadow-xs'
+                        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    Duas Colunas (D + E)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSideFilter('direito')}
+                    className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+                      sideFilter === 'direito'
+                        ? 'bg-sky-600 text-white font-bold shadow-xs'
+                        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    Lado Direito ({direitoBones.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSideFilter('esquerdo')}
+                    className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+                      sideFilter === 'esquerdo'
+                        ? 'bg-sky-600 text-white font-bold shadow-xs'
+                        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    Lado Esquerdo ({esquerdoBones.length})
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {isBilateral ? (
+              <div className={sideFilter === 'ambos' ? 'grid grid-cols-1 lg:grid-cols-2 gap-5 items-start' : 'space-y-4'}>
+                {(sideFilter === 'ambos' || sideFilter === 'direito') && (
+                  <div className="p-3.5 rounded-xl border border-sky-200 dark:border-sky-900/60 bg-sky-50/20 dark:bg-sky-950/20 space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-sky-200/70 dark:border-sky-900/50">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-sky-600" />
+                        <h5 className="font-bold text-xs uppercase font-mono tracking-wider text-sky-950 dark:text-sky-200">
+                          Lado Direito ({direitoBones.length} ossos)
+                        </h5>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-mono text-slate-500">
+                          {direitoBones.filter(b => sectionData.ossos[b]).length}/{direitoBones.length} catalogados
+                        </span>
+                        {!readOnly && (
+                          <button
+                            type="button"
+                            onClick={() => handleBulkMarkGeneric(sectionKey, direitoBones, 'P')}
+                            className="px-2 py-0.5 rounded text-[10px] font-mono font-medium border border-emerald-300 dark:border-emerald-800 bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 transition-colors"
+                            title="Marcar todos os ossos do Lado Direito como P"
+                          >
+                            Todos P (D)
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <SimpleBoneRows
+                      bones={direitoBones}
+                      section={sectionData}
+                      readOnly={readOnly}
+                      expandedBones={expandedBonesBySection[sectionKey] || {}}
+                      onToggleExpand={bone => toggleExpandBoneGeneric(sectionKey, bone)}
+                      onSetPresence={(bone, code) => handleSetPresenceGeneric(sectionKey, bone, code)}
+                      onToggleAlteracao={(bone, tipo) => handleToggleAlteracaoGeneric(sectionKey, bone, tipo)}
+                      onAddAlteracaoItem={(bone, tipo) => handleAddAlteracaoItemGeneric(sectionKey, bone, tipo)}
+                      onRemoveAlteracaoItem={id => handleRemoveAlteracaoItemGeneric(sectionKey, id)}
+                      onUpdateAlteracaoItem={(id, obs) => handleUpdateAlteracaoItemGeneric(sectionKey, id, obs)}
+                    />
+                  </div>
+                )}
+
+                {(sideFilter === 'ambos' || sideFilter === 'esquerdo') && (
+                  <div className="p-3.5 rounded-xl border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/20 dark:bg-indigo-950/20 space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-indigo-200/70 dark:border-indigo-900/50">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-indigo-600" />
+                        <h5 className="font-bold text-xs uppercase font-mono tracking-wider text-indigo-950 dark:text-indigo-200">
+                          Lado Esquerdo ({esquerdoBones.length} ossos)
+                        </h5>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-mono text-slate-500">
+                          {esquerdoBones.filter(b => sectionData.ossos[b]).length}/{esquerdoBones.length} catalogados
+                        </span>
+                        {!readOnly && (
+                          <button
+                            type="button"
+                            onClick={() => handleBulkMarkGeneric(sectionKey, esquerdoBones, 'P')}
+                            className="px-2 py-0.5 rounded text-[10px] font-mono font-medium border border-emerald-300 dark:border-emerald-800 bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 transition-colors"
+                            title="Marcar todos os ossos do Lado Esquerdo como P"
+                          >
+                            Todos P (E)
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <SimpleBoneRows
+                      bones={esquerdoBones}
+                      section={sectionData}
+                      readOnly={readOnly}
+                      expandedBones={expandedBonesBySection[sectionKey] || {}}
+                      onToggleExpand={bone => toggleExpandBoneGeneric(sectionKey, bone)}
+                      onSetPresence={(bone, code) => handleSetPresenceGeneric(sectionKey, bone, code)}
+                      onToggleAlteracao={(bone, tipo) => handleToggleAlteracaoGeneric(sectionKey, bone, tipo)}
+                      onAddAlteracaoItem={(bone, tipo) => handleAddAlteracaoItemGeneric(sectionKey, bone, tipo)}
+                      onRemoveAlteracaoItem={id => handleRemoveAlteracaoItemGeneric(sectionKey, id)}
+                      onUpdateAlteracaoItem={(id, obs) => handleUpdateAlteracaoItemGeneric(sectionKey, id, obs)}
+                    />
+                  </div>
+                )}
+              </div>
+            ) : (
+              <SimpleBoneRows
+                bones={bones}
+                section={sectionData}
+                readOnly={readOnly}
+                expandedBones={expandedBonesBySection[sectionKey] || {}}
+                onToggleExpand={bone => toggleExpandBoneGeneric(sectionKey, bone)}
+                onSetPresence={(bone, code) => handleSetPresenceGeneric(sectionKey, bone, code)}
+                onToggleAlteracao={(bone, tipo) => handleToggleAlteracaoGeneric(sectionKey, bone, tipo)}
+                onAddAlteracaoItem={(bone, tipo) => handleAddAlteracaoItemGeneric(sectionKey, bone, tipo)}
+                onRemoveAlteracaoItem={id => handleRemoveAlteracaoItemGeneric(sectionKey, id)}
+                onUpdateAlteracaoItem={(id, obs) => handleUpdateAlteracaoItemGeneric(sectionKey, id, obs)}
+              />
+            )}
 
             {currentSectionId === 'cabeca_pescoco' && (
               <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-4">
