@@ -9,7 +9,7 @@ import {
   OsteologicalPooledCounts,
   OsteologicalCountIdentifySelection
 } from '../types/sgccco';
-import { Info, Sparkles, Plus, Trash2, AlertCircle, ChevronDown } from 'lucide-react';
+import { Info, Sparkles, Plus, Trash2, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react';
 
 // Osso ausente ('A') e alteração óssea ('!') são mutuamente exclusivos — não
 // faz sentido catalogar uma alteração num osso que não foi encontrado (pedido
@@ -35,22 +35,96 @@ export function applyBulkPresence(
   return { ossos: newOssos, alteracoes: newAlteracoes };
 }
 
-// Coluna Vertebral: Sacro e Cóccix possuem presença P/F/I/A individual.
-// As vértebras (cervicais, torácicas, lombares) voltam ao padrão original dos docs:
-// contagem numérica (rolagem) + identificação ordinal múltipla escolha com supranumerária.
-export const COLUNA_VERTEBRAL_OSSOS = ['Sacro', 'Cóccix'] as const;
+// Coluna Vertebral:
+// Vértebras aparecem antes de Sacro e Cóccix na listagem (pedido dos técnicos, out/2026).
+export const VERTEBRAS_CERVICAIS = [
+  'Vértebra Cervical C1 (Atlas)',
+  'Vértebra Cervical C2 (Áxis)',
+  'Vértebra Cervical C3',
+  'Vértebra Cervical C4',
+  'Vértebra Cervical C5',
+  'Vértebra Cervical C6',
+  'Vértebra Cervical C7'
+] as const;
+
+export const VERTEBRAS_TORACICAS = [
+  'Vértebra Torácica T1',
+  'Vértebra Torácica T2',
+  'Vértebra Torácica T3',
+  'Vértebra Torácica T4',
+  'Vértebra Torácica T5',
+  'Vértebra Torácica T6',
+  'Vértebra Torácica T7',
+  'Vértebra Torácica T8',
+  'Vértebra Torácica T9',
+  'Vértebra Torácica T10',
+  'Vértebra Torácica T11',
+  'Vértebra Torácica T12'
+] as const;
+
+export const VERTEBRAS_LOMBARES = [
+  'Vértebra Lombar L1',
+  'Vértebra Lombar L2',
+  'Vértebra Lombar L3',
+  'Vértebra Lombar L4',
+  'Vértebra Lombar L5'
+] as const;
+
+export const SACRO_COCCIX_OSSOS = ['Sacro', 'Cóccix'] as const;
+
+export const COLUNA_VERTEBRAL_OSSOS = [
+  ...VERTEBRAS_CERVICAIS,
+  ...VERTEBRAS_TORACICAS,
+  ...VERTEBRAS_LOMBARES,
+  ...SACRO_COCCIX_OSSOS
+] as const;
 
 export const CERVICAIS_ORDINAIS = ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7'] as const;
 export const TORACICAS_ORDINAIS = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12'] as const;
 export const LOMBARES_ORDINAIS = ['L1', 'L2', 'L3', 'L4', 'L5'] as const;
 
-// Tórax: Esterno (Manúbrio, Corpo, Processo xifóide) possui presença P/F/I/A individual.
-// As costelas (direitas e esquerdas) voltam ao padrão original dos docs:
-// contagem numérica (rolagem 0 a 12 e +12) + identificação ordinal múltipla escolha (1ª a 12ª) com supranumerária.
-export const TORAX_OSSOS = [
+// Tórax:
+// Esterno (Manúbrio, Corpo, Processo xifóide) e Costelas em listagem (C1 a C12) por lateralidade (pedido dos técnicos, out/2026).
+export const ESTERNO_OSSOS = [
   'Esterno - Manúbrio',
   'Esterno - Corpo',
   'Esterno - Processo xifóide'
+] as const;
+
+export const COSTELAS_ESQUERDAS = [
+  'Costela C1 Esquerda',
+  'Costela C2 Esquerda',
+  'Costela C3 Esquerda',
+  'Costela C4 Esquerda',
+  'Costela C5 Esquerda',
+  'Costela C6 Esquerda',
+  'Costela C7 Esquerda',
+  'Costela C8 Esquerda',
+  'Costela C9 Esquerda',
+  'Costela C10 Esquerda',
+  'Costela C11 Esquerda',
+  'Costela C12 Esquerda'
+] as const;
+
+export const COSTELAS_DIREITAS = [
+  'Costela C1 Direita',
+  'Costela C2 Direita',
+  'Costela C3 Direita',
+  'Costela C4 Direita',
+  'Costela C5 Direita',
+  'Costela C6 Direita',
+  'Costela C7 Direita',
+  'Costela C8 Direita',
+  'Costela C9 Direita',
+  'Costela C10 Direita',
+  'Costela C11 Direita',
+  'Costela C12 Direita'
+] as const;
+
+export const TORAX_OSSOS = [
+  ...ESTERNO_OSSOS,
+  ...COSTELAS_ESQUERDAS,
+  ...COSTELAS_DIREITAS
 ] as const;
 
 export const COSTELAS_ORDINAIS = [
@@ -260,17 +334,18 @@ function countCabecaComplementares(data: {
 const CABECA_PESCOCO_TOTAL_CATALOGAVEL =
   CABECA_PESCOCO_OSSOS.length + CARTILAGENS_LARINGE_OPTIONS.length + OSSICULOS_OPTIONS.length * 2;
 
-const COLUNA_TOTAL_CATALOGAVEL = COLUNA_VERTEBRAL_OSSOS.length + 3; // 5 (Sacro, Cóccix + Cervicais, Torácicas, Lombares)
-const TORAX_TOTAL_CATALOGAVEL = TORAX_OSSOS.length + 2; // 5 (3 partes do Esterno + Costelas Direitas e Esquerdas)
+const COLUNA_TOTAL_CATALOGAVEL = COLUNA_VERTEBRAL_OSSOS.length;
+const TORAX_TOTAL_CATALOGAVEL = TORAX_OSSOS.length;
 
 export const SECTIONS_CONFIG = [
   { id: 'cabeca_pescoco', label: '1. Cabeça e Pescoço', active: true, count: CABECA_PESCOCO_TOTAL_CATALOGAVEL },
   { id: 'coluna_vertebral', label: '2. Coluna Vertebral', active: true, count: COLUNA_TOTAL_CATALOGAVEL },
   { id: 'torax', label: '3. Tórax', active: true, count: TORAX_TOTAL_CATALOGAVEL },
   { id: 'membros_superiores', label: '4. Membros Superiores', active: true, count: MEMBROS_SUPERIORES_OSSOS.length },
-  { id: 'ossos_mao', label: '5. Ossos da Mão', active: true, count: OSSOS_MAO.length },
+  { id: 'ossos_mao', label: '5. Ossos das Mãos', active: true, count: OSSOS_MAO.length },
   { id: 'pelve_mi', label: '6. Membros Inferiores', active: true, count: PELVE_MEMBRO_INFERIOR_OSSOS.length },
-  { id: 'ossos_pe', label: '7. Ossos do Pé', active: true, count: OSSOS_PE.length }
+  { id: 'ossos_pe', label: '7. Ossos dos Pés', active: true, count: OSSOS_PE.length },
+  { id: 'demais_informacoes', label: '8. Demais Informações', active: true, count: 1 }
 ] as const;
 
 const PRESENCE_DEFINITIONS: Record<
@@ -364,14 +439,17 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
   const [currentSectionId, setCurrentSectionId] = useState<string>('cabeca_pescoco');
   const [sideFilter, setSideFilter] = useState<'ambos' | 'direito' | 'esquerdo'>('ambos');
 
-  // Controle de expansão da drawer de alterações, por seção — evita colisão
-  // entre ossos de nomes iguais em seções diferentes.
+  // Controle de expansão da drawer de alterações:
+  // Fecha automaticamente qualquer outra caixa aberta ao clicar em outro osso (pedido dos técnicos, out/2026).
   const [expandedBonesBySection, setExpandedBonesBySection] = useState<Record<string, Record<string, boolean>>>({});
   const toggleExpandBoneGeneric = (sectionKey: string, bone: string) => {
-    setExpandedBonesBySection(prev => ({
-      ...prev,
-      [sectionKey]: { ...(prev[sectionKey] || {}), [bone]: !(prev[sectionKey]?.[bone]) }
-    }));
+    setExpandedBonesBySection(prev => {
+      const isCurrentlyOpen = !!prev[sectionKey]?.[bone];
+      return {
+        ...prev,
+        [sectionKey]: isCurrentlyOpen ? {} : { [bone]: true }
+      };
+    });
   };
 
   const generateAltId = () => `alt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -392,6 +470,13 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
 
   const handleSetPresenceGeneric = (sectionKey: string, bone: string, code: OsteologicalPresenceCode) => {
     if (readOnly) return;
+    // Fecha qualquer gaveta aberta de outro osso ao clicar em uma opção
+    setExpandedBonesBySection(prev => {
+      if (prev[sectionKey] && !prev[sectionKey][bone]) {
+        return { ...prev, [sectionKey]: {} };
+      }
+      return prev;
+    });
     const section = getSimpleSection(sectionKey);
     const currentCode = section.ossos[bone];
     const newOssos = { ...section.ossos };
@@ -528,31 +613,46 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
   };
 
   const getSectionAssignedCount = (sectionId: string): number => {
+    if (sectionId === 'demais_informacoes') {
+      return inventory.demaisInformacoes?.trim() ? 1 : 0;
+    }
     const sectionKey = SECTION_KEY_BY_ID[sectionId];
     if (!sectionKey) return 0;
     const baseCount = Object.keys(getSimpleSection(sectionKey).ossos).length;
     if (sectionId === 'cabeca_pescoco') {
       return baseCount + countCabecaComplementares(cabecaExtra);
     }
-    if (sectionId === 'coluna_vertebral') {
-      const col = inventory.colunaVertebral;
-      let count = baseCount;
-      if (col?.cervicais?.quantidade !== undefined || (col?.cervicais?.identificadas?.length || 0) > 0) count++;
-      if (col?.toracicas?.quantidade !== undefined || (col?.toracicas?.identificadas?.length || 0) > 0) count++;
-      if (col?.lombares?.quantidade !== undefined || (col?.lombares?.identificadas?.length || 0) > 0) count++;
-      return count;
-    }
-    if (sectionId === 'torax') {
-      const tx = inventory.torax;
-      let count = baseCount;
-      if (tx?.costelasDireitas?.quantidade !== undefined || (tx?.costelasDireitas?.identificadas?.length || 0) > 0) count++;
-      if (tx?.costelasEsquerdas?.quantidade !== undefined || (tx?.costelasEsquerdas?.identificadas?.length || 0) > 0) count++;
-      return count;
-    }
     return baseCount;
   };
 
   const configuredSectionsCount = SECTIONS_CONFIG.filter(sec => getSectionAssignedCount(sec.id) > 0).length;
+
+  const updateSectionResiduals = (
+    sectionKey: 'colunaVertebral' | 'torax',
+    patch: { quantidadeNaoIdentificadas?: number; quantidadeFragmentos?: number }
+  ) => {
+    if (readOnly) return;
+    const current = (inventory as any)[sectionKey] || { ossos: {} };
+    onUpdateInventory({
+      ...inventory,
+      [sectionKey]: { ...current, ...patch }
+    });
+  };
+
+  const updateSectionObservacoes = (sectionKey: string, obs: string) => {
+    if (readOnly) return;
+    const current = (inventory as any)[sectionKey] || { ossos: {} };
+    onUpdateInventory({
+      ...inventory,
+      [sectionKey]: { ...current, observacoes: obs }
+    });
+  };
+
+  const currentSectionIndex = SECTIONS_CONFIG.findIndex(s => s.id === currentSectionId);
+  const nextSection =
+    currentSectionIndex >= 0 && currentSectionIndex < SECTIONS_CONFIG.length - 1
+      ? SECTIONS_CONFIG[currentSectionIndex + 1]
+      : null;
 
   const updatePooled = (key: 'maoPooled' | 'pePooled', patch: Partial<OsteologicalPooledCounts>) => {
     if (readOnly) return;
@@ -626,11 +726,31 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
         </div>
       </div>
 
-      {/* Conteúdo da Seção Ativa — mesmo corpo genérico pras seções: lista
-          corrida de ossos com P/F/I/A + alteração embutida, mais os blocos
-          extras que só algumas seções têm (cartilagens/ossículos em Cabeça e
-          Pescoço; pooled de falanges/sesamoides em Ossos da Mão/Pé). */}
-      {(() => {
+      {/* Conteúdo da Seção Ativa */}
+      {currentSectionId === 'demais_informacoes' ? (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
+          <div className="pb-3 border-b border-slate-200 dark:border-slate-800">
+            <h4 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+              Demais Informações
+            </h4>
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+              (ex: tecidos mumificados, nº de dentes desarticulados [em XX] e demais informações relevantes não registradas em questões anteriores deste formulário)
+            </p>
+          </div>
+
+          <textarea
+            disabled={readOnly}
+            rows={8}
+            value={inventory.demaisInformacoes || ''}
+            onChange={e => {
+              if (readOnly) return;
+              onUpdateInventory({ ...inventory, demaisInformacoes: e.target.value });
+            }}
+            placeholder="Registre aqui informações complementares sobre tecidos mumificados, dentes desarticulados, vestígios ou particularidades do conjunto..."
+            className="w-full p-4 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:ring-2 focus:ring-sky-500"
+          />
+        </div>
+      ) : (() => {
         const sectionKey = SECTION_KEY_BY_ID[currentSectionId];
         const bones = SECTION_BONES_BY_ID[currentSectionId];
         if (!sectionKey || !bones) return null;
@@ -749,53 +869,274 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
               </div>
             </div>
 
-            {isBilateral && (
-              <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-slate-700 dark:text-slate-300 text-xs flex items-center gap-1.5">
-                    Visualização por Lado Anatômico:
-                  </span>
+            {/* Renderização dos elementos por tipo de seção */}
+            {currentSectionId === 'coluna_vertebral' ? (
+              <div className="space-y-6">
+                {/* 1. Vértebras Cervicais */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between pb-1 border-b border-slate-200 dark:border-slate-800">
+                    <h5 className="font-bold text-xs uppercase font-mono tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-sky-500" />
+                      Vértebras Cervicais (C1 a C7)
+                    </h5>
+                    <span className="text-[11px] font-mono text-slate-500">
+                      {VERTEBRAS_CERVICAIS.filter(b => sectionData.ossos[b]).length}/{VERTEBRAS_CERVICAIS.length}
+                    </span>
+                  </div>
+                  <SimpleBoneRows
+                    bones={VERTEBRAS_CERVICAIS}
+                    section={sectionData}
+                    readOnly={readOnly}
+                    expandedBones={expandedBonesBySection[sectionKey] || {}}
+                    onToggleExpand={bone => toggleExpandBoneGeneric(sectionKey, bone)}
+                    onSetPresence={(bone, code) => handleSetPresenceGeneric(sectionKey, bone, code)}
+                    onToggleAlteracao={(bone, tipo) => handleToggleAlteracaoGeneric(sectionKey, bone, tipo)}
+                    onAddAlteracaoItem={(bone, tipo) => handleAddAlteracaoItemGeneric(sectionKey, bone, tipo)}
+                    onRemoveAlteracaoItem={id => handleRemoveAlteracaoItemGeneric(sectionKey, id)}
+                    onUpdateAlteracaoItem={(id, obs) => handleUpdateAlteracaoItemGeneric(sectionKey, id, obs)}
+                  />
                 </div>
 
-                <div className="inline-flex rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-0.5 shadow-2xs">
-                  <button
-                    type="button"
-                    onClick={() => setSideFilter('ambos')}
-                    className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
-                      sideFilter === 'ambos'
-                        ? 'bg-sky-600 text-white font-bold shadow-xs'
-                        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                    }`}
-                  >
-                    Duas Colunas
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSideFilter('esquerdo')}
-                    className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
-                      sideFilter === 'esquerdo'
-                        ? 'bg-sky-600 text-white font-bold shadow-xs'
-                        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                    }`}
-                  >
-                    Lado Esquerdo
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSideFilter('direito')}
-                    className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
-                      sideFilter === 'direito'
-                        ? 'bg-sky-600 text-white font-bold shadow-xs'
-                        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                    }`}
-                  >
-                    Lado Direito
-                  </button>
+                {/* 2. Vértebras Torácicas */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between pb-1 border-b border-slate-200 dark:border-slate-800">
+                    <h5 className="font-bold text-xs uppercase font-mono tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-sky-600" />
+                      Vértebras Torácicas (T1 a T12)
+                    </h5>
+                    <span className="text-[11px] font-mono text-slate-500">
+                      {VERTEBRAS_TORACICAS.filter(b => sectionData.ossos[b]).length}/{VERTEBRAS_TORACICAS.length}
+                    </span>
+                  </div>
+                  <SimpleBoneRows
+                    bones={VERTEBRAS_TORACICAS}
+                    section={sectionData}
+                    readOnly={readOnly}
+                    expandedBones={expandedBonesBySection[sectionKey] || {}}
+                    onToggleExpand={bone => toggleExpandBoneGeneric(sectionKey, bone)}
+                    onSetPresence={(bone, code) => handleSetPresenceGeneric(sectionKey, bone, code)}
+                    onToggleAlteracao={(bone, tipo) => handleToggleAlteracaoGeneric(sectionKey, bone, tipo)}
+                    onAddAlteracaoItem={(bone, tipo) => handleAddAlteracaoItemGeneric(sectionKey, bone, tipo)}
+                    onRemoveAlteracaoItem={id => handleRemoveAlteracaoItemGeneric(sectionKey, id)}
+                    onUpdateAlteracaoItem={(id, obs) => handleUpdateAlteracaoItemGeneric(sectionKey, id, obs)}
+                  />
+                </div>
+
+                {/* 3. Vértebras Lombares */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between pb-1 border-b border-slate-200 dark:border-slate-800">
+                    <h5 className="font-bold text-xs uppercase font-mono tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-indigo-600" />
+                      Vértebras Lombares (L1 a L5)
+                    </h5>
+                    <span className="text-[11px] font-mono text-slate-500">
+                      {VERTEBRAS_LOMBARES.filter(b => sectionData.ossos[b]).length}/{VERTEBRAS_LOMBARES.length}
+                    </span>
+                  </div>
+                  <SimpleBoneRows
+                    bones={VERTEBRAS_LOMBARES}
+                    section={sectionData}
+                    readOnly={readOnly}
+                    expandedBones={expandedBonesBySection[sectionKey] || {}}
+                    onToggleExpand={bone => toggleExpandBoneGeneric(sectionKey, bone)}
+                    onSetPresence={(bone, code) => handleSetPresenceGeneric(sectionKey, bone, code)}
+                    onToggleAlteracao={(bone, tipo) => handleToggleAlteracaoGeneric(sectionKey, bone, tipo)}
+                    onAddAlteracaoItem={(bone, tipo) => handleAddAlteracaoItemGeneric(sectionKey, bone, tipo)}
+                    onRemoveAlteracaoItem={id => handleRemoveAlteracaoItemGeneric(sectionKey, id)}
+                    onUpdateAlteracaoItem={(id, obs) => handleUpdateAlteracaoItemGeneric(sectionKey, id, obs)}
+                  />
+                </div>
+
+                {/* 4. Sacro e Cóccix */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between pb-1 border-b border-slate-200 dark:border-slate-800">
+                    <h5 className="font-bold text-xs uppercase font-mono tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-amber-600" />
+                      Sacro e Cóccix
+                    </h5>
+                    <span className="text-[11px] font-mono text-slate-500">
+                      {SACRO_COCCIX_OSSOS.filter(b => sectionData.ossos[b]).length}/{SACRO_COCCIX_OSSOS.length}
+                    </span>
+                  </div>
+                  <SimpleBoneRows
+                    bones={SACRO_COCCIX_OSSOS}
+                    section={sectionData}
+                    readOnly={readOnly}
+                    expandedBones={expandedBonesBySection[sectionKey] || {}}
+                    onToggleExpand={bone => toggleExpandBoneGeneric(sectionKey, bone)}
+                    onSetPresence={(bone, code) => handleSetPresenceGeneric(sectionKey, bone, code)}
+                    onToggleAlteracao={(bone, tipo) => handleToggleAlteracaoGeneric(sectionKey, bone, tipo)}
+                    onAddAlteracaoItem={(bone, tipo) => handleAddAlteracaoItemGeneric(sectionKey, bone, tipo)}
+                    onRemoveAlteracaoItem={id => handleRemoveAlteracaoItemGeneric(sectionKey, id)}
+                    onUpdateAlteracaoItem={(id, obs) => handleUpdateAlteracaoItemGeneric(sectionKey, id, obs)}
+                  />
+                </div>
+
+                {/* Caixas de Rolagem Numérica de Coluna Vertebral (pedido dos técnicos, out/2026) */}
+                <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
+                  <h5 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-mono">
+                    Quantitativos Residuais da Coluna Vertebral
+                  </h5>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <NumericScrollInput
+                      label="Quantidade de vértebras não identificadas"
+                      value={inventory.colunaVertebral?.quantidadeNaoIdentificadas}
+                      onChange={val => updateSectionResiduals('colunaVertebral', { quantidadeNaoIdentificadas: val })}
+                      max={50}
+                      readOnly={readOnly}
+                    />
+                    <NumericScrollInput
+                      label="Quantidade de fragmentos"
+                      value={inventory.colunaVertebral?.quantidadeFragmentos}
+                      onChange={val => updateSectionResiduals('colunaVertebral', { quantidadeFragmentos: val })}
+                      max={100}
+                      readOnly={readOnly}
+                    />
+                  </div>
                 </div>
               </div>
-            )}
+            ) : currentSectionId === 'torax' ? (
+              <div className="space-y-6">
+                {/* 1. Esterno */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between pb-1 border-b border-slate-200 dark:border-slate-800">
+                    <h5 className="font-bold text-xs uppercase font-mono tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-sky-600" />
+                      Esterno
+                    </h5>
+                    <span className="text-[11px] font-mono text-slate-500">
+                      {ESTERNO_OSSOS.filter(b => sectionData.ossos[b]).length}/{ESTERNO_OSSOS.length}
+                    </span>
+                  </div>
+                  <SimpleBoneRows
+                    bones={ESTERNO_OSSOS}
+                    section={sectionData}
+                    readOnly={readOnly}
+                    expandedBones={expandedBonesBySection[sectionKey] || {}}
+                    onToggleExpand={bone => toggleExpandBoneGeneric(sectionKey, bone)}
+                    onSetPresence={(bone, code) => handleSetPresenceGeneric(sectionKey, bone, code)}
+                    onToggleAlteracao={(bone, tipo) => handleToggleAlteracaoGeneric(sectionKey, bone, tipo)}
+                    onAddAlteracaoItem={(bone, tipo) => handleAddAlteracaoItemGeneric(sectionKey, bone, tipo)}
+                    onRemoveAlteracaoItem={id => handleRemoveAlteracaoItemGeneric(sectionKey, id)}
+                    onUpdateAlteracaoItem={(id, obs) => handleUpdateAlteracaoItemGeneric(sectionKey, id, obs)}
+                  />
+                </div>
 
-            {isBilateral ? (
+                {/* 2. Costelas por Lateralidade */}
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pb-1 border-b border-slate-200 dark:border-slate-800">
+                    <h5 className="font-bold text-xs uppercase font-mono tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-indigo-600" />
+                      Costelas (C1 a C12) por Lateralidade
+                    </h5>
+                    <div className="inline-flex rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-0.5 shadow-2xs text-xs">
+                      <button
+                        type="button"
+                        onClick={() => setSideFilter('ambos')}
+                        className={`px-2.5 py-0.5 rounded text-xs font-medium transition-all ${
+                          sideFilter === 'ambos' ? 'bg-sky-600 text-white font-bold shadow-xs' : 'text-slate-600 dark:text-slate-300'
+                        }`}
+                      >
+                        Duas Colunas
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSideFilter('esquerdo')}
+                        className={`px-2.5 py-0.5 rounded text-xs font-medium transition-all ${
+                          sideFilter === 'esquerdo' ? 'bg-sky-600 text-white font-bold shadow-xs' : 'text-slate-600 dark:text-slate-300'
+                        }`}
+                      >
+                        Lado Esquerdo
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSideFilter('direito')}
+                        className={`px-2.5 py-0.5 rounded text-xs font-medium transition-all ${
+                          sideFilter === 'direito' ? 'bg-sky-600 text-white font-bold shadow-xs' : 'text-slate-600 dark:text-slate-300'
+                        }`}
+                      >
+                        Lado Direito
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className={sideFilter === 'ambos' ? 'grid grid-cols-1 lg:grid-cols-2 gap-5 items-start' : 'space-y-4'}>
+                    {(sideFilter === 'ambos' || sideFilter === 'esquerdo') && (
+                      <div className="p-3.5 rounded-xl border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/20 dark:bg-indigo-950/20 space-y-3">
+                        <div className="flex items-center justify-between pb-2 border-b border-indigo-200/70 dark:border-indigo-900/50">
+                          <h6 className="font-bold text-xs uppercase font-mono tracking-wider text-indigo-950 dark:text-indigo-200">
+                            Costelas Esquerdas (C1 a C12)
+                          </h6>
+                          <span className="text-[11px] font-mono text-slate-500">
+                            {COSTELAS_ESQUERDAS.filter(b => sectionData.ossos[b]).length}/{COSTELAS_ESQUERDAS.length}
+                          </span>
+                        </div>
+                        <SimpleBoneRows
+                          bones={COSTELAS_ESQUERDAS}
+                          section={sectionData}
+                          readOnly={readOnly}
+                          expandedBones={expandedBonesBySection[sectionKey] || {}}
+                          onToggleExpand={bone => toggleExpandBoneGeneric(sectionKey, bone)}
+                          onSetPresence={(bone, code) => handleSetPresenceGeneric(sectionKey, bone, code)}
+                          onToggleAlteracao={(bone, tipo) => handleToggleAlteracaoGeneric(sectionKey, bone, tipo)}
+                          onAddAlteracaoItem={(bone, tipo) => handleAddAlteracaoItemGeneric(sectionKey, bone, tipo)}
+                          onRemoveAlteracaoItem={id => handleRemoveAlteracaoItemGeneric(sectionKey, id)}
+                          onUpdateAlteracaoItem={(id, obs) => handleUpdateAlteracaoItemGeneric(sectionKey, id, obs)}
+                        />
+                      </div>
+                    )}
+
+                    {(sideFilter === 'ambos' || sideFilter === 'direito') && (
+                      <div className="p-3.5 rounded-xl border border-sky-200 dark:border-sky-900/60 bg-sky-50/20 dark:bg-sky-950/20 space-y-3">
+                        <div className="flex items-center justify-between pb-2 border-b border-sky-200/70 dark:border-sky-900/50">
+                          <h6 className="font-bold text-xs uppercase font-mono tracking-wider text-sky-950 dark:text-sky-200">
+                            Costelas Direitas (C1 a C12)
+                          </h6>
+                          <span className="text-[11px] font-mono text-slate-500">
+                            {COSTELAS_DIREITAS.filter(b => sectionData.ossos[b]).length}/{COSTELAS_DIREITAS.length}
+                          </span>
+                        </div>
+                        <SimpleBoneRows
+                          bones={COSTELAS_DIREITAS}
+                          section={sectionData}
+                          readOnly={readOnly}
+                          expandedBones={expandedBonesBySection[sectionKey] || {}}
+                          onToggleExpand={bone => toggleExpandBoneGeneric(sectionKey, bone)}
+                          onSetPresence={(bone, code) => handleSetPresenceGeneric(sectionKey, bone, code)}
+                          onToggleAlteracao={(bone, tipo) => handleToggleAlteracaoGeneric(sectionKey, bone, tipo)}
+                          onAddAlteracaoItem={(bone, tipo) => handleAddAlteracaoItemGeneric(sectionKey, bone, tipo)}
+                          onRemoveAlteracaoItem={id => handleRemoveAlteracaoItemGeneric(sectionKey, id)}
+                          onUpdateAlteracaoItem={(id, obs) => handleUpdateAlteracaoItemGeneric(sectionKey, id, obs)}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Caixas de Rolagem Numérica de Tórax (pedido dos técnicos, out/2026) */}
+                <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
+                  <h5 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-mono">
+                    Quantitativos Residuais do Tórax
+                  </h5>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <NumericScrollInput
+                      label="Quantidade de costelas não identificadas"
+                      value={inventory.torax?.quantidadeNaoIdentificadas}
+                      onChange={val => updateSectionResiduals('torax', { quantidadeNaoIdentificadas: val })}
+                      max={50}
+                      readOnly={readOnly}
+                    />
+                    <NumericScrollInput
+                      label="Quantidade de fragmentos"
+                      value={inventory.torax?.quantidadeFragmentos}
+                      onChange={val => updateSectionResiduals('torax', { quantidadeFragmentos: val })}
+                      max={100}
+                      readOnly={readOnly}
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : isBilateral ? (
               <div className={sideFilter === 'ambos' ? 'grid grid-cols-1 lg:grid-cols-2 gap-5 items-start' : 'space-y-4'}>
                 {(sideFilter === 'ambos' || sideFilter === 'esquerdo') && (
                   <div className="p-3.5 rounded-xl border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/20 dark:bg-indigo-950/20 space-y-3">
@@ -1020,79 +1361,9 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
               </div>
             )}
 
-            {currentSectionId === 'coluna_vertebral' && (
-              <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h5 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-mono">
-                    Vértebras — Quantidade (Rolagem) e Identificação
-                  </h5>
-                  <span className="text-[10px] font-mono text-slate-500">
-                    Cervicais (0 a 7 e +7), Torácicas (0 a 12 e +12), Lombares (0 a 5 e +5)
-                  </span>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <CountIdentifyField
-                    label="Vértebras cervicais"
-                    max={7}
-                    ordinais={CERVICAIS_ORDINAIS}
-                    value={inventory.colunaVertebral?.cervicais || {}}
-                    onChange={patch => updateCountIdentify('colunaVertebral', 'cervicais', patch)}
-                    readOnly={readOnly}
-                  />
-                  <CountIdentifyField
-                    label="Vértebras torácicas"
-                    max={12}
-                    ordinais={TORACICAS_ORDINAIS}
-                    value={inventory.colunaVertebral?.toracicas || {}}
-                    onChange={patch => updateCountIdentify('colunaVertebral', 'toracicas', patch)}
-                    readOnly={readOnly}
-                  />
-                  <CountIdentifyField
-                    label="Vértebras lombares"
-                    max={5}
-                    ordinais={LOMBARES_ORDINAIS}
-                    value={inventory.colunaVertebral?.lombares || {}}
-                    onChange={patch => updateCountIdentify('colunaVertebral', 'lombares', patch)}
-                    readOnly={readOnly}
-                  />
-                </div>
-              </div>
-            )}
-
-            {currentSectionId === 'torax' && (
-              <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h5 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-mono">
-                    Costelas — Quantidade (Rolagem) e Identificação
-                  </h5>
-                  <span className="text-[10px] font-mono text-slate-500">
-                    Costelas Esquerdas e Costelas Direitas (0 a 12 e +12)
-                  </span>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <CountIdentifyField
-                    label="Costelas esquerdas"
-                    max={12}
-                    ordinais={COSTELAS_ORDINAIS}
-                    value={inventory.torax?.costelasEsquerdas || {}}
-                    onChange={patch => updateCountIdentify('torax', 'costelasEsquerdas', patch)}
-                    readOnly={readOnly}
-                  />
-                  <CountIdentifyField
-                    label="Costelas direitas"
-                    max={12}
-                    ordinais={COSTELAS_ORDINAIS}
-                    value={inventory.torax?.costelasDireitas || {}}
-                    onChange={patch => updateCountIdentify('torax', 'costelasDireitas', patch)}
-                    readOnly={readOnly}
-                  />
-                </div>
-              </div>
-            )}
-
             {currentSectionId === 'ossos_mao' && (
               <PooledCountsCard
-                region="da Mão"
+                region="das Mãos"
                 value={inventory.maoPooled || {}}
                 onChange={patch => updatePooled('maoPooled', patch)}
                 readOnly={readOnly}
@@ -1101,11 +1372,40 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
 
             {currentSectionId === 'ossos_pe' && (
               <PooledCountsCard
-                region="do Pé"
+                region="dos Pés"
                 value={inventory.pePooled || {}}
                 onChange={patch => updatePooled('pePooled', patch)}
                 readOnly={readOnly}
               />
+            )}
+
+            {/* Observações da Seção Anatômica (pedido dos técnicos, out/2026) */}
+            <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-2">
+              <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 uppercase font-mono tracking-wider">
+                Observações — {sectionLabel}
+              </label>
+              <textarea
+                disabled={readOnly}
+                rows={3}
+                value={sectionData.observacoes || ''}
+                onChange={e => updateSectionObservacoes(sectionKey, e.target.value)}
+                placeholder={`Observações particulares, anomalias ou notas complementares sobre ${sectionLabel.toLowerCase()}...`}
+                className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:ring-2 focus:ring-sky-500"
+              />
+            </div>
+
+            {/* Botão Próxima Seção (pedido dos técnicos, out/2026) */}
+            {nextSection && (
+              <div className="flex justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => setCurrentSectionId(nextSection.id)}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 active:scale-95 text-white text-xs font-semibold shadow-xs transition-all"
+                >
+                  <span>Próxima seção: {nextSection.label}</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
             )}
           </div>
         );
@@ -1153,6 +1453,10 @@ const SimpleBoneRows: React.FC<SimpleBoneRowsProps> = ({
         const boneAlteracoes = (section.alteracoes || []).filter(a => a.osso === bone);
         const hasSemAlteracao = boneAlteracoes.some(a => a.tipo === 'sem_alteracao');
         const activeAlteracoes = boneAlteracoes.filter(a => a.tipo !== 'sem_alteracao');
+        // Se o osso possui código de presença (P, F ou I) e nenhuma alteração foi marcada,
+        // ele é AUTOMATICAMENTE considerado "Sem alteração" (pedido dos técnicos, out/2026).
+        const isSemAlteracaoAuto = !!(currentCode && currentCode !== 'A' && activeAlteracoes.length === 0);
+        const showSemAlteracao = hasSemAlteracao || isSemAlteracaoAuto;
 
         return (
           <div
@@ -1183,7 +1487,7 @@ const SimpleBoneRows: React.FC<SimpleBoneRowsProps> = ({
                   {bone}
                 </span>
 
-                {hasSemAlteracao && (
+                {showSemAlteracao && activeAlteracoes.length === 0 && (
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-semibold border border-emerald-200 dark:border-emerald-800">
                     Sem alteração
                   </span>
@@ -1279,11 +1583,12 @@ const SimpleBoneRows: React.FC<SimpleBoneRowsProps> = ({
                     const isChecked = matchingEntries.length > 0;
 
                     if (opt.isNone) {
+                      const isAuto = isSemAlteracaoAuto && activeAlteracoes.length === 0;
                       return (
                         <div
                           key={opt.id}
                           className={`p-2.5 rounded-lg border transition-all ${
-                            isChecked
+                            isAuto || isChecked
                               ? 'border-emerald-300 dark:border-emerald-800/80 bg-emerald-50/40 dark:bg-emerald-950/20'
                               : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900'
                           }`}
@@ -1293,15 +1598,15 @@ const SimpleBoneRows: React.FC<SimpleBoneRowsProps> = ({
                               <input
                                 type="checkbox"
                                 disabled={readOnly}
-                                checked={isChecked}
+                                checked={isAuto || isChecked}
                                 onChange={() => onToggleAlteracao(bone, opt.id)}
                                 className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                               />
                               <span>{opt.label}</span>
                             </label>
-                            {isChecked && (
+                            {(isAuto || isChecked) && (
                               <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200">
-                                Osso sem alterações
+                                {isAuto ? 'Sem alterações (automático)' : 'Osso sem alterações'}
                               </span>
                             )}
                           </div>
@@ -1402,6 +1707,81 @@ const SimpleBoneRows: React.FC<SimpleBoneRowsProps> = ({
           </div>
         );
       })}
+    </div>
+  );
+};
+
+// Caixa de rolagem numérica com seletor (0 a max e +max) e botões de incremento/decremento rápido (-/+)
+// (pedido dos técnicos para vértebras/costelas não identificadas e fragmentos, out/2026).
+interface NumericScrollInputProps {
+  label: string;
+  value: number | undefined;
+  onChange: (val: number | undefined) => void;
+  max?: number;
+  readOnly?: boolean;
+}
+
+const NumericScrollInput: React.FC<NumericScrollInputProps> = ({
+  label,
+  value,
+  onChange,
+  max = 50,
+  readOnly = false
+}) => {
+  const numValue = value ?? 0;
+
+  const handleStep = (delta: number) => {
+    if (readOnly) return;
+    const next = Math.max(0, numValue + delta);
+    onChange(next === 0 && value === undefined ? undefined : next);
+  };
+
+  return (
+    <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex flex-col justify-between">
+      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
+        {label}
+      </label>
+      <div className="flex items-center gap-2">
+        <select
+          disabled={readOnly}
+          value={value ?? ''}
+          onChange={e => onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+          className="flex-1 p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-mono font-bold text-slate-800 dark:text-slate-200"
+          aria-label={label}
+        >
+          <option value="">Selecione (0 a {max})...</option>
+          {Array.from({ length: max + 1 }, (_, i) => (
+            <option key={i} value={i}>
+              {i}
+            </option>
+          ))}
+          <option value={max + 1}>+{max}</option>
+        </select>
+
+        <div className="flex items-center border border-slate-300 dark:border-slate-700 rounded-lg overflow-hidden bg-white dark:bg-slate-900">
+          <button
+            type="button"
+            disabled={readOnly || numValue <= 0}
+            onClick={() => handleStep(-1)}
+            className="px-2.5 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40"
+            title="Diminuir 1"
+          >
+            -
+          </button>
+          <span className="px-2 text-xs font-mono font-bold text-slate-800 dark:text-slate-200 min-w-[28px] text-center">
+            {value ?? 0}
+          </span>
+          <button
+            type="button"
+            disabled={readOnly}
+            onClick={() => handleStep(1)}
+            className="px-2.5 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40"
+            title="Aumentar 1"
+          >
+            +
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

@@ -116,12 +116,42 @@ export async function createCollection(
         ...custodyEventsToEntries(collection.custodyChain || [])
       ]);
     } else {
-      const { rows } = await client.query<{ full_state: OsteologicalCollection }>(
-        'SELECT full_state FROM collections WHERE nic = $1',
+      const { rows } = await client.query<{ full_state: OsteologicalCollection; deleted_at: string | null }>(
+        'SELECT full_state, deleted_at FROM collections WHERE nic = $1',
         [collection.nic]
       );
       const existing = rows[0]?.full_state;
-      if (existing && existing.id !== collection.id) {
+      const isDeleted = rows[0]?.deleted_at !== null && rows[0]?.deleted_at !== undefined;
+
+      if (isDeleted) {
+        // O conjunto existia anteriormente mas foi excluído: reinicia com os dados novos
+        await client.query(
+          `UPDATE collections
+           SET current_phase = $2,
+               created_at = $3,
+               created_by_technician = $4,
+               legal_origin = $5,
+               full_state = $6,
+               deleted_at = NULL,
+               deleted_by = NULL,
+               deleted_by_name = NULL,
+               deleted_reason = NULL
+           WHERE nic = $1`,
+          [
+            collection.nic,
+            collection.currentPhase,
+            collection.createdAt,
+            collection.createdByTechnician,
+            JSON.stringify(collection.legalOrigin),
+            JSON.stringify(collection)
+          ]
+        );
+        await syncDerivedTables(client, collection);
+        await appendChangeLog(client, collection.nic, actor, [
+          { kind: 'criacao', note: `Conjunto ${collection.nic} reiniciado após exclusão anterior` },
+          ...custodyEventsToEntries(collection.custodyChain || [])
+        ]);
+      } else if (existing && existing.id !== collection.id) {
         throw Object.assign(new Error(`O conjunto ${collection.nic} já existe no acervo.`), { code: 'CONJUNTO_JA_EXISTE' });
       }
     }

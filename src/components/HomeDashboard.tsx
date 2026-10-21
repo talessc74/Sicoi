@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { OsteologicalCollection, UserProfile, PhaseNumber } from '../types/sgccco';
 import { listCollectionPendencies, countPendencies } from '../utils/collectionPendencies';
 import { PendenciesModal } from './PendenciesModal';
@@ -15,7 +15,8 @@ import {
   Clock,
   CheckCircle2,
   AlertCircle,
-  ListChecks
+  ListChecks,
+  Search
 } from 'lucide-react';
 
 interface HomeDashboardProps {
@@ -38,6 +39,24 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   // Conjunto cuja lista de pendências está aberta (etiqueta "Pendências" da tabela).
   const [pendenciesNic, setPendenciesNic] = useState<string | null>(null);
   const pendenciesCollection = collections.find((c) => c.nic === pendenciesNic) || null;
+
+  // Filtro e paginação da tabela de acervo para delimitar exibição máxima (pedido dos técnicos, out/2026).
+  const [tableSearch, setTableSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 15;
+
+  const filteredCollections = useMemo(() => {
+    if (!tableSearch.trim()) return collections;
+    const q = tableSearch.trim().toLowerCase();
+    return collections.filter(c => c.nic.toLowerCase().includes(q));
+  }, [collections, tableSearch]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredCollections.length / PAGE_SIZE));
+  const paginatedCollections = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredCollections.slice(start, start + PAGE_SIZE);
+  }, [filteredCollections, currentPage]);
+
   // Aggregate statistics
   const totalCollections = collections.length;
   const totalBoxes = collections.reduce((acc, c) => acc + c.phase1.preliminaryBoxes.length, 0);
@@ -262,13 +281,28 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               Clique em um conjunto para visualizar seu dossiê operacional ou saltar diretamente para sua fase atual.
             </p>
           </div>
-          <button
-            onClick={onCreateNewNic}
-            className="px-3 py-1.5 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-semibold hover:opacity-95 transition-opacity flex items-center gap-1.5"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Adicionar conjunto (COI)</span>
-          </button>
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <input
+                type="text"
+                value={tableSearch}
+                onChange={(e) => {
+                  setTableSearch(e.target.value);
+                  setCurrentPage(1);
+                }}
+                placeholder="Filtrar por COI..."
+                className="pl-8 pr-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-sky-500 w-44"
+              />
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5 pointer-events-none" />
+            </div>
+            <button
+              onClick={onCreateNewNic}
+              className="px-3 py-1.5 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-semibold hover:opacity-95 transition-opacity flex items-center gap-1.5 shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Adicionar conjunto (COI)</span>
+            </button>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -285,7 +319,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-sans">
-              {collections.map(col => {
+              {paginatedCollections.map(col => {
                 const currentSigned = col.signatures.some(s => s.phaseNumber === col.currentPhase && s.status === 'locked');
                 const nmiNotDetermined = col.phase4.individuals.length === 0;
                 const pendencyCount = countPendencies(listCollectionPendencies(col));
@@ -389,6 +423,34 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             </tbody>
           </table>
         </div>
+
+        {/* Rodapé com Paginação para delimitar número de COIs exibidos (pedido dos técnicos, out/2026) */}
+        {filteredCollections.length > PAGE_SIZE && (
+          <div className="p-3 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs font-mono text-slate-500">
+            <span>
+              Mostrando {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredCollections.length)} de {filteredCollections.length} conjuntos
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                className="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-700"
+              >
+                ← Anterior
+              </button>
+              <span className="font-semibold text-slate-700 dark:text-slate-300">
+                {currentPage} / {totalPages}
+              </span>
+              <button
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                className="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-700"
+              >
+                Próxima →
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {pendenciesCollection && (

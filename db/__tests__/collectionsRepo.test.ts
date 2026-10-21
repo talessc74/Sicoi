@@ -100,6 +100,35 @@ describe('collectionsRepo', () => {
     expect(repeated.nic).toBe('NIC-REPO-RETRY');
   });
 
+  it('permite reiniciar/recriar um conjunto que foi anteriormente excluído (soft-deleted)', async () => {
+    const col = { ...baseCollection('NIC-REPO-EXCLUIDO'), id: 'col-antes-excluido', createdByTechnician: 'Técnico Antigo' };
+    await createCollection(pool, col);
+
+    // Marca como excluído administrativamente (soft delete)
+    await pool.query('UPDATE collections SET deleted_at = now(), deleted_reason = $1 WHERE nic = $2', [
+      'Excluído durante teste',
+      'NIC-REPO-EXCLUIDO'
+    ]);
+
+    // Não deve aparecer na listagem normal
+    const listaAntes = await listCollections(pool);
+    expect(listaAntes.some((c) => c.nic === 'NIC-REPO-EXCLUIDO')).toBe(false);
+
+    // Agora recria com um novo id e novos dados
+    const novaTentativa = {
+      ...baseCollection('NIC-REPO-EXCLUIDO'),
+      id: 'col-nova-criacao',
+      createdByTechnician: 'Técnico Novo'
+    };
+    const recriado = await createCollection(pool, novaTentativa);
+    expect(recriado.nic).toBe('NIC-REPO-EXCLUIDO');
+    expect(recriado.createdByTechnician).toBe('Técnico Novo');
+
+    // Agora volta a aparecer na listagem ativa
+    const listaDepois = await listCollections(pool);
+    expect(listaDepois.some((c) => c.nic === 'NIC-REPO-EXCLUIDO')).toBe(true);
+  });
+
   it('lista os conjuntos criados, mais recentes primeiro', async () => {
     await createCollection(pool, baseCollection('NIC-REPO-0002'));
     await createCollection(pool, baseCollection('NIC-REPO-0003'));

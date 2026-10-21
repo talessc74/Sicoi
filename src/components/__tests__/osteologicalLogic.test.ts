@@ -9,10 +9,17 @@ import {
   OSSOS_PE,
   CABECA_PESCOCO_OSSOS,
   COLUNA_VERTEBRAL_OSSOS,
+  VERTEBRAS_CERVICAIS,
+  VERTEBRAS_TORACICAS,
+  VERTEBRAS_LOMBARES,
+  SACRO_COCCIX_OSSOS,
   CERVICAIS_ORDINAIS,
   TORACICAS_ORDINAIS,
   LOMBARES_ORDINAIS,
   TORAX_OSSOS,
+  ESTERNO_OSSOS,
+  COSTELAS_ESQUERDAS,
+  COSTELAS_DIREITAS,
   COSTELAS_ORDINAIS,
   applyBulkPresence
 } from '../OsteologicalInventoryViewer';
@@ -74,8 +81,18 @@ describe('Inventário Osteológico — Lógica Bilateral (Lado Direito / Lado Es
   });
 
   describe('Estrutura de Coluna Vertebral e Tórax (Contagem e Identificação Ordinal)', () => {
-    it('configura ossos simples de Coluna Vertebral como Sacro e Cóccix', () => {
-      expect(COLUNA_VERTEBRAL_OSSOS).toEqual(['Sacro', 'Cóccix']);
+    it('configura ossos de Coluna Vertebral com vértebras antes de Sacro e Cóccix (26 ossos)', () => {
+      expect(COLUNA_VERTEBRAL_OSSOS.length).toBe(26);
+      expect(COLUNA_VERTEBRAL_OSSOS).toEqual([
+        ...VERTEBRAS_CERVICAIS,
+        ...VERTEBRAS_TORACICAS,
+        ...VERTEBRAS_LOMBARES,
+        ...SACRO_COCCIX_OSSOS
+      ]);
+      // Verifica inversão pedida pelos técnicos: vértebras aparecem antes de Sacro e Cóccix
+      expect(COLUNA_VERTEBRAL_OSSOS[0]).toBe('Vértebra Cervical C1 (Atlas)');
+      expect(COLUNA_VERTEBRAL_OSSOS[COLUNA_VERTEBRAL_OSSOS.length - 2]).toBe('Sacro');
+      expect(COLUNA_VERTEBRAL_OSSOS[COLUNA_VERTEBRAL_OSSOS.length - 1]).toBe('Cóccix');
     });
 
     it('configura ordinais de vértebras cervicais, torácicas e lombares', () => {
@@ -84,12 +101,16 @@ describe('Inventário Osteológico — Lógica Bilateral (Lado Direito / Lado Es
       expect(LOMBARES_ORDINAIS).toEqual(['L1', 'L2', 'L3', 'L4', 'L5']);
     });
 
-    it('configura ossos simples de Tórax como as 3 partes do Esterno', () => {
+    it('configura ossos de Tórax com Esterno e Costelas por lateralidade (27 ossos)', () => {
+      expect(TORAX_OSSOS.length).toBe(27);
       expect(TORAX_OSSOS).toEqual([
-        'Esterno - Manúbrio',
-        'Esterno - Corpo',
-        'Esterno - Processo xifóide'
+        ...ESTERNO_OSSOS,
+        ...COSTELAS_ESQUERDAS,
+        ...COSTELAS_DIREITAS
       ]);
+      expect(ESTERNO_OSSOS.length).toBe(3);
+      expect(COSTELAS_ESQUERDAS.length).toBe(12);
+      expect(COSTELAS_DIREITAS.length).toBe(12);
     });
 
     it('configura ordinais de costelas de 1ª a 12ª', () => {

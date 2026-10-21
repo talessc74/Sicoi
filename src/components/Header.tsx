@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { UserProfile, UserRole } from '../types/sgccco';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { UserProfile, UserRole, OsteologicalCollection } from '../types/sgccco';
 import { useAppVersion } from '../hooks/useAppVersion';
 import { getRoleTheme } from '../utils/roleTheme';
 import { ChangePasswordModal } from './ChangePasswordModal';
@@ -32,6 +32,8 @@ interface HeaderProps {
   onToggleLaboratoryMode: () => void;
   onQuickSearchDocument?: (query: string) => void;
   onOpenGeminiChat?: () => void;
+  collections?: OsteologicalCollection[];
+  onSelectCoi?: (nic: string) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -43,14 +45,59 @@ export const Header: React.FC<HeaderProps> = ({
   laboratoryMode,
   onToggleLaboratoryMode,
   onQuickSearchDocument,
-  onOpenGeminiChat
+  onOpenGeminiChat,
+  collections,
+  onSelectCoi
 }) => {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [quickSearchInput, setQuickSearchInput] = useState('');
+  const [coiSearchInput, setCoiSearchInput] = useState('');
+  const [coiDropdownOpen, setCoiDropdownOpen] = useState(false);
+  const [mobileCoiSearchOpen, setMobileCoiSearchOpen] = useState(false);
+  const coiSearchContainerRef = useRef<HTMLDivElement>(null);
   const [operationalSubmenuOpen, setOperationalSubmenuOpen] = useState(false);
   const commitRef = useAppVersion();
+
+  // Fecha dropdown de COI ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (coiSearchContainerRef.current && !coiSearchContainerRef.current.contains(event.target as Node)) {
+        setCoiDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredCollections = useMemo(() => {
+    if (!collections || !coiSearchInput.trim()) return [];
+    const q = coiSearchInput.trim().toLowerCase();
+    return collections.filter(c => c.nic.toLowerCase().includes(q)).slice(0, 8);
+  }, [collections, coiSearchInput]);
+
+  const handleCoiSelect = (nic: string) => {
+    if (onSelectCoi) {
+      onSelectCoi(nic);
+    }
+    setCoiSearchInput('');
+    setCoiDropdownOpen(false);
+    setMobileCoiSearchOpen(false);
+  };
+
+  const handleCoiSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (filteredCollections.length > 0) {
+      handleCoiSelect(filteredCollections[0].nic);
+    } else if (collections && coiSearchInput.trim()) {
+      const q = coiSearchInput.trim().toLowerCase();
+      const match = collections.find(c => c.nic.toLowerCase().includes(q));
+      if (match) {
+        handleCoiSelect(match.nic);
+      }
+    }
+  };
 
   const getRoleLabel = (role: UserRole) => {
     switch (role) {
@@ -266,23 +313,68 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Right Tools & Role Switcher */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {/* Quick Search Shortcut em telas bem largas (>= 1760px) */}
-          <form onSubmit={handleQuickSearchSubmit} className="hidden min-[1760px]:flex items-center relative w-40 shrink-0">
-            <input
-              type="text"
-              value={quickSearchInput}
-              onChange={(e) => setQuickSearchInput(e.target.value)}
-              placeholder="Pesquisar manual..."
-              className="w-full pl-7 pr-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-hidden focus:ring-1 focus:ring-sky-500"
-            />
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2 pointer-events-none" />
-          </form>
+          {/* Campo de Busca de COI (pedido dos técnicos, out/2026) */}
+          <div ref={coiSearchContainerRef} className="relative hidden md:block">
+            <form onSubmit={handleCoiSearchSubmit} className="flex items-center relative w-36 lg:w-48 xl:w-56">
+              <input
+                type="text"
+                value={coiSearchInput}
+                onFocus={() => setCoiDropdownOpen(true)}
+                onChange={(e) => {
+                  setCoiSearchInput(e.target.value);
+                  setCoiDropdownOpen(true);
+                }}
+                placeholder="Buscar COI..."
+                className="w-full pl-7 pr-6 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-sky-500 font-mono"
+              />
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2 pointer-events-none" />
+              {coiSearchInput && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCoiSearchInput('');
+                    setCoiDropdownOpen(false);
+                  }}
+                  className="absolute right-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs"
+                >
+                  ✕
+                </button>
+              )}
+            </form>
 
-          {/* Botão de busca rápida compacto em telas menores */}
+            {/* Dropdown de sugestões de COI */}
+            {coiDropdownOpen && coiSearchInput.trim() && (
+              <div className="absolute left-0 right-0 mt-1.5 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 p-1.5 z-50 text-xs max-h-64 overflow-y-auto">
+                {filteredCollections.length > 0 ? (
+                  filteredCollections.map(c => (
+                    <button
+                      key={c.nic}
+                      type="button"
+                      onClick={() => handleCoiSelect(c.nic)}
+                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-sky-50 dark:hover:bg-slate-800 flex items-center justify-between gap-2 transition-colors"
+                    >
+                      <span className="font-mono font-bold text-slate-900 dark:text-white text-xs">
+                        {c.nic}
+                      </span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-300">
+                        Fase {c.currentPhase}
+                      </span>
+                    </button>
+                  ))
+                ) : (
+                  <div className="px-3 py-2 text-slate-400 text-center text-[11px] font-mono">
+                    Nenhum COI encontrado
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Botão de busca de COI em telas mobile */}
           <button
-            onClick={() => onSelectTab('documentos')}
-            title="Pesquisar nos documentos e POPs"
-            className="min-[1760px]:hidden p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
+            onClick={() => setMobileCoiSearchOpen(!mobileCoiSearchOpen)}
+            title="Buscar conjunto (COI)"
+            className="md:hidden p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
           >
             <Search className="w-4 h-4" />
           </button>
@@ -381,6 +473,56 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Mobile COI Search Drawer */}
+      {mobileCoiSearchOpen && (
+        <div className="md:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3">
+          <form onSubmit={handleCoiSearchSubmit} className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                autoFocus
+                value={coiSearchInput}
+                onChange={(e) => setCoiSearchInput(e.target.value)}
+                placeholder="Buscar COI por número ou nome..."
+                className="w-full pl-8 pr-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white"
+              />
+              <Search className="w-4 h-4 text-slate-400 absolute left-2.5 top-2.5" />
+            </div>
+            <button
+              type="button"
+              onClick={() => setMobileCoiSearchOpen(false)}
+              className="px-3 py-2 text-xs text-slate-500 font-mono"
+            >
+              Fechar
+            </button>
+          </form>
+
+          {coiSearchInput.trim() && (
+            <div className="mt-2 space-y-1 max-h-48 overflow-y-auto">
+              {filteredCollections.length > 0 ? (
+                filteredCollections.map(c => (
+                  <button
+                    key={c.nic}
+                    type="button"
+                    onClick={() => handleCoiSelect(c.nic)}
+                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-sky-50 dark:hover:bg-slate-800 flex items-center justify-between text-xs"
+                  >
+                    <span className="font-mono font-bold text-slate-900 dark:text-white">{c.nic}</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-300">
+                      Fase {c.currentPhase}
+                    </span>
+                  </button>
+                ))
+              ) : (
+                <div className="p-2 text-slate-400 text-xs text-center font-mono">
+                  Nenhum COI encontrado
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Mobile Navigation Drawer */}
       {mobileMenuOpen && (

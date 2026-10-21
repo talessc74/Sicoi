@@ -582,11 +582,13 @@ export interface OsteologicalSectionCabecaPescoco {
   ossiculosDireitos?: string[];
   ossiculosEsquerdos?: string[];
   alteracoes?: OsteologicalAlteracaoRegiao[];
+  observacoes?: string;
 }
 
 export interface OsteologicalSimpleBoneSection {
   ossos: Record<string, OsteologicalPresenceCode>;
   alteracoes?: OsteologicalAlteracaoRegiao[];
+  observacoes?: string;
 }
 
 export interface OsteologicalCountIdentifySelection {
@@ -598,11 +600,15 @@ export interface OsteologicalSectionColunaVertebral extends OsteologicalSimpleBo
   cervicais?: OsteologicalCountIdentifySelection;
   toracicas?: OsteologicalCountIdentifySelection;
   lombares?: OsteologicalCountIdentifySelection;
+  quantidadeNaoIdentificadas?: number;
+  quantidadeFragmentos?: number;
 }
 
 export interface OsteologicalSectionTorax extends OsteologicalSimpleBoneSection {
   costelasDireitas?: OsteologicalCountIdentifySelection;
   costelasEsquerdas?: OsteologicalCountIdentifySelection;
+  quantidadeNaoIdentificadas?: number;
+  quantidadeFragmentos?: number;
 }
 
 // Falanges e sesamoides da mão/do pé — contados uma vez só (não por lado):
@@ -615,14 +621,15 @@ export interface OsteologicalPooledCounts {
   sesamoides?: number;
 }
 
-// Inventário Osteológico — 7 seções por regiões anatômicas:
+// Inventário Osteológico — 8 seções por regiões anatômicas:
 // 1. Cabeça e Pescoço (estruturas complementares: cartilagens/ossículos)
-// 2. Coluna Vertebral (Sacro, Cóccix + contagem e identificação de vértebras cervicais, torácicas, lombares)
-// 3. Tórax (Esterno Manúbrio/Corpo/Xifóide + contagem e identificação de costelas direitas/esquerdas)
+// 2. Coluna Vertebral (Vértebras cervicais, torácicas, lombares + Sacro e Cóccix + não identificadas/fragmentos)
+// 3. Tórax (Esterno + Costelas C1-C12 por lateralidade + não identificadas/fragmentos)
 // 4. Membros Superiores (bilateral D/E)
-// 5. Ossos da Mão (bilateral D/E + pooled de falanges/sesamoides)
+// 5. Ossos das Mãos (bilateral D/E + pooled de falanges/sesamoides)
 // 6. Membros Inferiores (bilateral D/E)
-// 7. Ossos do Pé (bilateral D/E + pooled de falanges/sesamoides)
+// 7. Ossos dos Pés (bilateral D/E + pooled de falanges/sesamoides)
+// 8. Demais Informações (tecidos mumificados, dentes desarticulados, particularidades)
 export interface OsteologicalInventoryData {
   cabecaPescoco?: OsteologicalSectionCabecaPescoco;
   colunaVertebral?: OsteologicalSectionColunaVertebral;
@@ -633,6 +640,7 @@ export interface OsteologicalInventoryData {
   ossosPe?: OsteologicalSimpleBoneSection;
   maoPooled?: OsteologicalPooledCounts;
   pePooled?: OsteologicalPooledCounts;
+  demaisInformacoes?: string;
   [key: string]: unknown;
 }
 
