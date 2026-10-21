@@ -29,6 +29,7 @@ Decisões de arquitetura e técnicas deste projeto, criadas por deliberação AR
 - [_local-adr-policy-113](application/113-inventario-osteologico-reestruturacao-pesquisadores.md) - Inventário Osteológico: 7 seções com lista unificada, padrão normativo para Coluna e Tórax, visualização bilateral ergonômica em duas colunas (Lado Esquerdo à esquerda, Lado Direito à direita), filtros limpos e ações em lote completas (P, F, I, A)
 - [_local-adr-policy-114](application/114-dupla-assinatura-fases-4-e-5.md) - Dupla assinatura técnica e científica nas Fases 4 e 5: separação entre conclusão operacional/física (Técnico ou Curador) e consolidação pericial/científica (exclusiva do Curador Antropólogo)
 - [_local-adr-policy-115](application/115-pagina-de-creditos-institucionais.md) - Página de Créditos Institucionais (Quem fez o SIGCOI, rota /creditos): catálogo tipado de membros das equipes multidisciplinares e navegação contextual resiliente
+- [_local-adr-policy-116](application/116-grafo-conhecimento-interconectado-cross-coi.md) - Grafo de Conhecimento Osteológico Interconectado (Cross-COI): Hubs Ontológicos de Perfil Biológico (Sexo, Faixa Etária) e Patologias Compartilhadas com persistência desacoplada (nic = NULL) e layout multicêntrico por forças
 
 ## Integration
 

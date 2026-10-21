@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { GraphNode, GraphNodeType, GraphEdge } from '../types/sgccco';
-import { Network, Search, Info, Route, Loader2, RefreshCw, Bone, X, Move } from 'lucide-react';
+import { Network, Search, Info, Route, Loader2, RefreshCw, Bone, X, Move, Layers } from 'lucide-react';
 import { searchSimilarBones, BoneSimilaritySearchResult } from '../services/geminiService';
 import { ErrorNotice } from './ErrorNotice';
 import { toAppError, AppError } from '../utils/errorMessages';
+import { computeGraphLayout, DEFAULT_RADIUS_MAP } from '../utils/graphLayout';
 
 interface KnowledgeGraphViewerProps {
   selectedNic?: string;
@@ -34,27 +35,12 @@ const nodeColorMap: Record<GraphNodeType, { fill: string; stroke: string; label:
   foto: { fill: '#a855f7', stroke: '#9333ea', label: 'Foto', bg: 'bg-fuchsia-100 text-fuchsia-800' },
   assinatura: { fill: '#22c55e', stroke: '#16a34a', label: 'Assinatura (Responsável)', bg: 'bg-green-100 text-green-800' },
   evento_custodia: { fill: '#f97316', stroke: '#ea580c', label: 'Evento de Custódia', bg: 'bg-orange-100 text-orange-800' },
+  conceito_biologico: { fill: '#0ea5e9', stroke: '#0284c7', label: 'Perfil Biológico (Hub)', bg: 'bg-sky-100 text-sky-800' },
+  conceito_patologico: { fill: '#e11d48', stroke: '#9f1239', label: 'Patologia Compartilhada (Hub)', bg: 'bg-rose-100 text-rose-800' },
   osso_consultado: { fill: '#ec4899', stroke: '#db2777', label: 'Osso Consultado (temporário)', bg: 'bg-pink-100 text-pink-800' }
 };
 
-const radiusMap: Record<GraphNodeType, number> = {
-  nic: 0,
-  caixa: 110,
-  individuo: 180,
-  localizacao: 150,
-  elemento: 240,
-  metodo: 250,
-  patologia: 230,
-  exame: 220,
-  formulario_a1: 90,
-  formulario_a2: 95,
-  foto: 260,
-  assinatura: 130,
-  evento_custodia: 170,
-  // Não usado no layout radial principal — o nó e seus candidatos ganham
-  // posição própria, fora do grafo persistido (ver `boneOverlay`).
-  osso_consultado: 0
-};
+const radiusMap: Record<GraphNodeType, number> = DEFAULT_RADIUS_MAP;
 
 const BONE_QUERY_NODE_ID = 'BONE-QUERY-TEMP';
 
@@ -101,6 +87,13 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
   const [boneSearchError, setBoneSearchError] = useState<AppError | null>(null);
   const [isSearchingBones, setIsSearchingBones] = useState(false);
 
+  // Modos de Visualização e Camadas Semânticas (Cross-COI)
+  const [viewMode, setViewMode] = useState<'focus' | 'global'>(selectedNic ? 'focus' : 'global');
+  const [layerSex, setLayerSex] = useState(true);
+  const [layerPathology, setLayerPathology] = useState(true);
+  const [layerAge, setLayerAge] = useState(true);
+  const [hideOperational, setHideOperational] = useState(true);
+
   // Posições que a pessoa arrastou manualmente — sobrescrevem o layout radial
   // calculado, só pra esta tela (não é gravado no banco: o grafo em si continua
   // vindo de computeGraphForCollection; isto é puramente de visualização).
@@ -131,7 +124,9 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
     let cancelled = false;
     setIsLoadingGraph(true);
     setLoadError(null);
-    const url = selectedNic ? `/api/graph?nic=${encodeURIComponent(selectedNic)}` : '/api/graph';
+    const url = viewMode === 'focus' && selectedNic
+      ? `/api/graph?nic=${encodeURIComponent(selectedNic)}`
+      : '/api/graph';
     fetchJson<{ nodes: GraphNode[]; edges: GraphEdge[] }>(url)
       .then((data) => {
         if (!cancelled) setGraphData(data);
@@ -145,7 +140,7 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
     return () => {
       cancelled = true;
     };
-  }, [selectedNic]);
+  }, [selectedNic, viewMode]);
 
   useEffect(() => loadGraph(), [loadGraph]);
 
@@ -318,6 +313,25 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
 
   const filteredNodes = useMemo(() => {
     return graphData.nodes.filter((n) => {
+      // Filtros de camadas semânticas no Modo Global
+      if (viewMode === 'global') {
+        if (hideOperational) {
+          const operationalTypes: GraphNodeType[] = [
+            'formulario_a1',
+            'formulario_a2',
+            'assinatura',
+            'evento_custodia',
+            'foto',
+            'exame'
+          ];
+          if (operationalTypes.includes(n.type)) return false;
+        }
+
+        if (!layerSex && n.id.startsWith('HUB-SEX-')) return false;
+        if (!layerAge && n.id.startsWith('HUB-AGE-')) return false;
+        if (!layerPathology && (n.type === 'conceito_patologico' || n.id.startsWith('HUB-PATH-'))) return false;
+      }
+
       const matchType = filterType === 'all' || n.type === filterType;
       const matchSearch =
         searchTerm === '' ||
@@ -325,31 +339,32 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
         n.id.toLowerCase().includes(searchTerm.toLowerCase());
       return matchType && matchSearch;
     });
-  }, [graphData.nodes, filterType, searchTerm]);
+  }, [graphData.nodes, viewMode, hideOperational, layerSex, layerAge, layerPathology, filterType, searchTerm]);
 
-  // Layout radial (estável, sem física de simulação)
+  // Layout híbrido: Radial no modo Foco (COI individual) e Multicêntrico Spring-Embedder no modo Global
   const layoutNodes = useMemo(() => {
-    const center = { x: 420, y: 300 };
-    return filteredNodes.map((node, index) => {
-      const radius = radiusMap[node.type] ?? 200;
-      if (radius === 0) {
-        return { ...node, x: center.x + (index * 80 - 80), y: center.y };
-      }
-      const angle = (index * 2 * Math.PI) / Math.max(1, filteredNodes.length);
-      const jitter = (index % 3) * 12;
-      return {
-        ...node,
-        x: center.x + Math.cos(angle) * (radius + jitter),
-        y: center.y + Math.sin(angle) * (radius + jitter)
-      };
+    return computeGraphLayout(filteredNodes, graphData.edges, {
+      mode: viewMode,
+      width: 840,
+      height: 600,
+      focusedNic: selectedNic,
+      radiusMap
     });
-  }, [filteredNodes]);
+  }, [filteredNodes, graphData.edges, viewMode, selectedNic]);
 
-  const visibleNodeIds = new Set(layoutNodes.map((n) => n.id));
+  const visibleNodeIds = useMemo(() => new Set(layoutNodes.map((n) => n.id)), [layoutNodes]);
 
   const filteredEdges = useMemo(() => {
-    return graphData.edges.filter((e) => visibleNodeIds.has(e.source) && visibleNodeIds.has(e.target));
-  }, [graphData.edges, visibleNodeIds]);
+    return graphData.edges.filter((e) => {
+      if (!visibleNodeIds.has(e.source) || !visibleNodeIds.has(e.target)) return false;
+      if (viewMode === 'global') {
+        if (!layerSex && e.relation === 'perfil_sexo') return false;
+        if (!layerAge && e.relation === 'perfil_etario') return false;
+        if (!layerPathology && e.relation === 'instancia_patologia') return false;
+      }
+      return true;
+    });
+  }, [graphData.edges, visibleNodeIds, viewMode, layerSex, layerAge, layerPathology]);
 
   // Nós/arestas da busca por semelhança entram só no desenho (displayNodes/
   // displayEdges) — nunca em layoutNodes/filteredEdges, que refletem o que de
@@ -402,6 +417,16 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
     explainResult?.node ||
     null;
 
+  const crossCoiStats = useMemo(() => {
+    const totalCoi = new Set(
+      graphData.nodes.filter((n) => n.type === 'nic').map((n) => n.id)
+    ).size;
+    const totalHubs = graphData.nodes.filter(
+      (n) => n.type === 'conceito_biologico' || n.type === 'conceito_patologico'
+    ).length;
+    return { totalCoi, totalHubs };
+  }, [graphData.nodes]);
+
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
       {/* Top Header & Filter Controls */}
@@ -412,16 +437,43 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
             Grafo de Conhecimento Osteológico (INC/DITEC/PF)
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Persistido no banco a cada gravação. Cobre todo campo coletado nas fases, caixas, localização, assinaturas e custódia.
-            Arraste qualquer nó para reorganizar a visualização.
+            Interliga laudos, indivíduos, patologias e perfis biológicos. Arraste qualquer nó para reorganizar.
           </p>
+        </div>
+
+        {/* Switcher de Modo: Foco Individual vs Rede Global */}
+        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+          <button
+            type="button"
+            onClick={() => setViewMode('focus')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors ${
+              viewMode === 'focus'
+                ? 'bg-white dark:bg-slate-900 text-sky-700 dark:text-sky-400 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <span>🎯</span>
+            <span>Foco {selectedNic ? `(${selectedNic})` : 'Individual'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('global')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors ${
+              viewMode === 'global'
+                ? 'bg-white dark:bg-slate-900 text-sky-700 dark:text-sky-400 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <span>🌐</span>
+            <span>Rede Interconectada (Todos os COIs)</span>
+          </button>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <button
             onClick={loadGraph}
             disabled={isLoadingGraph}
-            title="Recarregar o grafo agora (uma mudança feita em outra aba/tela não aparece aqui sozinha)"
+            title="Recarregar o grafo agora"
             className="p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isLoadingGraph ? 'animate-spin' : ''}`} />
@@ -460,6 +512,64 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
           </select>
         </div>
       </div>
+
+      {/* Barra de Camadas Semânticas no Modo Global */}
+      {viewMode === 'global' && (
+        <div className="px-4 py-2 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex flex-wrap items-center gap-2 text-slate-700 dark:text-slate-300 font-medium">
+            <span className="flex items-center gap-1 font-semibold text-slate-900 dark:text-white mr-1">
+              <Layers className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+              Camadas de Conexão:
+            </span>
+
+            <label className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={layerSex}
+                onChange={(e) => setLayerSex(e.target.checked)}
+                className="rounded text-sky-600 focus:ring-sky-500 w-3.5 h-3.5"
+              />
+              <span className="text-sky-800 dark:text-sky-300 text-[11px] font-semibold">Sexo</span>
+            </label>
+
+            <label className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={layerAge}
+                onChange={(e) => setLayerAge(e.target.checked)}
+                className="rounded text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
+              />
+              <span className="text-indigo-800 dark:text-indigo-300 text-[11px] font-semibold">Faixa Etária</span>
+            </label>
+
+            <label className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={layerPathology}
+                onChange={(e) => setLayerPathology(e.target.checked)}
+                className="rounded text-rose-600 focus:ring-rose-500 w-3.5 h-3.5"
+              />
+              <span className="text-rose-800 dark:text-rose-300 text-[11px] font-semibold">Patologias</span>
+            </label>
+
+            <label className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 cursor-pointer select-none ml-1">
+              <input
+                type="checkbox"
+                checked={hideOperational}
+                onChange={(e) => setHideOperational(e.target.checked)}
+                className="rounded text-slate-600 focus:ring-slate-500 w-3.5 h-3.5"
+              />
+              <span className="text-slate-700 dark:text-slate-300 text-[11px]">Ocultar Operacionais (Formulários/Custódia)</span>
+            </label>
+          </div>
+
+          <div className="flex items-center gap-2 text-[11px] font-mono text-slate-500 dark:text-slate-400">
+            <span>COIs: <strong className="text-slate-900 dark:text-slate-200">{crossCoiStats.totalCoi}</strong></span>
+            <span>•</span>
+            <span>Hubs Conectores: <strong className="text-sky-600 dark:text-sky-400">{crossCoiStats.totalHubs}</strong></span>
+          </div>
+        </div>
+      )}
 
       {isLoadingGraph && (
         <div className="p-6 text-sm text-slate-500 dark:text-slate-400 flex items-center gap-2">
@@ -514,6 +624,33 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
                 const isHighlighted = selectedNode && (selectedNode.id === e.source || selectedNode.id === e.target);
                 const isOnPath =
                   pathResult && pathResult.some((s, i) => s.nodeId === e.source && pathResult[i + 1]?.nodeId === e.target);
+                const isCrossCoi =
+                  e.relation === 'perfil_sexo' ||
+                  e.relation === 'perfil_etario' ||
+                  e.relation === 'instancia_patologia' ||
+                  e.relation === 'mesmo_perfil_com';
+
+                const strokeColor = isOnPath
+                  ? '#facc15'
+                  : isHighlighted
+                    ? '#38bdf8'
+                    : e.relation === 'perfil_sexo'
+                      ? '#38bdf8'
+                      : e.relation === 'perfil_etario'
+                        ? '#818cf8'
+                        : e.relation === 'instancia_patologia'
+                          ? '#fb7185'
+                          : e.relation === 'similar_a'
+                            ? '#ec4899'
+                            : '#334155';
+
+                const strokeWidth = isOnPath
+                  ? 3.2
+                  : isHighlighted
+                    ? 2.5
+                    : isCrossCoi
+                      ? 1.8
+                      : 1.2;
 
                 return (
                   <g key={e.id}>
@@ -522,16 +659,16 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
                       y1={src.y}
                       x2={tgt.x}
                       y2={tgt.y}
-                      stroke={isOnPath ? '#facc15' : isHighlighted ? '#38bdf8' : e.relation === 'similar_a' ? '#ec4899' : '#334155'}
-                      strokeWidth={isOnPath ? 3 : isHighlighted ? 2.5 : 1.2}
-                      strokeDasharray={e.confidence === 'INFERRED' ? '3 3' : undefined}
+                      stroke={strokeColor}
+                      strokeWidth={strokeWidth}
+                      strokeDasharray={e.confidence === 'INFERRED' ? '3 3' : isCrossCoi ? '4 2' : undefined}
                       markerEnd="url(#arrow)"
-                      opacity={isOnPath || isHighlighted ? 0.95 : 0.55}
+                      opacity={isOnPath || isHighlighted ? 0.95 : isCrossCoi ? 0.85 : 0.55}
                     />
                     <text
                       x={(src.x + tgt.x) / 2}
                       y={(src.y + tgt.y) / 2 - 4}
-                      fill="#64748b"
+                      fill={isCrossCoi ? '#94a3b8' : '#64748b'}
                       fontSize="9"
                       fontFamily="monospace"
                       textAnchor="middle"
@@ -547,7 +684,15 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
                 const meta = nodeColorMap[node.type];
                 const isSelected = selectedNode?.id === node.id;
                 const isOnPath = pathResult?.some((s) => s.nodeId === node.id);
-                const r = node.type === 'nic' || node.type === 'osso_consultado' ? 26 : node.type === 'individuo' ? 22 : 18;
+                const isHub = node.type === 'conceito_biologico' || node.type === 'conceito_patologico';
+                const r =
+                  node.type === 'nic' || node.type === 'osso_consultado'
+                    ? 26
+                    : isHub
+                      ? 24
+                      : node.type === 'individuo'
+                        ? 22
+                        : 18;
 
                 return (
                   // O posicionamento real (translate) fica só aqui, como atributo SVG — uma
@@ -566,6 +711,16 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
                       className="transition-transform duration-100 hover:scale-110"
                       style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
                     >
+                      {isHub && (
+                        <circle
+                          r={r + 5}
+                          fill="none"
+                          stroke={meta.stroke}
+                          strokeWidth={1.5}
+                          strokeDasharray="4 2"
+                          opacity={0.85}
+                        />
+                      )}
                       <circle
                         r={r}
                         fill={meta.fill}
@@ -577,12 +732,18 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
                         textAnchor="middle"
                         dy="4"
                         fill="#ffffff"
-                        fontSize={node.type === 'nic' ? '10' : '9'}
+                        fontSize={node.type === 'nic' || isHub ? '10' : '9'}
                         fontWeight="600"
                         fontFamily="monospace"
                         className="pointer-events-none"
                       >
-                        {node.label.length > 11 ? node.label.substring(0, 9) + '..' : node.label}
+                        {isHub
+                          ? node.label.length > 15
+                            ? node.label.substring(0, 13) + '..'
+                            : node.label
+                          : node.label.length > 11
+                            ? node.label.substring(0, 9) + '..'
+                            : node.label}
                       </text>
                     </g>
                   </g>
@@ -677,19 +838,22 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
             <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
               <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 mb-2">
                 <Route className="w-4 h-4 text-amber-600" />
-                Caminho entre dois nós
+                Caminho entre nós (Cross-COI)
               </h4>
+              <p className="text-[10px] text-slate-400 mb-2">
+                Descubra conexões entre laudos diferentes através de patologias ou perfis compartilhados.
+              </p>
               <div className="flex flex-col gap-1.5">
                 <input
                   type="text"
-                  placeholder="ID do nó de origem (ex.: BOX-...)"
+                  placeholder="ID de origem (ex.: COI-001, HUB-SEX-FEMININO)"
                   value={pathFrom}
                   onChange={(e) => setPathFrom(e.target.value)}
                   className="px-2 py-1 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] font-mono"
                 />
                 <input
                   type="text"
-                  placeholder="ID do nó de destino"
+                  placeholder="ID de destino (ex.: COI-002, HUB-PATH-ARTROSE)"
                   value={pathTo}
                   onChange={(e) => setPathTo(e.target.value)}
                   className="px-2 py-1 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] font-mono"
@@ -699,18 +863,25 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
                   disabled={isFindingPath}
                   className="px-2 py-1.5 rounded bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-semibold disabled:opacity-50"
                 >
-                  {isFindingPath ? 'Calculando...' : 'Traçar caminho'}
+                  {isFindingPath ? 'Calculando caminho...' : 'Traçar caminho'}
                 </button>
                 {pathError && <ErrorNotice code={pathError.code} message={pathError.message} />}
                 {pathResult && (
-                  <ol className="text-[11px] font-mono space-y-1 mt-1">
-                    {pathResult.map((step, idx) => (
-                      <li key={step.nodeId} className="text-slate-700 dark:text-slate-300">
-                        {idx > 0 && <span className="text-slate-400">↳ {step.viaRelation} → </span>}
-                        {step.nodeId}
-                      </li>
-                    ))}
-                  </ol>
+                  <div className="p-2 bg-white dark:bg-slate-950 rounded-lg border border-amber-300 dark:border-amber-800/60 mt-1">
+                    <span className="text-[10px] uppercase font-bold text-amber-600 dark:text-amber-400 block mb-1">
+                      Trajeto Encontrado ({pathResult.length} etapas):
+                    </span>
+                    <ol className="text-[11px] font-mono space-y-1">
+                      {pathResult.map((step, idx) => (
+                        <li key={step.nodeId} className="text-slate-700 dark:text-slate-300">
+                          {idx > 0 && <span className="text-slate-400">↳ {step.viaRelation} → </span>}
+                          <strong className={step.nodeId.startsWith('HUB-') ? 'text-sky-600 dark:text-sky-400' : ''}>
+                            {step.nodeId}
+                          </strong>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
                 )}
               </div>
             </div>

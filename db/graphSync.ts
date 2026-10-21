@@ -200,6 +200,62 @@ export function computeGraphForCollection(col: OsteologicalCollection): { nodes:
         createdAt: col.createdAt
       }));
 
+      // 1. Hubs de Perfil Biológico Compartilhado (Cross-COI): Sexo e Idade
+      const sexVal = ind.biologicalProfile?.sexEstimate?.value;
+      if (sexVal && typeof sexVal === 'string' && sexVal.trim()) {
+        const normSex = sexVal.trim().toLowerCase();
+        const sexId = `HUB-SEX-${normSex.toUpperCase()}`;
+        const sexLabel = normSex === 'masculino' ? 'Sexo: Masculino' : normSex === 'feminino' ? 'Sexo: Feminino' : `Sexo: ${sexVal}`;
+        addNode({
+          id: sexId,
+          type: 'conceito_biologico',
+          label: sexLabel,
+          properties: {
+            categoria: 'sexo_estimado',
+            valor: normSex
+          }
+        });
+        edges.push(edge(`e-${indNodeId}-${sexId}`, indNodeId, sexId, 'perfil_sexo', {
+          recordId: ind.id,
+          field: 'phase4.individuals.biologicalProfile.sexEstimate.value',
+          version: col.phase4.curationVersionNumber,
+          createdAt: col.createdAt
+        }));
+      }
+
+      const ageVal = ind.biologicalProfile?.ageCategory?.value;
+      if (ageVal && typeof ageVal === 'string' && ageVal.trim()) {
+        const normAge = ageVal.trim().toLowerCase().replace(/\s+/g, '_');
+        const ageId = `HUB-AGE-${normAge.toUpperCase()}`;
+        const ageLabelMap: Record<string, string> = {
+          jovem: 'Faixa Etária: Jovem (18-25)',
+          adulto_jovem: 'Faixa Etária: Adulto Jovem (20-35)',
+          adulto_medio: 'Faixa Etária: Adulto Médio (35-50)',
+          adulto_maduro: 'Faixa Etária: Adulto Maduro (35-50)',
+          idoso: 'Faixa Etária: Idoso (50+)',
+          infantil: 'Faixa Etária: Infantil',
+          feto: 'Faixa Etária: Feto',
+          indeterminado: 'Faixa Etária: Indeterminada'
+        };
+        const ageLabel = ageLabelMap[normAge] || `Faixa Etária: ${ageVal}`;
+        addNode({
+          id: ageId,
+          type: 'conceito_biologico',
+          label: ageLabel,
+          properties: {
+            categoria: 'faixa_etaria',
+            valor: normAge,
+            intervalo: ind.biologicalProfile.ageCategory.estimatedRangeYears || ''
+          }
+        });
+        edges.push(edge(`e-${indNodeId}-${ageId}`, indNodeId, ageId, 'perfil_etario', {
+          recordId: ind.id,
+          field: 'phase4.individuals.biologicalProfile.ageCategory.value',
+          version: col.phase4.curationVersionNumber,
+          createdAt: col.createdAt
+        }));
+      }
+
       const methodSexId = `METH-${ind.biologicalProfile.sexEstimate.methodCode.replace(/\s+/g, '_')}`;
       addNode(nodeFromRecord(methodSexId, 'metodo', ind.biologicalProfile.sexEstimate.methodCode, {
         category: 'Estimativa de Sexo',
@@ -250,7 +306,8 @@ export function computeGraphForCollection(col: OsteologicalCollection): { nodes:
     col.phase5.pathologies.forEach((p) => {
       const pathNodeId = `PATH-${p.id}`;
       const rawLabel = p.taxonomyLabel || p.termControlled || p.taxonomyCode || 'Patologia';
-      addNode(nodeFromRecord(pathNodeId, 'patologia', rawLabel.split('-')[0].trim() || 'Patologia', {
+      const cleanLabel = rawLabel.split('-')[0].trim() || 'Patologia';
+      addNode(nodeFromRecord(pathNodeId, 'patologia', cleanLabel, {
         code: p.taxonomyCode || p.category,
         location: p.anatomicLocationOnBone || p.associatedElementCode,
         timing: p.timingEstimate,
@@ -263,6 +320,33 @@ export function computeGraphForCollection(col: OsteologicalCollection): { nodes:
         version: 1,
         createdAt: col.createdAt
       }));
+
+      // Hub Ontológico Compartilhado da Patologia (Cross-COI)
+      const slug = cleanLabel
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+      if (slug) {
+        const hubPathId = `HUB-PATH-${slug.toUpperCase()}`;
+        addNode({
+          id: hubPathId,
+          type: 'conceito_patologico',
+          label: `Patologia: ${cleanLabel}`,
+          properties: {
+            categoria: 'patologia_lesao',
+            slug,
+            termoPadronizado: cleanLabel
+          }
+        });
+        edges.push(edge(`e-${pathNodeId}-${hubPathId}`, pathNodeId, hubPathId, 'instancia_patologia', {
+          recordId: p.id,
+          field: 'phase5.pathologies.taxonomyLabel',
+          version: 1,
+          createdAt: col.createdAt
+        }));
+      }
     });
   }
 
@@ -320,10 +404,11 @@ export async function syncGraphForCollection(client: PoolClient, collection: Ost
   await client.query('DELETE FROM graph_nodes WHERE nic = $1', [collection.nic]);
 
   for (const node of nodes) {
-    // Nós de vocabulário compartilhado (ex.: método de estimativa) não pertencem a um
-    // único conjunto — ficam com nic NULL para nunca serem apagados pelo DELETE acima
-    // quando outro conjunto que os referencia for salvo de novo.
-    const nodeNic = node.type === 'metodo' ? null : collection.nic;
+    // Nós de vocabulário e hubs conceituais compartilhados (método, conceitos biológicos e patológicos)
+    // não pertencem a um único conjunto — ficam com nic NULL para nunca serem apagados
+    // pelo DELETE por NIC quando outro conjunto que os referencia for salvo ou excluído.
+    const isSharedHub = node.type === 'metodo' || node.type === 'conceito_biologico' || node.type === 'conceito_patologico';
+    const nodeNic = isSharedHub ? null : collection.nic;
     await client.query(
       `INSERT INTO graph_nodes (id, nic, node_type, label, properties, updated_at)
        VALUES ($1, $2, $3, $4, $5, now())

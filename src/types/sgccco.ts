@@ -891,6 +891,9 @@ export type GraphNodeType =
   | 'foto'
   | 'assinatura'
   | 'evento_custodia'
+  // Nós conceituais ontológicos que conectam múltiplos COIs (Cross-COI):
+  | 'conceito_biologico'
+  | 'conceito_patologico'
   // Nó temporário da busca por semelhança entre ossos (_local-adr-policy-103):
   // o osso descrito pelo usuário, fora do acervo — nunca persistido em
   // graph_nodes, só desenhado em memória no painel de busca.
@@ -916,6 +919,11 @@ export type GraphEdgeRelation =
   | 'contem_caixa'
   | 'assinado_por'
   | 'evento_de_custodia'
+  // Relações ontológicas Cross-COI (conectam indivíduos e conjuntos a nós conceituais compartilhados):
+  | 'perfil_sexo'
+  | 'perfil_etario'
+  | 'instancia_patologia'
+  | 'mesmo_perfil_com'
   // Liga o nó temporário 'osso_consultado' a um elemento real do acervo —
   // sempre confidence: 'INFERRED' (_local-adr-policy-103).
   | 'similar_a';
