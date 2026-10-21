@@ -65,6 +65,12 @@ esconde da tela, e pode ser desfeito a qualquer momento.**
   do servidor e a restauração de caixas já excluídas continuam existindo, para
   que exclusões antigas sigam podendo ser desfeitas pela lista da Zona de Risco.
 
+- **Reinicialização de COI excluído via `createCollection` (`_local-adr-policy-107`)**:
+  Além da restauração manual de dados pelo painel da Zona de Risco, caso a equipe técnica
+  inicie novamente um COI que foi excluído no passado (ex: criado inicialmente para teste ou
+  com número digitado erroneamente), a rotina de criação limpa os metadados de exclusão e
+  reinicia o conjunto para um novo ciclo operacional limpo, sem conflito de duplicidade.
+
 ## References
 
 - Arquivos: `db/migrations/008_admin_soft_delete.sql`, `db/adminRepo.ts`,
