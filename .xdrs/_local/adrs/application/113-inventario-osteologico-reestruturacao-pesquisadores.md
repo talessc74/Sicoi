@@ -107,11 +107,12 @@ seção final de notas complementares.**
 - **Observações por Seção e Botão Próxima Seção**: Todas as seções 1 a 7 contam com
   textarea dedicado para `sectionData.observacoes` e botão de salto direto para a
   seção anatômica conseguinte.
-- **Visualização bilateral em 2 colunas e ergonomia visual de tela**:
-  Nas seções apendiculares bilaterais e no Tórax (Costelas), a interface organiza os
-  elementos em duas colunas: a coluna do **Lado Esquerdo** fica posicionada à esquerda
-  da tela e a do **Lado Direito** fica posicionada à direita da tela, eliminando
-  incongruências espaciais e fadiga visual de catalogação.
+- **Visualização bilateral e ergonomia mobile (Glove-Friendly UX)**:
+  - Em telas de desktop, a interface organiza os elementos em duas colunas paralelas (Lado Esquerdo à esquerda, Lado Direito à direita).
+  - Em dispositivos móveis (`< lg` / `< sm`), a interface substitui a grade de colunas por um **Segmented Control** com contadores (`[ Lado Esquerdo ]` e `[ Lado Direito ]`), evitando esmagamento e toques acidentais (*fat-finger*).
+  - Carrossel horizontal de passos (`Passo X de 8`) com barra de progresso e pills roláveis para troca instantânea de seção anatômica.
+  - Alvos de toque ampliados (`touch-manipulation`, botoeiras P/F/I/A/! e steppers residuais de 36px-40px adequados ao uso com luvas periciais).
+  - Botão "Próxima seção" em barra fixa (*sticky footer*) na base da tela, garantindo alcance ergonômico permanente pelo polegar (*Thumb Zone*).
 - **Ações rápidas de preenchimento em lote completas (P, F, I, A)**:
   A barra de ações de cada seção oferece botões dedicados de marcação em lote para todos
   os estados de presença: "Marcar Todos P", "Marcar Todos F", "Marcar Todos I",
