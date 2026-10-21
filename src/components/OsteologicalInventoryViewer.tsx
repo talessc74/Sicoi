@@ -35,6 +35,25 @@ export function applyBulkPresence(
   return { ossos: newOssos, alteracoes: newAlteracoes };
 }
 
+export function computeBoneAlterationStatus(
+  currentCode: OsteologicalPresenceCode | undefined,
+  boneAlteracoes: OsteologicalAlteracaoRegiao[] | undefined
+): {
+  hasSemAlteracao: boolean;
+  activeAlteracoes: OsteologicalAlteracaoRegiao[];
+  isSemAlteracaoAuto: boolean;
+  showSemAlteracao: boolean;
+} {
+  const list = boneAlteracoes || [];
+  const hasSemAlteracao = list.some(a => a.tipo === 'sem_alteracao');
+  const activeAlteracoes = list.filter(a => a.tipo !== 'sem_alteracao');
+  // Se o osso possui código de presença (P, F ou I) e nenhuma alteração foi marcada,
+  // ele é AUTOMATICAMENTE considerado "Sem alteração" (pedido dos técnicos, out/2026).
+  const isSemAlteracaoAuto = !!(currentCode && currentCode !== 'A' && activeAlteracoes.length === 0);
+  const showSemAlteracao = hasSemAlteracao || isSemAlteracaoAuto;
+  return { hasSemAlteracao, activeAlteracoes, isSemAlteracaoAuto, showSemAlteracao };
+}
+
 // Coluna Vertebral:
 // Vértebras aparecem antes de Sacro e Cóccix na listagem (pedido dos técnicos, out/2026).
 export const VERTEBRAS_CERVICAIS = [
@@ -348,6 +367,13 @@ export const SECTIONS_CONFIG = [
   { id: 'demais_informacoes', label: '8. Demais Informações', active: true, count: 1 }
 ] as const;
 
+export function getNextSection(currentSectionId: string): (typeof SECTIONS_CONFIG)[number] | null {
+  const currentSectionIndex = SECTIONS_CONFIG.findIndex(s => s.id === currentSectionId);
+  return currentSectionIndex >= 0 && currentSectionIndex < SECTIONS_CONFIG.length - 1
+    ? SECTIONS_CONFIG[currentSectionIndex + 1]
+    : null;
+}
+
 const PRESENCE_DEFINITIONS: Record<
   OsteologicalPresenceCode,
   { label: string; desc: string; badgeClass: string; activeBtnClass: string }
@@ -648,11 +674,7 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
     });
   };
 
-  const currentSectionIndex = SECTIONS_CONFIG.findIndex(s => s.id === currentSectionId);
-  const nextSection =
-    currentSectionIndex >= 0 && currentSectionIndex < SECTIONS_CONFIG.length - 1
-      ? SECTIONS_CONFIG[currentSectionIndex + 1]
-      : null;
+  const nextSection = getNextSection(currentSectionId);
 
   const updatePooled = (key: 'maoPooled' | 'pePooled', patch: Partial<OsteologicalPooledCounts>) => {
     if (readOnly) return;
@@ -1451,12 +1473,8 @@ const SimpleBoneRows: React.FC<SimpleBoneRowsProps> = ({
         const currentCode = section.ossos[bone];
         const isExpanded = !!expandedBones[bone];
         const boneAlteracoes = (section.alteracoes || []).filter(a => a.osso === bone);
-        const hasSemAlteracao = boneAlteracoes.some(a => a.tipo === 'sem_alteracao');
-        const activeAlteracoes = boneAlteracoes.filter(a => a.tipo !== 'sem_alteracao');
-        // Se o osso possui código de presença (P, F ou I) e nenhuma alteração foi marcada,
-        // ele é AUTOMATICAMENTE considerado "Sem alteração" (pedido dos técnicos, out/2026).
-        const isSemAlteracaoAuto = !!(currentCode && currentCode !== 'A' && activeAlteracoes.length === 0);
-        const showSemAlteracao = hasSemAlteracao || isSemAlteracaoAuto;
+        const { hasSemAlteracao, activeAlteracoes, isSemAlteracaoAuto, showSemAlteracao } =
+          computeBoneAlterationStatus(currentCode, boneAlteracoes);
 
         return (
           <div
