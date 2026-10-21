@@ -899,8 +899,59 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
           </span>
         </div>
 
-        {/* Grade de Navegação das Seções */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3 text-xs">
+        {/* Indicador de Passo e Carrossel Mobile (< sm) */}
+        <div className="sm:hidden mt-3 space-y-2">
+          <div className="flex items-center justify-between text-xs px-1">
+            <span className="font-bold text-slate-800 dark:text-slate-200">
+              {SECTIONS_CONFIG.find(s => s.id === currentSectionId)?.label}
+            </span>
+            <span className="font-mono text-slate-500 text-[11px]">
+              Passo {SECTIONS_CONFIG.findIndex(s => s.id === currentSectionId) + 1} de {SECTIONS_CONFIG.length}
+            </span>
+          </div>
+          <div className="grid grid-cols-8 gap-1">
+            {SECTIONS_CONFIG.map((sec, idx) => {
+              const currentIdx = SECTIONS_CONFIG.findIndex(s => s.id === currentSectionId);
+              const hasData = getSectionAssignedCount(sec.id) > 0;
+              const isCurrent = currentIdx === idx;
+              return (
+                <div
+                  key={sec.id}
+                  className={`h-1.5 rounded-full transition-all ${
+                    isCurrent
+                      ? 'bg-sky-500 ring-1 ring-sky-300 dark:ring-sky-700'
+                      : hasData
+                        ? 'bg-emerald-500'
+                        : 'bg-slate-200 dark:bg-slate-700'
+                  }`}
+                />
+              );
+            })}
+          </div>
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5 text-[11px] font-mono no-scrollbar">
+            {SECTIONS_CONFIG.map(sec => {
+              const isSelected = currentSectionId === sec.id;
+              const shortLabel = sec.label.replace(/^\d+\.\s*/, '');
+              return (
+                <button
+                  key={sec.id}
+                  type="button"
+                  onClick={() => setCurrentSectionId(sec.id)}
+                  className={`px-2.5 py-1.5 rounded-lg whitespace-nowrap transition-all font-semibold touch-manipulation ${
+                    isSelected
+                      ? 'bg-sky-600 text-white shadow-xs'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                  }`}
+                >
+                  {sec.label.split('.')[0]}. {shortLabel}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Grade de Navegação das Seções para Tablet e Desktop (>= sm) */}
+        <div className="hidden sm:grid sm:grid-cols-4 gap-2 mt-3 text-xs">
           {SECTIONS_CONFIG.map(sec => {
             const isSelected = currentSectionId === sec.id;
             return (
@@ -1343,7 +1394,55 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                 </div>
               </div>
             ) : isBilateral ? (
-              <div className={sideFilter === 'ambos' ? 'grid grid-cols-1 lg:grid-cols-2 gap-5 items-start' : 'space-y-4'}>
+              <div className="space-y-4">
+                {/* Segmented Control Bilateral Mobile / Tablet */}
+                <div className="flex items-center justify-between gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80">
+                  <button
+                    type="button"
+                    onClick={() => setSideFilter('esquerdo')}
+                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 touch-manipulation ${
+                      sideFilter === 'esquerdo'
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400'
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-indigo-400" />
+                    <span>Lado Esquerdo</span>
+                    <span className="text-[10px] font-mono opacity-80">
+                      ({esquerdoBones.filter(b => sectionData.ossos[b]).length}/{esquerdoBones.length})
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSideFilter('direito')}
+                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 touch-manipulation ${
+                      sideFilter === 'direito'
+                        ? 'bg-sky-600 text-white shadow-xs'
+                        : 'text-slate-600 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400'
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-sky-400" />
+                    <span>Lado Direito</span>
+                    <span className="text-[10px] font-mono opacity-80">
+                      ({direitoBones.filter(b => sectionData.ossos[b]).length}/{direitoBones.length})
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSideFilter('ambos')}
+                    className={`hidden sm:flex py-2 px-3 rounded-lg text-xs font-medium transition-all items-center justify-center gap-1 touch-manipulation ${
+                      sideFilter === 'ambos'
+                        ? 'bg-slate-700 text-white font-bold shadow-xs'
+                        : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white'
+                    }`}
+                  >
+                    <span>Ambos os Lados</span>
+                  </button>
+                </div>
+
+                <div className={sideFilter === 'ambos' ? 'grid grid-cols-1 lg:grid-cols-2 gap-5 items-start' : 'space-y-4'}>
                 {(sideFilter === 'ambos' || sideFilter === 'esquerdo') && (
                   <div className="p-3.5 rounded-xl border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/20 dark:bg-indigo-950/20 space-y-3">
                     <div className="flex items-center justify-between pb-2 border-b border-indigo-200/70 dark:border-indigo-900/50">
@@ -1568,7 +1667,8 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                   </div>
                 )}
               </div>
-            ) : (
+            </div>
+          ) : (
               <SimpleBoneRows
                 bones={bones}
                 section={sectionData}
@@ -1714,13 +1814,16 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
               />
             </div>
 
-            {/* Botão Próxima Seção (pedido dos técnicos, out/2026) */}
+            {/* Botão Próxima Seção — Sticky no rodapé no mobile para alcance ergonômico do polegar */}
             {nextSection && (
-              <div className="flex justify-end pt-2">
+              <div className="sticky bottom-0 -mx-5 -mb-5 p-3.5 sm:static sm:mx-0 sm:mb-0 sm:p-0 bg-white/95 dark:bg-slate-900/95 sm:bg-transparent backdrop-blur-md sm:backdrop-blur-none border-t border-slate-200 dark:border-slate-800 sm:border-t-0 flex justify-end z-20 transition-all">
                 <button
                   type="button"
-                  onClick={() => setCurrentSectionId(nextSection.id)}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 active:scale-95 text-white text-xs font-semibold shadow-xs transition-all"
+                  onClick={() => {
+                    setCurrentSectionId(nextSection.id);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 sm:py-2 rounded-xl bg-sky-600 hover:bg-sky-700 active:scale-95 text-white text-sm sm:text-xs font-bold shadow-md sm:shadow-xs transition-all touch-manipulation"
                 >
                   <span>Próxima seção: {nextSection.label}</span>
                   <ChevronRight className="w-4 h-4" />
@@ -1832,7 +1935,7 @@ const SimpleBoneRows: React.FC<SimpleBoneRowsProps> = ({
                         onSetPresence(bone, code);
                       }}
                       title={`${bone} — ${config.desc}`}
-                      className={`w-7 h-7 rounded-lg text-xs font-mono font-bold transition-all border ${
+                      className={`w-8 h-8 sm:w-7 sm:h-7 rounded-lg text-xs font-mono font-bold transition-all border touch-manipulation ${
                         isSelected
                           ? config.activeBtnClass
                           : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'
@@ -1854,7 +1957,7 @@ const SimpleBoneRows: React.FC<SimpleBoneRowsProps> = ({
                   }}
                   title={currentCode === 'A' ? `Osso ausente — não há alteração a registrar em ${bone}` : `Alterações ósseas — ${bone}`}
                   aria-label={`Alterações ósseas — ${bone}`}
-                  className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all border ${
+                  className={`w-8 h-8 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center transition-all border touch-manipulation ${
                     isExpanded || activeAlteracoes.length > 0
                       ? isExpanded
                         ? 'bg-red-700 text-white border-red-800 ring-2 ring-red-400/50 shadow-xs'
@@ -2081,7 +2184,7 @@ const NumericScrollInput: React.FC<NumericScrollInputProps> = ({
             type="button"
             disabled={readOnly || numValue <= 0}
             onClick={() => handleStep(-1)}
-            className="px-2.5 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40"
+            className="w-9 h-9 sm:w-7 sm:h-7 flex items-center justify-center text-sm sm:text-xs font-black text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 touch-manipulation active:scale-95 transition-all"
             title="Diminuir 1"
           >
             -
@@ -2093,7 +2196,7 @@ const NumericScrollInput: React.FC<NumericScrollInputProps> = ({
             type="button"
             disabled={readOnly}
             onClick={() => handleStep(1)}
-            className="px-2.5 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40"
+            className="w-9 h-9 sm:w-7 sm:h-7 flex items-center justify-center text-sm sm:text-xs font-black text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 touch-manipulation active:scale-95 transition-all"
             title="Aumentar 1"
           >
             +
