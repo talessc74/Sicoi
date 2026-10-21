@@ -1,7 +1,7 @@
 ---
 name: _local-edr-policy-105-qa-componentes-genericos-acoes-em-lote
 description: 'Componente genérico reaproveitado por várias seções (ação em lote tipo "marcar tudo"/"limpar seção", ou estado compartilhado entre abas tipo os pooled de falanges/sesamoides) exige teste explícito dessas duas categorias — não só do caminho feliz de marcação individual. Nenhuma PR entra em main sem `npx tsc --noEmit` rodado de novo após a última edição de teste, mesmo que o vitest já tenha passado.'
-apply-to: src/components/OsteologicalInventoryViewer.tsx, src/components/__tests__/OsteologicalInventoryViewer.test.tsx, qualquer componente futuro com ações em lote ou estado compartilhado entre abas/seções
+apply-to: src/components/OsteologicalInventoryViewer.tsx, src/components/__tests__/OsteologicalInventoryViewer.test.tsx, src/components/__tests__/osteologicalLogic.test.ts, qualquer componente futuro com ações em lote ou estado compartilhado entre abas/seções
 valid-from: 2026-10-19
 ---
 
@@ -47,9 +47,11 @@ mesma sessão de trabalho.**
 ### Details
 
 - **Ação em lote**: todo botão que aplica uma mudança a múltiplos
-  elementos de uma vez (marcar todos, limpar seção, marcar grupo) tem
+  elementos de uma vez (marcar todos, limpar seção, marcar grupo, marcar por lado) tem
   pelo menos um teste verificando o resultado em mais de um elemento —
-  não só que o botão existe ou que dispara `onUpdateInventory`.
+  não só que o botão existe ou que dispara `onUpdateInventory`. Isso inclui
+  a matriz completa de presenças (`P`, `F`, `I`, `A`) e a garantia de que o código `A`
+  limpa retroativamente alterações ósseas dos elementos marcados (`applyBulkPresence`).
 - **Estado compartilhado**: todo campo que vive logicamente fora de
   uma aba/seção específica (pooled, agregado, ou qualquer dado que
   apareça em mais de um lugar da UI) tem um teste que confirma
@@ -71,7 +73,8 @@ mesma sessão de trabalho.**
 ## References
 
 - Arquivos: `src/components/OsteologicalInventoryViewer.tsx`,
-  `src/components/__tests__/OsteologicalInventoryViewer.test.tsx`
+  `src/components/__tests__/OsteologicalInventoryViewer.test.tsx`,
+  `src/components/__tests__/osteologicalLogic.test.ts`
 - PRs: #82 (implementação), #83 (cobertura de QA e correção do tsc)
 - Seeds da mesa: PARETO (cobertura de risco), PROBE (investigação
   exploratória), SCAFFOLD (arquitetura de automação)

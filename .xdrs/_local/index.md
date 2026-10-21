@@ -52,18 +52,20 @@ permanece deliberadamente fora do escopo. Dados da DO (Fase 0) e de
 procedência só saem do servidor para quem pode vê-los — a tela
 esconder não basta. Criar um COI recusa duplicar um NIC já existente.
 Inventário Odontológico: dentição permanente/mista/decídua por par de
-quadrante, edêntulo e seleção múltipla de dentes em lote, dentes supranumerários. Alterações ósseas
+quadrante, seleção cumulativa entre arcadas (+ Maxila, + Mandíbula, + Todos), 18 características clínicas
+(incluindo Outro), edêntulo e edição em lote, dentes supranumerários. Alterações ósseas
 embutidas em cada osso do Inventário Osteológico em gaveta expansível
 (clique na linha ou botão !, chevron e stopPropagation), nunca mais um
 formulário único solto. Condutor por voz/conversa é opt-in. Documentos
 oficiais da COI-INC servidos autenticados, nunca numa pasta pública.
 Inventário osteológico interativo em 4 pranchas especializadas (Fase 4, §15)
 e inventário pós-craniano em 3 seções separadas de Pelve/Membro Inferior —
-**ambas superadas** por pedido dos pesquisadores: lista corrida sem prancha
-visual em todas as 7 seções, vértebra e costela como elemento catalogável
-individual (não mais contagem ordinal), Ossos da Mão e Ossos do Pé como
-seções próprias reunindo os dois lados, e Membros Superiores e
-Pelve + Bacia + Membros Inferiores unificados cada um numa seção só.
+**ambas superadas** por pedido dos pesquisadores: lista unificada em todas as 7 seções,
+padrão normativo de contagem e identificação para Coluna Vertebral e Tórax, Ossos da Mão e
+Ossos do Pé como seções próprias reunindo os dois lados, Membros Superiores e
+Membros Inferiores unificados, visualização bilateral ergonômica em duas colunas
+(Lado Esquerdo à esquerda da tela, Lado Direito à direita da tela), cabeçalhos e filtros limpos
+sem poluição de contagens redundantes, e ações de marcação em lote completas (P, F, I, A).
 Dupla assinatura técnica e científica nas Fases 4 e 5: separando a conclusão operacional/física
 (Montagem / Marcação Óssea, por Técnico ou Curador) da consolidação pericial/científica
 (Inventário Anatômico / Laudo de Patologias, privativa do Curador).

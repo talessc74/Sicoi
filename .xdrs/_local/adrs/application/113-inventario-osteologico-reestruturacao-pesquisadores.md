@@ -1,7 +1,7 @@
 ---
 name: _local-adr-policy-113-inventario-osteologico-reestruturacao-pesquisadores
-description: 'O Inventário Osteológico (Fase 4, §15) tem 7 seções, todas como lista corrida de ossos com P/F/I/A + alteração embutida — sem prancha visual em nenhuma delas. Cada vértebra e cada costela é um elemento catalogável próprio (C1, T5, 1ª Costela Direita), nunca mais contagem separada da identificação. Carpo/metacarpo e tarso/metatarso vivem em seções próprias (Ossos da Mão/Ossos do Pé, ambos os lados); Membros Superiores (Direito+Esquerdo) e Pelve+Bacia+Membros Inferiores (Direito+Esquerdo) viraram uma seção só cada. Use antes de alterar a estrutura, a persistência ou a contagem de catalogados do inventário osteológico.'
-apply-to: src/components/OsteologicalInventoryViewer.tsx, src/types/sgccco.ts, src/components/__tests__/OsteologicalInventoryViewer.test.tsx
+description: 'O Inventário Osteológico (Fase 4, §15) tem 7 seções: Cabeça e Pescoço, Coluna Vertebral, Tórax, Membros Superiores, Ossos da Mão, Membros Inferiores e Ossos do Pé. Coluna Vertebral e Tórax seguem o padrão normativo de contagem por seleção numérica rolagem e identificação individualizada múltipla escolha; Sacro, Cóccix e Esterno operam com P/F/I/A. Visualização bilateral em duas colunas ergonomicamente alinhadas ao monitor (Lado Esquerdo à esquerda, Lado Direito à direita) com controles limpos de filtro e marcação em lote completa (P, F, I, A). Use antes de alterar a estrutura, a persistência, o layout ou as ações do inventário osteológico.'
+apply-to: src/components/OsteologicalInventoryViewer.tsx, src/types/sgccco.ts, src/components/__tests__/OsteologicalInventoryViewer.test.tsx, src/components/__tests__/osteologicalLogic.test.ts
 valid-from: 2026-10-19
 ---
 
@@ -36,13 +36,30 @@ o mesmo raciocínio do item 5 (lados juntos numa seção só) se estendeu
 também a Membro Superior Direito/Esquerdo — viram uma seção só,
 "Membros Superiores".
 
+Subsequentemente, no dia 20/10/2026, refinamentos cruciais de conformidade
+normativa e ergonomia de uso foram solicitados pelo Tales:
+6. Restauração do padrão normativo dos formulários oficiais (Portaria DITEC/PF
+   e Formulários A.1/A.2) para Coluna Vertebral e Tórax: contagem numérica em
+   caixa de rolagem e identificação individual por múltipla escolha com badges,
+   em vez de uma lista corrida homogênea sem distinção morfológica.
+7. Alinhamento bilateral à ergonomia física de tela: a coluna do "Lado Esquerdo"
+   deve ficar sempre à esquerda do monitor e a do "Lado Direito" à direita do
+   monitor, evitando a inversão espacial que gerava erro cognitivo.
+8. Despoluição visual: remoção de parênteses e contagens redundantes de ossos nos
+   títulos e botões de filtro ("Lado Esquerdo", "Lado Direito", "Duas Colunas").
+9. Nomenclatura concisa: padronização definitiva de "3. Tórax" (sem "& Esterno")
+   e "6. Membros Inferiores" (sem "Pelve & Bacia /").
+10. Ações em lote completas: inclusão de marcação massiva para "F", "I" e "A"
+    além de "P", com atalhos compactos por lado.
+
 ## Decision Outcome
 
-**Lista corrida única em toda seção (inclusive Cabeça e Pescoço),
-vértebra/costela como elemento catalogável individual, Mão e Pé como
-seções próprias (ambos os lados), Membros Superiores e
-Pelve+Bacia+Membro Inferior unificados cada um numa seção só — de 8
-seções originais para 7, cada uma reorganizada.**
+**Lista corrida única com padrão unificado (inclusive Cabeça e Pescoço),
+padrão normativo de contagem e seleção para Coluna Vertebral e Tórax,
+Mão e Pé como seções próprias (ambos os lados), Membros Superiores e
+Membros Inferiores unificados cada um numa seção só — consolidando 7 seções
+reorganizadas, com visualização bilateral ergonômica em duas colunas e
+ações em lote completas (P, F, I, A).**
 
 ### Details
 
@@ -103,7 +120,8 @@ seções originais para 7, cada uma reorganizada.**
 
 - Arquivos: `src/components/OsteologicalInventoryViewer.tsx`,
   `src/types/sgccco.ts`
-- Testes: `src/components/__tests__/OsteologicalInventoryViewer.test.tsx`
+- Testes: `src/components/__tests__/OsteologicalInventoryViewer.test.tsx`,
+  `src/components/__tests__/osteologicalLogic.test.ts`
 - Policies superadas por este documento: `_local-adr-policy-111`
   (prancha visual de 4 pranchas), `_local-adr-policy-112` (estrutura
   anterior das Seções 2-8)

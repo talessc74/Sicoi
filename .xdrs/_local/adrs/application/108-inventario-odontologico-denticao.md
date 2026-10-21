@@ -1,7 +1,7 @@
 ---
 name: _local-adr-policy-108-inventario-odontologico-denticao
-description: Odontograma renomeado para Inventário Odontológico. Dentição permanente/mista/decídua por indivíduo; na mista, cada par de quadrante anatômico (1↔5, 2↔6, 3↔7, 4↔8) tem lado ativo único — nunca os dois registrados ao mesmo tempo pra mesma posição. Use antes de mexer em ToothRecord, OdontogramViewer.tsx ou na aba Odontológico de Phase4Curadoria.tsx.
-apply-to: src/types/sgccco.ts (ToothRecord, IndividualHypothesis.denticao/denticaoQuadrantePares/supernumeraryTeeth), src/components/OdontogramViewer.tsx, src/components/Phase4Curadoria.tsx, src/data/mockData.ts (generateInitialOdontogram)
+description: Odontograma renomeado para Inventário Odontológico. Dentição permanente/mista/decídua por indivíduo; na mista, pareamento anatômico de quadrantes com lado ativo único. Estágio 2 com 18 características clínicas (incluindo "Outro", preenchendo grid 3x6). Seleção múltipla cumulativa entre arcadas (+ Maxila, + Mandíbula, + Todos / Boca toda) e edição em lote integrada. Use antes de mexer em ToothRecord, OdontogramViewer.tsx ou na aba Odontológico de Phase4Curadoria.tsx.
+apply-to: src/types/sgccco.ts (ToothRecord, IndividualHypothesis.denticao/denticaoQuadrantePares/supernumeraryTeeth), src/components/OdontogramViewer.tsx, src/components/Phase4Curadoria.tsx, src/data/mockData.ts (generateInitialOdontogram), src/components/__tests__/odontogramLogic.test.ts
 valid-from: 2026-10-17
 ---
 
