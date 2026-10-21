@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIGCOI — Protótipo Interativo Mobile UX</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    /* Estilos personalizados para o frame do dispositivo mobile */
+    .mobile-frame {
+      width: 390px;
+      height: 844px;
+      border-radius: 48px;
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.3), 0 0 0 12px #1e293b, 0 0 0 14px #475569;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      background-color: #0f172a;
+    }
+    .dynamic-island {
+      width: 120px;
+      height: 28px;
+      background-color: #000;
+      border-radius: 20px;
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 10px;
+    }
+    /* Scrollbar sutil para o mockup */
+    .screen-scroll::-webkit-scrollbar {
+      width: 4px;
+    }
+    .screen-scroll::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    /* Efeito de clique touch */
+    .touch-ripple:active {
+      transform: scale(0.96);
+      transition: transform 0.08s ease;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col items-center justify-center p-4 antialiased font-sans">
+
+  <!-- Header de Apresentação Design & UX -->
+  <header class="max-w-4xl w-full text-center mb-6">
+    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 text-xs font-mono font-semibold mb-3">
+      <span class="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
+      DESIGN & UX LAB — SIGCOI MOBILE 2026
+    </div>
+    <h1 class="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
+      Planejamento da Interface Mobile do Inventário Osteológico
+    </h1>
+    <p class="text-sm text-slate-400 max-w-2xl mx-auto mt-2">
+      Simulador interativo desenvolvido para o trabalho em bancada laboratorial com uso de luvas (Glove-Friendly UX), navegação ergonômica com o polegar e transição bilateral inteligente.
+    </p>
+
+    <!-- Controles do Simulador de Telas -->
+    <div class="flex flex-wrap items-center justify-center gap-2 mt-4">
+      <button onclick="setScreen('screen-home')" id="btn-screen-home" class="screen-tab-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700 transition-all">
+        1. Home / Busca COI
+      </button>
+      <button onclick="setScreen('screen-inventory')" id="btn-screen-inventory" class="screen-tab-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-indigo-600 text-white font-bold border border-indigo-500 shadow-sm transition-all">
+        2. Inventário (Membros Sup.)
+      </button>
+      <button onclick="setScreen('screen-drawer')" id="btn-screen-drawer" class="screen-tab-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700 transition-all">
+        3. Bottom Sheet de Alterações (!)
+      </button>
+      <button onclick="setScreen('screen-steppers')" id="btn-screen-steppers" class="screen-tab-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700 transition-all">
+        4. Tórax / Vértebras e Steppers
+      </button>
+      <button onclick="setScreen('screen-section8')" id="btn-screen-section8" class="screen-tab-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700 transition-all">
+        5. Seção 8 Demais Informações
+      </button>
+    </div>
+  </header>
+
+  <!-- Simulador de Smartphone (Device Frame) -->
+  <div class="mobile-frame text-slate-200">
+    <!-- Dynamic Island / Top Notch -->
+    <div class="dynamic-island">
+      <span class="text-[9px] font-mono font-bold text-slate-400">09:41</span>
+      <div class="w-3 h-3 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center">
+        <div class="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
+      </div>
+    </div>
+
+    <!-- Status Bar Safe Area -->
+    <div class="h-11 w-full bg-slate-900 flex items-end justify-between px-7 pb-1 text-[11px] font-semibold text-slate-400 select-none">
+      <span>SIGCOI Mobile</span>
+      <div class="flex items-center gap-1.5">
+        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/></svg>
+        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M17.778 8.222c-4.296-4.296-11.26-4.296-15.556 0A1 1 0 01.808 6.808c5.076-5.077 13.308-5.077 18.384 0a1 1 0 01-1.414 1.414zM14.95 11.05a7 7 0 00-9.9 0 1 1 0 01-1.414-1.414 9 9 0 0112.728 0 1 1 0 01-1.414 1.414zM12.12 13.88a3 3 0 00-4.24 0 1 1 0 01-1.414-1.414 5 5 0 017.07 0 1 1 0 01-1.414 1.414z" clip-rule="evenodd"/></svg>
+        <span class="text-[10px]">100%</span>
+      </div>
+    </div>
+
+    <!-- Barra de Aplicação Mobile Superior -->
+    <div class="bg-slate-900 border-b border-slate-800 px-4 py-2.5 flex items-center justify-between z-40">
+      <div class="flex items-center gap-2.5">
+        <div class="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center font-black text-white text-xs shadow-xs">
+          S
+        </div>
+        <div>
+          <div class="flex items-center gap-1.5">
+            <span class="text-xs font-bold text-white tracking-tight">SIGCOI</span>
+            <span class="text-[10px] px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 font-mono font-semibold">COI-146</span>
+          </div>
+          <span class="text-[10px] text-slate-400 block -mt-0.5">Fase 4: Curadoria Forense</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-300 hover:text-white border border-slate-700">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        </button>
+        <div class="w-8 h-8 rounded-full bg-emerald-950/80 border border-emerald-600 flex items-center justify-center text-[10px] font-bold text-emerald-300" title="Perfil Técnico">
+          TEC
+        </div>
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- TELA 1: HOME / DASHBOARD & BUSCA RÁPIDA MOBILE                     -->
+    <!-- =================================================================== -->
+    <div id="screen-home" class="screen-view hidden flex-1 overflow-y-auto screen-scroll p-4 space-y-4 bg-slate-950">
+      <!-- Campo de Busca no Topo -->
+      <div class="relative">
+        <input type="text" placeholder="Buscar por COI, NIC ou ano..." value="COI-1" class="w-full pl-9 pr-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-500">
+        <svg class="w-4 h-4 text-slate-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      </div>
+
+      <!-- Resumo Rápido -->
+      <div class="flex items-center justify-between text-xs text-slate-400 font-mono px-1">
+        <span>Exibindo 15 de 42 conjuntos</span>
+        <span class="text-indigo-400 font-bold">Pág. 1 de 3</span>
+      </div>
+
+      <!-- Lista Mobile de Cards Táteis -->
+      <div class="space-y-2.5">
+        <!-- Card 1 (Ativo) -->
+        <div class="p-3.5 rounded-2xl bg-indigo-950/30 border-2 border-indigo-500 shadow-md flex items-center justify-between touch-ripple">
+          <div class="space-y-1">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-sm text-white font-mono">COI-146</span>
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-semibold">Fase 4 (Curadoria)</span>
+            </div>
+            <p class="text-[11px] text-slate-400">NIC 2026-0146 • Cemitério Dom Bosco</p>
+            <div class="text-[10px] font-mono text-emerald-400 flex items-center gap-1">
+              <span>●</span> Inventário: 6/8 seções catalogadas
+            </div>
+          </div>
+          <button class="px-3 py-1.5 rounded-xl bg-indigo-600 text-white font-bold text-xs shadow-xs">
+            Abrir
+          </button>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between touch-ripple">
+          <div class="space-y-1">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-sm text-white font-mono">COI-145</span>
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold">Fase 5 (Patologias)</span>
+            </div>
+            <p class="text-[11px] text-slate-400">NIC 2026-0145 • Vala de Perus</p>
+            <div class="text-[10px] font-mono text-slate-400">Última edição há 2 horas</div>
+          </div>
+          <button class="px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 font-semibold text-xs border border-slate-700">
+            Ver
+          </button>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between touch-ripple">
+          <div class="space-y-1">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-sm text-white font-mono">COI-144</span>
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40 font-semibold">Fase 1 (Triagem)</span>
+            </div>
+            <p class="text-[11px] text-slate-400">NIC 2026-0144 • Caixa 14</p>
+            <div class="text-[10px] font-mono text-slate-400">Aguardando limpeza</div>
+          </div>
+          <button class="px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 font-semibold text-xs border border-slate-700">
+            Ver
+          </button>
+        </div>
+      </div>
+
+      <!-- Paginação Mobile Ergonômica -->
+      <div class="flex items-center justify-between pt-3 border-t border-slate-800">
+        <button class="px-3 py-2 rounded-xl bg-slate-900 text-slate-400 text-xs border border-slate-800 font-semibold disabled:opacity-50" disabled>
+          ← Anterior
+        </button>
+        <span class="text-xs font-mono text-slate-400">1 de 3</span>
+        <button class="px-3 py-2 rounded-xl bg-slate-800 text-white text-xs border border-slate-700 font-semibold">
+          Próxima →
+        </button>
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- TELA 2: INVENTÁRIO OSTEOLÓGICO MOBILE (MEMBROS SUPERIORES)          -->
+    <!-- =================================================================== -->
+    <div id="screen-inventory" class="screen-view flex-1 overflow-y-auto screen-scroll p-3.5 space-y-3.5 bg-slate-950">
+      
+      <!-- Seletor Horizontal de Seções (Passo 4 de 8) -->
+      <div class="bg-slate-900 rounded-2xl p-2.5 border border-slate-800 space-y-2">
+        <div class="flex items-center justify-between text-xs px-1">
+          <span class="font-bold text-white">4. Membros Superiores</span>
+          <span class="font-mono text-slate-400 text-[11px]">Passo 4 de 8</span>
+        </div>
+        <!-- Barra de Progresso com 8 segmentos -->
+        <div class="grid grid-cols-8 gap-1">
+          <div class="h-1.5 rounded-full bg-emerald-500"></div>
+          <div class="h-1.5 rounded-full bg-emerald-500"></div>
+          <div class="h-1.5 rounded-full bg-emerald-500"></div>
+          <div class="h-1.5 rounded-full bg-indigo-500"></div>
+          <div class="h-1.5 rounded-full bg-slate-700"></div>
+          <div class="h-1.5 rounded-full bg-slate-700"></div>
+          <div class="h-1.5 rounded-full bg-slate-700"></div>
+          <div class="h-1.5 rounded-full bg-slate-700"></div>
+        </div>
+        <!-- Pills horizontais roláveis de seções -->
+        <div class="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5 text-[10px] font-mono no-scrollbar">
+          <span class="px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 whitespace-nowrap">1. Cabeça</span>
+          <span class="px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 whitespace-nowrap">2. Coluna</span>
+          <span class="px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 whitespace-nowrap">3. Tórax</span>
+          <span class="px-2.5 py-1 rounded-md bg-indigo-600 text-white font-bold whitespace-nowrap">4. MMSS</span>
+          <span class="px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 whitespace-nowrap">5. Mãos</span>
+          <span class="px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 whitespace-nowrap">6. MMII</span>
+          <span class="px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 whitespace-nowrap">7. Pés</span>
+          <span class="px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 whitespace-nowrap">8. Demais</span>
+        </div>
+      </div>
+
+      <!-- Alternador de Lado (Segmented Control Bilateral Mobile) -->
+      <div class="p-1 rounded-xl bg-slate-900 border border-slate-800 grid grid-cols-2 gap-1">
+        <button id="tab-side-esq" onclick="setSide('esquerdo')" class="py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 bg-indigo-600 text-white shadow-xs">
+          <span class="w-2 h-2 rounded-full bg-white"></span>
+          <span>Lado Esquerdo</span>
+          <span class="text-[10px] font-mono opacity-80">(11/11)</span>
+        </button>
+        <button id="tab-side-dir" onclick="setSide('direito')" class="py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 bg-transparent text-slate-400 hover:text-white">
+          <span class="w-2 h-2 rounded-full bg-sky-500"></span>
+          <span>Lado Direito</span>
+          <span class="text-[10px] font-mono opacity-80">(9/11)</span>
+        </button>
+      </div>
+
+      <!-- Barra de Ações em Lote do Lado (Glove-Friendly) -->
+      <div class="flex items-center justify-between px-1">
+        <span class="text-[11px] font-mono text-slate-400">Ação em lote do lado:</span>
+        <div class="flex items-center gap-1.5">
+          <button class="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-emerald-950 border border-emerald-700 text-emerald-300">Todos P</button>
+          <button class="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-amber-950 border border-amber-700 text-amber-300">Todos F</button>
+          <button class="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-slate-800 border border-slate-700 text-slate-300">Todos A</button>
+        </div>
+      </div>
+
+      <!-- GRUPOS ANATÔMICOS MOBILE -->
+      <div class="space-y-3.5">
+
+        <!-- 1. Cíngulo do Membro Superior -->
+        <div class="rounded-2xl border border-indigo-900/60 bg-indigo-950/20 p-3 space-y-2.5">
+          <div class="flex items-center justify-between pb-1 border-b border-indigo-900/40">
+            <h5 class="text-xs font-bold text-indigo-300 font-mono uppercase tracking-wider flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+              Cíngulo do Membro Superior
+            </h5>
+            <span class="text-[11px] font-mono text-slate-400">2/2</span>
+          </div>
+
+          <!-- Linha do Osso 1: Clavícula -->
+          <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-mono text-slate-500 font-bold">1.</span>
+                <span class="text-xs font-bold text-white">Clavícula</span>
+              </div>
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-950 border border-emerald-700 text-emerald-300 font-bold">
+                Sem alteração
+              </span>
+            </div>
+            <!-- Botoeira Touch 44px -->
+            <div class="grid grid-cols-5 gap-1.5 pt-1">
+              <button class="h-9 rounded-lg bg-emerald-600 text-white font-bold font-mono text-xs shadow-xs">P</button>
+              <button class="h-9 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 font-bold font-mono text-xs">F</button>
+              <button class="h-9 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 font-bold font-mono text-xs">I</button>
+              <button class="h-9 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 font-bold font-mono text-xs">A</button>
+              <button onclick="setScreen('screen-drawer')" class="h-9 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 hover:text-red-400 font-bold font-mono text-xs flex items-center justify-center" title="Abrir alterações">
+                !
+              </button>
+            </div>
+          </div>
+
+          <!-- Linha do Osso 2: Escápula -->
+          <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-mono text-slate-500 font-bold">2.</span>
+                <span class="text-xs font-bold text-white">Escápula</span>
+              </div>
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-950 border border-emerald-700 text-emerald-300 font-bold">
+                Sem alteração
+              </span>
+            </div>
+            <div class="grid grid-cols-5 gap-1.5 pt-1">
+              <button class="h-9 rounded-lg bg-emerald-600 text-white font-bold font-mono text-xs shadow-xs">P</button>
+              <button class="h-9 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 font-bold font-mono text-xs">F</button>
+              <button class="h-9 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 font-bold font-mono text-xs">I</button>
+              <button class="h-9 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 font-bold font-mono text-xs">A</button>
+              <button onclick="setScreen('screen-drawer')" class="h-9 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 font-bold font-mono text-xs flex items-center justify-center">
+                !
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Úmero -->
+        <div class="rounded-2xl border border-indigo-900/60 bg-indigo-950/20 p-3 space-y-2.5">
+          <div class="flex items-center justify-between pb-1 border-b border-indigo-900/40">
+            <h5 class="text-xs font-bold text-indigo-300 font-mono uppercase tracking-wider flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-indigo-400"></span>
+              Úmero
+            </h5>
+            <span class="text-[11px] font-mono text-slate-400">3/3</span>
+          </div>
+
+          <!-- Úmero: Epífise proximal (com alteração registrada) -->
+          <div class="p-2.5 rounded-xl bg-slate-900 border-2 border-red-500/70 space-y-2">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-mono text-slate-500 font-bold">1.</span>
+                <span class="text-xs font-bold text-white">Epífise proximal</span>
+              </div>
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-red-950 border border-red-700 text-red-300 font-bold flex items-center gap-1">
+                <span>⚠</span> 1 alteração
+              </span>
+            </div>
+            <div class="grid grid-cols-5 gap-1.5 pt-1">
+              <button class="h-9 rounded-lg bg-emerald-600 text-white font-bold font-mono text-xs shadow-xs">P</button>
+              <button class="h-9 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 font-bold font-mono text-xs">F</button>
+              <button class="h-9 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 font-bold font-mono text-xs">I</button>
+              <button class="h-9 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 font-bold font-mono text-xs">A</button>
+              <button onclick="setScreen('screen-drawer')" class="h-9 rounded-lg bg-red-600 text-white font-bold font-mono text-xs flex items-center justify-center shadow-xs">
+                !
+              </button>
+            </div>
+          </div>
+
+          <!-- Úmero: Diáfise -->
+          <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-mono text-slate-500 font-bold">2.</span>
+                <span class="text-xs font-bold text-white">Diáfise</span>
+              </div>
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-950 border border-emerald-700 text-emerald-300 font-bold">
+                Sem alteração
+              </span>
+            </div>
+            <div class="grid grid-cols-5 gap-1.5 pt-1">
+              <button class="h-9 rounded-lg bg-emerald-600 text-white font-bold font-mono text-xs shadow-xs">P</button>
+              <button class="h-9 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 font-bold font-mono text-xs">F</button>
+              <button class="h-9 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 font-bold font-mono text-xs">I</button>
+              <button class="h-9 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 font-bold font-mono text-xs">A</button>
+              <button onclick="setScreen('screen-drawer')" class="h-9 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 font-bold font-mono text-xs flex items-center justify-center">
+                !
+              </button>
+            </div>
+          </div>
+
+          <!-- Úmero: Epífise distal -->
+          <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-mono text-slate-500 font-bold">3.</span>
+                <span class="text-xs font-bold text-white">Epífise distal</span>
+              </div>
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-950 border border-emerald-700 text-emerald-300 font-bold">
+                Sem alteração
+              </span>
+            </div>
+            <div class="grid grid-cols-5 gap-1.5 pt-1">
+              <button class="h-9 rounded-lg bg-emerald-600 text-white font-bold font-mono text-xs shadow-xs">P</button>
+              <button class="h-9 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 font-bold font-mono text-xs">F</button>
+              <button class="h-9 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 font-bold font-mono text-xs">I</button>
+              <button class="h-9 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 font-bold font-mono text-xs">A</button>
+              <button onclick="setScreen('screen-drawer')" class="h-9 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 font-bold font-mono text-xs flex items-center justify-center">
+                !
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Rádio (Antes da Ulna!) -->
+        <div class="rounded-2xl border border-indigo-900/60 bg-indigo-950/20 p-3 space-y-2.5">
+          <div class="flex items-center justify-between pb-1 border-b border-indigo-900/40">
+            <h5 class="text-xs font-bold text-indigo-300 font-mono uppercase tracking-wider flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              Rádio
+            </h5>
+            <span class="text-[11px] font-mono text-slate-400">3/3</span>
+          </div>
+          <p class="text-[11px] text-slate-400">Epífise proximal, Diáfise e Epífise distal catalogadas.</p>
+        </div>
+
+        <!-- 4. Ulna -->
+        <div class="rounded-2xl border border-indigo-900/60 bg-indigo-950/20 p-3 space-y-2.5">
+          <div class="flex items-center justify-between pb-1 border-b border-indigo-900/40">
+            <h5 class="text-xs font-bold text-indigo-300 font-mono uppercase tracking-wider flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-purple-400"></span>
+              Ulna
+            </h5>
+            <span class="text-[11px] font-mono text-slate-400">3/3</span>
+          </div>
+          <p class="text-[11px] text-slate-400">Epífise proximal, Diáfise e Epífise distal catalogadas.</p>
+        </div>
+
+        <!-- Observações da Seção -->
+        <div class="space-y-1.5 pt-2">
+          <label class="text-[11px] font-bold text-slate-300 uppercase font-mono">Observações — Membros Superiores</label>
+          <textarea rows="3" placeholder="Anotações periciais particulares..." class="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- TELA 3: BOTTOM SHEET DE ALTERAÇÕES ÓSSEAS (!)                       -->
+    <!-- =================================================================== -->
+    <div id="screen-drawer" class="screen-view hidden flex-1 flex flex-col justify-end bg-black/70 backdrop-blur-xs relative p-0">
+      <!-- Fundo translúcido com dismiss ao clicar fora -->
+      <div onclick="setScreen('screen-inventory')" class="flex-1 w-full"></div>
+
+      <!-- Bottom Sheet Modal Deslizante -->
+      <div class="bg-slate-900 rounded-t-3xl border-t-2 border-red-500 p-4 space-y-3.5 shadow-2xl max-h-[85%] overflow-y-auto screen-scroll">
+        <!-- Handle indicador de swipe -->
+        <div class="w-12 h-1.5 rounded-full bg-slate-700 mx-auto -mt-1 mb-2"></div>
+
+        <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+          <div>
+            <h4 class="text-sm font-bold text-white flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+              Alterações Ósseas
+            </h4>
+            <p class="text-[11px] text-slate-400 font-mono">Úmero Esquerdo - Epífise Proximal</p>
+          </div>
+          <button onclick="setScreen('screen-inventory')" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-mono font-bold">
+            Concluir ✕
+          </button>
+        </div>
+
+        <!-- Opções de Seleção com Touch Target Amplo -->
+        <div class="space-y-2">
+          <label class="flex items-center gap-3 p-3 rounded-xl bg-slate-800/60 border border-slate-700 touch-ripple">
+            <input type="checkbox" class="w-5 h-5 rounded text-indigo-600">
+            <span class="text-xs font-medium text-slate-200">Lesão <i>ante mortem</i></span>
+          </label>
+
+          <label class="flex items-center gap-3 p-3 rounded-xl bg-red-950/40 border border-red-700 touch-ripple">
+            <input type="checkbox" checked class="w-5 h-5 rounded text-red-600">
+            <div class="flex-1">
+              <span class="text-xs font-bold text-red-200">Lesão <i>peri mortem</i></span>
+              <div class="mt-2 space-y-1.5">
+                <input type="text" value="Fratura linear com bordas anguladas" class="w-full p-2 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white">
+              </div>
+            </div>
+          </label>
+
+          <label class="flex items-center gap-3 p-3 rounded-xl bg-slate-800/60 border border-slate-700 touch-ripple">
+            <input type="checkbox" class="w-5 h-5 rounded text-indigo-600">
+            <span class="text-xs font-medium text-slate-200">Lesão pós-morte (TAF)</span>
+          </label>
+
+          <label class="flex items-center gap-3 p-3 rounded-xl bg-slate-800/60 border border-slate-700 touch-ripple">
+            <input type="checkbox" class="w-5 h-5 rounded text-indigo-600">
+            <span class="text-xs font-medium text-slate-200">Patologia</span>
+          </label>
+        </div>
+
+        <button onclick="setScreen('screen-inventory')" class="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md">
+          Salvar Alterações do Osso
+        </button>
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- TELA 4: TÓRAX / VÉRTEBRAS COM STEPPERS RESIDUAIS                    -->
+    <!-- =================================================================== -->
+    <div id="screen-steppers" class="screen-view hidden flex-1 overflow-y-auto screen-scroll p-4 space-y-4 bg-slate-950">
+      <div class="bg-slate-900 rounded-2xl p-3 border border-slate-800 space-y-1">
+        <span class="text-[10px] font-mono text-indigo-400 font-bold uppercase">Seção 3</span>
+        <h4 class="text-sm font-bold text-white">Tórax: Costelas e Quantitativos Residuais</h4>
+        <p class="text-[11px] text-slate-400">Esterno e Costelas (C1 a C12) listadas por lateralidade.</p>
+      </div>
+
+      <!-- Demonstração de Stepper Móvel de Dedão -->
+      <div class="space-y-3">
+        <h5 class="text-xs font-bold text-slate-300 font-mono uppercase tracking-wider">
+          Quantitativos Residuais do Tórax
+        </h5>
+
+        <!-- Stepper 1 -->
+        <div class="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+          <label class="text-xs font-semibold text-slate-200 block">
+            Quantidade de costelas não identificadas
+          </label>
+          <div class="flex items-center justify-between gap-3 pt-1">
+            <button onclick="adjustVal('val-costelas', -1)" class="w-12 h-12 rounded-xl bg-slate-800 text-white font-black text-lg border border-slate-700 flex items-center justify-center touch-ripple">
+              −
+            </button>
+            <span id="val-costelas" class="font-mono font-bold text-2xl text-indigo-400 w-16 text-center">
+              4
+            </span>
+            <button onclick="adjustVal('val-costelas', 1)" class="w-12 h-12 rounded-xl bg-indigo-600 text-white font-black text-lg border border-indigo-500 flex items-center justify-center touch-ripple shadow-xs">
+              +
+            </button>
+          </div>
+        </div>
+
+        <!-- Stepper 2 -->
+        <div class="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+          <label class="text-xs font-semibold text-slate-200 block">
+            Quantidade de fragmentos
+          </label>
+          <div class="flex items-center justify-between gap-3 pt-1">
+            <button onclick="adjustVal('val-frag', -1)" class="w-12 h-12 rounded-xl bg-slate-800 text-white font-black text-lg border border-slate-700 flex items-center justify-center touch-ripple">
+              −
+            </button>
+            <span id="val-frag" class="font-mono font-bold text-2xl text-emerald-400 w-16 text-center">
+              12
+            </span>
+            <button onclick="adjustVal('val-frag', 1)" class="w-12 h-12 rounded-xl bg-emerald-600 text-white font-black text-lg border border-emerald-500 flex items-center justify-center touch-ripple shadow-xs">
+              +
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- TELA 5: SEÇÃO 8 - DEMAIS INFORMAÇÕES                                -->
+    <!-- =================================================================== -->
+    <div id="screen-section8" class="screen-view hidden flex-1 overflow-y-auto screen-scroll p-4 space-y-4 bg-slate-950">
+      <div class="bg-slate-900 rounded-2xl p-3.5 border border-slate-800 space-y-2">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
+          <h4 class="text-sm font-bold text-white">8. Demais Informações</h4>
+        </div>
+        <p class="text-[11px] text-slate-400 leading-relaxed bg-slate-950 p-2.5 rounded-xl border border-slate-800/80">
+          (ex: tecidos mumificados, nº de dentes desarticulados [em XX] e demais informações relevantes não registradas em questões anteriores deste formulário)
+        </p>
+      </div>
+
+      <div class="space-y-1.5">
+        <label class="text-xs font-bold text-slate-300 font-mono">Registro Detalhado</label>
+        <textarea rows="7" placeholder="Registre aqui informações complementares sobre vestígios, dentes desarticulados, tecidos ou particularidades..." class="w-full p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-500">Presença de vestígios de tecido mumificado sobre a porção posterior da clavícula esquerda e fragmentos de calçados na caixa 14.</textarea>
+      </div>
+
+      <div class="p-3 rounded-xl bg-emerald-950/40 border border-emerald-600/50 flex items-center gap-3">
+        <span class="text-xl text-emerald-400">✓</span>
+        <div class="text-xs">
+          <strong class="text-white block">Inventário Completo</strong>
+          <span class="text-emerald-300 text-[11px]">Todas as 8 seções revisadas.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- STICKY BOTTOM ACTION BAR (ERGONOMIA DE POLEGAR / THUMB ZONE)        -->
+    <!-- =================================================================== -->
+    <div class="bg-slate-900/95 backdrop-blur-md border-t border-slate-800 p-3 flex items-center justify-between gap-3 z-30">
+      <button onclick="prevSectionAction()" class="px-3.5 py-2.5 rounded-xl bg-slate-800 text-slate-300 font-semibold text-xs border border-slate-700 touch-ripple">
+        ← Voltar
+      </button>
+
+      <button onclick="nextSectionAction()" id="btn-next-action" class="flex-1 py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md flex items-center justify-center gap-2 touch-ripple">
+        <span>Próxima Seção: 5. Mãos</span>
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+      </button>
+    </div>
+
+    <!-- Home Indicator Bar (iOS/Android Safe Area) -->
+    <div class="h-5 w-full bg-slate-900 flex items-center justify-center pb-1">
+      <div class="w-32 h-1 rounded-full bg-slate-600"></div>
+    </div>
+  </div>
+
+  <!-- Script Interativo do Mockup -->
+  <script>
+    function setScreen(screenId) {
+      document.querySelectorAll('.screen-view').forEach(el => el.classList.add('hidden'));
+      const target = document.getElementById(screenId);
+      if (target) target.classList.remove('hidden');
+
+      // Atualiza botões superiores
+      document.querySelectorAll('.screen-tab-btn').forEach(btn => {
+        btn.classList.remove('bg-indigo-600', 'text-white', 'font-bold');
+        btn.classList.add('bg-slate-800', 'text-slate-300');
+      });
+      const activeBtn = document.getElementById('btn-' + screenId);
+      if (activeBtn) {
+        activeBtn.classList.remove('bg-slate-800', 'text-slate-300');
+        activeBtn.classList.add('bg-indigo-600', 'text-white', 'font-bold');
+      }
+
+      // Atualiza o texto do botão inferior sticky
+      const nextBtn = document.getElementById('btn-next-action');
+      if (screenId === 'screen-inventory') {
+        nextBtn.innerHTML = '<span>Próxima Seção: 5. Mãos</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>';
+      } else if (screenId === 'screen-section8') {
+        nextBtn.innerHTML = '<span>Finalizar e Salvar Inventário</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>';
+      }
+    }
+
+    function setSide(side) {
+      const btnEsq = document.getElementById('tab-side-esq');
+      const btnDir = document.getElementById('tab-side-dir');
+      if (side === 'esquerdo') {
+        btnEsq.className = 'py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 bg-indigo-600 text-white shadow-xs';
+        btnDir.className = 'py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 bg-transparent text-slate-400 hover:text-white';
+      } else {
+        btnDir.className = 'py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 bg-sky-600 text-white shadow-xs';
+        btnEsq.className = 'py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 bg-transparent text-slate-400 hover:text-white';
+      }
+    }
+
+    function adjustVal(elementId, delta) {
+      const el = document.getElementById(elementId);
+      if (el) {
+        let current = parseInt(el.textContent.trim(), 10) || 0;
+        current = Math.max(0, current + delta);
+        el.textContent = current;
+      }
+    }
+
+    function nextSectionAction() {
+      const current = document.querySelector('.screen-view:not(.hidden)').id;
+      if (current === 'screen-home') setScreen('screen-inventory');
+      else if (current === 'screen-inventory') setScreen('screen-drawer');
+      else if (current === 'screen-drawer') setScreen('screen-steppers');
+      else if (current === 'screen-steppers') setScreen('screen-section8');
+      else if (current === 'screen-section8') setScreen('screen-home');
+    }
+
+    function prevSectionAction() {
+      const current = document.querySelector('.screen-view:not(.hidden)').id;
+      if (current === 'screen-section8') setScreen('screen-steppers');
+      else if (current === 'screen-steppers') setScreen('screen-drawer');
+      else if (current === 'screen-drawer') setScreen('screen-inventory');
+      else if (current === 'screen-inventory') setScreen('screen-home');
+      else if (current === 'screen-home') setScreen('screen-section8');
+    }
+  </script>
+</body>
+</html>
