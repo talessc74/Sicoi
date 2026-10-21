@@ -73,13 +73,28 @@ seção final de notas complementares.**
   - 1. Esterno (Manúbrio, Corpo, Processo xifóide)
   - 2. Costelas por lateralidade: Costelas Esquerdas (C1 a C12) e Costelas Direitas (C1 a C12)
   - Caixas numéricas de rolagem/stepper: `quantidadeNaoIdentificadas` e `quantidadeFragmentos`.
-- **Membros Superiores** (`membrosSuperiores`, 22 ossos): ossos longos e cintura
-  escapular (Clavícula, Escápula, Úmero, Ulna, Rádio), 11 por lado, em duas colunas.
-- **Ossos das Mãos** (`ossosMao`, 26 ossos): carpo e metacarpo bilateral em duas colunas
+- **Membros Superiores** (`membrosSuperiores`, 22 ossos): 11 ossos por lado em duas colunas,
+  subdivididos em 4 grupos anatômicos (estilo vértebras):
+  - 1. Cíngulo do membro superior (Clavícula e Escápula)
+  - 2. Úmero (Epífise proximal, Diáfise e Epífise distal)
+  - 3. Rádio (Epífise proximal, Diáfise e Epífise distal)
+  - 4. Ulna (Epífise proximal, Diáfise e Epífise distal)
+- **Ossos das Mãos** (`ossosMao`, 26 ossos): 13 ossos por lado em duas colunas,
+  subdivididos em 2 grupos anatômicos:
+  - 1. Carpo (Escafóide, Semilunar, Piramidal, Pisiforme, Trapézio, Trapezóide, Capitato e Hamato)
+  - 2. Metacarpo (1º Metacarpal ao 5º Metacarpal)
   + contagem pooled única de falanges e sesamoides.
-- **Membros Inferiores** (`pelveMembroInferior`, 26 ossos): bacia e membros inferiores
-  (Ílio, Ísquio, Púbis, Fêmur, Patela, Tíbia, Fíbula), 13 por lado, em duas colunas.
-- **Ossos dos Pés** (`ossosPe`, 24 ossos): tarso e metatarso bilateral em duas colunas
+- **Membros Inferiores** (`pelveMembroInferior`, 26 ossos): 13 ossos por lado em duas colunas,
+  subdivididos em 5 grupos anatômicos:
+  - 1. Cíngulo do membro inferior (Ílio, Ísquio e Púbis)
+  - 2. Fêmur (Epífise proximal, Diáfise e Epífise distal)
+  - 3. Tíbia (Epífise proximal, Diáfise e Epífise distal)
+  - 4. Fíbula (Epífise proximal, Diáfise e Epífise distal)
+  - 5. Patela (ponto único isolado após a fíbula)
+- **Ossos dos Pés** (`ossosPe`, 24 ossos): 12 ossos por lado em duas colunas,
+  subdivididos em 2 grupos anatômicos:
+  - 1. Tarso (Calcâneo, Tálus, Navicular, Cuboide, Cuneiforme Medial, Cuneiforme Intermédio e Cuneiforme Lateral)
+  - 2. Metatarso (1º Metatarsal ao 5º Metatarsal)
   + contagem pooled única de falanges e sesamoides.
 - **Demais Informações** (`demaisInformacoes`): Seção 8 com cabeçalho orientativo
   `(ex: tecidos mumificados, nº de dentes desarticulados [em XX] e demais informações relevantes não registradas em questões anteriores deste formulário)`

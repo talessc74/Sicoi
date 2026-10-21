@@ -151,32 +151,32 @@ export const COSTELAS_ORDINAIS = [
 ] as const;
 
 // Só os ossos do braço/cintura escapular — carpo e metacarpo saem pra
-// "Ossos da Mão" (seção própria, pedido dos pesquisadores). Direito e
-// Esquerdo numa seção só, mesma lógica de Ossos da Mão/Pé e de Pelve +
-// Membros Inferiores (pedido do Tales, out/2026).
+// "Ossos das Mãos" (seção própria, pedido dos pesquisadores). Direito e
+// Esquerdo numa seção só, divididos em subtipos/grupos anatômicos:
+// Cíngulo do membro superior, Úmero, Rádio e Ulna (pedido dos técnicos, out/2026).
 export const MEMBROS_SUPERIORES_OSSOS = [
   'Clavícula Direita',
   'Escápula Direita',
   'Úmero Direito - Epífise Proximal',
   'Úmero Direito - Diáfise',
   'Úmero Direito - Epífise Distal',
-  'Ulna Direita - Epífise Proximal',
-  'Ulna Direita - Diáfise',
-  'Ulna Direita - Epífise Distal',
   'Rádio Direito - Epífise Proximal',
   'Rádio Direito - Diáfise',
   'Rádio Direito - Epífise Distal',
+  'Ulna Direita - Epífise Proximal',
+  'Ulna Direita - Diáfise',
+  'Ulna Direita - Epífise Distal',
   'Clavícula Esquerda',
   'Escápula Esquerda',
   'Úmero Esquerdo - Epífise Proximal',
   'Úmero Esquerdo - Diáfise',
   'Úmero Esquerdo - Epífise Distal',
-  'Ulna Esquerda - Epífise Proximal',
-  'Ulna Esquerda - Diáfise',
-  'Ulna Esquerda - Epífise Distal',
   'Rádio Esquerdo - Epífise Proximal',
   'Rádio Esquerdo - Diáfise',
-  'Rádio Esquerdo - Epífise Distal'
+  'Rádio Esquerdo - Epífise Distal',
+  'Ulna Esquerda - Epífise Proximal',
+  'Ulna Esquerda - Diáfise',
+  'Ulna Esquerda - Epífise Distal'
 ] as const;
 
 // Carpo + metacarpo das duas mãos, numa seção própria (pedido dos
@@ -211,8 +211,9 @@ export const OSSOS_MAO = [
 ] as const;
 
 // Pelve/Bacia e Membro Inferior unidos numa seção só (pedido dos
-// pesquisadores) — tarso e metatarso saem pra "Ossos do Pé". Lado ainda
-// identificado por osso, não mais por seção.
+// pesquisadores) — tarso e metatarso saem pra "Ossos dos Pés". Divididos
+// em subtipos anatômicos: Cíngulo do membro inferior, Fêmur, Tíbia, Fíbula
+// e Patela ao final como ponto único (pedido dos técnicos, out/2026).
 export const PELVE_MEMBRO_INFERIOR_OSSOS = [
   'Ílio Direito',
   'Ísquio Direito',
@@ -220,26 +221,26 @@ export const PELVE_MEMBRO_INFERIOR_OSSOS = [
   'Fêmur Direito - Epífise Proximal',
   'Fêmur Direito - Diáfise',
   'Fêmur Direito - Epífise Distal',
-  'Patela Direita',
   'Tíbia Direita - Epífise Proximal',
   'Tíbia Direita - Diáfise',
   'Tíbia Direita - Epífise Distal',
   'Fíbula Direita - Epífise Proximal',
   'Fíbula Direita - Diáfise',
   'Fíbula Direita - Epífise Distal',
+  'Patela Direita',
   'Ílio Esquerdo',
   'Ísquio Esquerdo',
   'Púbis Esquerdo',
   'Fêmur Esquerdo - Epífise Proximal',
   'Fêmur Esquerdo - Diáfise',
   'Fêmur Esquerdo - Epífise Distal',
-  'Patela Esquerda',
   'Tíbia Esquerda - Epífise Proximal',
   'Tíbia Esquerda - Diáfise',
   'Tíbia Esquerda - Epífise Distal',
   'Fíbula Esquerda - Epífise Proximal',
   'Fíbula Esquerda - Diáfise',
-  'Fíbula Esquerda - Epífise Distal'
+  'Fíbula Esquerda - Epífise Distal',
+  'Patela Esquerda'
 ] as const;
 
 // Tarso + metatarso dos dois pés, seção própria — mesma lógica de Ossos da Mão.
@@ -291,6 +292,189 @@ export function partitionBonesBySide(bones: readonly string[]): {
     direito: bones.filter(b => /direit/i.test(b)),
     esquerdo: bones.filter(b => /esquerd/i.test(b))
   };
+}
+
+export interface BilateralSubgroup {
+  id: string;
+  label: string;
+  dotColor: string;
+  bones: readonly string[];
+}
+
+export function formatSubgroupBoneLabel(bone: string): string {
+  // 1. Epífises e Diáfises (Úmero, Rádio, Ulna, Fêmur, Tíbia, Fíbula)
+  if (bone.includes(' - Epífise Proximal')) return 'Epífise proximal';
+  if (bone.includes(' - Diáfise')) return 'Diáfise';
+  if (bone.includes(' - Epífise Distal')) return 'Epífise distal';
+
+  // 2. Ossos individuais de membros/mãos/pés: remover sufixos de lateralidade
+  return bone
+    .replace(/\s+Direito$/i, '')
+    .replace(/\s+Direita$/i, '')
+    .replace(/\s+Esquerdo$/i, '')
+    .replace(/\s+Esquerda$/i, '');
+}
+
+export function getBilateralSubgroups(
+  sectionId: string,
+  side: 'direito' | 'esquerdo'
+): BilateralSubgroup[] {
+  const isRight = side === 'direito';
+  const ladoStr = isRight ? 'Direito' : 'Esquerdo';
+  const ladoFemStr = isRight ? 'Direita' : 'Esquerda';
+
+  if (sectionId === 'membros_superiores') {
+    return [
+      {
+        id: 'cingulo_ms',
+        label: 'Cíngulo do membro superior',
+        dotColor: 'bg-sky-500',
+        bones: [`Clavícula ${ladoFemStr}`, `Escápula ${ladoFemStr}`]
+      },
+      {
+        id: 'umero',
+        label: 'Úmero',
+        dotColor: 'bg-sky-600',
+        bones: [
+          `Úmero ${ladoStr} - Epífise Proximal`,
+          `Úmero ${ladoStr} - Diáfise`,
+          `Úmero ${ladoStr} - Epífise Distal`
+        ]
+      },
+      {
+        id: 'radio',
+        label: 'Rádio',
+        dotColor: 'bg-indigo-500',
+        bones: [
+          `Rádio ${ladoStr} - Epífise Proximal`,
+          `Rádio ${ladoStr} - Diáfise`,
+          `Rádio ${ladoStr} - Epífise Distal`
+        ]
+      },
+      {
+        id: 'ulna',
+        label: 'Ulna',
+        dotColor: 'bg-indigo-600',
+        bones: [
+          `Ulna ${ladoFemStr} - Epífise Proximal`,
+          `Ulna ${ladoFemStr} - Diáfise`,
+          `Ulna ${ladoFemStr} - Epífise Distal`
+        ]
+      }
+    ];
+  }
+
+  if (sectionId === 'pelve_mi') {
+    return [
+      {
+        id: 'cingulo_mi',
+        label: 'Cíngulo do membro inferior',
+        dotColor: 'bg-amber-500',
+        bones: [`Ílio ${ladoStr}`, `Ísquio ${ladoStr}`, `Púbis ${ladoStr}`]
+      },
+      {
+        id: 'femur',
+        label: 'Fêmur',
+        dotColor: 'bg-amber-600',
+        bones: [
+          `Fêmur ${ladoStr} - Epífise Proximal`,
+          `Fêmur ${ladoStr} - Diáfise`,
+          `Fêmur ${ladoStr} - Epífise Distal`
+        ]
+      },
+      {
+        id: 'tibia',
+        label: 'Tíbia',
+        dotColor: 'bg-emerald-500',
+        bones: [
+          `Tíbia ${ladoFemStr} - Epífise Proximal`,
+          `Tíbia ${ladoFemStr} - Diáfise`,
+          `Tíbia ${ladoFemStr} - Epífise Distal`
+        ]
+      },
+      {
+        id: 'fibula',
+        label: 'Fíbula',
+        dotColor: 'bg-emerald-600',
+        bones: [
+          `Fíbula ${ladoFemStr} - Epífise Proximal`,
+          `Fíbula ${ladoFemStr} - Diáfise`,
+          `Fíbula ${ladoFemStr} - Epífise Distal`
+        ]
+      },
+      {
+        id: 'patela',
+        label: 'Patela',
+        dotColor: 'bg-purple-500',
+        bones: [`Patela ${ladoFemStr}`]
+      }
+    ];
+  }
+
+  if (sectionId === 'ossos_mao') {
+    return [
+      {
+        id: 'carpo',
+        label: 'Carpo',
+        dotColor: 'bg-sky-500',
+        bones: [
+          `Escafóide ${ladoStr}`,
+          `Semilunar ${ladoStr}`,
+          `Piramidal ${ladoStr}`,
+          `Pisiforme ${ladoStr}`,
+          `Trapézio ${ladoStr}`,
+          `Trapezóide ${ladoStr}`,
+          `Capitato ${ladoStr}`,
+          `Hamato ${ladoStr}`
+        ]
+      },
+      {
+        id: 'metacarpo',
+        label: 'Metacarpo',
+        dotColor: 'bg-sky-600',
+        bones: [
+          `1º Metacarpal ${ladoStr}`,
+          `2º Metacarpal ${ladoStr}`,
+          `3º Metacarpal ${ladoStr}`,
+          `4º Metacarpal ${ladoStr}`,
+          `5º Metacarpal ${ladoStr}`
+        ]
+      }
+    ];
+  }
+
+  if (sectionId === 'ossos_pe') {
+    return [
+      {
+        id: 'tarso',
+        label: 'Tarso',
+        dotColor: 'bg-amber-500',
+        bones: [
+          `Calcâneo ${ladoStr}`,
+          `Tálus ${ladoStr}`,
+          `Navicular ${ladoStr}`,
+          `Cuboide ${ladoStr}`,
+          `Cuneiforme Medial ${ladoStr}`,
+          `Cuneiforme Intermédio ${ladoStr}`,
+          `Cuneiforme Lateral ${ladoStr}`
+        ]
+      },
+      {
+        id: 'metatarso',
+        label: 'Metatarso',
+        dotColor: 'bg-amber-600',
+        bones: [
+          `1º Metatarsal ${ladoStr}`,
+          `2º Metatarsal ${ladoStr}`,
+          `3º Metatarsal ${ladoStr}`,
+          `4º Metatarsal ${ladoStr}`,
+          `5º Metatarsal ${ladoStr}`
+        ]
+      }
+    ];
+  }
+
+  return [];
 }
 
 interface OsteologicalInventoryViewerProps {
@@ -1200,18 +1384,75 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                       </div>
                     </div>
 
-                    <SimpleBoneRows
-                      bones={esquerdoBones}
-                      section={sectionData}
-                      readOnly={readOnly}
-                      expandedBones={expandedBonesBySection[sectionKey] || {}}
-                      onToggleExpand={bone => toggleExpandBoneGeneric(sectionKey, bone)}
-                      onSetPresence={(bone, code) => handleSetPresenceGeneric(sectionKey, bone, code)}
-                      onToggleAlteracao={(bone, tipo) => handleToggleAlteracaoGeneric(sectionKey, bone, tipo)}
-                      onAddAlteracaoItem={(bone, tipo) => handleAddAlteracaoItemGeneric(sectionKey, bone, tipo)}
-                      onRemoveAlteracaoItem={id => handleRemoveAlteracaoItemGeneric(sectionKey, id)}
-                      onUpdateAlteracaoItem={(id, obs) => handleUpdateAlteracaoItemGeneric(sectionKey, id, obs)}
-                    />
+                    {(() => {
+                      const subgroups = getBilateralSubgroups(currentSectionId, 'esquerdo');
+                      if (subgroups.length === 0) {
+                        return (
+                          <SimpleBoneRows
+                            bones={esquerdoBones}
+                            section={sectionData}
+                            readOnly={readOnly}
+                            expandedBones={expandedBonesBySection[sectionKey] || {}}
+                            onToggleExpand={bone => toggleExpandBoneGeneric(sectionKey, bone)}
+                            onSetPresence={(bone, code) => handleSetPresenceGeneric(sectionKey, bone, code)}
+                            onToggleAlteracao={(bone, tipo) => handleToggleAlteracaoGeneric(sectionKey, bone, tipo)}
+                            onAddAlteracaoItem={(bone, tipo) => handleAddAlteracaoItemGeneric(sectionKey, bone, tipo)}
+                            onRemoveAlteracaoItem={id => handleRemoveAlteracaoItemGeneric(sectionKey, id)}
+                            onUpdateAlteracaoItem={(id, obs) => handleUpdateAlteracaoItemGeneric(sectionKey, id, obs)}
+                          />
+                        );
+                      }
+                      return (
+                        <div className="space-y-4">
+                          {subgroups.map(sg => {
+                            const sgAssignedCount = sg.bones.filter(b => sectionData.ossos[b]).length;
+                            return (
+                              <div key={sg.id} className="space-y-2 pt-2 first:pt-0">
+                                <div className="flex items-center justify-between pb-1.5 border-b border-indigo-200/60 dark:border-indigo-900/50">
+                                  <h6 className="font-bold text-xs uppercase font-mono tracking-wider text-indigo-950 dark:text-indigo-200 flex items-center gap-2">
+                                    <span className={`w-2 h-2 rounded-full ${sg.dotColor}`} />
+                                    {sg.label}
+                                  </h6>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[11px] font-mono text-slate-500">
+                                      {sgAssignedCount}/{sg.bones.length}
+                                    </span>
+                                    {!readOnly && (
+                                      <div className="flex items-center gap-1">
+                                        {(['P', 'F', 'I', 'A'] as const).map(code => (
+                                          <button
+                                            key={code}
+                                            type="button"
+                                            onClick={() => handleBulkMarkGeneric(sectionKey, sg.bones, code)}
+                                            className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border transition-colors border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                                            title={`Marcar todos os ossos de ${sg.label} como ${code}`}
+                                          >
+                                            {code}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                <SimpleBoneRows
+                                  bones={sg.bones}
+                                  formatBoneLabel={formatSubgroupBoneLabel}
+                                  section={sectionData}
+                                  readOnly={readOnly}
+                                  expandedBones={expandedBonesBySection[sectionKey] || {}}
+                                  onToggleExpand={bone => toggleExpandBoneGeneric(sectionKey, bone)}
+                                  onSetPresence={(bone, code) => handleSetPresenceGeneric(sectionKey, bone, code)}
+                                  onToggleAlteracao={(bone, tipo) => handleToggleAlteracaoGeneric(sectionKey, bone, tipo)}
+                                  onAddAlteracaoItem={(bone, tipo) => handleAddAlteracaoItemGeneric(sectionKey, bone, tipo)}
+                                  onRemoveAlteracaoItem={id => handleRemoveAlteracaoItemGeneric(sectionKey, id)}
+                                  onUpdateAlteracaoItem={(id, obs) => handleUpdateAlteracaoItemGeneric(sectionKey, id, obs)}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
 
@@ -1255,18 +1496,75 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                       </div>
                     </div>
 
-                    <SimpleBoneRows
-                      bones={direitoBones}
-                      section={sectionData}
-                      readOnly={readOnly}
-                      expandedBones={expandedBonesBySection[sectionKey] || {}}
-                      onToggleExpand={bone => toggleExpandBoneGeneric(sectionKey, bone)}
-                      onSetPresence={(bone, code) => handleSetPresenceGeneric(sectionKey, bone, code)}
-                      onToggleAlteracao={(bone, tipo) => handleToggleAlteracaoGeneric(sectionKey, bone, tipo)}
-                      onAddAlteracaoItem={(bone, tipo) => handleAddAlteracaoItemGeneric(sectionKey, bone, tipo)}
-                      onRemoveAlteracaoItem={id => handleRemoveAlteracaoItemGeneric(sectionKey, id)}
-                      onUpdateAlteracaoItem={(id, obs) => handleUpdateAlteracaoItemGeneric(sectionKey, id, obs)}
-                    />
+                    {(() => {
+                      const subgroups = getBilateralSubgroups(currentSectionId, 'direito');
+                      if (subgroups.length === 0) {
+                        return (
+                          <SimpleBoneRows
+                            bones={direitoBones}
+                            section={sectionData}
+                            readOnly={readOnly}
+                            expandedBones={expandedBonesBySection[sectionKey] || {}}
+                            onToggleExpand={bone => toggleExpandBoneGeneric(sectionKey, bone)}
+                            onSetPresence={(bone, code) => handleSetPresenceGeneric(sectionKey, bone, code)}
+                            onToggleAlteracao={(bone, tipo) => handleToggleAlteracaoGeneric(sectionKey, bone, tipo)}
+                            onAddAlteracaoItem={(bone, tipo) => handleAddAlteracaoItemGeneric(sectionKey, bone, tipo)}
+                            onRemoveAlteracaoItem={id => handleRemoveAlteracaoItemGeneric(sectionKey, id)}
+                            onUpdateAlteracaoItem={(id, obs) => handleUpdateAlteracaoItemGeneric(sectionKey, id, obs)}
+                          />
+                        );
+                      }
+                      return (
+                        <div className="space-y-4">
+                          {subgroups.map(sg => {
+                            const sgAssignedCount = sg.bones.filter(b => sectionData.ossos[b]).length;
+                            return (
+                              <div key={sg.id} className="space-y-2 pt-2 first:pt-0">
+                                <div className="flex items-center justify-between pb-1.5 border-b border-sky-200/60 dark:border-sky-900/50">
+                                  <h6 className="font-bold text-xs uppercase font-mono tracking-wider text-sky-950 dark:text-sky-200 flex items-center gap-2">
+                                    <span className={`w-2 h-2 rounded-full ${sg.dotColor}`} />
+                                    {sg.label}
+                                  </h6>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[11px] font-mono text-slate-500">
+                                      {sgAssignedCount}/{sg.bones.length}
+                                    </span>
+                                    {!readOnly && (
+                                      <div className="flex items-center gap-1">
+                                        {(['P', 'F', 'I', 'A'] as const).map(code => (
+                                          <button
+                                            key={code}
+                                            type="button"
+                                            onClick={() => handleBulkMarkGeneric(sectionKey, sg.bones, code)}
+                                            className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border transition-colors border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                                            title={`Marcar todos os ossos de ${sg.label} como ${code}`}
+                                          >
+                                            {code}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                <SimpleBoneRows
+                                  bones={sg.bones}
+                                  formatBoneLabel={formatSubgroupBoneLabel}
+                                  section={sectionData}
+                                  readOnly={readOnly}
+                                  expandedBones={expandedBonesBySection[sectionKey] || {}}
+                                  onToggleExpand={bone => toggleExpandBoneGeneric(sectionKey, bone)}
+                                  onSetPresence={(bone, code) => handleSetPresenceGeneric(sectionKey, bone, code)}
+                                  onToggleAlteracao={(bone, tipo) => handleToggleAlteracaoGeneric(sectionKey, bone, tipo)}
+                                  onAddAlteracaoItem={(bone, tipo) => handleAddAlteracaoItemGeneric(sectionKey, bone, tipo)}
+                                  onRemoveAlteracaoItem={id => handleRemoveAlteracaoItemGeneric(sectionKey, id)}
+                                  onUpdateAlteracaoItem={(id, obs) => handleUpdateAlteracaoItemGeneric(sectionKey, id, obs)}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </div>
@@ -1453,6 +1751,7 @@ interface SimpleBoneRowsProps {
   onAddAlteracaoItem: (bone: string, tipo: AlteracaoOsseaTipo) => void;
   onRemoveAlteracaoItem: (id: string) => void;
   onUpdateAlteracaoItem: (id: string, obs: string) => void;
+  formatBoneLabel?: (bone: string) => string;
 }
 
 const SimpleBoneRows: React.FC<SimpleBoneRowsProps> = ({
@@ -1465,7 +1764,8 @@ const SimpleBoneRows: React.FC<SimpleBoneRowsProps> = ({
   onToggleAlteracao,
   onAddAlteracaoItem,
   onRemoveAlteracaoItem,
-  onUpdateAlteracaoItem
+  onUpdateAlteracaoItem,
+  formatBoneLabel
 }) => {
   return (
     <div className="space-y-2">
@@ -1502,7 +1802,7 @@ const SimpleBoneRows: React.FC<SimpleBoneRowsProps> = ({
               <div className="flex items-center gap-2.5 min-w-0 pr-2">
                 <span className="text-[11px] font-mono text-slate-400 w-5 text-right flex-shrink-0">{index + 1}.</span>
                 <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate" title={bone}>
-                  {bone}
+                  {formatBoneLabel ? formatBoneLabel(bone) : bone}
                 </span>
 
                 {showSemAlteracao && activeAlteracoes.length === 0 && (

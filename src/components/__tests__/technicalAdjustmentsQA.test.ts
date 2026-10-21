@@ -7,6 +7,8 @@ import {
   applyBulkPresence,
   isBilateralSection,
   partitionBonesBySide,
+  getBilateralSubgroups,
+  formatSubgroupBoneLabel,
   CABECA_PESCOCO_OSSOS,
   COLUNA_VERTEBRAL_OSSOS,
   VERTEBRAS_CERVICAIS,
@@ -419,6 +421,190 @@ describe('Suíte de QA — Validação das 12 Mudanças Solicitadas pelos Técni
       expect(res.ossos['Costela C1 Esquerda']).toBe('A');
       expect(res.ossos['Costela C2 Esquerda']).toBe('A');
       expect(res.alteracoes).toHaveLength(0);
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // Subdivisões Anatômicas Bilaterais (Membros Sup., Membros Inf., Mãos e Pés)
+  // --------------------------------------------------------------------------
+  describe('Subdivisões Anatômicas Bilaterais (Membros Sup., Membros Inf., Mãos e Pés)', () => {
+    describe('Membros Superiores: Cíngulo, Úmero, Rádio e Ulna', () => {
+      it('subdivide cada lado em 4 grupos na ordem exata solicitada', () => {
+        const subEsq = getBilateralSubgroups('membros_superiores', 'esquerdo');
+        const subDir = getBilateralSubgroups('membros_superiores', 'direito');
+
+        expect(subEsq).toHaveLength(4);
+        expect(subDir).toHaveLength(4);
+
+        expect(subEsq.map(s => s.label)).toEqual([
+          'Cíngulo do membro superior',
+          'Úmero',
+          'Rádio',
+          'Ulna'
+        ]);
+        expect(subDir.map(s => s.label)).toEqual([
+          'Cíngulo do membro superior',
+          'Úmero',
+          'Rádio',
+          'Ulna'
+        ]);
+      });
+
+      it('posiciona Rádio antes de Ulna e separa epífise proximal, diáfise e epífise distal', () => {
+        const subDir = getBilateralSubgroups('membros_superiores', 'direito');
+        const umero = subDir.find(s => s.label === 'Úmero')!;
+        const radio = subDir.find(s => s.label === 'Rádio')!;
+        const ulna = subDir.find(s => s.label === 'Ulna')!;
+
+        expect(umero.bones).toEqual([
+          'Úmero Direito - Epífise Proximal',
+          'Úmero Direito - Diáfise',
+          'Úmero Direito - Epífise Distal'
+        ]);
+        expect(radio.bones).toEqual([
+          'Rádio Direito - Epífise Proximal',
+          'Rádio Direito - Diáfise',
+          'Rádio Direito - Epífise Distal'
+        ]);
+        expect(ulna.bones).toEqual([
+          'Ulna Direita - Epífise Proximal',
+          'Ulna Direita - Diáfise',
+          'Ulna Direita - Epífise Distal'
+        ]);
+      });
+
+      it('formata os rótulos internos com nomes limpos sem redundância lateral', () => {
+        expect(formatSubgroupBoneLabel('Clavícula Direita')).toBe('Clavícula');
+        expect(formatSubgroupBoneLabel('Escápula Esquerda')).toBe('Escápula');
+        expect(formatSubgroupBoneLabel('Úmero Direito - Epífise Proximal')).toBe('Epífise proximal');
+        expect(formatSubgroupBoneLabel('Úmero Direito - Diáfise')).toBe('Diáfise');
+        expect(formatSubgroupBoneLabel('Úmero Direito - Epífise Distal')).toBe('Epífise distal');
+      });
+    });
+
+    describe('Membros Inferiores: Cíngulo, Fêmur, Tíbia, Fíbula e Patela', () => {
+      it('subdivide cada lado em 5 grupos na ordem exata com Patela após a fíbula', () => {
+        const subDir = getBilateralSubgroups('pelve_mi', 'direito');
+        expect(subDir).toHaveLength(5);
+        expect(subDir.map(s => s.label)).toEqual([
+          'Cíngulo do membro inferior',
+          'Fêmur',
+          'Tíbia',
+          'Fíbula',
+          'Patela'
+        ]);
+
+        const patela = subDir.find(s => s.label === 'Patela')!;
+        expect(patela.bones).toEqual(['Patela Direita']);
+      });
+
+      it('organiza Fêmur, Tíbia e Fíbula com epífise proximal, diáfise e epífise distal', () => {
+        const subEsq = getBilateralSubgroups('pelve_mi', 'esquerdo');
+        const femur = subEsq.find(s => s.label === 'Fêmur')!;
+        const tibia = subEsq.find(s => s.label === 'Tíbia')!;
+        const fibula = subEsq.find(s => s.label === 'Fíbula')!;
+
+        expect(femur.bones).toHaveLength(3);
+        expect(tibia.bones).toHaveLength(3);
+        expect(fibula.bones).toHaveLength(3);
+
+        expect(femur.bones.map(formatSubgroupBoneLabel)).toEqual([
+          'Epífise proximal',
+          'Diáfise',
+          'Epífise distal'
+        ]);
+      });
+    });
+
+    describe('Ossos das Mãos: Carpo e Metacarpo', () => {
+      it('divide cada lado em 2 grupos: Carpo (8 ossos) e Metacarpo (5 ossos)', () => {
+        const subDir = getBilateralSubgroups('ossos_mao', 'direito');
+        expect(subDir).toHaveLength(2);
+        expect(subDir[0].label).toBe('Carpo');
+        expect(subDir[1].label).toBe('Metacarpo');
+
+        expect(subDir[0].bones).toHaveLength(8);
+        expect(subDir[1].bones).toHaveLength(5);
+
+        expect(subDir[0].bones.map(formatSubgroupBoneLabel)).toEqual([
+          'Escafóide',
+          'Semilunar',
+          'Piramidal',
+          'Pisiforme',
+          'Trapézio',
+          'Trapezóide',
+          'Capitato',
+          'Hamato'
+        ]);
+        expect(subDir[1].bones.map(formatSubgroupBoneLabel)).toEqual([
+          '1º Metacarpal',
+          '2º Metacarpal',
+          '3º Metacarpal',
+          '4º Metacarpal',
+          '5º Metacarpal'
+        ]);
+      });
+    });
+
+    describe('Ossos dos Pés: Tarso e Metatarso', () => {
+      it('divide cada lado em 2 grupos: Tarso (7 ossos) e Metatarso (5 ossos)', () => {
+        const subEsq = getBilateralSubgroups('ossos_pe', 'esquerdo');
+        expect(subEsq).toHaveLength(2);
+        expect(subEsq[0].label).toBe('Tarso');
+        expect(subEsq[1].label).toBe('Metatarso');
+
+        expect(subEsq[0].bones).toHaveLength(7);
+        expect(subEsq[1].bones).toHaveLength(5);
+
+        expect(subEsq[0].bones.map(formatSubgroupBoneLabel)).toEqual([
+          'Calcâneo',
+          'Tálus',
+          'Navicular',
+          'Cuboide',
+          'Cuneiforme Medial',
+          'Cuneiforme Intermédio',
+          'Cuneiforme Lateral'
+        ]);
+        expect(subEsq[1].bones.map(formatSubgroupBoneLabel)).toEqual([
+          '1º Metatarsal',
+          '2º Metatarsal',
+          '3º Metatarsal',
+          '4º Metatarsal',
+          '5º Metatarsal'
+        ]);
+      });
+    });
+
+    describe('Integridade da Contagem Total de Ossos por Seção', () => {
+      it('garante que a união dos subgrupos preserva a contagem de ossos e compatibilidade retroativa', () => {
+        // Membros Superiores: 11 direito + 11 esquerdo = 22
+        const msDir = getBilateralSubgroups('membros_superiores', 'direito').flatMap(g => g.bones);
+        const msEsq = getBilateralSubgroups('membros_superiores', 'esquerdo').flatMap(g => g.bones);
+        expect(msDir.length).toBe(11);
+        expect(msEsq.length).toBe(11);
+        expect(msDir.length + msEsq.length).toBe(MEMBROS_SUPERIORES_OSSOS.length);
+
+        // Membros Inferiores: 13 direito + 13 esquerdo = 26
+        const miDir = getBilateralSubgroups('pelve_mi', 'direito').flatMap(g => g.bones);
+        const miEsq = getBilateralSubgroups('pelve_mi', 'esquerdo').flatMap(g => g.bones);
+        expect(miDir.length).toBe(13);
+        expect(miEsq.length).toBe(13);
+        expect(miDir.length + miEsq.length).toBe(PELVE_MEMBRO_INFERIOR_OSSOS.length);
+
+        // Mãos: 13 direito + 13 esquerdo = 26
+        const maoDir = getBilateralSubgroups('ossos_mao', 'direito').flatMap(g => g.bones);
+        const maoEsq = getBilateralSubgroups('ossos_mao', 'esquerdo').flatMap(g => g.bones);
+        expect(maoDir.length).toBe(13);
+        expect(maoEsq.length).toBe(13);
+        expect(maoDir.length + maoEsq.length).toBe(OSSOS_MAO.length);
+
+        // Pés: 12 direito + 12 esquerdo = 24
+        const peDir = getBilateralSubgroups('ossos_pe', 'direito').flatMap(g => g.bones);
+        const peEsq = getBilateralSubgroups('ossos_pe', 'esquerdo').flatMap(g => g.bones);
+        expect(peDir.length).toBe(12);
+        expect(peEsq.length).toBe(12);
+        expect(peDir.length + peEsq.length).toBe(OSSOS_PE.length);
+      });
     });
   });
 });
