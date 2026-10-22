@@ -21,7 +21,7 @@ genérico com ação em lote ou estado compartilhado entre abas exige
 teste dessas duas categorias — tsc --noEmit roda de novo após a última
 edição de teste, sempre, antes do merge.
 
-### ADRs — Architectural Decisions (26 documentos)
+### ADRs — Architectural Decisions (27 documentos)
 
 Histórico protegido de conjuntos: servidor como fonte de verdade,
 assinaturas travadas, registro de alterações encadeado por hash.
@@ -74,8 +74,11 @@ das equipes multidisciplinares com navegação contextual de retorno.
 Grafo de Conhecimento, modo Global: selecionar um nó reorganiza o resto do
 universo visível por grau de separação (BFS) — perto quem está a 1-2 graus,
 na borda quem não tem caminho até lá; hubs ontológicos e o próprio nó
-selecionado nunca se movem (algoritmo pronto; ligação no componente,
-animação e proteção de posições manuais ficam pras próximas PRs).
+selecionado nunca se movem. Algoritmo e ligação no componente (com esmaecimento
+por opacidade) prontos; animação de posição e proteção de posições manuais
+ficam pras próximas PRs. Botão de tela cheia no Grafo de Conhecimento:
+Fullscreen API nativa quando disponível, mais um overlay CSS que garante a
+mesma experiência onde a API é recusada ou ausente.
 
 ### BDRs — Business Decisions (1 documento)
 

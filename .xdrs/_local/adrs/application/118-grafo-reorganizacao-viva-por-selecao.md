@@ -1,7 +1,7 @@
 ---
 name: _local-adr-policy-118-grafo-reorganizacao-viva-por-selecao
 description: 'No Grafo de Conhecimento (modo Global/cross-COI), selecionar um nó reorganiza o resto do universo visível ao redor dele por grau de separação (BFS) — vizinho direto fica perto, 2 graus numa faixa intermediária, quem não tem caminho nenhum até lá vai pra borda. Hubs ontológicos e o próprio nó selecionado nunca se movem. Use antes de alterar computeGraphLayout, a seleção de nó ou a simulação de forças do grafo.'
-apply-to: src/utils/graphLayout.ts, src/utils/__tests__/graphLayout.test.ts, src/components/KnowledgeGraphViewer.tsx
+apply-to: src/utils/graphLayout.ts, src/utils/__tests__/graphLayout.test.ts, src/components/KnowledgeGraphViewer.tsx, src/components/__tests__/KnowledgeGraphViewer.test.tsx
 valid-from: 2026-10-22
 ---
 
@@ -46,20 +46,27 @@ canvas.
 - Só afeta o modo `'global'` — o modo `'focus'` (1 COI, radial) não tem a
   pergunta "o que se conecta a isto" que justifica reorganizar (Empiricus:
   reorganizar sem esse ganho é custo cognitivo sem contrapartida).
-- Esta policy cobre só o algoritmo (`graphLayout.ts`) — `KnowledgeGraphViewer.tsx`
-  ainda não liga `selectedNodeId` nem `previousPositions` no `useMemo` do
-  layout, não anima a transição com `motion`, e não tem o botão "Voltar ao
-  layout automático" nem a proteção do `manualPositions` contra a
-  reorganização descartar um arranjo manual sem aviso. Essas 3 etapas
-  seguintes (ligar no componente, animar, proteger o manual) ficam para
-  as próximas PRs da mesma sequência, pedida pequena de propósito.
+- **Etapa 2 (feita)**: `KnowledgeGraphViewer.tsx` liga `selectedNodeId` (só
+  no modo `'global'`) e `previousPositions` (via um ref que guarda a última
+  posição calculada de cada nó, atualizado a cada `useMemo` de layout) no
+  `computeGraphLayout`. Opacidade por grau de separação implementada —
+  `getSelectionOpacity`: âncora selecionada e hubs sempre 1, vizinho direto
+  1, 2 graus 0.65, resto (incl. sem caminho até a seleção) 0.4/0.3. Aplicada
+  ao `<g>` de cada nó e, como o mínimo das duas pontas, a cada aresta —
+  esmaece, nunca esconde. Transição de opacidade via `transition-opacity`
+  (CSS puro; a transição de posição com `motion` continua pendente).
+- **Ainda pendente**: animar a transição de posição com `motion` (etapa 3)
+  e o botão "Voltar ao layout automático" + proteção do `manualPositions`
+  contra a reorganização descartar um arranjo manual sem aviso (etapa 4).
 
 ## References
 
 - Arquivos: `src/utils/graphLayout.ts`
 - Testes: `src/utils/__tests__/graphLayout.test.ts` (grau de separação,
   distância crescente por grau, nó selecionado fixo, hub nunca se move,
-  `selectedNodeId` inexistente não quebra o layout padrão)
+  `selectedNodeId` inexistente não quebra o layout padrão);
+  `src/components/__tests__/KnowledgeGraphViewer.test.tsx` (selecionar um
+  nó esmaece quem está a 2+ graus, mantém vizinho direto e hub no claro)
 - Policies relacionadas: `_local-adr-policy-116` (grafo cross-COI e seus
   hubs, a base sobre a qual esta policy se apoia)
 - Mesa: Compass (affordance — o nó clicado nunca teleporta), Empiricus
