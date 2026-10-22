@@ -34,6 +34,7 @@ Decisões de arquitetura e técnicas deste projeto, criadas por deliberação AR
 - [_local-adr-policy-118](application/118-grafo-reorganizacao-viva-por-selecao.md) - Grafo de Conhecimento (modo Global): selecionar um nó reorganiza o resto por grau de separação (BFS) — perto quem está a 1-2 graus, na borda quem não tem caminho até lá; hubs e o próprio nó selecionado nunca se movem. Etapas 1-2 feitas (algoritmo + wiring/opacidade no componente); animação de posição e proteção de manualPositions ficam pras próximas PRs
 - [_local-adr-policy-119](application/119-grafo-tela-cheia.md) - Botão de tela cheia no Grafo de Conhecimento: Fullscreen API nativa + overlay CSS como garantia independente de suporte do navegador; painel lateral vira gaveta recolhida por padrão (abre sozinha ao selecionar um nó) que encolhe o grafo ao abrir, nunca cobre por cima — nenhum nó fica escondido atrás da UI
 - [_local-adr-policy-120](application/120-grafo-navegacao-pan-e-camera.md) - Navegação no Grafo grande (Rede Interconectada, milhares de nós): arrastar o fundo (não um nó) pan-eia rolando o contêiner; selecionar um nó centraliza a câmera nele sozinho (scrollTo suave), sem depender só da barra de rolagem nativa
+- [_local-adr-policy-121](application/121-grafo-zoom-pinca-e-botoes.md) - Zoom do Grafo: pinça do trackpad (wheel+ctrlKey, preventDefault pra não aplicar zoom na página inteira) e botões +/−/100% equivalentes; listener de wheel anexado por callback ref (não useEffect vazio) porque o canvas some e volta durante carregamento/"Atualizar"
 
 ## Integration
 

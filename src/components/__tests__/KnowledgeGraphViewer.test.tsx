@@ -211,4 +211,53 @@ describe('KnowledgeGraphViewer', () => {
       });
     });
   });
+
+  describe('zoom do grafo (pinça do trackpad e botões)', () => {
+    it('ctrl+wheel (pinça no Mac) muda o zoom e bloqueia o zoom nativo da página', async () => {
+      stubFetch();
+      render(<KnowledgeGraphViewer />);
+      await waitFor(() => expect(screen.queryByText(/Consultando/i)).not.toBeInTheDocument());
+
+      const graphCanvas = screen.getByTestId('graph-canvas');
+      expect(screen.getByTitle('Voltar o zoom a 100%')).toHaveTextContent('100%');
+
+      // fireEvent devolve false quando o evento foi cancelado (preventDefault) —
+      // é assim que garantimos que o navegador não vai zoom a página inteira.
+      const notCanceled = fireEvent.wheel(graphCanvas, { deltaY: -100, ctrlKey: true, cancelable: true });
+      expect(notCanceled).toBe(false);
+
+      await waitFor(() => {
+        const label = screen.getByTitle('Voltar o zoom a 100%').textContent ?? '';
+        expect(Number(label.replace('%', ''))).toBeGreaterThan(100);
+      });
+    });
+
+    it('wheel sem ctrlKey (scroll normal) não mexe no zoom', async () => {
+      stubFetch();
+      render(<KnowledgeGraphViewer />);
+      await waitFor(() => expect(screen.queryByText(/Consultando/i)).not.toBeInTheDocument());
+
+      const graphCanvas = screen.getByTestId('graph-canvas');
+      fireEvent.wheel(graphCanvas, { deltaY: -100, ctrlKey: false });
+
+      expect(screen.getByTitle('Voltar o zoom a 100%')).toHaveTextContent('100%');
+    });
+
+    it('os botões de +/- zoom e o de voltar a 100% funcionam', async () => {
+      stubFetch();
+      render(<KnowledgeGraphViewer />);
+      await waitFor(() => expect(screen.queryByText(/Consultando/i)).not.toBeInTheDocument());
+
+      fireEvent.click(screen.getByTitle('Aumentar zoom'));
+      const afterZoomIn = Number(screen.getByTitle('Voltar o zoom a 100%').textContent?.replace('%', ''));
+      expect(afterZoomIn).toBeGreaterThan(100);
+
+      fireEvent.click(screen.getByTitle('Voltar o zoom a 100%'));
+      expect(screen.getByTitle('Voltar o zoom a 100%')).toHaveTextContent('100%');
+
+      fireEvent.click(screen.getByTitle('Diminuir zoom'));
+      const afterZoomOut = Number(screen.getByTitle('Voltar o zoom a 100%').textContent?.replace('%', ''));
+      expect(afterZoomOut).toBeLessThan(100);
+    });
+  });
 });

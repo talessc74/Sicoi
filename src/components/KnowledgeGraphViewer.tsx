@@ -14,7 +14,9 @@ import {
   Maximize2,
   Minimize2,
   PanelRightOpen,
-  PanelRightClose
+  PanelRightClose,
+  ZoomIn,
+  ZoomOut
 } from 'lucide-react';
 import { searchSimilarBones, BoneSimilaritySearchResult } from '../services/geminiService';
 import { ErrorNotice } from './ErrorNotice';
@@ -68,6 +70,10 @@ const BASE_GRAPH_BOUNDS = { minX: 0, minY: 0, maxX: 840, maxY: 600 };
 // Maior raio desenhado (nó "nic"/"osso_consultado", r=26) + folga pro rótulo de
 // texto abaixo do nó não ficar cortado bem na borda do quadro.
 const NODE_EDGE_MARGIN = 40;
+
+const MIN_ZOOM = 0.3;
+const MAX_ZOOM = 3;
+const clampZoom = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
@@ -124,6 +130,14 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
   const graphScrollRef = useRef<HTMLDivElement>(null);
   const panStateRef = useRef<{ startX: number; startY: number; scrollLeft: number; scrollTop: number } | null>(null);
   const [isPanning, setIsPanning] = useState(false);
+
+  // Zoom do grafo — 1 = tamanho normal. Pinça no trackpad (Mac) chega como
+  // evento wheel com ctrlKey=true; o navegador trataria isso como zoom da
+  // PÁGINA INTEIRA se a gente não interceptasse com preventDefault (por isso
+  // o listener é registrado "na unha" com addEventListener e passive:false,
+  // não via onWheel do JSX, que o React mantém passivo). Zoom sempre volta a
+  // 1 ao trocar de modo (Foco/Global), que é basicamente trocar de cena.
+  const [zoom, setZoom] = useState(1);
 
   // Tela cheia do grafo — tenta a Fullscreen API nativa (esconde até a barra
   // do navegador) quando disponível, mas nunca depende só dela: o overlay CSS
@@ -305,6 +319,42 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
       window.removeEventListener('mouseup', handleUp);
     };
   }, []);
+
+  // Pinça do trackpad (Mac/Windows precision touchpad) chega como wheel com
+  // ctrlKey=true — interceptamos só esse caso (ctrlKey) e damos preventDefault,
+  // senão o navegador aplicaria zoom na página inteira em vez de só no grafo.
+  // Scroll normal (sem ctrlKey, incl. o gesto de dois dedos) nunca é tocado
+  // aqui — continua rolando o contêiner normalmente, como antes.
+  const handleWheel = useCallback((e: WheelEvent) => {
+    if (!e.ctrlKey) return;
+    e.preventDefault();
+    const factor = Math.exp(-e.deltaY * 0.01);
+    setZoom((z) => clampZoom(z * factor));
+  }, []);
+
+  // Callback ref, não useEffect com deps [] — este div some e volta (estado
+  // de carregamento, "Atualizar"), e um useEffect de montagem só dispara na
+  // primeira vez que o COMPONENTE aparece, não toda vez que ESTE div
+  // específico (re)monta; sem isto, a pinça parava de funcionar depois do
+  // primeiro carregamento.
+  const attachGraphScrollNode = useCallback(
+    (node: HTMLDivElement | null) => {
+      graphScrollRef.current?.removeEventListener('wheel', handleWheel);
+      graphScrollRef.current = node;
+      node?.addEventListener('wheel', handleWheel, { passive: false });
+    },
+    [handleWheel]
+  );
+
+  // Trocar de modo (Foco ↔ Global) é essencialmente trocar de cena — um zoom
+  // deixado de uma visualização anterior não faz sentido carregado pra outra.
+  useEffect(() => {
+    setZoom(1);
+  }, [viewMode]);
+
+  const zoomIn = useCallback(() => setZoom((z) => clampZoom(z * 1.25)), []);
+  const zoomOut = useCallback(() => setZoom((z) => clampZoom(z / 1.25)), []);
+  const resetZoom = useCallback(() => setZoom(1), []);
 
   const runPathFinder = useCallback(async () => {
     if (!pathFrom.trim() || !pathTo.trim()) return;
@@ -546,6 +596,11 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
   const graphWidth = graphBounds.maxX - graphBounds.minX;
   const graphHeight = graphBounds.maxY - graphBounds.minY;
 
+  // Zoom força o mesmo modo "tamanho real + contêiner rolável" que
+  // graphExceedsFrame já usa pro grafo maior que o quadro — faz sentido: dar
+  // zoom também é fazer o conteúdo não caber mais inteiro na área visível.
+  const useScrollableCanvas = graphExceedsFrame || zoom !== 1;
+
   const getNodeCoords = (id: string) => {
     const n = displayNodes.find((item) => item.id === id);
     return n ? { x: n.x, y: n.y } : null;
@@ -557,16 +612,17 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
   // achá-lo de novo. Depende só de selectedNodeId de propósito — a posição já
   // está resolvida no momento do clique (o layout por grau de interesse da
   // _local-adr-policy-118 roda de uma vez só, não anima quadro a quadro) — e
-  // nunca de displayNodes/graphBounds, o que faria a câmera pular sozinha
-  // toda vez que o layout mudar por outro motivo (filtro, busca), sem a
-  // pessoa ter clicado em nada.
+  // nunca de displayNodes/graphBounds/zoom, o que faria a câmera pular
+  // sozinha toda vez que o layout ou o zoom mudar por outro motivo (filtro,
+  // busca, pinça), sem a pessoa ter clicado em nenhum nó. O zoom do momento
+  // do clique entra na conta (1 unidade de viewBox = `zoom` px renderizados).
   useEffect(() => {
     if (!selectedNodeId) return;
     const container = graphScrollRef.current;
     const coords = getNodeCoords(selectedNodeId);
     if (!container || !coords) return;
-    const targetLeft = coords.x - graphBounds.minX - container.clientWidth / 2;
-    const targetTop = coords.y - graphBounds.minY - container.clientHeight / 2;
+    const targetLeft = (coords.x - graphBounds.minX) * zoom - container.clientWidth / 2;
+    const targetTop = (coords.y - graphBounds.minY) * zoom - container.clientHeight / 2;
     container.scrollTo({ left: targetLeft, top: targetTop, behavior: 'smooth' });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedNodeId]);
@@ -782,16 +838,18 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
               viewBox fixo e escala pra caber no espaço que sobra (preserveAspectRatio
               padrão "meet"), então o nó selecionado — e todo o resto — permanece
               visível e recentralizado, nunca escondido atrás da gaveta.
-              Quando o grafo é maior que o quadro (graphExceedsFrame), este mesmo
-              contêiner vira a área rolável — arrastar o fundo (não um nó) pan-eia
-              rolando ele (handleBackgroundMouseDown), e selecionar um nó centraliza
-              a câmera nele sozinho (ver o useEffect de selectedNodeId acima). */}
+              Quando o grafo é maior que o quadro OU tem zoom aplicado
+              (useScrollableCanvas), este mesmo contêiner vira a área rolável —
+              arrastar o fundo (não um nó) pan-eia rolando ele
+              (handleBackgroundMouseDown), pinça/ctrl+scroll dá zoom (ver o
+              useEffect de wheel acima), e selecionar um nó centraliza a câmera
+              nele sozinho (ver o useEffect de selectedNodeId acima). */}
           <div
-            ref={graphScrollRef}
+            ref={attachGraphScrollNode}
             data-testid="graph-canvas"
             onMouseDown={handleBackgroundMouseDown}
             className={`${isFullscreen ? 'flex-1 min-w-0 h-full' : 'lg:col-span-3'} bg-slate-950 relative p-2 ${
-              graphExceedsFrame
+              useScrollableCanvas
                 ? `overflow-auto ${isFullscreen ? 'h-full' : 'max-h-[520px]'} ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`
                 : `overflow-hidden flex items-center justify-center ${isFullscreen ? 'h-full' : ''}`
             }`}
@@ -809,11 +867,37 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
                 Nó movido pra fora do quadro original — use a barra de rolagem para alcançá-lo.
               </div>
             )}
+            <div className="absolute bottom-2 left-3 z-10 flex items-center gap-1 bg-black/60 backdrop-blur-xs px-1.5 py-1 rounded-lg border border-slate-800">
+              <button
+                type="button"
+                onClick={zoomOut}
+                title="Diminuir zoom"
+                className="p-1 rounded text-slate-300 hover:bg-slate-700"
+              >
+                <ZoomOut className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={resetZoom}
+                title="Voltar o zoom a 100%"
+                className="px-1.5 text-[10px] font-mono text-slate-300 hover:text-white"
+              >
+                {Math.round(zoom * 100)}%
+              </button>
+              <button
+                type="button"
+                onClick={zoomIn}
+                title="Aumentar zoom"
+                className="p-1 rounded text-slate-300 hover:bg-slate-700"
+              >
+                <ZoomIn className="w-3.5 h-3.5" />
+              </button>
+            </div>
 
             <svg
               ref={svgRef}
-              width={graphExceedsFrame ? graphWidth : '100%'}
-              height={graphExceedsFrame ? graphHeight : isFullscreen ? '100%' : 520}
+              width={useScrollableCanvas ? graphWidth * zoom : '100%'}
+              height={useScrollableCanvas ? graphHeight * zoom : isFullscreen ? '100%' : 520}
               viewBox={`${graphBounds.minX} ${graphBounds.minY} ${graphWidth} ${graphHeight}`}
               className="select-none"
             >
