@@ -1,6 +1,6 @@
 ---
 name: _local-adr-policy-119-grafo-tela-cheia
-description: 'O Grafo de Conhecimento tem um botão de tela cheia (Maximize2/Minimize2 no cabeçalho) que cobre a viewport inteira — tenta a Fullscreen API nativa do navegador quando disponível, mas nunca depende só dela: um overlay CSS (fixed inset-0) garante a mesma experiência mesmo onde a API é recusada ou não existe. Em tela cheia, o grafo é o protagonista: o painel lateral (Explicar/Caminho/Busca) vira uma gaveta sobreposta (PanelRightOpen/Close), recolhida por padrão, não mais uma coluna fixa dividindo a largura. Use antes de alterar o layout do cabeçalho do grafo ou a estrutura de altura/largura do SVG/painel lateral.'
+description: 'O Grafo de Conhecimento tem um botão de tela cheia (Maximize2/Minimize2 no cabeçalho) que cobre a viewport inteira — tenta a Fullscreen API nativa do navegador quando disponível, mas nunca depende só dela: um overlay CSS (fixed inset-0) garante a mesma experiência mesmo onde a API é recusada ou não existe. Em tela cheia, o grafo é o protagonista: o painel lateral (Explicar/Caminho/Busca) vira uma gaveta (PanelRightOpen/Close) recolhida por padrão que ENCOLHE o grafo ao abrir (flex-1 + w-0/w-[24rem]) em vez de cobri-lo por cima — nenhum nó pode ficar escondido atrás da UI. Use antes de alterar o layout do cabeçalho do grafo ou a estrutura flex/largura do SVG/painel lateral.'
 apply-to: src/components/KnowledgeGraphViewer.tsx, src/components/__tests__/KnowledgeGraphViewer.test.tsx
 valid-from: 2026-10-22
 ---
@@ -49,7 +49,11 @@ nasceu de um caso parecido, embora de outra causa).
   que não comunica qual ação o clique vai fazer (Compass: todo estado
   precisa de um signifier correspondente).
 
-## Correção: o painel lateral virou gaveta sobreposta (mesmo dia)
+## Correção 1: o painel lateral virou gaveta sobreposta (mesmo dia)
+
+> **[SUPERADA pela Correção 2, mesmo dia]** — o modelo "gaveta sobreposta"
+> abaixo escondia o nó selecionado atrás do painel sempre que ele caía na
+> área que a gaveta cobre. Ver Correção 2.
 
 A primeira versão desta policy entrou em `main` mantendo a grade de
 4 colunas também em tela cheia (SVG em 3, painel em 1) — o Tales
@@ -93,18 +97,68 @@ porque ali o painel nunca foi o problema.
   (`h-full overflow-auto`) em vez do teto fixo de 520px que só fazia
   sentido fora dela.
 
+## Correção 2: a gaveta encolhe o grafo, nunca cobre por cima (mesmo dia)
+
+O Tales testou a Correção 1 e achou o problema de fundo: ao clicar num
+nó (COI-032/IND-01), a gaveta abriu sozinha (como previsto) — mas o nó
+selecionado ficou "por trás do menu lateral que apareceu", porque o
+grafo continuava desenhado com a largura inteira da tela e a gaveta só
+sobrepunha visualmente por cima dele. Qualquer nó que caísse na faixa
+direita coberta pela gaveta ficava invisível. Pedido do Tales: "ele
+deveria se movimentar para o meio para continuar visível... UX e
+código precisam conversar para fechar isso com inteligência,
+tecnologia e UX em foco".
+
+### Decisão (mesa: Compass · Empiricus · PolarBear · Few + Scout/Flux do lado de código)
+
+**A gaveta deixa de sobrepor o grafo e passa a dividir o espaço com
+ele de verdade** — o contêiner do grafo e o da gaveta viram irmãos
+`flex` (`flex flex-1 min-h-0` no pai), o grafo é `flex-1 min-w-0`
+(ocupa o que sobra) e a gaveta tem largura própria que anima entre
+`w-0` (fechada) e `w-[24rem]` (aberta, 384px) — nunca mais `absolute`
+nem `translate-x`, e o *scrim* de "clicar fora fecha" foi removido
+(deixou de fazer sentido: não há mais nada "atrás" da gaveta pra
+clicar através).
+
+O ponto técnico central, e o motivo de não precisar de nenhuma lógica
+nova de câmera/pan: o `<svg>` do grafo usa `width="100%"` com um
+`viewBox` fixo e o `preserveAspectRatio` padrão do próprio SVG
+(`xMidYMid meet`) — quando o contêiner encolhe (porque a gaveta abriu
+e tomou os 24rem), o navegador **reescala e recentraliza o desenho
+inteiro automaticamente** pra caber no espaço que sobrou. Nenhum nó
+precisa ser reposicionado nas coordenadas internas do layout
+(`computeGraphLayout` continua intocado, a âncora da seleção da
+`_local-adr-policy-118` continua exatamente onde estava) — é a
+*renderização* que se ajusta, não os dados. Resultado: o grafo todo
+fica um pouco menor quando a gaveta abre, mas **nenhum nó, nunca,
+fica escondido atrás de nada** — exatamente o "se movimentar para
+continuar visível" que foi pedido, só que é o quadro inteiro que se
+reorganiza visualmente, não um cálculo manual de pan por nó (Scout:
+reaproveitar o comportamento nativo do SVG em vez de reinventar
+matemática de câmera que já existe de graça).
+
+- Fechar continua com duas formas óbvias (PolarBear): o botão do
+  cabeçalho e o `X` no canto da própria gaveta.
+- `overflow-x-hidden` na gaveta evita qualquer vazamento horizontal
+  durante a animação de largura; `overflow-y-auto` mantém a rolagem
+  vertical do conteúdo normalmente.
+
 ## References
 
 - Arquivos: `src/components/KnowledgeGraphViewer.tsx`
 - Testes: `src/components/__tests__/KnowledgeGraphViewer.test.tsx`
   (alterna tela cheia e volta trocando ícone/título; a gaveta começa
-  recolhida e alterna pelo botão do cabeçalho; selecionar um nó em
-  tela cheia abre a gaveta sozinha; clicar fora dela — no scrim — fecha)
+  recolhida — `w-0` — e alterna pelo botão do cabeçalho; selecionar um
+  nó em tela cheia abre a gaveta sozinha e o contêiner do grafo
+  continua presente e `flex-1`; fechar pelo X do próprio painel recolhe)
 - Policy relacionada: `_local-adr-policy-118` (pedido no mesmo fluxo de
   trabalho, mesma tela, concern independente — algoritmo de layout vs.
   modo de exibição)
-- Mesa (correção): Compass (signifier + saída óbvia pra toda gaveta),
+- Mesa (Correção 1): Compass (signifier + saída óbvia pra toda gaveta),
   Empiricus (recolhida por padrão; abre no momento certo, não antes),
   PolarBear (nunca travar sem saída visível), Few (o grafo é o dado
   principal da tela — o painel é apoio, não deve competir por espaço
   com ele)
+- Mesa (Correção 2): os mesmos quatro + Scout (reaproveitar o
+  comportamento nativo do SVG em vez de matemática de câmera manual) —
+  nenhum nó pode ficar escondido atrás de UI, sob nenhuma circunstância
