@@ -1,6 +1,21 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { GraphNode, GraphNodeType, GraphEdge } from '../types/sgccco';
-import { Network, Search, Info, Route, Loader2, RefreshCw, Bone, X, Move, Layers, Maximize2, Minimize2 } from 'lucide-react';
+import {
+  Network,
+  Search,
+  Info,
+  Route,
+  Loader2,
+  RefreshCw,
+  Bone,
+  X,
+  Move,
+  Layers,
+  Maximize2,
+  Minimize2,
+  PanelRightOpen,
+  PanelRightClose
+} from 'lucide-react';
 import { searchSimilarBones, BoneSimilaritySearchResult } from '../services/geminiService';
 import { ErrorNotice } from './ErrorNotice';
 import { toAppError, AppError } from '../utils/errorMessages';
@@ -108,6 +123,12 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
   const [isFullscreen, setIsFullscreen] = useState(false);
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
 
+  // Em tela cheia o grafo é o protagonista — o painel lateral (Explicar/Caminho/
+  // Busca) vira uma gaveta sobreposta, recolhida por padrão, em vez de dividir a
+  // largura da tela com o canvas o tempo todo. Fora da tela cheia este estado não
+  // é consultado em lugar nenhum: o painel continua sempre visível, como sempre foi.
+  const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
+
   useEffect(() => {
     const handleFullscreenChange = () => {
       if (!document.fullscreenElement) setIsFullscreen(false);
@@ -121,6 +142,7 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
       const next = !prev;
       if (next) {
         fullscreenContainerRef.current?.requestFullscreen?.().catch(() => {});
+        setIsSidePanelOpen(false);
       } else if (document.fullscreenElement) {
         document.exitFullscreen().catch(() => {});
       }
@@ -175,11 +197,14 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
     setSelectedNodeId(nodeId);
     setIsExplaining(true);
     setExplainResult(null);
+    // Em tela cheia, selecionar um nó é o próprio motivo de abrir a gaveta —
+    // é a resposta à pergunta que a pessoa acabou de fazer clicando nele.
+    setIsSidePanelOpen((prevOpen) => (isFullscreen ? true : prevOpen));
     fetchJson<ExplainResult>(`/api/graph/node/${encodeURIComponent(nodeId)}`)
       .then(setExplainResult)
       .catch(() => setExplainResult(null))
       .finally(() => setIsExplaining(false));
-  }, []);
+  }, [isFullscreen]);
 
   // Começa o arraste de um nó — guarda o deslocamento entre o ponto clicado e o
   // centro do nó, pra ele não "pular" pro cursor no primeiro movimento.
@@ -571,6 +596,19 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
           >
             {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
           </button>
+          {isFullscreen && (
+            <button
+              onClick={() => setIsSidePanelOpen((prev) => !prev)}
+              title={isSidePanelOpen ? 'Fechar o painel e expandir o grafo' : 'Abrir o painel (explicar nó, caminho, busca)'}
+              className={`p-1.5 rounded-lg border text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 ${
+                isSidePanelOpen
+                  ? 'border-sky-400 dark:border-sky-700 bg-sky-50 dark:bg-sky-950/40'
+                  : 'border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800'
+              }`}
+            >
+              {isSidePanelOpen ? <PanelRightClose className="w-3.5 h-3.5" /> : <PanelRightOpen className="w-3.5 h-3.5" />}
+            </button>
+          )}
           <div className="relative">
             <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
             <input
@@ -667,12 +705,20 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
       )}
 
       {!isLoadingGraph && !loadError && (
-        <div className={`grid grid-cols-1 lg:grid-cols-4 ${isFullscreen ? 'flex-1 min-h-0' : 'min-h-[520px]'}`}>
-          {/* SVG Graph Viewport */}
+        <div
+          className={
+            isFullscreen
+              ? 'relative flex-1 min-h-0'
+              : 'grid grid-cols-1 lg:grid-cols-4 min-h-[520px]'
+          }
+        >
+          {/* SVG Graph Viewport — em tela cheia ocupa o espaço inteiro; o painel
+              lateral vira uma gaveta sobreposta (abaixo), não mais uma coluna
+              que divide a largura com o grafo o tempo todo. */}
           <div
-            className={`lg:col-span-3 bg-slate-950 relative p-2 ${
+            className={`${isFullscreen ? 'absolute inset-0' : 'lg:col-span-3'} bg-slate-950 relative p-2 ${
               graphExceedsFrame
-                ? 'max-h-[520px] overflow-auto'
+                ? `overflow-auto ${isFullscreen ? 'h-full' : 'max-h-[520px]'}`
                 : `overflow-hidden flex items-center justify-center ${isFullscreen ? 'h-full' : ''}`
             }`}
           >
@@ -843,12 +889,42 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
             </svg>
           </div>
 
-          {/* Painel lateral: Explicar / Caminho / Busca global */}
+          {/* Em tela cheia com a gaveta aberta, clicar fora dela (no próprio
+              grafo) fecha — dispensa procurar o botão de novo pra voltar ao
+              grafo cheio. */}
+          {isFullscreen && isSidePanelOpen && (
+            <div
+              data-testid="graph-panel-scrim"
+              className="absolute inset-0 z-10 bg-black/20"
+              onClick={() => setIsSidePanelOpen(false)}
+              aria-hidden="true"
+            />
+          )}
+
+          {/* Painel lateral: Explicar / Caminho / Busca global — fora da tela
+              cheia é sempre uma coluna fixa; em tela cheia vira uma gaveta
+              sobreposta ao grafo, recolhida por padrão (ver isSidePanelOpen). */}
           <div
-            className={`p-4 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-xs flex flex-col gap-5 overflow-y-auto ${
+            className={`${
+              isFullscreen
+                ? `absolute inset-y-0 right-0 z-20 w-full max-w-sm shadow-2xl transform transition-transform duration-300 ease-in-out ${
+                    isSidePanelOpen ? 'translate-x-0' : 'translate-x-full'
+                  }`
+                : 'lg:col-span-1'
+            } p-4 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-xs flex flex-col gap-5 overflow-y-auto ${
               isFullscreen ? 'max-h-none' : 'max-h-[520px]'
             }`}
           >
+            {isFullscreen && (
+              <button
+                onClick={() => setIsSidePanelOpen(false)}
+                title="Fechar o painel e voltar ao grafo em tela cheia"
+                className="self-end -mt-1 -mr-1 p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+
             {/* Explicar nó (mirrors `graphify explain`) */}
             <div>
               <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 mb-3">

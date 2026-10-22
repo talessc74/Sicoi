@@ -1,6 +1,6 @@
 ---
 name: _local-adr-policy-119-grafo-tela-cheia
-description: 'O Grafo de Conhecimento tem um botão de tela cheia (Maximize2/Minimize2 no cabeçalho) que cobre a viewport inteira — tenta a Fullscreen API nativa do navegador quando disponível, mas nunca depende só dela: um overlay CSS (fixed inset-0) garante a mesma experiência mesmo onde a API é recusada ou não existe. Use antes de alterar o layout do cabeçalho do grafo ou a estrutura de altura do SVG/painel lateral.'
+description: 'O Grafo de Conhecimento tem um botão de tela cheia (Maximize2/Minimize2 no cabeçalho) que cobre a viewport inteira — tenta a Fullscreen API nativa do navegador quando disponível, mas nunca depende só dela: um overlay CSS (fixed inset-0) garante a mesma experiência mesmo onde a API é recusada ou não existe. Em tela cheia, o grafo é o protagonista: o painel lateral (Explicar/Caminho/Busca) vira uma gaveta sobreposta (PanelRightOpen/Close), recolhida por padrão, não mais uma coluna fixa dividindo a largura. Use antes de alterar o layout do cabeçalho do grafo ou a estrutura de altura/largura do SVG/painel lateral.'
 apply-to: src/components/KnowledgeGraphViewer.tsx, src/components/__tests__/KnowledgeGraphViewer.test.tsx
 valid-from: 2026-10-22
 ---
@@ -49,12 +49,62 @@ nasceu de um caso parecido, embora de outra causa).
   que não comunica qual ação o clique vai fazer (Compass: todo estado
   precisa de um signifier correspondente).
 
+## Correção: o painel lateral virou gaveta sobreposta (mesmo dia)
+
+A primeira versão desta policy entrou em `main` mantendo a grade de
+4 colunas também em tela cheia (SVG em 3, painel em 1) — o Tales
+testou e voltou: "o que precisa ir para tela cheia é o grafo, a
+imagem... e os filtros em algum lugar que a galera de UX consegue
+pensar melhor que eu". Na prática, o painel (Explicar Nó, Caminho
+entre nós, Buscar em toda a base, Busca por Semelhança) continuava
+ocupando 1/4 da largura o tempo inteiro, competindo com o próprio
+grafo pelo espaço que a tela cheia deveria estar dando a ele.
+
+### Decisão (mesa: Compass · Empiricus · PolarBear · Few)
+
+**O painel lateral vira uma gaveta sobreposta em tela cheia, recolhida
+por padrão** — o grafo ocupa a largura inteira da tela
+(`absolute inset-0` em vez de `lg:col-span-3`), e o painel desliza por
+cima dele (`absolute inset-y-0 right-0`, `translate-x-full` ↔
+`translate-x-0`), nunca mais dividindo a largura disponível. Fora da
+tela cheia nada muda — a grade de 4 colunas original continua intacta,
+porque ali o painel nunca foi o problema.
+
+- **Recolhida por padrão ao entrar em tela cheia** (Empiricus: o
+  primeiro instante em tela cheia é exatamente quando a pessoa quer
+  ver o grafo inteiro, não o painel).
+- **Abre sozinha ao selecionar um nó** — `selectNode` força
+  `isSidePanelOpen = true` quando `isFullscreen`, porque clicar num nó
+  *é* pedir a explicação que o painel mostra; esperar que a pessoa
+  ache o botão depois de já ter perguntado seria fricção sem motivo
+  (Empiricus, Compass: a resposta aparece onde e quando a pergunta foi
+  feita).
+- **Três formas de fechar, todas óbvias** (PolarBear: nenhuma trava
+  sem saída): o próprio botão do cabeçalho
+  (`PanelRightOpen`/`PanelRightClose`, ao lado do botão de tela
+  cheia), um `X` no canto da gaveta, e clicar fora dela — no grafo —
+  via um *scrim* semitransparente (`bg-black/20`,
+  `data-testid="graph-panel-scrim"`) que cobre o grafo enquanto a
+  gaveta está aberta.
+- Zonas empilhadas (`z-10` scrim, `z-20` gaveta) garantem que o clique
+  dentro da gaveta nunca "vaza" pro scrim por baixo.
+- `graphExceedsFrame` (quando um nó foi arrastado pra fora do quadro
+  original) também passa a usar a altura cheia em tela cheia
+  (`h-full overflow-auto`) em vez do teto fixo de 520px que só fazia
+  sentido fora dela.
+
 ## References
 
 - Arquivos: `src/components/KnowledgeGraphViewer.tsx`
 - Testes: `src/components/__tests__/KnowledgeGraphViewer.test.tsx`
-  (alterna tela cheia e volta, trocando ícone/título e a classe do
-  contêiner)
+  (alterna tela cheia e volta trocando ícone/título; a gaveta começa
+  recolhida e alterna pelo botão do cabeçalho; selecionar um nó em
+  tela cheia abre a gaveta sozinha; clicar fora dela — no scrim — fecha)
 - Policy relacionada: `_local-adr-policy-118` (pedido no mesmo fluxo de
   trabalho, mesma tela, concern independente — algoritmo de layout vs.
   modo de exibição)
+- Mesa (correção): Compass (signifier + saída óbvia pra toda gaveta),
+  Empiricus (recolhida por padrão; abre no momento certo, não antes),
+  PolarBear (nunca travar sem saída visível), Few (o grafo é o dado
+  principal da tela — o painel é apoio, não deve competir por espaço
+  com ele)
