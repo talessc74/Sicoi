@@ -11,6 +11,15 @@ export interface ComputeLayoutOptions {
   height?: number;
   focusedNic?: string;
   radiusMap: Record<GraphNodeType, number>;
+  // Reorganização viva por seleção (Galera de UX, out/2026) — só no modo
+  // 'global'. O nó selecionado vira âncora fixa (como os hubs já são);
+  // o resto se redistribui por grau de separação a partir dele: vizinho
+  // direto fica perto, 2 graus numa faixa intermediária, o que não tem
+  // caminho até ele vai pra borda. `previousPositions` faz a simulação
+  // começar de onde cada nó já estava (continuidade), não do zero —
+  // essencial pra depois animar a transição em vez de teleportar.
+  selectedNodeId?: string | null;
+  previousPositions?: Record<string, { x: number; y: number }>;
 }
 
 export const DEFAULT_RADIUS_MAP: Record<GraphNodeType, number> = {
@@ -31,6 +40,36 @@ export const DEFAULT_RADIUS_MAP: Record<GraphNodeType, number> = {
   conceito_patologico: 290,
   osso_consultado: 0
 };
+
+// Grau de separação (BFS não-direcionado) de cada nó até `sourceId`. Nós sem
+// caminho até a origem ficam de fora do mapa — tratados como "mais distante
+// que qualquer grau alcançado" por quem usa o resultado.
+export function computeHopDistances(nodes: GraphNode[], edges: GraphEdge[], sourceId: string): Map<string, number> {
+  const adjacency = new Map<string, string[]>();
+  for (const node of nodes) adjacency.set(node.id, []);
+  for (const edge of edges) {
+    adjacency.get(edge.source)?.push(edge.target);
+    adjacency.get(edge.target)?.push(edge.source);
+  }
+
+  const distances = new Map<string, number>();
+  if (!adjacency.has(sourceId)) return distances;
+
+  distances.set(sourceId, 0);
+  const queue: string[] = [sourceId];
+  let head = 0;
+  while (head < queue.length) {
+    const current = queue[head++];
+    const currentDist = distances.get(current)!;
+    for (const neighbor of adjacency.get(current) || []) {
+      if (!distances.has(neighbor)) {
+        distances.set(neighbor, currentDist + 1);
+        queue.push(neighbor);
+      }
+    }
+  }
+  return distances;
+}
 
 /**
  * Calcula posições (x, y) de cada nó do grafo.
@@ -83,10 +122,18 @@ export function computeGraphLayout(
     'HUB-AGE-IDOSO': { x: cx + 200, y: cy - 140 }
   };
 
-  // Posicionamento inicial
+  const selectedNodeId = options.selectedNodeId && nodes.some((n) => n.id === options.selectedNodeId) ? options.selectedNodeId : null;
+  const previousPositions = options.previousPositions;
+
+  // Posicionamento inicial — usa a posição anterior do nó quando disponível
+  // (continuidade pra quem for animar a transição depois), senão cai no
+  // mesmo posicionamento determinístico de sempre.
   let pathCount = 0;
   nodes.forEach((node, idx) => {
-    if (hubAnchors[node.id]) {
+    const previous = previousPositions?.[node.id];
+    if (previous) {
+      nodeMap.set(node.id, { x: previous.x, y: previous.y, vx: 0, vy: 0, isHub: false });
+    } else if (hubAnchors[node.id]) {
       nodeMap.set(node.id, { ...hubAnchors[node.id], vx: 0, vy: 0, isHub: true });
     } else if (node.type === 'conceito_patologico') {
       const angle = Math.PI * 0.2 + (pathCount * 0.45);
@@ -105,12 +152,44 @@ export function computeGraphLayout(
     }
   });
 
+  // Hubs continuam fixos mesmo partindo da posição anterior (uma posição
+  // "herdada" não pode apagar a âncora estrutural — PolarBear: sem isso,
+  // wayfinding se perde a cada seleção).
+  for (const id of Object.keys(hubAnchors)) {
+    const pos = nodeMap.get(id);
+    if (pos) pos.isHub = true;
+  }
+  for (const node of nodes) {
+    if (node.type === 'conceito_patologico') {
+      const pos = nodeMap.get(node.id);
+      if (pos) pos.isHub = true;
+    }
+  }
+
+  // O nó selecionado vira âncora fixa temporária — exatamente onde já
+  // estava (Compass: a coisa que você acabou de clicar não pode teleportar;
+  // é o resto do universo que se reorganiza em volta dela).
+  let hopDistances: Map<string, number> | null = null;
+  if (selectedNodeId) {
+    const selPos = nodeMap.get(selectedNodeId);
+    if (selPos) selPos.isHub = true;
+    hopDistances = computeHopDistances(nodes, edges, selectedNodeId);
+  }
+
   // Simulação física de relaxamento (Spring-Embedder / Force Layout)
   const iterations = 35;
   const kRepulsion = 18000;
   const kSpring = 0.04;
   const targetDist = 90;
   const kGravity = 0.035;
+
+  // Grau de Interesse (reorganização viva por seleção) — distância-alvo até
+  // o nó selecionado cresce 130px a cada grau de separação, partindo de 90px
+  // pro vizinho direto; quem não tem caminho nenhum até ele vai pra borda.
+  const kDegreeOfInterest = 0.05;
+  const kDegreeOfInterestBaseDist = 90;
+  const kDegreeOfInterestStep = 130;
+  const kDegreeOfInterestMaxDist = 380;
 
   for (let iter = 0; iter < iterations; iter++) {
     // 1. Repulsão entre todos os pares
@@ -166,14 +245,45 @@ export function computeGraphLayout(
       }
     }
 
-    // 3. Gravidade suave em direção ao centro e amortecimento
+    // 3. Grau de Interesse: com um nó selecionado, todo outro nó mira uma
+    // distância-alvo até ele que cresce com o grau de separação — vizinho
+    // direto fica perto, quem não tem caminho nenhum até lá vai pra borda.
+    // Substitui a gravidade central (4) pra esse nó enquanto durar a seleção:
+    // as duas juntas puxariam em direções diferentes sempre que o nó
+    // selecionado não estiver bem no centro do canvas.
+    if (selectedNodeId && hopDistances) {
+      const selPos = nodeMap.get(selectedNodeId);
+      if (selPos) {
+        for (const node of nodes) {
+          if (node.id === selectedNodeId) continue;
+          const pos = nodeMap.get(node.id)!;
+          if (pos.isHub) continue;
+
+          const hops = hopDistances.get(node.id);
+          const idealDist = hops === undefined ? kDegreeOfInterestMaxDist : kDegreeOfInterestBaseDist + hops * kDegreeOfInterestStep;
+
+          const dx = pos.x - selPos.x;
+          const dy = pos.y - selPos.y;
+          const dist = Math.max(1, Math.sqrt(dx * dx + dy * dy));
+          const displacement = dist - idealDist;
+          const force = displacement * kDegreeOfInterest;
+
+          pos.vx -= (dx / dist) * force;
+          pos.vy -= (dy / dist) * force;
+        }
+      }
+    }
+
+    // 4. Gravidade suave em direção ao centro (só sem seleção ativa) e amortecimento
     for (const [, pos] of nodeMap) {
       if (pos.isHub) continue;
 
-      const gx = (cx - pos.x) * kGravity;
-      const gy = (cy - pos.y) * kGravity;
-      pos.vx += gx;
-      pos.vy += gy;
+      if (!selectedNodeId) {
+        const gx = (cx - pos.x) * kGravity;
+        const gy = (cy - pos.y) * kGravity;
+        pos.vx += gx;
+        pos.vy += gy;
+      }
 
       // Atualiza posição
       pos.x += pos.vx;
