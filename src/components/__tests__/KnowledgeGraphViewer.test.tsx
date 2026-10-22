@@ -111,8 +111,8 @@ describe('KnowledgeGraphViewer', () => {
     });
   });
 
-  describe('painel lateral em tela cheia (gaveta sobreposta)', () => {
-    it('começa recolhido ao entrar em tela cheia e alterna pelo botão do cabeçalho', async () => {
+  describe('painel lateral em tela cheia (gaveta que encolhe o grafo, nunca cobre)', () => {
+    it('começa recolhido (w-0) ao entrar em tela cheia e alterna pelo botão do cabeçalho', async () => {
       stubFetch();
       const { container } = render(<KnowledgeGraphViewer />);
       await waitFor(() => expect(screen.queryByText(/Consultando/i)).not.toBeInTheDocument());
@@ -120,18 +120,18 @@ describe('KnowledgeGraphViewer', () => {
       fireEvent.click(screen.getByTitle('Ver o grafo em tela cheia'));
 
       // Recolhida por padrão — o grafo fica com a tela inteira pra ele.
-      expect(container.querySelector('.translate-x-full')).toBeInTheDocument();
-      expect(container.querySelector('.translate-x-0')).not.toBeInTheDocument();
+      expect(container.querySelector('.w-0')).toBeInTheDocument();
+      expect(container.querySelector('.w-\\[24rem\\]')).not.toBeInTheDocument();
 
       fireEvent.click(screen.getByTitle('Abrir o painel (explicar nó, caminho, busca)'));
-      expect(container.querySelector('.translate-x-0')).toBeInTheDocument();
-      expect(container.querySelector('.translate-x-full')).not.toBeInTheDocument();
+      expect(container.querySelector('.w-\\[24rem\\]')).toBeInTheDocument();
+      expect(container.querySelector('.w-0')).not.toBeInTheDocument();
 
       fireEvent.click(screen.getByTitle('Fechar o painel e expandir o grafo'));
-      expect(container.querySelector('.translate-x-full')).toBeInTheDocument();
+      expect(container.querySelector('.w-0')).toBeInTheDocument();
     });
 
-    it('selecionar um nó em tela cheia abre o painel sozinho (é a resposta ao clique)', async () => {
+    it('selecionar um nó em tela cheia abre o painel sozinho (é a resposta ao clique), sem escondê-lo', async () => {
       stubFetch();
       const { container } = render(<KnowledgeGraphViewer />);
       await waitFor(() => {
@@ -139,28 +139,33 @@ describe('KnowledgeGraphViewer', () => {
       });
 
       fireEvent.click(screen.getByTitle('Ver o grafo em tela cheia'));
-      expect(container.querySelector('.translate-x-full')).toBeInTheDocument();
+      expect(container.querySelector('.w-0')).toBeInTheDocument();
 
       const getNodeGroup = (label: string) =>
         Array.from(container.querySelectorAll('svg > g')).find((g) => g.textContent?.includes(label))!;
       clickNode(getNodeGroup('IND-01'));
 
       await waitFor(() => {
-        expect(container.querySelector('.translate-x-0')).toBeInTheDocument();
+        // O painel abre encolhendo o grafo (flex-1 no contêiner do SVG) —
+        // nunca sobrepondo por cima dele, então o nó selecionado nunca
+        // fica atrás de nada: o grafo reescala pra caber no espaço que sobra.
+        expect(container.querySelector('.w-\\[24rem\\]')).toBeInTheDocument();
+        const svgContainer = container.querySelector('.flex-1.min-w-0.h-full');
+        expect(svgContainer).toBeInTheDocument();
       });
     });
 
-    it('clicar fora do painel (no grafo) fecha a gaveta', async () => {
+    it('fechar pelo X dentro do próprio painel também recolhe a gaveta', async () => {
       stubFetch();
       const { container } = render(<KnowledgeGraphViewer />);
       await waitFor(() => expect(screen.queryByText(/Consultando/i)).not.toBeInTheDocument());
 
       fireEvent.click(screen.getByTitle('Ver o grafo em tela cheia'));
       fireEvent.click(screen.getByTitle('Abrir o painel (explicar nó, caminho, busca)'));
-      expect(container.querySelector('.translate-x-0')).toBeInTheDocument();
+      expect(container.querySelector('.w-\\[24rem\\]')).toBeInTheDocument();
 
-      fireEvent.click(screen.getByTestId('graph-panel-scrim'));
-      expect(container.querySelector('.translate-x-full')).toBeInTheDocument();
+      fireEvent.click(screen.getByTitle('Fechar o painel e voltar ao grafo em tela cheia'));
+      expect(container.querySelector('.w-0')).toBeInTheDocument();
     });
   });
 });

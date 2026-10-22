@@ -708,15 +708,17 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
         <div
           className={
             isFullscreen
-              ? 'relative flex-1 min-h-0'
+              ? 'flex flex-1 min-h-0'
               : 'grid grid-cols-1 lg:grid-cols-4 min-h-[520px]'
           }
         >
-          {/* SVG Graph Viewport — em tela cheia ocupa o espaço inteiro; o painel
-              lateral vira uma gaveta sobreposta (abaixo), não mais uma coluna
-              que divide a largura com o grafo o tempo todo. */}
+          {/* SVG Graph Viewport — em tela cheia ocupa o espaço inteiro e encolhe
+              (flex-1) quando o painel abre, nunca fica por baixo dele: o SVG tem
+              viewBox fixo e escala pra caber no espaço que sobra (preserveAspectRatio
+              padrão "meet"), então o nó selecionado — e todo o resto — permanece
+              visível e recentralizado, nunca escondido atrás da gaveta. */}
           <div
-            className={`${isFullscreen ? 'absolute inset-0' : 'lg:col-span-3'} bg-slate-950 relative p-2 ${
+            className={`${isFullscreen ? 'flex-1 min-w-0 h-full' : 'lg:col-span-3'} bg-slate-950 relative p-2 ${
               graphExceedsFrame
                 ? `overflow-auto ${isFullscreen ? 'h-full' : 'max-h-[520px]'}`
                 : `overflow-hidden flex items-center justify-center ${isFullscreen ? 'h-full' : ''}`
@@ -889,31 +891,21 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
             </svg>
           </div>
 
-          {/* Em tela cheia com a gaveta aberta, clicar fora dela (no próprio
-              grafo) fecha — dispensa procurar o botão de novo pra voltar ao
-              grafo cheio. */}
-          {isFullscreen && isSidePanelOpen && (
-            <div
-              data-testid="graph-panel-scrim"
-              className="absolute inset-0 z-10 bg-black/20"
-              onClick={() => setIsSidePanelOpen(false)}
-              aria-hidden="true"
-            />
-          )}
-
           {/* Painel lateral: Explicar / Caminho / Busca global — fora da tela
-              cheia é sempre uma coluna fixa; em tela cheia vira uma gaveta
-              sobreposta ao grafo, recolhida por padrão (ver isSidePanelOpen). */}
+              cheia é sempre uma coluna fixa; em tela cheia vira uma gaveta que
+              ENCOLHE o grafo ao abrir (flex-1 no SVG ao lado), nunca cobre por
+              cima — o nó selecionado nunca fica escondido atrás do painel,
+              porque não há nada "atrás": o grafo todo escala e recentraliza
+              (preserveAspectRatio padrão do SVG) pra caber no espaço que sobra.
+              Recolhida por padrão em tela cheia (ver isSidePanelOpen). */}
           <div
             className={`${
               isFullscreen
-                ? `absolute inset-y-0 right-0 z-20 w-full max-w-sm shadow-2xl transform transition-transform duration-300 ease-in-out ${
-                    isSidePanelOpen ? 'translate-x-0' : 'translate-x-full'
+                ? `shrink-0 h-full overflow-y-auto overflow-x-hidden transition-[width] duration-300 ease-in-out ${
+                    isSidePanelOpen ? 'w-[24rem]' : 'w-0'
                   }`
-                : 'lg:col-span-1'
-            } p-4 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-xs flex flex-col gap-5 overflow-y-auto ${
-              isFullscreen ? 'max-h-none' : 'max-h-[520px]'
-            }`}
+                : 'lg:col-span-1 max-h-[520px] overflow-y-auto'
+            } p-4 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-xs flex flex-col gap-5`}
           >
             {isFullscreen && (
               <button
