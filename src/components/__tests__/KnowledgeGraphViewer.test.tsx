@@ -22,6 +22,10 @@ import type { GraphNode, GraphEdge } from '../../types/sgccco';
   };
 };
 
+// jsdom também não implementa Element.scrollTo (usado pra centralizar a
+// câmera no nó selecionado) — só precisamos que a chamada não quebre.
+(Element.prototype as any).scrollTo = function () {};
+
 const mockNodes: GraphNode[] = [
   { id: 'COI-001', type: 'nic', label: 'COI-001', properties: {} },
   { id: 'IND-01', type: 'individuo', label: 'IND-01', properties: {} },
@@ -166,6 +170,45 @@ describe('KnowledgeGraphViewer', () => {
 
       fireEvent.click(screen.getByTitle('Fechar o painel e voltar ao grafo em tela cheia'));
       expect(container.querySelector('.w-0')).toBeInTheDocument();
+    });
+  });
+
+  describe('navegação no grafo grande: pan do fundo e câmera centralizada na seleção', () => {
+    it('arrastar o fundo do grafo (sem tocar num nó) rola o contêiner', async () => {
+      stubFetch();
+      render(<KnowledgeGraphViewer />);
+      await waitFor(() => expect(screen.queryByText(/Consultando/i)).not.toBeInTheDocument());
+
+      const graphCanvas = screen.getByTestId('graph-canvas');
+
+      fireEvent.mouseDown(graphCanvas, { clientX: 300, clientY: 300 });
+      fireEvent.mouseMove(window, { clientX: 250, clientY: 260 });
+
+      // Arrastar 50px pra esquerda e 40px pra cima rola o contêiner na direção
+      // oposta — exatamente como arrastar um mapa.
+      expect(graphCanvas.scrollLeft).toBe(50);
+      expect(graphCanvas.scrollTop).toBe(40);
+
+      fireEvent.mouseUp(window);
+    });
+
+    it('selecionar um nó centraliza a câmera nele (scrollTo), não exige rolar à mão', async () => {
+      stubFetch();
+      render(<KnowledgeGraphViewer />);
+      await waitFor(() => {
+        expect(document.querySelector('[transform*="translate"]')).toBeTruthy();
+      });
+
+      const graphCanvas = screen.getByTestId('graph-canvas');
+      const scrollToSpy = vi.spyOn(graphCanvas, 'scrollTo');
+
+      const getNodeGroup = (label: string) =>
+        Array.from(document.querySelectorAll('svg > g')).find((g) => g.textContent?.includes(label))!;
+      clickNode(getNodeGroup('IND-01'));
+
+      await waitFor(() => {
+        expect(scrollToSpy).toHaveBeenCalledWith(expect.objectContaining({ behavior: 'smooth' }));
+      });
     });
   });
 });

@@ -116,6 +116,15 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
   const svgRef = useRef<SVGSVGElement>(null);
   const dragStateRef = useRef<{ id: string; moved: boolean; startClientX: number; startClientY: number; offsetX: number; offsetY: number } | null>(null);
 
+  // Arrastar o fundo do grafo (não um nó) rola o próprio contêiner — o grafo
+  // completo pode ser bem maior que a tela (ex.: a Rede Interconectada com
+  // todos os COIs, centenas de nós), e depender só da barra de rolagem nativa
+  // pra navegar nele é lento e nada natural. Um nó já chama e.stopPropagation()
+  // no próprio mousedown, então esse handler só dispara mesmo em cima do fundo.
+  const graphScrollRef = useRef<HTMLDivElement>(null);
+  const panStateRef = useRef<{ startX: number; startY: number; scrollLeft: number; scrollTop: number } | null>(null);
+  const [isPanning, setIsPanning] = useState(false);
+
   // Tela cheia do grafo — tenta a Fullscreen API nativa (esconde até a barra
   // do navegador) quando disponível, mas nunca depende só dela: o overlay CSS
   // abaixo (isFullscreen) dá a mesma experiência mesmo onde a API é recusada
@@ -260,6 +269,42 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
       window.removeEventListener('mouseup', handleUp);
     };
   }, [toSvgPoint, selectNode]);
+
+  // Começa o arraste do fundo (pan) — só dispara quando o mousedown não veio
+  // de um nó (que já intercepta e para a propagação sozinho).
+  const handleBackgroundMouseDown = useCallback((e: React.MouseEvent) => {
+    const container = graphScrollRef.current;
+    if (!container) return;
+    panStateRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      scrollLeft: container.scrollLeft,
+      scrollTop: container.scrollTop
+    };
+    setIsPanning(true);
+  }, []);
+
+  useEffect(() => {
+    function handleMove(e: MouseEvent) {
+      const pan = panStateRef.current;
+      const container = graphScrollRef.current;
+      if (!pan || !container) return;
+      container.scrollLeft = pan.scrollLeft - (e.clientX - pan.startX);
+      container.scrollTop = pan.scrollTop - (e.clientY - pan.startY);
+    }
+    function handleUp() {
+      if (panStateRef.current) {
+        panStateRef.current = null;
+        setIsPanning(false);
+      }
+    }
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleUp);
+    };
+  }, []);
 
   const runPathFinder = useCallback(async () => {
     if (!pathFrom.trim() || !pathTo.trim()) return;
@@ -506,6 +551,26 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
     return n ? { x: n.x, y: n.y } : null;
   };
 
+  // Clicar num nó centraliza a câmera nele — faz sentido sobretudo na Rede
+  // Interconectada (centenas de nós espalhados bem além da tela): sem isto, o
+  // nó selecionado podia ficar fora da área visível, exigindo rolar à mão pra
+  // achá-lo de novo. Depende só de selectedNodeId de propósito — a posição já
+  // está resolvida no momento do clique (o layout por grau de interesse da
+  // _local-adr-policy-118 roda de uma vez só, não anima quadro a quadro) — e
+  // nunca de displayNodes/graphBounds, o que faria a câmera pular sozinha
+  // toda vez que o layout mudar por outro motivo (filtro, busca), sem a
+  // pessoa ter clicado em nada.
+  useEffect(() => {
+    if (!selectedNodeId) return;
+    const container = graphScrollRef.current;
+    const coords = getNodeCoords(selectedNodeId);
+    if (!container || !coords) return;
+    const targetLeft = coords.x - graphBounds.minX - container.clientWidth / 2;
+    const targetTop = coords.y - graphBounds.minY - container.clientHeight / 2;
+    container.scrollTo({ left: targetLeft, top: targetTop, behavior: 'smooth' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedNodeId]);
+
   const selectedNode =
     graphData.nodes.find((n) => n.id === selectedNodeId) ||
     boneOverlay?.nodes.find((n) => n.id === selectedNodeId) ||
@@ -716,11 +781,18 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
               (flex-1) quando o painel abre, nunca fica por baixo dele: o SVG tem
               viewBox fixo e escala pra caber no espaço que sobra (preserveAspectRatio
               padrão "meet"), então o nó selecionado — e todo o resto — permanece
-              visível e recentralizado, nunca escondido atrás da gaveta. */}
+              visível e recentralizado, nunca escondido atrás da gaveta.
+              Quando o grafo é maior que o quadro (graphExceedsFrame), este mesmo
+              contêiner vira a área rolável — arrastar o fundo (não um nó) pan-eia
+              rolando ele (handleBackgroundMouseDown), e selecionar um nó centraliza
+              a câmera nele sozinho (ver o useEffect de selectedNodeId acima). */}
           <div
+            ref={graphScrollRef}
+            data-testid="graph-canvas"
+            onMouseDown={handleBackgroundMouseDown}
             className={`${isFullscreen ? 'flex-1 min-w-0 h-full' : 'lg:col-span-3'} bg-slate-950 relative p-2 ${
               graphExceedsFrame
-                ? `overflow-auto ${isFullscreen ? 'h-full' : 'max-h-[520px]'}`
+                ? `overflow-auto ${isFullscreen ? 'h-full' : 'max-h-[520px]'} ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`
                 : `overflow-hidden flex items-center justify-center ${isFullscreen ? 'h-full' : ''}`
             }`}
           >
