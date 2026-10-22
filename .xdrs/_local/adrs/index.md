@@ -31,6 +31,7 @@ Decisões de arquitetura e técnicas deste projeto, criadas por deliberação AR
 - [_local-adr-policy-115](application/115-pagina-de-creditos-institucionais.md) - Página de Créditos Institucionais (Quem fez o SIGCOI, rota /creditos): catálogo tipado de membros das equipes multidisciplinares e navegação contextual resiliente
 - [_local-adr-policy-116](application/116-grafo-conhecimento-interconectado-cross-coi.md) - Grafo de Conhecimento Osteológico Interconectado (Cross-COI): Hubs Ontológicos de Perfil Biológico (Sexo, Faixa Etária) e Patologias Compartilhadas com persistência desacoplada (nic = NULL) e layout multicêntrico por forças
 - [_local-adr-policy-117](application/117-busca-coi-e-delimitacao-exibicao.md) - Busca rápida de COI no cabeçalho superior e controle de escalabilidade com delimitação máxima de COIs exibidos na faixa superior (máx 10 com seletor dropdown) e na tabela da página inicial (paginação com 15 por página e filtro dinâmico)
+- [_local-adr-policy-118](application/118-grafo-reorganizacao-viva-por-selecao.md) - Grafo de Conhecimento (modo Global): selecionar um nó reorganiza o resto por grau de separação (BFS) — perto quem está a 1-2 graus, na borda quem não tem caminho até lá; hubs e o próprio nó selecionado nunca se movem (algoritmo só; wiring no componente/animação/proteção de manualPositions ficam pras próximas PRs)
 
 ## Integration
 

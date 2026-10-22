@@ -21,7 +21,7 @@ genérico com ação em lote ou estado compartilhado entre abas exige
 teste dessas duas categorias — tsc --noEmit roda de novo após a última
 edição de teste, sempre, antes do merge.
 
-### ADRs — Architectural Decisions (25 documentos)
+### ADRs — Architectural Decisions (26 documentos)
 
 Histórico protegido de conjuntos: servidor como fonte de verdade,
 assinaturas travadas, registro de alterações encadeado por hash.
@@ -71,6 +71,11 @@ Dupla assinatura técnica e científica nas Fases 4 e 5: separando a conclusão 
 (Inventário Anatômico / Laudo de Patologias, privativa do Curador).
 Página de Créditos Institucionais (Quem fez o SIGCOI, /creditos): catálogo tipado de membros
 das equipes multidisciplinares com navegação contextual de retorno.
+Grafo de Conhecimento, modo Global: selecionar um nó reorganiza o resto do
+universo visível por grau de separação (BFS) — perto quem está a 1-2 graus,
+na borda quem não tem caminho até lá; hubs ontológicos e o próprio nó
+selecionado nunca se movem (algoritmo pronto; ligação no componente,
+animação e proteção de posições manuais ficam pras próximas PRs).
 
 ### BDRs — Business Decisions (1 documento)
 
