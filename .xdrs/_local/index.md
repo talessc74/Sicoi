@@ -78,7 +78,10 @@ selecionado nunca se movem. Algoritmo e ligação no componente (com esmaeciment
 por opacidade) prontos; animação de posição e proteção de posições manuais
 ficam pras próximas PRs. Botão de tela cheia no Grafo de Conhecimento:
 Fullscreen API nativa quando disponível, mais um overlay CSS que garante a
-mesma experiência onde a API é recusada ou ausente.
+mesma experiência onde a API é recusada ou ausente; em tela cheia o painel
+lateral (Explicar/Caminho/Busca) vira uma gaveta sobreposta ao grafo,
+recolhida por padrão e aberta sozinha ao selecionar um nó, em vez de dividir
+a largura da tela com o grafo o tempo inteiro.
 
 ### BDRs — Business Decisions (1 documento)
 

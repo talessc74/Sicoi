@@ -110,4 +110,57 @@ describe('KnowledgeGraphViewer', () => {
       expect(getNodeGroup('Sexo: Fem').getAttribute('opacity')).toBe('1');
     });
   });
+
+  describe('painel lateral em tela cheia (gaveta sobreposta)', () => {
+    it('começa recolhido ao entrar em tela cheia e alterna pelo botão do cabeçalho', async () => {
+      stubFetch();
+      const { container } = render(<KnowledgeGraphViewer />);
+      await waitFor(() => expect(screen.queryByText(/Consultando/i)).not.toBeInTheDocument());
+
+      fireEvent.click(screen.getByTitle('Ver o grafo em tela cheia'));
+
+      // Recolhida por padrão — o grafo fica com a tela inteira pra ele.
+      expect(container.querySelector('.translate-x-full')).toBeInTheDocument();
+      expect(container.querySelector('.translate-x-0')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByTitle('Abrir o painel (explicar nó, caminho, busca)'));
+      expect(container.querySelector('.translate-x-0')).toBeInTheDocument();
+      expect(container.querySelector('.translate-x-full')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByTitle('Fechar o painel e expandir o grafo'));
+      expect(container.querySelector('.translate-x-full')).toBeInTheDocument();
+    });
+
+    it('selecionar um nó em tela cheia abre o painel sozinho (é a resposta ao clique)', async () => {
+      stubFetch();
+      const { container } = render(<KnowledgeGraphViewer />);
+      await waitFor(() => {
+        expect(container.querySelector('[transform*="translate"]')).toBeTruthy();
+      });
+
+      fireEvent.click(screen.getByTitle('Ver o grafo em tela cheia'));
+      expect(container.querySelector('.translate-x-full')).toBeInTheDocument();
+
+      const getNodeGroup = (label: string) =>
+        Array.from(container.querySelectorAll('svg > g')).find((g) => g.textContent?.includes(label))!;
+      clickNode(getNodeGroup('IND-01'));
+
+      await waitFor(() => {
+        expect(container.querySelector('.translate-x-0')).toBeInTheDocument();
+      });
+    });
+
+    it('clicar fora do painel (no grafo) fecha a gaveta', async () => {
+      stubFetch();
+      const { container } = render(<KnowledgeGraphViewer />);
+      await waitFor(() => expect(screen.queryByText(/Consultando/i)).not.toBeInTheDocument());
+
+      fireEvent.click(screen.getByTitle('Ver o grafo em tela cheia'));
+      fireEvent.click(screen.getByTitle('Abrir o painel (explicar nó, caminho, busca)'));
+      expect(container.querySelector('.translate-x-0')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('graph-panel-scrim'));
+      expect(container.querySelector('.translate-x-full')).toBeInTheDocument();
+    });
+  });
 });
