@@ -1,10 +1,10 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { GraphNode, GraphNodeType, GraphEdge } from '../types/sgccco';
-import { Network, Search, Info, Route, Loader2, RefreshCw, Bone, X, Move, Layers } from 'lucide-react';
+import { Network, Search, Info, Route, Loader2, RefreshCw, Bone, X, Move, Layers, Maximize2, Minimize2 } from 'lucide-react';
 import { searchSimilarBones, BoneSimilaritySearchResult } from '../services/geminiService';
 import { ErrorNotice } from './ErrorNotice';
 import { toAppError, AppError } from '../utils/errorMessages';
-import { computeGraphLayout, DEFAULT_RADIUS_MAP } from '../utils/graphLayout';
+import { computeGraphLayout, computeHopDistances, DEFAULT_RADIUS_MAP } from '../utils/graphLayout';
 
 interface KnowledgeGraphViewerProps {
   selectedNic?: string;
@@ -100,6 +100,33 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
   const [manualPositions, setManualPositions] = useState<Record<string, { x: number; y: number }>>({});
   const svgRef = useRef<SVGSVGElement>(null);
   const dragStateRef = useRef<{ id: string; moved: boolean; startClientX: number; startClientY: number; offsetX: number; offsetY: number } | null>(null);
+
+  // Tela cheia do grafo — tenta a Fullscreen API nativa (esconde até a barra
+  // do navegador) quando disponível, mas nunca depende só dela: o overlay CSS
+  // abaixo (isFullscreen) dá a mesma experiência mesmo onde a API é recusada
+  // ou não existe (ex.: Safari no iPad em certos contextos).
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const fullscreenContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement) setIsFullscreen(false);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  const toggleFullscreen = useCallback(() => {
+    setIsFullscreen((prev) => {
+      const next = !prev;
+      if (next) {
+        fullscreenContainerRef.current?.requestFullscreen?.().catch(() => {});
+      } else if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+      return next;
+    });
+  }, []);
 
   // Converte coordenada de tela (clientX/Y do evento de mouse) pra coordenada do
   // espaço interno do SVG (viewBox "0 0 840 600") — necessário porque o SVG é
@@ -341,18 +368,61 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
     });
   }, [graphData.nodes, viewMode, hideOperational, layerSex, layerAge, layerPathology, filterType, searchTerm]);
 
+  // Última posição calculada de cada nó — alimenta `previousPositions` na
+  // próxima chamada, pra reorganização por seleção partir de onde cada nó já
+  // estava em vez de do zero (continuidade; base pra animar a transição mais
+  // adiante). Um ref porque é só memória de cálculo, nunca dispara re-render
+  // sozinho — quem dispara é `selectedNodeId` mudando de verdade.
+  const previousPositionsRef = useRef<Record<string, { x: number; y: number }>>({});
+
   // Layout híbrido: Radial no modo Foco (COI individual) e Multicêntrico Spring-Embedder no modo Global
   const layoutNodes = useMemo(() => {
-    return computeGraphLayout(filteredNodes, graphData.edges, {
+    const computed = computeGraphLayout(filteredNodes, graphData.edges, {
       mode: viewMode,
       width: 840,
       height: 600,
       focusedNic: selectedNic,
-      radiusMap
+      radiusMap,
+      // Reorganização viva por seleção (ADR 118) — só faz sentido no modo
+      // Global, onde "o que se conecta a isto" é a pergunta real.
+      selectedNodeId: viewMode === 'global' ? selectedNodeId : null,
+      previousPositions: previousPositionsRef.current
     });
-  }, [filteredNodes, graphData.edges, viewMode, selectedNic]);
+    const snapshot: Record<string, { x: number; y: number }> = {};
+    for (const node of computed) snapshot[node.id] = { x: node.x, y: node.y };
+    previousPositionsRef.current = snapshot;
+    return computed;
+  }, [filteredNodes, graphData.edges, viewMode, selectedNic, selectedNodeId]);
 
   const visibleNodeIds = useMemo(() => new Set(layoutNodes.map((n) => n.id)), [layoutNodes]);
+
+  // Grau de separação até o nó selecionado, sobre o grafo visível — alimenta
+  // a opacidade "foco + contexto": perto de quem foi clicado fica no claro,
+  // o resto esmaece (nunca some) na proporção da distância real no grafo.
+  const hopDistancesFromSelection = useMemo(() => {
+    if (viewMode !== 'global' || !selectedNodeId) return null;
+    return computeHopDistances(filteredNodes, graphData.edges, selectedNodeId);
+  }, [viewMode, selectedNodeId, filteredNodes, graphData.edges]);
+
+  const hubNodeIds = useMemo(
+    () => new Set(filteredNodes.filter((n) => n.type === 'conceito_biologico' || n.type === 'conceito_patologico').map((n) => n.id)),
+    [filteredNodes]
+  );
+
+  // Hubs e o próprio nó selecionado nunca esmaecem — são a âncora estrutural
+  // (PolarBear: sem isso, wayfinding se perde a cada seleção).
+  const getSelectionOpacity = useCallback(
+    (nodeId: string): number => {
+      if (!hopDistancesFromSelection || !selectedNodeId) return 1;
+      if (nodeId === selectedNodeId || hubNodeIds.has(nodeId)) return 1;
+      const hops = hopDistancesFromSelection.get(nodeId);
+      if (hops === undefined) return 0.3;
+      if (hops <= 1) return 1;
+      if (hops === 2) return 0.65;
+      return 0.4;
+    },
+    [hopDistancesFromSelection, selectedNodeId, hubNodeIds]
+  );
 
   const filteredEdges = useMemo(() => {
     return graphData.edges.filter((e) => {
@@ -428,7 +498,14 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
   }, [graphData.nodes]);
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
+    <div
+      ref={fullscreenContainerRef}
+      className={
+        isFullscreen
+          ? 'fixed inset-0 z-50 bg-white dark:bg-slate-900 overflow-y-auto flex flex-col'
+          : 'bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs'
+      }
+    >
       {/* Top Header & Filter Controls */}
       <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4">
         <div>
@@ -487,6 +564,13 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
               <Move className="w-3.5 h-3.5" />
             </button>
           )}
+          <button
+            onClick={toggleFullscreen}
+            title={isFullscreen ? 'Sair da tela cheia' : 'Ver o grafo em tela cheia'}
+            className="p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+          >
+            {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+          </button>
           <div className="relative">
             <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
             <input
@@ -583,11 +667,13 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
       )}
 
       {!isLoadingGraph && !loadError && (
-        <div className="grid grid-cols-1 lg:grid-cols-4 min-h-[520px]">
+        <div className={`grid grid-cols-1 lg:grid-cols-4 ${isFullscreen ? 'flex-1 min-h-0' : 'min-h-[520px]'}`}>
           {/* SVG Graph Viewport */}
           <div
             className={`lg:col-span-3 bg-slate-950 relative p-2 ${
-              graphExceedsFrame ? 'max-h-[520px] overflow-auto' : 'overflow-hidden flex items-center justify-center'
+              graphExceedsFrame
+                ? 'max-h-[520px] overflow-auto'
+                : `overflow-hidden flex items-center justify-center ${isFullscreen ? 'h-full' : ''}`
             }`}
           >
             <div className="absolute top-3 left-3 z-10 flex flex-wrap gap-1.5 max-w-md bg-black/60 backdrop-blur-xs p-2 rounded-lg border border-slate-800 text-[10px] font-mono">
@@ -607,7 +693,7 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
             <svg
               ref={svgRef}
               width={graphExceedsFrame ? graphWidth : '100%'}
-              height={graphExceedsFrame ? graphHeight : 520}
+              height={graphExceedsFrame ? graphHeight : isFullscreen ? '100%' : 520}
               viewBox={`${graphBounds.minX} ${graphBounds.minY} ${graphWidth} ${graphHeight}`}
               className="select-none"
             >
@@ -652,6 +738,10 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
                       ? 1.8
                       : 1.2;
 
+                // Esmaece arestas cujas duas pontas estão fora do foco da seleção
+                // ativa — nunca abaixo do que a própria ponta mais esmaecida já é.
+                const selectionDim = Math.min(getSelectionOpacity(e.source), getSelectionOpacity(e.target));
+
                 return (
                   <g key={e.id}>
                     <line
@@ -663,7 +753,7 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
                       strokeWidth={strokeWidth}
                       strokeDasharray={e.confidence === 'INFERRED' ? '3 3' : isCrossCoi ? '4 2' : undefined}
                       markerEnd="url(#arrow)"
-                      opacity={isOnPath || isHighlighted ? 0.95 : isCrossCoi ? 0.85 : 0.55}
+                      opacity={(isOnPath || isHighlighted ? 0.95 : isCrossCoi ? 0.85 : 0.55) * selectionDim}
                     />
                     <text
                       x={(src.x + tgt.x) / 2}
@@ -704,8 +794,9 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
                   <g
                     key={node.id}
                     transform={`translate(${node.x}, ${node.y})`}
+                    opacity={getSelectionOpacity(node.id)}
                     onMouseDown={(e) => handleNodeMouseDown(e, node)}
-                    className="cursor-grab active:cursor-grabbing"
+                    className="cursor-grab active:cursor-grabbing transition-opacity duration-300"
                   >
                     <g
                       className="transition-transform duration-100 hover:scale-110"
@@ -753,7 +844,11 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
           </div>
 
           {/* Painel lateral: Explicar / Caminho / Busca global */}
-          <div className="p-4 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-xs flex flex-col gap-5 overflow-y-auto max-h-[520px]">
+          <div
+            className={`p-4 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-xs flex flex-col gap-5 overflow-y-auto ${
+              isFullscreen ? 'max-h-none' : 'max-h-[520px]'
+            }`}
+          >
             {/* Explicar nó (mirrors `graphify explain`) */}
             <div>
               <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 mb-3">
