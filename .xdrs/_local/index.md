@@ -21,7 +21,7 @@ genérico com ação em lote ou estado compartilhado entre abas exige
 teste dessas duas categorias — tsc --noEmit roda de novo após a última
 edição de teste, sempre, antes do merge.
 
-### ADRs — Architectural Decisions (27 documentos)
+### ADRs — Architectural Decisions (28 documentos)
 
 Histórico protegido de conjuntos: servidor como fonte de verdade,
 assinaturas travadas, registro de alterações encadeado por hash.
@@ -83,6 +83,10 @@ lateral (Explicar/Caminho/Busca) vira uma gaveta recolhida por padrão,
 aberta sozinha ao selecionar um nó, que encolhe o grafo (flex) ao abrir em
 vez de cobri-lo por cima — o SVG reescala e recentraliza sozinho pra caber
 no espaço que sobra, então nenhum nó fica escondido atrás da gaveta.
+Navegação no Grafo grande (Rede Interconectada, milhares de nós): arrastar
+o fundo do grafo (não um nó) pan-eia rolando o contêiner; selecionar um nó
+centraliza a câmera nele sozinho (scrollTo suave), sem depender só da barra
+de rolagem nativa pra chegar a um nó fora da área visível.
 
 ### BDRs — Business Decisions (1 documento)
 
