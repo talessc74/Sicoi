@@ -644,6 +644,20 @@ export interface OsteologicalInventoryData {
   [key: string]: unknown;
 }
 
+export interface BoneQuantificationEntry {
+  id: string;
+  nomeOsso: string;
+  ladoEsquerdo: number; // E (NME Esquerdo)
+  ladoDireito: number;  // D (NME Direito)
+  pareados: number;     // P (Pares combinados / pareamento antimérico)
+  observacoes?: string;
+}
+
+export interface NumeroIndividuosData {
+  entries: BoneQuantificationEntry[];
+  observacoesGerais?: string;
+}
+
 export interface Phase4Data {
   curationVersionNumber: number;
   curationVersionStatus: CurationVersionStatus;
@@ -651,6 +665,7 @@ export interface Phase4Data {
   individuals: IndividualHypothesis[];
   skeletalElements: SkeletalElement[];
   osteologicalInventory?: OsteologicalInventoryData;
+  numeroIndividuos?: NumeroIndividuosData;
   completeAssemblyPhotoApproved?: {
     photoUrl: string;
     capturedAt: string;

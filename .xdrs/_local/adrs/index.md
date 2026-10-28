@@ -35,6 +35,7 @@ Decisões de arquitetura e técnicas deste projeto, criadas por deliberação AR
 - [_local-adr-policy-119](application/119-grafo-tela-cheia.md) - Botão de tela cheia no Grafo de Conhecimento: Fullscreen API nativa + overlay CSS como garantia independente de suporte do navegador; painel lateral vira gaveta recolhida por padrão (abre sozinha ao selecionar um nó) que encolhe o grafo ao abrir, nunca cobre por cima — nenhum nó fica escondido atrás da UI
 - [_local-adr-policy-120](application/120-grafo-navegacao-pan-e-camera.md) - Navegação no Grafo grande (Rede Interconectada, milhares de nós): arrastar o fundo (não um nó) pan-eia rolando o contêiner; selecionar um nó centraliza a câmera nele sozinho (scrollTo suave), sem depender só da barra de rolagem nativa
 - [_local-adr-policy-121](application/121-grafo-zoom-pinca-e-botoes.md) - Zoom do Grafo: pinça do trackpad (wheel+ctrlKey, preventDefault pra não aplicar zoom na página inteira) e botões +/−/100% equivalentes; listener de wheel anexado por callback ref (não useEffect vazio) porque o canvas some e volta durante carregamento/"Atualizar"
+- [_local-adr-policy-122](application/122-calculo-numero-individuos.md) - Cálculo e quantificação forense do Número de Indivíduos (NMI, MMT, NMPI e IC 95%): caixas de métricas com função piso, gaveta retrátil inferior de ossos do inventário e isolamento rigoroso de contagens por elemento ósseo
 
 ## Integration
 

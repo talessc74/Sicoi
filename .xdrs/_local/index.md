@@ -21,7 +21,7 @@ genérico com ação em lote ou estado compartilhado entre abas exige
 teste dessas duas categorias — tsc --noEmit roda de novo após a última
 edição de teste, sempre, antes do merge.
 
-### ADRs — Architectural Decisions (29 documentos)
+### ADRs — Architectural Decisions (30 documentos)
 
 Histórico protegido de conjuntos: servidor como fonte de verdade,
 assinaturas travadas, registro de alterações encadeado por hash.
@@ -89,6 +89,7 @@ centraliza a câmera nele sozinho (scrollTo suave), sem depender só da barra
 de rolagem nativa pra chegar a um nó fora da área visível. Zoom do Grafo:
 pinça do trackpad (wheel+ctrlKey, com preventDefault pra não aplicar zoom
 na página inteira) e botões +/−/100% equivalentes pra quem não usa gesto.
+Cálculo e quantificação forense do Número de Indivíduos (NMI, MMT, NMPI e IC 95%): caixas de métricas com função piso, gaveta retrátil inferior de ossos do inventário e isolamento rigoroso de contagens por elemento ósseo.
 
 ### BDRs — Business Decisions (1 documento)
 

@@ -13,6 +13,7 @@ import {
 } from '../types/sgccco';
 import { OdontogramViewer, ToothBatchUpdate } from './OdontogramViewer';
 import { OsteologicalInventoryViewer } from './OsteologicalInventoryViewer';
+import { NumeroIndividuosViewer } from './NumeroIndividuosViewer';
 import { PhotoSourceModal } from './PhotoSourceModal';
 import { ErrorNotice } from './ErrorNotice';
 import { toAppError, AppError } from '../utils/errorMessages';
@@ -56,7 +57,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
   onUpdateCollection,
   laboratoryMode
 }) => {
-  const [activeTab, setActiveTab] = useState<'individuos' | 'inventario' | 'odontograma' | 'montagem'>('individuos');
+  const [activeTab, setActiveTab] = useState<'individuos' | 'inventario' | 'odontograma' | 'numero_individuos' | 'montagem'>('individuos');
   const [selectedIndividualId, setSelectedIndividualId] = useState<string>(
     collection.phase4.individuals[0]?.id || ''
   );
@@ -602,6 +603,16 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
             Inventário Odontológico
           </button>
           <button
+            onClick={() => setActiveTab('numero_individuos')}
+            className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+              activeTab === 'numero_individuos'
+                ? 'bg-sky-600 text-white'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
+            }`}
+          >
+            Número de Indivíduos
+          </button>
+          <button
             onClick={() => setActiveTab('montagem')}
             className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
               activeTab === 'montagem'
@@ -947,6 +958,16 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
             readOnly={isLocked || !canEdit}
           />
         </div>
+      )}
+
+      {/* Conteúdo da Aba: Número de Indivíduos (NMI, MMT, NMPI) */}
+      {activeTab === 'numero_individuos' && (
+        <NumeroIndividuosViewer
+          collection={collection}
+          currentUser={currentUser}
+          onUpdateCollection={onUpdateCollection}
+          readOnly={isLocked || !canEdit}
+        />
       )}
 
       {/* Conteúdo da Aba 4: Fotografia de Montagem Completa */}
