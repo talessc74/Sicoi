@@ -291,6 +291,8 @@ export const OSSOS_BILATERAIS_PADRAO = [
   { nome: 'Tálus', categoria: 'Pés' },
   { nome: 'Escafóide', categoria: 'Mãos' },
   { nome: 'Semilunar', categoria: 'Mãos' },
+  { nome: 'Costela não identificada', categoria: 'Tórax' },
+  { nome: 'Vértebra não identificada', categoria: 'Coluna Vertebral' },
   { nome: 'Costela C1', categoria: 'Tórax' },
   { nome: 'Costela C2', categoria: 'Tórax' },
   { nome: 'Costela C3', categoria: 'Tórax' },
@@ -329,7 +331,7 @@ export function extrairOssosDoInventario(inventory?: OsteologicalInventoryData):
     secao: { ossos?: Record<string, OsteologicalPresenceCode> } | undefined,
     categoria: string
   ) => {
-    if (!secao || !secao.ossos) return;
+    if (!secao || !secao.ossos || typeof secao.ossos !== 'object') return;
     for (const [boneName, code] of Object.entries(secao.ossos)) {
       if (code && code !== 'A') {
         const isDir = /\b(direito|direita)\b/i.test(boneName) || /\(D\)/i.test(boneName);
@@ -357,9 +359,35 @@ export function extrairOssosDoInventario(inventory?: OsteologicalInventoryData):
   processarSecao(inventory.ossosMao, 'Ossos das Mãos');
   processarSecao(inventory.ossosPe, 'Ossos dos Pés');
   processarSecao(inventory.torax, 'Tórax (Costelas)');
+  processarSecao(inventory.colunaVertebral, 'Coluna Vertebral');
   processarSecao(inventory.cabecaPescoco, 'Cabeça e Pescoço');
 
   const resultado: SugestaoOssoInventario[] = [];
+
+  // Extrai costelas não identificadas registradas numericamente no inventário (§15/POP-01)
+  const qtdCostelasNaoIdentificadas = inventory.torax?.quantidadeNaoIdentificadas;
+  if (typeof qtdCostelasNaoIdentificadas === 'number' && qtdCostelasNaoIdentificadas > 0) {
+    resultado.push({
+      nome: 'Costela não identificada',
+      categoria: 'Tórax',
+      sugeridoE: qtdCostelasNaoIdentificadas,
+      sugeridoD: 0,
+      origem: 'Inventário Osteológico'
+    });
+  }
+
+  // Extrai vértebras não identificadas registradas numericamente no inventário (§15/POP-01)
+  const qtdVertebrasNaoIdentificadas = inventory.colunaVertebral?.quantidadeNaoIdentificadas;
+  if (typeof qtdVertebrasNaoIdentificadas === 'number' && qtdVertebrasNaoIdentificadas > 0) {
+    resultado.push({
+      nome: 'Vértebra não identificada',
+      categoria: 'Coluna Vertebral',
+      sugeridoE: qtdVertebrasNaoIdentificadas,
+      sugeridoD: 0,
+      origem: 'Inventário Osteológico'
+    });
+  }
+
   for (const item of presentesMap.values()) {
     resultado.push({
       nome: item.nome,

@@ -93,7 +93,7 @@ export const NumeroIndividuosViewer: React.FC<NumeroIndividuosViewerProps> = ({
 
     // Se já existir esse osso com esse nome exato, apenas foca ou adiciona com diferenciador
     const existingIndex = entries.findIndex(
-      e => e.nomeOsso.toLowerCase() === cleanName.toLowerCase()
+      e => (e.nomeOsso || '').toLowerCase() === cleanName.toLowerCase()
     );
 
     let finalName = cleanName;
@@ -458,7 +458,7 @@ export const NumeroIndividuosViewer: React.FC<NumeroIndividuosViewerProps> = ({
           <div className="space-y-4">
             {entries.map((entry, index) => {
               const metricas = calcularMetricasOsso(entry);
-              const maxPossivelP = Math.min(entry.ladoEsquerdo, entry.ladoDireito);
+              const maxPossivelP = Math.min(entry.ladoEsquerdo || 0, entry.ladoDireito || 0);
 
               return (
                 <div
@@ -471,7 +471,7 @@ export const NumeroIndividuosViewer: React.FC<NumeroIndividuosViewerProps> = ({
                         {index + 1}
                       </span>
                       <h5 className="font-bold text-sm text-slate-900 dark:text-white font-mono">
-                        {entry.nomeOsso}
+                        {entry.nomeOsso || 'Elemento'}
                       </h5>
                     </div>
 
@@ -760,7 +760,7 @@ export const NumeroIndividuosViewer: React.FC<NumeroIndividuosViewerProps> = ({
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
                   {ossosInventario.map(osso => {
                     const jaAdicionado = entries.some(
-                      e => e.nomeOsso.toLowerCase() === osso.nome.toLowerCase()
+                      e => (e.nomeOsso || '').toLowerCase() === osso.nome.toLowerCase()
                     );
 
                     return (
@@ -816,7 +816,7 @@ export const NumeroIndividuosViewer: React.FC<NumeroIndividuosViewerProps> = ({
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
                 {filteredCatalog.map(item => {
                   const jaAdicionado = entries.some(
-                    e => e.nomeOsso.toLowerCase() === item.nome.toLowerCase()
+                    e => (e.nomeOsso || '').toLowerCase() === item.nome.toLowerCase()
                   );
 
                   return (

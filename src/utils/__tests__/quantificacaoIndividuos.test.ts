@@ -211,5 +211,29 @@ describe('quantificacaoIndividuos - Cálculos Forenses de Número de Indivíduos
       expect(femur?.sugeridoD).toBe(1);
       expect(femur?.sugeridoE).toBe(0);
     });
+
+    it('extrai costela não identificada e vértebra não identificada de campos residuais', () => {
+      const mockInventory: OsteologicalInventoryData = {
+        torax: {
+          ossos: {},
+          quantidadeNaoIdentificadas: 14
+        },
+        colunaVertebral: {
+          ossos: {},
+          quantidadeNaoIdentificadas: 7
+        }
+      };
+
+      const extracted = extrairOssosDoInventario(mockInventory);
+      const costela = extracted.find(b => b.nome === 'Costela não identificada');
+      expect(costela).toBeDefined();
+      expect(costela?.sugeridoE).toBe(14);
+      expect(costela?.categoria).toBe('Tórax');
+
+      const vertebra = extracted.find(b => b.nome === 'Vértebra não identificada');
+      expect(vertebra).toBeDefined();
+      expect(vertebra?.sugeridoE).toBe(7);
+      expect(vertebra?.categoria).toBe('Coluna Vertebral');
+    });
   });
 });

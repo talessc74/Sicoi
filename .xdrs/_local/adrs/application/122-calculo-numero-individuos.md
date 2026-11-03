@@ -76,6 +76,12 @@ de osso dispõe de:
 - O bloco consolidado superior reflete automaticamente o maior valor determinante do conjunto,
   indicando qual osso estabeleceu o valor máximo.
 
+### 5. Suporte a Elementos Não-Identificados / Residuais (Costelas e Vértebras)
+
+Para ossadas com alto índice de fragmentação ou ossos não lateralizáveis diretamente:
+- Adicionados ao catálogo padrão e à extração automática: **"Costela não identificada"** e **"Vértebra não identificada"**.
+- Extração direta a partir dos campos residuais do inventário osteológico (`torax.quantidadeNaoIdentificadas` e `colunaVertebral.quantidadeNaoIdentificadas`), permitindo ao perito quantificar esses elementos no NMI/MMT mesmo quando não lateralizados em E/D.
+
 ## References
 
 - Arquivos: `src/components/Phase4Curadoria.tsx`, `src/components/NumeroIndividuosViewer.tsx`, `src/utils/quantificacaoIndividuos.ts`, `src/types/sgccco.ts`

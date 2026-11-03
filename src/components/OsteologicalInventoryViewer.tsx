@@ -669,8 +669,13 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
   // Cabeça e Pescoço, que voltou a ser lista corrida como as demais (pedido dos
   // pesquisadores, out/2026: sem prancha visual, sem sub-aba por grupo de osso). ---
   const getSimpleSection = (key: string): OsteologicalSimpleBoneSection => {
-    const raw = (inventory as any)[key] as OsteologicalSimpleBoneSection | undefined;
-    return raw || { ossos: {}, alteracoes: [] };
+    const raw = (inventory as any)?.[key] as OsteologicalSimpleBoneSection | undefined;
+    if (!raw) return { ossos: {}, alteracoes: [] };
+    return {
+      ...raw,
+      ossos: raw.ossos && typeof raw.ossos === 'object' ? raw.ossos : {},
+      alteracoes: Array.isArray(raw.alteracoes) ? raw.alteracoes : []
+    };
   };
 
   const updateSimpleSection = (key: string, patch: Partial<OsteologicalSimpleBoneSection>) => {
@@ -774,7 +779,11 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
   // Estruturas complementares de Cabeça e Pescoço (cartilagens/ossículos) —
   // vivem junto com ossos/alterações no mesmo objeto `cabecaPescoco`, mas só
   // essa seção tem isso, por cima do padrão genérico.
-  const cabecaExtra: OsteologicalSectionCabecaPescoco = inventory.cabecaPescoco || { ossos: {} };
+  const cabecaExtra: OsteologicalSectionCabecaPescoco = {
+    ossos: {},
+    alteracoes: [],
+    ...(inventory.cabecaPescoco || {})
+  };
 
   const toggleAusentesAware = (list: string[] | undefined, val: string): string[] => {
     const current = list || [];
@@ -842,7 +851,7 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
     patch: { quantidadeNaoIdentificadas?: number; quantidadeFragmentos?: number }
   ) => {
     if (readOnly) return;
-    const current = (inventory as any)[sectionKey] || { ossos: {} };
+    const current = getSimpleSection(sectionKey);
     onUpdateInventory({
       ...inventory,
       [sectionKey]: { ...current, ...patch }
@@ -851,7 +860,7 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
 
   const updateSectionObservacoes = (sectionKey: string, obs: string) => {
     if (readOnly) return;
-    const current = (inventory as any)[sectionKey] || { ossos: {} };
+    const current = getSimpleSection(sectionKey);
     onUpdateInventory({
       ...inventory,
       [sectionKey]: { ...current, observacoes: obs }

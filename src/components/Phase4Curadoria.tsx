@@ -16,6 +16,7 @@ import { OsteologicalInventoryViewer } from './OsteologicalInventoryViewer';
 import { NumeroIndividuosViewer } from './NumeroIndividuosViewer';
 import { PhotoSourceModal } from './PhotoSourceModal';
 import { ErrorNotice } from './ErrorNotice';
+import { PhaseErrorBoundary } from './PhaseErrorBoundary';
 import { toAppError, AppError } from '../utils/errorMessages';
 import {
   CONTROLLED_BIOLOGICAL_METHODS,
@@ -59,7 +60,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'individuos' | 'inventario' | 'odontograma' | 'numero_individuos' | 'montagem'>('individuos');
   const [selectedIndividualId, setSelectedIndividualId] = useState<string>(
-    collection.phase4.individuals[0]?.id || ''
+    collection.phase4?.individuals?.[0]?.id || ''
   );
   const [showRefSearchModal, setShowRefSearchModal] = useState(false);
   const [refSearchLoading, setRefSearchLoading] = useState(false);
@@ -109,15 +110,20 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
   // "o técnico é obrigatório, o pesquisador pode ou não").
   const canSignAsTechnicianRole = canSignAsTechnician(currentUser);
 
-  const individuals = collection.phase4.individuals || [];
+  // Tratamento tolerante a formatos do NIC: COI-004 (2 partes) ou NIC-2026-0841 (3 partes)
+  const nicParts = (collection.nic || 'COI-01').split('-');
+  const nicCode = nicParts.length > 2 ? nicParts[2] : (nicParts[1] || '01');
+  const defaultBoxId = collection.phase1?.preliminaryBoxes?.[0]?.id || 'CX-01';
+
+  const individuals = collection.phase4?.individuals || [];
   const currentInd = individuals.find(i => i.id === selectedIndividualId) || individuals[0];
 
   const fallbackInd: IndividualHypothesis = {
-    id: `IND-${collection.nic.split('-')[2] || '01'}-01`,
+    id: `IND-${nicCode}-01`,
     code: 'IND-01',
     confidence: 'alta',
     justification: 'Hipótese biológica fundamentada em concordância anatômica e antimeria.',
-    associatedBoxId: collection.phase1.preliminaryBoxes[0]?.id || 'CX-01',
+    associatedBoxId: defaultBoxId,
     status: 'ativo',
     biologicalProfile: {
       sexEstimate: {
@@ -149,6 +155,18 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
     odontogram: generateInitialOdontogram()
   };
 
+  const ensureBioProfile = (ind?: IndividualHypothesis | null) => {
+    if (!ind) return fallbackInd.biologicalProfile;
+    if (!ind.biologicalProfile) {
+      ind.biologicalProfile = JSON.parse(JSON.stringify(fallbackInd.biologicalProfile));
+    }
+    if (!ind.biologicalProfile.sexEstimate) ind.biologicalProfile.sexEstimate = { ...fallbackInd.biologicalProfile.sexEstimate };
+    if (!ind.biologicalProfile.ageCategory) ind.biologicalProfile.ageCategory = { ...fallbackInd.biologicalProfile.ageCategory };
+    if (!ind.biologicalProfile.statureCm) ind.biologicalProfile.statureCm = { ...fallbackInd.biologicalProfile.statureCm };
+    if (!ind.biologicalProfile.ancestryIndication) ind.biologicalProfile.ancestryIndication = { ...fallbackInd.biologicalProfile.ancestryIndication };
+    return ind.biologicalProfile;
+  };
+
   const activeInd = currentInd || fallbackInd;
 
   // Auto-inicializa o IND-01 ao entrar no Inventário Odontológico caso a coleção
@@ -160,16 +178,16 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
   }, [activeTab, individuals.length, isLocked, canEdit]);
 
   // Elementos do inventário
-  const elements = collection.phase4.skeletalElements || [];
+  const elements = collection.phase4?.skeletalElements || [];
 
   const handleAddIndividual = () => {
     const code = `IND-0${individuals.length + 1}`;
     const newInd: IndividualHypothesis = {
-      id: `IND-${collection.nic.split('-')[2]}-0${individuals.length + 1}`,
+      id: `IND-${nicCode}-0${individuals.length + 1}`,
       code,
       confidence: 'alta',
       justification: 'Hipótese biológica fundamentada em concordância anatômica e antimeria.',
-      associatedBoxId: collection.phase1.preliminaryBoxes[0]?.id || 'CX-01',
+      associatedBoxId: defaultBoxId,
       status: 'ativo',
       biologicalProfile: {
         sexEstimate: {
@@ -201,24 +219,29 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
       odontogram: generateInitialOdontogram()
     };
 
-    const updated = { ...collection };
-    updated.phase4.individuals = [...individuals, newInd];
-    if (elements.length === 0) {
-      updated.phase4.skeletalElements = STANDARD_SKELETAL_INVENTORY_TEMPLATES.map((tpl, idx) => ({
-        id: `elem-${Date.now()}-${idx}`,
-        anatomicalCode: tpl.anatomicalCode,
-        namePt: tpl.namePt,
-        region: tpl.region,
-        side: tpl.side,
-        presence: 'completo',
-        preservationQuality: 'boa',
-        associatedIndividualId: newInd.id,
-        associationMethod: 'Inspeção anatômica direta',
-        associationConfidence: 'alta',
-        associationJustification: 'Simetria e correspondência de facetas articulares.',
-        observations: ''
-      }));
-    }
+    const updated = {
+      ...collection,
+      phase4: {
+        ...collection.phase4,
+        individuals: [...individuals, newInd],
+        skeletalElements: elements.length === 0
+          ? STANDARD_SKELETAL_INVENTORY_TEMPLATES.map((tpl, idx): SkeletalElement => ({
+              id: `elem-${Date.now()}-${idx}`,
+              anatomicalCode: tpl.anatomicalCode,
+              namePt: tpl.namePt,
+              region: tpl.region,
+              side: tpl.side,
+              presence: 'completo',
+              preservationQuality: 'boa',
+              associatedIndividualId: newInd.id,
+              associationMethod: 'Inspeção anatômica direta',
+              associationConfidence: 'alta',
+              associationJustification: 'Simetria e correspondência de facetas articulares.',
+              observations: ''
+            }))
+          : elements
+      }
+    };
     onUpdateCollection(updated);
     setSelectedIndividualId(newInd.id);
   };
@@ -233,12 +256,17 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
     notes?: string
   ) => {
     const updated = { ...collection };
+    if (!updated.phase4) updated.phase4 = { ...collection.phase4 } as any;
+    if (!updated.phase4.individuals) updated.phase4.individuals = [];
     const targetId = currentInd?.id || activeInd.id;
     let ind = updated.phase4.individuals.find(i => i.id === targetId);
     if (!ind) {
       ind = { ...activeInd };
       updated.phase4.individuals = [...individuals, ind];
       setSelectedIndividualId(ind.id);
+    }
+    if (!ind.odontogram) {
+      ind.odontogram = generateInitialOdontogram();
     }
     ind.odontogram = ind.odontogram.map(t => {
       if (t.toothNumberFdi !== num) return t;
@@ -259,12 +287,17 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
   // Atualização em lote de múltiplos dentes com especificações individuais (seleção múltipla do Odontograma)
   const handleBulkUpdateTeeth = (updates: ToothBatchUpdate[]) => {
     const updated = { ...collection };
+    if (!updated.phase4) updated.phase4 = { ...collection.phase4 } as any;
+    if (!updated.phase4.individuals) updated.phase4.individuals = [];
     const targetId = currentInd?.id || activeInd.id;
     let ind = updated.phase4.individuals.find(i => i.id === targetId);
     if (!ind) {
       ind = { ...activeInd };
       updated.phase4.individuals = [...individuals, ind];
       setSelectedIndividualId(ind.id);
+    }
+    if (!ind.odontogram) {
+      ind.odontogram = generateInitialOdontogram();
     }
     const updateMap = new Map(updates.map(u => [u.toothNumber, u]));
     ind.odontogram = ind.odontogram.map(t => {
@@ -294,12 +327,17 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
     notes?: string
   ) => {
     const updated = { ...collection };
+    if (!updated.phase4) updated.phase4 = { ...collection.phase4 } as any;
+    if (!updated.phase4.individuals) updated.phase4.individuals = [];
     const targetId = currentInd?.id || activeInd.id;
     let ind = updated.phase4.individuals.find(i => i.id === targetId);
     if (!ind) {
       ind = { ...activeInd };
       updated.phase4.individuals = [...individuals, ind];
       setSelectedIndividualId(ind.id);
+    }
+    if (!ind.odontogram) {
+      ind.odontogram = generateInitialOdontogram();
     }
     ind.odontogram = ind.odontogram.map(t => {
       if (!toothNumbers.includes(t.toothNumberFdi)) return t;
@@ -327,6 +365,8 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
 
   const handlePatchIndividual = (patch: Partial<IndividualHypothesis>) => {
     const updated = { ...collection };
+    if (!updated.phase4) updated.phase4 = { ...collection.phase4 } as any;
+    if (!updated.phase4.individuals) updated.phase4.individuals = [];
     const targetId = currentInd?.id || activeInd.id;
     let ind = updated.phase4.individuals.find(i => i.id === targetId);
     if (!ind) {
@@ -340,16 +380,27 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
   };
 
   const handleUpdateElementPresence = (elemId: string, presence: any, quality: any) => {
-    const updated = { ...collection };
-    updated.phase4.skeletalElements = updated.phase4.skeletalElements.map(e => 
-      e.id === elemId ? { ...e, presence, preservationQuality: quality } : e
-    );
+    const currentElems = collection.phase4?.skeletalElements || [];
+    const updated = {
+      ...collection,
+      phase4: {
+        ...collection.phase4,
+        skeletalElements: currentElems.map(e => 
+          e.id === elemId ? { ...e, presence, preservationQuality: quality } : e
+        )
+      }
+    };
     onUpdateCollection(updated);
   };
 
   const handleUpdateOsteologicalInventory = (updatedInv: OsteologicalInventoryData) => {
-    const updated = { ...collection };
-    updated.phase4.osteologicalInventory = updatedInv;
+    const updated = {
+      ...collection,
+      phase4: {
+        ...collection.phase4,
+        osteologicalInventory: updatedInv
+      }
+    };
     onUpdateCollection(updated);
   };
 
@@ -493,9 +544,9 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
   // padrão da Fase 1 — handleConfirmNoAssemblyPhoto) libera a assinatura de
   // Montagem; nunca as duas ao mesmo tempo (registrar uma sempre limpa a outra).
   const hasAssemblyPhotoOrJustification =
-    Boolean(collection.phase4.completeAssemblyPhotoApproved) || Boolean(collection.phase4.assemblyPhotoJustification);
-  const canSignAssembly = canSignAsTechnicianRole && hasAssemblyPhotoOrJustification && !collection.phase4.technicianAssemblySign;
-  const canSignInventory = isCurator && individuals.length > 0 && !collection.phase4.curatorInventorySign;
+    Boolean(collection.phase4?.completeAssemblyPhotoApproved) || Boolean(collection.phase4?.assemblyPhotoJustification);
+  const canSignAssembly = canSignAsTechnicianRole && hasAssemblyPhotoOrJustification && !collection.phase4?.technicianAssemblySign;
+  const canSignInventory = isCurator && individuals.length > 0 && !collection.phase4?.curatorInventorySign;
 
   // Confirmação opcional do Pesquisador — nunca trava nem destrava nada, nunca
   // substitui a assinatura de Montagem do Técnico/Curador acima.
@@ -512,6 +563,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
   };
 
   return (
+    <PhaseErrorBoundary fallbackTitle="Erro ao carregar a Fase 4 (Montagem e Inventário)">
     <div className="space-y-6">
       {/* Top Banner Montagem e Inventário */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs">
@@ -522,7 +574,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
               <span>Fase 4 · Montagem e Inventário — Bioantropológico & Versão Científica (§8)</span>
             </div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-0.5">
-              {collection.nic} · Versão v{collection.phase4.curationVersionNumber} ({collection.phase4.curationVersionStatus.toUpperCase()})
+              {collection.nic} · Versão v{collection.phase4?.curationVersionNumber ?? 1} ({(collection.phase4?.curationVersionStatus || 'rascunho').toUpperCase()})
             </h2>
             <p className="text-xs text-slate-500 mt-1">
               Quem identifica e decide é sempre o curador. Agentes de IA apenas buscam referências e apoiam narração de rascunhos.
@@ -531,7 +583,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
 
           <div className="flex items-center gap-3">
             {currentUser.role === 'pesquisador' && !isLocked && (
-              collection.phase4.researcherConfirmation ? (
+              collection.phase4?.researcherConfirmation ? (
                 <div className="px-3 py-2 rounded-xl bg-sky-50 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-900 flex items-center gap-2 text-xs font-mono text-sky-700 dark:text-sky-300 font-semibold">
                   <UserCheck className="w-4 h-4 text-sky-600" />
                   <span>Revisão do Pesquisador confirmada</span>
@@ -668,7 +720,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
                         </span>
                       </div>
                       <span className="text-[11px] text-slate-400 block truncate mt-0.5">
-                        {ind.biologicalProfile.sexEstimate.value} · {ind.biologicalProfile.ageCategory.value}
+                        {ind.biologicalProfile?.sexEstimate?.value || 'indeterminado'} · {ind.biologicalProfile?.ageCategory?.value || 'indeterminado'}
                       </span>
                     </button>
                   ))}
@@ -756,131 +808,136 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
                 </div>
 
                 {/* Perfil Biológico (Preenchido estritamente pelo Curador a partir do catálogo controlado) */}
-                <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-4">
-                  <h4 className="font-bold text-xs text-slate-900 dark:text-white uppercase font-mono tracking-wider">
-                    Perfil Biológico (Catálogo Controlado §9)
-                  </h4>
+                {(() => {
+                  const currentBio = ensureBioProfile(currentInd);
+                  return (
+                    <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-4">
+                      <h4 className="font-bold text-xs text-slate-900 dark:text-white uppercase font-mono tracking-wider">
+                        Perfil Biológico (Catálogo Controlado §9)
+                      </h4>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                    {/* Sexo Estimado */}
-                    <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 space-y-2">
-                      <span className="font-bold text-slate-900 dark:text-white block">1. Sexo Estimado</span>
-                      <select
-                        disabled={isLocked || !canEdit}
-                        value={currentInd.biologicalProfile.sexEstimate.value}
-                        onChange={(e) => {
-                          const updated = { ...collection };
-                          const ind = updated.phase4.individuals.find(i => i.id === currentInd.id);
-                          if (ind) ind.biologicalProfile.sexEstimate.value = e.target.value as any;
-                          onUpdateCollection(updated);
-                        }}
-                        className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-mono text-xs"
-                      >
-                        <option value="masculino">Masculino</option>
-                        <option value="provavel_masculino">Provável Masculino</option>
-                        <option value="indeterminado">Indeterminado</option>
-                        <option value="provavel_feminino">Provável Feminino</option>
-                        <option value="feminino">Feminino</option>
-                      </select>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                        {/* Sexo Estimado */}
+                        <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 space-y-2">
+                          <span className="font-bold text-slate-900 dark:text-white block">1. Sexo Estimado</span>
+                          <select
+                            disabled={isLocked || !canEdit}
+                            value={currentBio.sexEstimate.value}
+                            onChange={(e) => {
+                              const updated = { ...collection };
+                              const ind = updated.phase4?.individuals?.find(i => i.id === currentInd.id);
+                              if (ind) ensureBioProfile(ind).sexEstimate.value = e.target.value as any;
+                              onUpdateCollection(updated);
+                            }}
+                            className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-mono text-xs"
+                          >
+                            <option value="masculino">Masculino</option>
+                            <option value="provavel_masculino">Provável Masculino</option>
+                            <option value="indeterminado">Indeterminado</option>
+                            <option value="provavel_feminino">Provável Feminino</option>
+                            <option value="feminino">Feminino</option>
+                          </select>
 
-                      <div className="text-[11px] space-y-1">
-                        <label className="text-slate-500 font-mono">Método Padronizado:</label>
-                        <select
-                          disabled={isLocked || !canEdit}
-                          value={currentInd.biologicalProfile.sexEstimate.methodCode}
-                          onChange={(e) => {
-                            const updated = { ...collection };
-                            const ind = updated.phase4.individuals.find(i => i.id === currentInd.id);
-                            if (ind) ind.biologicalProfile.sexEstimate.methodCode = e.target.value;
-                            onUpdateCollection(updated);
-                          }}
-                          className="w-full p-1.5 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs"
-                        >
-                          {CONTROLLED_BIOLOGICAL_METHODS.sex.map(m => (
-                            <option key={m.code} value={m.code}>{m.name}</option>
-                          ))}
-                        </select>
+                          <div className="text-[11px] space-y-1">
+                            <label className="text-slate-500 font-mono">Método Padronizado:</label>
+                            <select
+                              disabled={isLocked || !canEdit}
+                              value={currentBio.sexEstimate.methodCode}
+                              onChange={(e) => {
+                                const updated = { ...collection };
+                                const ind = updated.phase4?.individuals?.find(i => i.id === currentInd.id);
+                                if (ind) ensureBioProfile(ind).sexEstimate.methodCode = e.target.value;
+                                onUpdateCollection(updated);
+                              }}
+                              className="w-full p-1.5 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs"
+                            >
+                              {CONTROLLED_BIOLOGICAL_METHODS.sex.map(m => (
+                                <option key={m.code} value={m.code}>{m.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Faixa Etária */}
+                        <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 space-y-2">
+                          <span className="font-bold text-slate-900 dark:text-white block">2. Faixa Etária Óssea</span>
+                          <select
+                            disabled={isLocked || !canEdit}
+                            value={currentBio.ageCategory.value}
+                            onChange={(e) => {
+                              const updated = { ...collection };
+                              const ind = updated.phase4?.individuals?.find(i => i.id === currentInd.id);
+                              if (ind) ensureBioProfile(ind).ageCategory.value = e.target.value as any;
+                              onUpdateCollection(updated);
+                            }}
+                            className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-mono text-xs"
+                          >
+                            <option value="subadulto">Subadulto (&lt; 20 anos)</option>
+                            <option value="adulto_jovem">Adulto Jovem (20 - 35 anos)</option>
+                            <option value="adulto_medio">Adulto Médio (35 - 50 anos)</option>
+                            <option value="adulto_maduro">Adulto Maduro (50+ anos)</option>
+                          </select>
+
+                          <input
+                            type="text"
+                            disabled={isLocked || !canEdit}
+                            value={currentBio.ageCategory.estimatedRangeYears}
+                            onChange={(e) => {
+                              const updated = { ...collection };
+                              const ind = updated.phase4?.individuals?.find(i => i.id === currentInd.id);
+                              if (ind) ensureBioProfile(ind).ageCategory.estimatedRangeYears = e.target.value;
+                              onUpdateCollection(updated);
+                            }}
+                            placeholder="Intervalo estimado: ex: 35 - 45 anos"
+                            className="w-full p-1.5 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-mono"
+                          />
+                        </div>
+
+                        {/* Estatura */}
+                        <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 space-y-2">
+                          <span className="font-bold text-slate-900 dark:text-white block">3. Estatura Estimada</span>
+                          <div className="flex gap-2">
+                            <input
+                              type="number"
+                              step="0.1"
+                              disabled={isLocked || !canEdit}
+                              value={currentBio.statureCm.estimatedValue}
+                              onChange={(e) => {
+                                const updated = { ...collection };
+                                const ind = updated.phase4?.individuals?.find(i => i.id === currentInd.id);
+                                if (ind) ensureBioProfile(ind).statureCm.estimatedValue = parseFloat(e.target.value) || 0;
+                                onUpdateCollection(updated);
+                              }}
+                              className="w-2/3 p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-mono text-xs"
+                            />
+                            <span className="flex items-center text-slate-500 font-mono text-xs">cm (± {currentBio.statureCm.marginErrorCm})</span>
+                          </div>
+                          <span className="text-[10px] text-slate-400 block">
+                            Método: {currentBio.statureCm.methodCode}
+                          </span>
+                        </div>
+
+                        {/* Ancestralidade */}
+                        <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 space-y-2">
+                          <span className="font-bold text-slate-900 dark:text-white block">4. Traços Craniomórficos</span>
+                          <textarea
+                            rows={2}
+                            disabled={isLocked || !canEdit}
+                            value={currentBio.ancestryIndication.traitsObserved}
+                            onChange={(e) => {
+                              const updated = { ...collection };
+                              const ind = updated.phase4?.individuals?.find(i => i.id === currentInd.id);
+                              if (ind) ensureBioProfile(ind).ancestryIndication.traitsObserved = e.target.value;
+                              onUpdateCollection(updated);
+                            }}
+                            placeholder="Descreva abertura piriforme, espinha nasal anterior..."
+                            className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs"
+                          />
+                        </div>
                       </div>
                     </div>
-
-                    {/* Faixa Etária */}
-                    <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 space-y-2">
-                      <span className="font-bold text-slate-900 dark:text-white block">2. Faixa Etária Óssea</span>
-                      <select
-                        disabled={isLocked || !canEdit}
-                        value={currentInd.biologicalProfile.ageCategory.value}
-                        onChange={(e) => {
-                          const updated = { ...collection };
-                          const ind = updated.phase4.individuals.find(i => i.id === currentInd.id);
-                          if (ind) ind.biologicalProfile.ageCategory.value = e.target.value as any;
-                          onUpdateCollection(updated);
-                        }}
-                        className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-mono text-xs"
-                      >
-                        <option value="subadulto">Subadulto (&lt; 20 anos)</option>
-                        <option value="adulto_jovem">Adulto Jovem (20 - 35 anos)</option>
-                        <option value="adulto_medio">Adulto Médio (35 - 50 anos)</option>
-                        <option value="adulto_maduro">Adulto Maduro (50+ anos)</option>
-                      </select>
-
-                      <input
-                        type="text"
-                        disabled={isLocked || !canEdit}
-                        value={currentInd.biologicalProfile.ageCategory.estimatedRangeYears}
-                        onChange={(e) => {
-                          const updated = { ...collection };
-                          const ind = updated.phase4.individuals.find(i => i.id === currentInd.id);
-                          if (ind) ind.biologicalProfile.ageCategory.estimatedRangeYears = e.target.value;
-                          onUpdateCollection(updated);
-                        }}
-                        placeholder="Intervalo estimado: ex: 35 - 45 anos"
-                        className="w-full p-1.5 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-mono"
-                      />
-                    </div>
-
-                    {/* Estatura */}
-                    <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 space-y-2">
-                      <span className="font-bold text-slate-900 dark:text-white block">3. Estatura Estimada</span>
-                      <div className="flex gap-2">
-                        <input
-                          type="number"
-                          step="0.1"
-                          disabled={isLocked || !canEdit}
-                          value={currentInd.biologicalProfile.statureCm.estimatedValue}
-                          onChange={(e) => {
-                            const updated = { ...collection };
-                            const ind = updated.phase4.individuals.find(i => i.id === currentInd.id);
-                            if (ind) ind.biologicalProfile.statureCm.estimatedValue = parseFloat(e.target.value) || 0;
-                            onUpdateCollection(updated);
-                          }}
-                          className="w-2/3 p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-mono text-xs"
-                        />
-                        <span className="flex items-center text-slate-500 font-mono text-xs">cm (± {currentInd.biologicalProfile.statureCm.marginErrorCm})</span>
-                      </div>
-                      <span className="text-[10px] text-slate-400 block">
-                        Método: {currentInd.biologicalProfile.statureCm.methodCode}
-                      </span>
-                    </div>
-
-                    {/* Ancestralidade */}
-                    <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 space-y-2">
-                      <span className="font-bold text-slate-900 dark:text-white block">4. Traços Craniomórficos</span>
-                      <textarea
-                        rows={2}
-                        disabled={isLocked || !canEdit}
-                        value={currentInd.biologicalProfile.ancestryIndication.traitsObserved}
-                        onChange={(e) => {
-                          const updated = { ...collection };
-                          const ind = updated.phase4.individuals.find(i => i.id === currentInd.id);
-                          if (ind) ind.biologicalProfile.ancestryIndication.traitsObserved = e.target.value;
-                          onUpdateCollection(updated);
-                        }}
-                        placeholder="Descreva abertura piriforme, espinha nasal anterior..."
-                        className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs"
-                      />
-                    </div>
-                  </div>
-                </div>
+                  );
+                })()}
               </div>
             </div>
           ) : (
@@ -939,7 +996,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
           </div>
 
           <OdontogramViewer
-            teeth={activeInd.odontogram}
+            teeth={activeInd.odontogram || generateInitialOdontogram()}
             onUpdateTooth={handleUpdateTooth}
             onBulkUpdateTeeth={handleBulkUpdateTeeth}
             onBulkMarkTeeth={handleBulkMarkTeeth}
@@ -983,7 +1040,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
                 Esta é a fotografia institucional que ficará visível publicamente na leitura do QR Code (§11).
               </p>
             </div>
-            {!collection.phase4.completeAssemblyPhotoApproved && canApprove && (
+            {!collection.phase4?.completeAssemblyPhotoApproved && canApprove && (
               <button
                 onClick={handleRequestAssemblyPhoto}
                 disabled={uploadingAssemblyPhoto}
@@ -1012,7 +1069,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
             onChange={handleAssemblyPhotoFileSelected}
           />
 
-          {collection.phase4.completeAssemblyPhotoApproved ? (
+          {collection.phase4?.completeAssemblyPhotoApproved ? (
             <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 relative bg-black">
               <img
                 src={collection.phase4.completeAssemblyPhotoApproved.photoUrl}
@@ -1033,7 +1090,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
                 </div>
               </div>
             </div>
-          ) : collection.phase4.assemblyPhotoJustification ? (
+          ) : collection.phase4?.assemblyPhotoJustification ? (
             <div className="p-6 text-center border-2 border-dashed border-amber-300 dark:border-amber-800 rounded-2xl space-y-2 bg-amber-50 dark:bg-amber-950/30">
               <AlertCircle className="w-8 h-8 mx-auto text-amber-500" />
               <p className="font-semibold text-amber-700 dark:text-amber-300">
@@ -1251,12 +1308,12 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
             </p>
             <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl font-mono text-[11px] space-y-1">
               <div>COI: {collection.nic}</div>
-              <div>Versão Científica: v{collection.phase4.curationVersionNumber}</div>
+              <div>Versão Científica: v{collection.phase4?.curationVersionNumber ?? 1}</div>
               <div>
                 Foto de Montagem:{' '}
-                {collection.phase4.completeAssemblyPhotoApproved
-                  ? `${collection.phase4.completeAssemblyPhotoApproved.sha256Hash.substring(0, 16)}...`
-                  : collection.phase4.assemblyPhotoJustification
+                {collection.phase4?.completeAssemblyPhotoApproved
+                  ? `${collection.phase4.completeAssemblyPhotoApproved.sha256Hash?.substring(0, 16) || 'OK'}...`
+                  : collection.phase4?.assemblyPhotoJustification
                   ? 'sem foto (justificado)'
                   : 'pendente'}
               </div>
@@ -1278,5 +1335,6 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
         </div>
       )}
     </div>
+    </PhaseErrorBoundary>
   );
 };

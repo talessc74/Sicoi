@@ -23,6 +23,7 @@ import { DocumentSearchViewer } from './components/DocumentSearchViewer';
 import { SettingsView } from './components/SettingsView';
 import { HelpView } from './components/HelpView';
 import { PhaseProgressRibbon } from './components/PhaseProgressRibbon';
+import { PhaseErrorBoundary } from './components/PhaseErrorBoundary';
 import { Phase0Recebimento } from './components/Phase0Recebimento';
 import { Phase1Recebimento } from './components/Phase1Recebimento';
 import { Phase2Limpeza } from './components/Phase2Limpeza';
@@ -876,12 +877,14 @@ export default function App() {
               />
             )}
             {activePhase === 4 && (
-              <Phase4Curadoria
-                collection={currentCollection}
-                currentUser={currentUser}
-                onUpdateCollection={handleUpdateCollection}
-                laboratoryMode={laboratoryMode}
-              />
+              <PhaseErrorBoundary fallbackTitle="Erro ao carregar a Fase 4 (Montagem e Inventário)">
+                <Phase4Curadoria
+                  collection={currentCollection}
+                  currentUser={currentUser}
+                  onUpdateCollection={handleUpdateCollection}
+                  laboratoryMode={laboratoryMode}
+                />
+              </PhaseErrorBoundary>
             )}
             {activePhase === 5 && (
               <Phase5Patologias

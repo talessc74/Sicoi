@@ -297,7 +297,7 @@ export function toggleSelectAll(currentSelected: number[], allNumbers: number[])
 }
 
 export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
-  teeth,
+  teeth = [],
   onUpdateTooth,
   onBulkUpdateTeeth,
   onBulkMarkTeeth,
@@ -348,7 +348,7 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
     );
   };
 
-  const getTooth = (num: number) => teeth.find(t => t.toothNumberFdi === num);
+  const getTooth = (num: number) => (Array.isArray(teeth) ? teeth : []).find(t => t.toothNumberFdi === num);
 
   // Verifica se o dente está ativo/habilitado conforme o modo de dentição
   const isToothActive = (num: number): boolean => {
