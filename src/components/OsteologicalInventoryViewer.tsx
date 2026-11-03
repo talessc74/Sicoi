@@ -1858,18 +1858,55 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
               </div>
             </div>
           ) : (
-              <SimpleBoneRows
-                bones={bones}
-                section={sectionData}
-                readOnly={readOnly}
-                expandedBones={expandedBonesBySection[sectionKey] || {}}
-                onToggleExpand={bone => toggleExpandBoneGeneric(sectionKey, bone)}
-                onSetPresence={(bone, code) => handleSetPresenceGeneric(sectionKey, bone, code)}
-                onToggleAlteracao={(bone, tipo) => handleToggleAlteracaoGeneric(sectionKey, bone, tipo)}
-                onAddAlteracaoItem={(bone, tipo) => handleAddAlteracaoItemGeneric(sectionKey, bone, tipo)}
-                onRemoveAlteracaoItem={id => handleRemoveAlteracaoItemGeneric(sectionKey, id)}
-                onUpdateAlteracaoItem={(id, obs) => handleUpdateAlteracaoItemGeneric(sectionKey, id, obs)}
-              />
+              <div className="space-y-3">
+                <div className="flex items-center justify-between pb-1 border-b border-slate-200 dark:border-slate-800">
+                  <h5 className="font-bold text-xs uppercase font-mono tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-sky-500" />
+                    Ossos da Cabeça e Pescoço (Crânio, Face e Hioide)
+                  </h5>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-mono text-slate-500">
+                      {bones.filter(b => sectionData.ossos[b]).length}/{bones.length}
+                    </span>
+                    {!readOnly && (
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] font-mono text-slate-400">Todos:</span>
+                        {(['P', 'F', 'I', 'A'] as const).map(code => (
+                          <button
+                            key={code}
+                            type="button"
+                            onClick={() => handleBulkMarkGeneric(sectionKey, bones, code)}
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border transition-colors ${
+                              code === 'P'
+                                ? 'border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300'
+                              : code === 'F'
+                                ? 'border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300'
+                              : code === 'I'
+                                ? 'border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-300'
+                                : 'border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300'
+                            } bg-white dark:bg-slate-900`}
+                            title={`Marcar todos os ossos da Cabeça e Pescoço como ${code}`}
+                          >
+                            {code}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <SimpleBoneRows
+                  bones={bones}
+                  section={sectionData}
+                  readOnly={readOnly}
+                  expandedBones={expandedBonesBySection[sectionKey] || {}}
+                  onToggleExpand={bone => toggleExpandBoneGeneric(sectionKey, bone)}
+                  onSetPresence={(bone, code) => handleSetPresenceGeneric(sectionKey, bone, code)}
+                  onToggleAlteracao={(bone, tipo) => handleToggleAlteracaoGeneric(sectionKey, bone, tipo)}
+                  onAddAlteracaoItem={(bone, tipo) => handleAddAlteracaoItemGeneric(sectionKey, bone, tipo)}
+                  onRemoveAlteracaoItem={id => handleRemoveAlteracaoItemGeneric(sectionKey, id)}
+                  onUpdateAlteracaoItem={(id, obs) => handleUpdateAlteracaoItemGeneric(sectionKey, id, obs)}
+                />
+              </div>
             )}
 
             {currentSectionId === 'cabeca_pescoco' && (

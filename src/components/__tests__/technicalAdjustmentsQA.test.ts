@@ -608,4 +608,53 @@ describe('Suíte de QA — Validação das 12 Mudanças Solicitadas pelos Técni
       });
     });
   });
+
+  // --------------------------------------------------------------------------
+  // Item 13: Opções "P F I A" para todos os tópicos de todas as seções
+  // --------------------------------------------------------------------------
+  describe('Item 13: Marcação em lote de P F I A por tópicos anatômicos em todas as seções', () => {
+    it('aplica bulk marking em Vértebras Cervicais sem afetar o resto da coluna', () => {
+      const ossos: Record<string, any> = {};
+      const res = applyBulkPresence(ossos, undefined, VERTEBRAS_CERVICAIS, 'P');
+      expect(Object.keys(res.ossos)).toHaveLength(7);
+      expect(VERTEBRAS_CERVICAIS.every(b => res.ossos[b] === 'P')).toBe(true);
+      expect(VERTEBRAS_TORACICAS.some(b => res.ossos[b] !== undefined)).toBe(false);
+    });
+
+    it('aplica bulk marking em Vértebras Torácicas, Lombares e Sacro/Cóccix independentemente', () => {
+      const ossos: Record<string, any> = {};
+      const resT = applyBulkPresence(ossos, undefined, VERTEBRAS_TORACICAS, 'F');
+      expect(Object.keys(resT.ossos)).toHaveLength(12);
+      expect(VERTEBRAS_TORACICAS.every(b => resT.ossos[b] === 'F')).toBe(true);
+
+      const resL = applyBulkPresence(resT.ossos, undefined, VERTEBRAS_LOMBARES, 'I');
+      expect(VERTEBRAS_LOMBARES.every(b => resL.ossos[b] === 'I')).toBe(true);
+
+      const resS = applyBulkPresence(resL.ossos, undefined, SACRO_COCCIX_OSSOS, 'A');
+      expect(SACRO_COCCIX_OSSOS.every(b => resS.ossos[b] === 'A')).toBe(true);
+      expect(Object.keys(resS.ossos)).toHaveLength(12 + 5 + 2);
+    });
+
+    it('aplica bulk marking em Esterno e Costelas por lateralidade separadamente', () => {
+      const ossos: Record<string, any> = {};
+      const resEsterno = applyBulkPresence(ossos, undefined, ESTERNO_OSSOS, 'P');
+      expect(ESTERNO_OSSOS.every(b => resEsterno.ossos[b] === 'P')).toBe(true);
+      expect(Object.keys(resEsterno.ossos)).toHaveLength(3);
+
+      const resCostEsq = applyBulkPresence(resEsterno.ossos, undefined, COSTELAS_ESQUERDAS, 'F');
+      expect(COSTELAS_ESQUERDAS.every(b => resCostEsq.ossos[b] === 'F')).toBe(true);
+      expect(COSTELAS_DIREITAS.some(b => resCostEsq.ossos[b] !== undefined)).toBe(false);
+
+      const resCostDir = applyBulkPresence(resCostEsq.ossos, undefined, COSTELAS_DIREITAS, 'P');
+      expect(COSTELAS_DIREITAS.every(b => resCostDir.ossos[b] === 'P')).toBe(true);
+      expect(Object.keys(resCostDir.ossos)).toHaveLength(3 + 12 + 12);
+    });
+
+    it('aplica bulk marking em Cabeça e Pescoço (23 ossos)', () => {
+      const ossos: Record<string, any> = {};
+      const res = applyBulkPresence(ossos, undefined, CABECA_PESCOCO_OSSOS, 'A');
+      expect(Object.keys(res.ossos)).toHaveLength(23);
+      expect(CABECA_PESCOCO_OSSOS.every(b => res.ossos[b] === 'A')).toBe(true);
+    });
+  });
 });
