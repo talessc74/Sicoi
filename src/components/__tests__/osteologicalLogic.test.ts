@@ -147,7 +147,7 @@ describe('Inventário Osteológico — Lógica Bilateral (Lado Direito / Lado Es
       });
     });
 
-    it('marca todos os ossos da lista como A e remove alterações ósseas desses ossos', () => {
+    it('marca todos os ossos da lista como A e preserva alterações ósseas desses ossos', () => {
       const initialAlts = [
         { id: 'alt-1', tipo: 'patologia' as const, osso: 'Clavícula Esquerda', observacoes: '' },
         { id: 'alt-2', tipo: 'lesao_peri_mortem' as const, osso: 'Úmero Esquerdo', observacoes: '' }
@@ -157,10 +157,8 @@ describe('Inventário Osteológico — Lógica Bilateral (Lado Direito / Lado Es
         'Clavícula Esquerda': 'A',
         'Escápula Esquerda': 'A'
       });
-      // Alteração da Clavícula Esquerda deve ser removida; alteração do Úmero (não incluído) é mantida
-      expect(res.alteracoes).toEqual([
-        { id: 'alt-2', tipo: 'lesao_peri_mortem', osso: 'Úmero Esquerdo', observacoes: '' }
-      ]);
+      // Alterações são preservadas mesmo com o osso Ausente (A) (solicitação nov/2026)
+      expect(res.alteracoes).toEqual(initialAlts);
     });
   });
 });
