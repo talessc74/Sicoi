@@ -11,16 +11,15 @@ import {
 } from '../types/sgccco';
 import { Info, Sparkles, Plus, Trash2, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react';
 
-// Osso ausente ('A') e alteração óssea ('!') são mutuamente exclusivos — não
-// faz sentido catalogar uma alteração num osso que não foi encontrado (pedido
-// do Tales, out/2026, aplicado retroativamente à Cabeça e Pescoço também).
+// A opção 'ausente' ('A') aceita alterações ósseas (solicitação do Tales, nov/2026:
+// ossos ausentes podem ter alterações associadas como amputação cirúrgica, trauma perimortem,
+// perda tafonômica ou agenesia).
 export function clearAlteracoesIfAusente(
   alteracoes: OsteologicalAlteracaoRegiao[] | undefined,
-  bone: string,
-  newCode: OsteologicalPresenceCode | undefined
+  _bone: string,
+  _newCode: OsteologicalPresenceCode | undefined
 ): OsteologicalAlteracaoRegiao[] | undefined {
-  if (newCode !== 'A' || !alteracoes) return alteracoes;
-  return alteracoes.filter(a => a.osso !== bone);
+  return alteracoes;
 }
 
 export function applyBulkPresence(
@@ -31,8 +30,7 @@ export function applyBulkPresence(
 ): { ossos: Record<string, OsteologicalPresenceCode>; alteracoes: OsteologicalAlteracaoRegiao[] | undefined } {
   const newOssos = { ...currentOssos };
   for (const bone of bones) newOssos[bone] = code;
-  const newAlteracoes = code === 'A' ? (currentAlteracoes || []).filter(a => !bones.includes(a.osso || '')) : currentAlteracoes;
-  return { ossos: newOssos, alteracoes: newAlteracoes };
+  return { ossos: newOssos, alteracoes: currentAlteracoes };
 }
 
 export function computeBoneAlterationStatus(
@@ -1902,13 +1900,9 @@ const SimpleBoneRows: React.FC<SimpleBoneRowsProps> = ({
             {/* Linha principal do osso: clicar no item (fora dos botões) abre/recolhe a gaveta de alterações */}
             <div
               onClick={() => {
-                if (currentCode !== 'A') onToggleExpand(bone);
+                onToggleExpand(bone);
               }}
-              title={
-                currentCode === 'A'
-                  ? `Osso ausente — não há alteração a registrar em ${bone}`
-                  : `Clique para expandir/recolher opções e alterações de ${bone}`
-              }
+              title={`Clique para expandir/recolher opções e alterações de ${bone}`}
               className="flex flex-wrap items-center justify-between p-2.5 sm:p-3 gap-2 cursor-pointer hover:bg-slate-100/50 dark:hover:bg-slate-800/40 rounded-t-xl transition-colors"
             >
               <div className="flex items-center gap-2.5 min-w-0 pr-2">
@@ -1959,12 +1953,12 @@ const SimpleBoneRows: React.FC<SimpleBoneRowsProps> = ({
 
                 <button
                   type="button"
-                  disabled={readOnly || currentCode === 'A'}
+                  disabled={readOnly}
                   onClick={e => {
                     e.stopPropagation();
                     onToggleExpand(bone);
                   }}
-                  title={currentCode === 'A' ? `Osso ausente — não há alteração a registrar em ${bone}` : `Alterações ósseas — ${bone}`}
+                  title={`Alterações ósseas — ${bone}`}
                   aria-label={`Alterações ósseas — ${bone}`}
                   className={`w-8 h-8 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center transition-all border touch-manipulation ${
                     isExpanded || activeAlteracoes.length > 0
@@ -1972,7 +1966,7 @@ const SimpleBoneRows: React.FC<SimpleBoneRowsProps> = ({
                         ? 'bg-red-700 text-white border-red-800 ring-2 ring-red-400/50 shadow-xs'
                         : 'bg-red-600 text-white border-red-700 shadow-xs hover:bg-red-700 active:scale-95'
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-red-50 hover:text-red-600 hover:border-red-300 dark:hover:bg-red-950/40 dark:hover:text-red-400 active:scale-95'
-                  } ${readOnly || currentCode === 'A' ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                  } ${readOnly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
                 >
                   <AlertCircle className="w-4 h-4" />
                 </button>

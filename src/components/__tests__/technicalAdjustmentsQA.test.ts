@@ -399,20 +399,20 @@ describe('Suíte de QA — Validação das 12 Mudanças Solicitadas pelos Técni
   });
 
   // --------------------------------------------------------------------------
-  // Regras de Integridade: Mutua exclusão Ausente vs Alteração e Bulk Actions
+  // Regras de Integridade: Ausente aceita Alteração e Bulk Actions
   // --------------------------------------------------------------------------
   describe('Regras de Integridade Complementares', () => {
-    it('limpa alterações automaticamente se o osso for marcado como Ausente (A)', () => {
+    it('preserva alterações se o osso for marcado como Ausente (A), permitindo registro de patologia/trauma em osso ausente', () => {
       const alteracoes: OsteologicalAlteracaoRegiao[] = [
-        { id: '1', osso: 'Frontal', tipo: 'patologia', observacoes: '' },
+        { id: '1', osso: 'Frontal', tipo: 'patologia', observacoes: 'Amputação cirúrgica ante-mortem / perda perimortem' },
         { id: '2', osso: 'Occipital', tipo: 'patologia', observacoes: '' }
       ];
       const cleaned = clearAlteracoesIfAusente(alteracoes, 'Frontal', 'A');
-      expect(cleaned).toHaveLength(1);
-      expect(cleaned?.[0].osso).toBe('Occipital');
+      expect(cleaned).toHaveLength(2);
+      expect(cleaned?.[0].osso).toBe('Frontal');
     });
 
-    it('aplica marcação em lote e limpa alterações caso lote seja marcado como Ausente (A)', () => {
+    it('aplica marcação em lote preservando alterações caso lote seja marcado como Ausente (A)', () => {
       const bones = ['Costela C1 Esquerda', 'Costela C2 Esquerda'];
       const currentAlteracoes: OsteologicalAlteracaoRegiao[] = [
         { id: '1', osso: 'Costela C1 Esquerda', tipo: 'patologia', observacoes: '' }
@@ -420,7 +420,8 @@ describe('Suíte de QA — Validação das 12 Mudanças Solicitadas pelos Técni
       const res = applyBulkPresence({}, currentAlteracoes, bones, 'A');
       expect(res.ossos['Costela C1 Esquerda']).toBe('A');
       expect(res.ossos['Costela C2 Esquerda']).toBe('A');
-      expect(res.alteracoes).toHaveLength(0);
+      expect(res.alteracoes).toHaveLength(1);
+      expect(res.alteracoes?.[0].osso).toBe('Costela C1 Esquerda');
     });
   });
 

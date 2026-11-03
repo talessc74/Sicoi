@@ -34,9 +34,11 @@ do osso como uma gaveta expansível:
 3. **Isolamento de eventos:** os seletores rápidos de presença (`P`, `F`, `I`,
    `A`) e o interior da gaveta usam `e.stopPropagation()` para que cliques em
    códigos, checkboxes ou campos de texto não colidam com a abertura/fechamento.
-4. **Exclusão mútua (`Ausente × Alteração`):** elementos com presença `A` não
-   abrem gaveta de alteração nem admitem registro patológico (pedido do Tales,
-   out/2026).
+4. **Compatibilidade com elementos ausentes (`Ausente aceita Alteração`):**
+   elementos com presença `A` admitem registro e abertura de alterações ósseas
+   (pedido do Tales, nov/2026), viabilizando documentar causas ou circunstâncias
+   da ausência esquelética (ex.: amputação cirúrgica ante-mortem, trauma
+   perimortem, perda tafonômica, remoção violenta ou agenesia congênita).
 5. **Universalidade:** com a reestruturação da `_local-adr-policy-113`, este
    mesmo padrão e gaveta operam em todas as 7 seções através do componente
    unificado `SimpleBoneRows`.
