@@ -1143,9 +1143,35 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                       <span className="w-2 h-2 rounded-full bg-sky-500" />
                       Vértebras Cervicais (C1 a C7)
                     </h5>
-                    <span className="text-[11px] font-mono text-slate-500">
-                      {VERTEBRAS_CERVICAIS.filter(b => sectionData.ossos[b]).length}/{VERTEBRAS_CERVICAIS.length}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-mono text-slate-500">
+                        {VERTEBRAS_CERVICAIS.filter(b => sectionData.ossos[b]).length}/{VERTEBRAS_CERVICAIS.length}
+                      </span>
+                      {!readOnly && (
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] font-mono text-slate-400">Todos:</span>
+                          {(['P', 'F', 'I', 'A'] as const).map(code => (
+                            <button
+                              key={code}
+                              type="button"
+                              onClick={() => handleBulkMarkGeneric(sectionKey, VERTEBRAS_CERVICAIS, code)}
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border transition-colors ${
+                                code === 'P'
+                                  ? 'border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300'
+                                  : code === 'F'
+                                    ? 'border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300'
+                                    : code === 'I'
+                                      ? 'border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-300'
+                                      : 'border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300'
+                              } bg-white dark:bg-slate-900`}
+                              title={`Marcar todas as Vértebras Cervicais como ${code}`}
+                            >
+                              {code}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <SimpleBoneRows
                     bones={VERTEBRAS_CERVICAIS}
@@ -1168,9 +1194,35 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                       <span className="w-2 h-2 rounded-full bg-sky-600" />
                       Vértebras Torácicas (T1 a T12)
                     </h5>
-                    <span className="text-[11px] font-mono text-slate-500">
-                      {VERTEBRAS_TORACICAS.filter(b => sectionData.ossos[b]).length}/{VERTEBRAS_TORACICAS.length}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-mono text-slate-500">
+                        {VERTEBRAS_TORACICAS.filter(b => sectionData.ossos[b]).length}/{VERTEBRAS_TORACICAS.length}
+                      </span>
+                      {!readOnly && (
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] font-mono text-slate-400">Todos:</span>
+                          {(['P', 'F', 'I', 'A'] as const).map(code => (
+                            <button
+                              key={code}
+                              type="button"
+                              onClick={() => handleBulkMarkGeneric(sectionKey, VERTEBRAS_TORACICAS, code)}
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border transition-colors ${
+                                code === 'P'
+                                  ? 'border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300'
+                                  : code === 'F'
+                                    ? 'border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300'
+                                    : code === 'I'
+                                      ? 'border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-300'
+                                      : 'border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300'
+                              } bg-white dark:bg-slate-900`}
+                              title={`Marcar todas as Vértebras Torácicas como ${code}`}
+                            >
+                              {code}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <SimpleBoneRows
                     bones={VERTEBRAS_TORACICAS}
@@ -1193,9 +1245,35 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                       <span className="w-2 h-2 rounded-full bg-indigo-600" />
                       Vértebras Lombares (L1 a L5)
                     </h5>
-                    <span className="text-[11px] font-mono text-slate-500">
-                      {VERTEBRAS_LOMBARES.filter(b => sectionData.ossos[b]).length}/{VERTEBRAS_LOMBARES.length}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-mono text-slate-500">
+                        {VERTEBRAS_LOMBARES.filter(b => sectionData.ossos[b]).length}/{VERTEBRAS_LOMBARES.length}
+                      </span>
+                      {!readOnly && (
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] font-mono text-slate-400">Todos:</span>
+                          {(['P', 'F', 'I', 'A'] as const).map(code => (
+                            <button
+                              key={code}
+                              type="button"
+                              onClick={() => handleBulkMarkGeneric(sectionKey, VERTEBRAS_LOMBARES, code)}
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border transition-colors ${
+                                code === 'P'
+                                  ? 'border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300'
+                                  : code === 'F'
+                                    ? 'border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300'
+                                    : code === 'I'
+                                      ? 'border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-300'
+                                      : 'border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300'
+                              } bg-white dark:bg-slate-900`}
+                              title={`Marcar todas as Vértebras Lombares como ${code}`}
+                            >
+                              {code}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <SimpleBoneRows
                     bones={VERTEBRAS_LOMBARES}
@@ -1218,9 +1296,35 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                       <span className="w-2 h-2 rounded-full bg-amber-600" />
                       Sacro e Cóccix
                     </h5>
-                    <span className="text-[11px] font-mono text-slate-500">
-                      {SACRO_COCCIX_OSSOS.filter(b => sectionData.ossos[b]).length}/{SACRO_COCCIX_OSSOS.length}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-mono text-slate-500">
+                        {SACRO_COCCIX_OSSOS.filter(b => sectionData.ossos[b]).length}/{SACRO_COCCIX_OSSOS.length}
+                      </span>
+                      {!readOnly && (
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] font-mono text-slate-400">Todos:</span>
+                          {(['P', 'F', 'I', 'A'] as const).map(code => (
+                            <button
+                              key={code}
+                              type="button"
+                              onClick={() => handleBulkMarkGeneric(sectionKey, SACRO_COCCIX_OSSOS, code)}
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border transition-colors ${
+                                code === 'P'
+                                  ? 'border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300'
+                                  : code === 'F'
+                                    ? 'border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300'
+                                    : code === 'I'
+                                      ? 'border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-300'
+                                      : 'border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300'
+                              } bg-white dark:bg-slate-900`}
+                              title={`Marcar Sacro e Cóccix como ${code}`}
+                            >
+                              {code}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <SimpleBoneRows
                     bones={SACRO_COCCIX_OSSOS}
@@ -1268,9 +1372,35 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                       <span className="w-2 h-2 rounded-full bg-sky-600" />
                       Esterno
                     </h5>
-                    <span className="text-[11px] font-mono text-slate-500">
-                      {ESTERNO_OSSOS.filter(b => sectionData.ossos[b]).length}/{ESTERNO_OSSOS.length}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-mono text-slate-500">
+                        {ESTERNO_OSSOS.filter(b => sectionData.ossos[b]).length}/{ESTERNO_OSSOS.length}
+                      </span>
+                      {!readOnly && (
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] font-mono text-slate-400">Todos:</span>
+                          {(['P', 'F', 'I', 'A'] as const).map(code => (
+                            <button
+                              key={code}
+                              type="button"
+                              onClick={() => handleBulkMarkGeneric(sectionKey, ESTERNO_OSSOS, code)}
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border transition-colors ${
+                                code === 'P'
+                                  ? 'border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300'
+                                  : code === 'F'
+                                    ? 'border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300'
+                                    : code === 'I'
+                                      ? 'border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-300'
+                                      : 'border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300'
+                              } bg-white dark:bg-slate-900`}
+                              title={`Marcar todos os ossos do Esterno como ${code}`}
+                            >
+                              {code}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <SimpleBoneRows
                     bones={ESTERNO_OSSOS}
@@ -1331,9 +1461,35 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                           <h6 className="font-bold text-xs uppercase font-mono tracking-wider text-indigo-950 dark:text-indigo-200">
                             Costelas Esquerdas (C1 a C12)
                           </h6>
-                          <span className="text-[11px] font-mono text-slate-500">
-                            {COSTELAS_ESQUERDAS.filter(b => sectionData.ossos[b]).length}/{COSTELAS_ESQUERDAS.length}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] font-mono text-slate-500">
+                              {COSTELAS_ESQUERDAS.filter(b => sectionData.ossos[b]).length}/{COSTELAS_ESQUERDAS.length}
+                            </span>
+                            {!readOnly && (
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] font-mono text-slate-400">Todos:</span>
+                                {(['P', 'F', 'I', 'A'] as const).map(code => (
+                                  <button
+                                    key={code}
+                                    type="button"
+                                    onClick={() => handleBulkMarkGeneric(sectionKey, COSTELAS_ESQUERDAS, code)}
+                                    className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border transition-colors ${
+                                      code === 'P'
+                                        ? 'border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300'
+                                        : code === 'F'
+                                          ? 'border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300'
+                                          : code === 'I'
+                                            ? 'border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-300'
+                                            : 'border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300'
+                                    } bg-white dark:bg-slate-900`}
+                                    title={`Marcar todas as Costelas Esquerdas como ${code}`}
+                                  >
+                                    {code}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </div>
                         <SimpleBoneRows
                           bones={COSTELAS_ESQUERDAS}
@@ -1356,9 +1512,35 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                           <h6 className="font-bold text-xs uppercase font-mono tracking-wider text-sky-950 dark:text-sky-200">
                             Costelas Direitas (C1 a C12)
                           </h6>
-                          <span className="text-[11px] font-mono text-slate-500">
-                            {COSTELAS_DIREITAS.filter(b => sectionData.ossos[b]).length}/{COSTELAS_DIREITAS.length}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] font-mono text-slate-500">
+                              {COSTELAS_DIREITAS.filter(b => sectionData.ossos[b]).length}/{COSTELAS_DIREITAS.length}
+                            </span>
+                            {!readOnly && (
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] font-mono text-slate-400">Todos:</span>
+                                {(['P', 'F', 'I', 'A'] as const).map(code => (
+                                  <button
+                                    key={code}
+                                    type="button"
+                                    onClick={() => handleBulkMarkGeneric(sectionKey, COSTELAS_DIREITAS, code)}
+                                    className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border transition-colors ${
+                                      code === 'P'
+                                        ? 'border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300'
+                                        : code === 'F'
+                                          ? 'border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300'
+                                          : code === 'I'
+                                            ? 'border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-300'
+                                            : 'border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300'
+                                    } bg-white dark:bg-slate-900`}
+                                    title={`Marcar todas as Costelas Direitas como ${code}`}
+                                  >
+                                    {code}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </div>
                         <SimpleBoneRows
                           bones={COSTELAS_DIREITAS}
