@@ -30,8 +30,16 @@ import {
 } from '../OsteologicalInventoryViewer';
 import {
   OsteologicalInventoryData,
-  OsteologicalAlteracaoRegiao
+  OsteologicalAlteracaoRegiao,
+  OsteologicalSectionCabecaPescoco,
+  ToothRecord,
+  ToothConditionDetails
 } from '../../types/sgccco';
+import {
+  TOOTH_SURFACE_LABELS,
+  RESTORATIVE_MATERIAL_LABELS,
+  TOOTH_STAIN_COLOR_LABELS
+} from '../OdontogramViewer';
 
 describe('Suíte de QA — Validação das 12 Mudanças Solicitadas pelos Técnicos (Out/2026)', () => {
   // --------------------------------------------------------------------------
@@ -655,6 +663,110 @@ describe('Suíte de QA — Validação das 12 Mudanças Solicitadas pelos Técni
       const res = applyBulkPresence(ossos, undefined, CABECA_PESCOCO_OSSOS, 'A');
       expect(Object.keys(res.ossos)).toHaveLength(23);
       expect(CABECA_PESCOCO_OSSOS.every(b => res.ossos[b] === 'A')).toBe(true);
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // Item 14: Quantitativos Dentários em Cabeça e Pescoço e Contagem Total
+  // --------------------------------------------------------------------------
+  describe('Item 14: Quantitativos Dentários em Cabeça e Pescoço e Contagem Total', () => {
+    it('armazena dentes articulados e desarticulados na seção Cabeça e Pescoço', () => {
+      const cabecaData: OsteologicalSectionCabecaPescoco = {
+        dentesArticulados: 28,
+        dentesDesarticulados: 4,
+        cartilagensLaringe: ['tireoidea'],
+        ossiculosEsquerdos: ['bigorna'],
+        ossiculosDireitos: ['ausentes']
+      };
+      expect(cabecaData.dentesArticulados).toBe(28);
+      expect(cabecaData.dentesDesarticulados).toBe(4);
+    });
+
+    it('suporta contagem de 32+ (ex: 33) nas caixas numéricas de dentes', () => {
+      const cabecaData: OsteologicalSectionCabecaPescoco = {
+        dentesArticulados: 33,
+        dentesDesarticulados: 0
+      };
+      expect(cabecaData.dentesArticulados).toBe(33);
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // Item 15: Sub-opções Anatômicas e Clínicas no Inventário Odontológico
+  // --------------------------------------------------------------------------
+  describe('Item 15: Sub-opções Anatômicas e Clínicas no Inventário Odontológico', () => {
+    it('suporta sub-opções de localização para cavitado com múltipla escolha', () => {
+      const tooth: ToothRecord = {
+        toothNumberFdi: 26,
+        quadrant: 2,
+        presence: 'articulado',
+        clinicalConditions: ['cavitado'],
+        condition: 'carie',
+        conditionDetails: {
+          cavitado: {
+            localizacao: ['oclusal', 'mesial', 'distal']
+          }
+        }
+      };
+      expect(tooth.conditionDetails?.cavitado?.localizacao).toEqual(['oclusal', 'mesial', 'distal']);
+      expect(TOOTH_SURFACE_LABELS.oclusal).toBe('Oclusal');
+      expect(TOOTH_SURFACE_LABELS.subgengival).toBe('Subgengival');
+    });
+
+    it('suporta sub-opções de cor e localização para mancha com múltipla escolha', () => {
+      const tooth: ToothRecord = {
+        toothNumberFdi: 11,
+        quadrant: 1,
+        presence: 'articulado',
+        clinicalConditions: ['mancha'],
+        condition: 'higido',
+        conditionDetails: {
+          mancha: {
+            cor: ['clara', 'escura'],
+            localizacao: ['vestibular', 'subgengival']
+          }
+        }
+      };
+      expect(tooth.conditionDetails?.mancha?.cor).toEqual(['clara', 'escura']);
+      expect(tooth.conditionDetails?.mancha?.localizacao).toEqual(['vestibular', 'subgengival']);
+      expect(TOOTH_STAIN_COLOR_LABELS.clara).toBe('Clara');
+      expect(TOOTH_STAIN_COLOR_LABELS.escura).toBe('Escura');
+    });
+
+    it('suporta sub-opções de material e localização para material restaurador com múltipla escolha', () => {
+      const tooth: ToothRecord = {
+        toothNumberFdi: 46,
+        quadrant: 4,
+        presence: 'articulado',
+        clinicalConditions: ['com_material_restaurador'],
+        condition: 'restauracao',
+        conditionDetails: {
+          materialRestaurador: {
+            tipoMaterial: ['amalgama', 'resina_composta'],
+            localizacao: ['oclusal', 'distal']
+          }
+        }
+      };
+      expect(tooth.conditionDetails?.materialRestaurador?.tipoMaterial).toEqual(['amalgama', 'resina_composta']);
+      expect(tooth.conditionDetails?.materialRestaurador?.localizacao).toEqual(['oclusal', 'distal']);
+      expect(RESTORATIVE_MATERIAL_LABELS.amalgama).toBe('Amálgama');
+      expect(RESTORATIVE_MATERIAL_LABELS.resina_composta).toBe('Resina composta');
+    });
+
+    it('suporta sub-opções de localização para tártaro com múltipla escolha', () => {
+      const tooth: ToothRecord = {
+        toothNumberFdi: 31,
+        quadrant: 3,
+        presence: 'articulado',
+        clinicalConditions: ['tartaro'],
+        condition: 'higido',
+        conditionDetails: {
+          tartaro: {
+            localizacao: ['lingual', 'subgengival']
+          }
+        }
+      };
+      expect(tooth.conditionDetails?.tartaro?.localizacao).toEqual(['lingual', 'subgengival']);
     });
   });
 });

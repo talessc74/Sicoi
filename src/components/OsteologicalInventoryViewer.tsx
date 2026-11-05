@@ -522,8 +522,8 @@ function countCabecaComplementares(data: {
 }): number {
   const countGroup = (selected: string[] | undefined, groupSize: number): number => {
     const list = selected || [];
-    if (list.includes('ausentes')) return groupSize;
-    return list.filter(item => item !== 'ausentes').length;
+    if (list.length > 0) return groupSize;
+    return 0;
   };
   return (
     countGroup(data.cartilagensLaringe, CARTILAGENS_LARINGE_OPTIONS.length) +
@@ -806,6 +806,14 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
     onUpdateInventory({
       ...inventory,
       cabecaPescoco: { ...cabecaExtra, [key]: toggleAusentesAware(cabecaExtra[key], val) }
+    });
+  };
+
+  const handleUpdateCabecaDentes = (field: 'dentesArticulados' | 'dentesDesarticulados', val: number | undefined) => {
+    if (readOnly) return;
+    onUpdateInventory({
+      ...inventory,
+      cabecaPescoco: { ...cabecaExtra, [field]: val }
     });
   };
 
@@ -2004,6 +2012,29 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                     </div>
                   </div>
                 </div>
+
+                {/* Quantitativos Dentários da Cabeça e Pescoço (Dentes articulados / desarticulados de 0 a 32 e 32+) */}
+                <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
+                  <h5 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-mono">
+                    Dentes da Cabeça e Pescoço
+                  </h5>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <NumericScrollInput
+                      label="Dentes articulados"
+                      value={cabecaExtra.dentesArticulados}
+                      onChange={val => handleUpdateCabecaDentes('dentesArticulados', val)}
+                      max={32}
+                      readOnly={readOnly}
+                    />
+                    <NumericScrollInput
+                      label="Dentes desarticulados"
+                      value={cabecaExtra.dentesDesarticulados}
+                      onChange={val => handleUpdateCabecaDentes('dentesDesarticulados', val)}
+                      max={32}
+                      readOnly={readOnly}
+                    />
+                  </div>
+                </div>
               </div>
             )}
 
@@ -2398,7 +2429,7 @@ const NumericScrollInput: React.FC<NumericScrollInputProps> = ({
               {i}
             </option>
           ))}
-          <option value={max + 1}>+{max}</option>
+          <option value={max + 1}>{max}+</option>
         </select>
 
         <div className="flex items-center border border-slate-300 dark:border-slate-700 rounded-lg overflow-hidden bg-white dark:bg-slate-900">
@@ -2412,7 +2443,7 @@ const NumericScrollInput: React.FC<NumericScrollInputProps> = ({
             -
           </button>
           <span className="px-2 text-xs font-mono font-bold text-slate-800 dark:text-slate-200 min-w-[28px] text-center">
-            {value ?? 0}
+            {value !== undefined && value > max ? `${max}+` : (value ?? 0)}
           </span>
           <button
             type="button"

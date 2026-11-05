@@ -515,7 +515,8 @@ export type ToothClinicalCondition =
   | 'parcialmente_irrompido'
   | 'nao_irrompido'
   | 'higido'
-  | 'cariado'
+  | 'cavitado'
+  | 'cariado' // mantido para compatibilidade retroativa
   | 'mancha'
   | 'resto_radicular'
   | 'fratura'
@@ -527,9 +528,39 @@ export type ToothClinicalCondition =
   | 'erosao'
   | 'abrasao'
   | 'abfracao'
-  | 'giroversao'
+  | 'tratamento_endodontico'
+  | 'giroversao' // mantido para compatibilidade retroativa
   | 'apinhamento'
   | 'outro';
+
+export type ToothSurface =
+  | 'oclusal'
+  | 'mesial'
+  | 'distal'
+  | 'vestibular'
+  | 'lingual'
+  | 'subgengival';
+
+export type RestorativeMaterialType = 'amalgama' | 'resina_composta';
+
+export type ToothStainColor = 'clara' | 'escura';
+
+export interface ToothConditionDetails {
+  cavitado?: {
+    localizacao?: ToothSurface[];
+  };
+  mancha?: {
+    cor?: ToothStainColor[];
+    localizacao?: ToothSurface[];
+  };
+  materialRestaurador?: {
+    tipoMaterial?: RestorativeMaterialType[];
+    localizacao?: ('oclusal' | 'mesial' | 'distal' | 'vestibular' | 'lingual')[];
+  };
+  tartaro?: {
+    localizacao?: ToothSurface[];
+  };
+}
 
 export interface ToothRecord {
   toothNumberFdi: number;
@@ -539,6 +570,7 @@ export interface ToothRecord {
   presence?: ToothPresenceCondition;
   clinicalConditions?: ToothClinicalCondition[];
   condition: 'higido' | 'ausente_ante_mortem' | 'ausente_post_mortem' | 'carie' | 'restauracao' | 'desgaste_severo' | 'raiz_residual' | 'nao_erupcionado';
+  conditionDetails?: ToothConditionDetails;
   notes?: string;
 }
 
@@ -581,6 +613,8 @@ export interface OsteologicalSectionCabecaPescoco {
   cartilagensLaringe?: string[];
   ossiculosDireitos?: string[];
   ossiculosEsquerdos?: string[];
+  dentesArticulados?: number;
+  dentesDesarticulados?: number;
   alteracoes?: OsteologicalAlteracaoRegiao[];
   observacoes?: string;
 }

@@ -270,12 +270,13 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
     }
     ind.odontogram = ind.odontogram.map(t => {
       if (t.toothNumberFdi !== num) return t;
-      if (typeof update === 'object' && update !== null && ('presence' in update || 'clinicalConditions' in update)) {
+      if (typeof update === 'object' && update !== null && ('presence' in update || 'clinicalConditions' in update || 'conditionDetails' in update)) {
         return {
           ...t,
           presence: update.presence ?? t.presence,
           clinicalConditions: update.clinicalConditions ?? t.clinicalConditions,
           condition: update.condition ?? t.condition,
+          conditionDetails: update.conditionDetails !== undefined ? update.conditionDetails : t.conditionDetails,
           notes: notes !== undefined ? notes : t.notes || ''
         };
       }
@@ -308,6 +309,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
         presence: u.update.presence ?? t.presence,
         clinicalConditions: u.update.clinicalConditions ?? t.clinicalConditions,
         condition: u.update.condition ?? t.condition,
+        conditionDetails: (u.update as any).conditionDetails !== undefined ? (u.update as any).conditionDetails : t.conditionDetails,
         notes: u.notes !== undefined ? u.notes : t.notes || ''
       };
     });

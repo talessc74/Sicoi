@@ -3,6 +3,7 @@ import {
   PAIR_MAP,
   PRESENCE_CONDITIONS_META,
   CLINICAL_CONDITIONS_META,
+  CLINICAL_CONDITIONS_KEYS,
   deriveLegacyCondition,
   normalizeToothRecord,
   calculateBatchPresenceUpdate,
@@ -86,26 +87,36 @@ describe('Inventário Odontológico — Regras de Negócio e Lógica', () => {
     });
 
     it('possui exatamente as 18 opções clínicas de múltipla escolha do Estágio 2', () => {
-      const keys = Object.keys(CLINICAL_CONDITIONS_META);
-      expect(keys).toHaveLength(18);
-      expect(keys).toContain('parcialmente_irrompido');
-      expect(keys).toContain('nao_irrompido');
-      expect(keys).toContain('higido');
-      expect(keys).toContain('cariado');
-      expect(keys).toContain('mancha');
-      expect(keys).toContain('resto_radicular');
-      expect(keys).toContain('fratura');
-      expect(keys).toContain('com_material_restaurador');
-      expect(keys).toContain('com_material_protetico');
-      expect(keys).toContain('implante');
-      expect(keys).toContain('aparelho_ortodontico');
-      expect(keys).toContain('tartaro');
-      expect(keys).toContain('erosao');
-      expect(keys).toContain('abrasao');
-      expect(keys).toContain('abfracao');
-      expect(keys).toContain('giroversao');
-      expect(keys).toContain('apinhamento');
-      expect(keys).toContain('outro');
+      expect(CLINICAL_CONDITIONS_KEYS).toHaveLength(18);
+      expect(CLINICAL_CONDITIONS_KEYS).toContain('parcialmente_irrompido');
+      expect(CLINICAL_CONDITIONS_KEYS).toContain('nao_irrompido');
+      expect(CLINICAL_CONDITIONS_KEYS).toContain('higido');
+      expect(CLINICAL_CONDITIONS_KEYS).toContain('cavitado');
+      expect(CLINICAL_CONDITIONS_KEYS).toContain('mancha');
+      expect(CLINICAL_CONDITIONS_KEYS).toContain('resto_radicular');
+      expect(CLINICAL_CONDITIONS_KEYS).toContain('fratura');
+      expect(CLINICAL_CONDITIONS_KEYS).toContain('com_material_restaurador');
+      expect(CLINICAL_CONDITIONS_KEYS).toContain('com_material_protetico');
+      expect(CLINICAL_CONDITIONS_KEYS).toContain('implante');
+      expect(CLINICAL_CONDITIONS_KEYS).toContain('aparelho_ortodontico');
+      expect(CLINICAL_CONDITIONS_KEYS).toContain('tartaro');
+      expect(CLINICAL_CONDITIONS_KEYS).toContain('erosao');
+      expect(CLINICAL_CONDITIONS_KEYS).toContain('abrasao');
+      expect(CLINICAL_CONDITIONS_KEYS).toContain('abfracao');
+      expect(CLINICAL_CONDITIONS_KEYS).toContain('tratamento_endodontico');
+      expect(CLINICAL_CONDITIONS_KEYS).toContain('apinhamento');
+      expect(CLINICAL_CONDITIONS_KEYS).toContain('outro');
+
+      // Verifica novos rótulos solicitados
+      expect(CLINICAL_CONDITIONS_META.cavitado.label).toBe('Cavitado');
+      expect(CLINICAL_CONDITIONS_META.aparelho_ortodontico.label).toBe('Aparelho ortodôntico');
+      expect(CLINICAL_CONDITIONS_META.com_material_restaurador.label).toBe('Material restaurador');
+      expect(CLINICAL_CONDITIONS_META.com_material_protetico.label).toBe('Material protético');
+      expect(CLINICAL_CONDITIONS_META.tratamento_endodontico.label).toBe('Tratamento endodôntico');
+
+      // Compatibilidade retroativa com aliases legados
+      expect(CLINICAL_CONDITIONS_META.cariado.label).toBe('Cavitado');
+      expect(CLINICAL_CONDITIONS_META.giroversao.label).toBe('Tratamento endodôntico');
     });
   });
 
@@ -152,7 +163,7 @@ describe('Inventário Odontológico — Regras de Negócio e Lógica', () => {
       expect(norm.clinicalConditions).toEqual([]);
     });
 
-    it('converte registro legado carie para articulado + cariado', () => {
+    it('converte registro legado carie para articulado + cavitado', () => {
       const legacy: ToothRecord = {
         toothNumberFdi: 16,
         quadrant: 1,
@@ -161,7 +172,7 @@ describe('Inventário Odontológico — Regras de Negócio e Lógica', () => {
       };
       const norm = normalizeToothRecord(legacy, 16);
       expect(norm.presence).toBe('articulado');
-      expect(norm.clinicalConditions).toEqual(['cariado']);
+      expect(norm.clinicalConditions).toEqual(['cavitado']);
       expect(norm.notes).toBe('Cárie oclusal');
     });
 
@@ -233,7 +244,7 @@ describe('Inventário Odontológico — Regras de Negócio e Lógica', () => {
     });
 
     it('adiciona característica clínica em lote preservando características individuais prévias', () => {
-      // 11 é higido, 12 é cariado. Adicionar 'tartaro' deve colocar [tartaro] no 11 e [cariado, tartaro] no 12!
+      // 11 é higido, 12 é cavitado. Adicionar 'tartaro' deve colocar [tartaro] no 11 e [cavitado, tartaro] no 12!
       const updates = calculateBatchClinicalToggle([11, 12], getTooth, 'tartaro');
       expect(updates).toHaveLength(2);
 
@@ -242,7 +253,7 @@ describe('Inventário Odontológico — Regras de Negócio e Lógica', () => {
       expect(updates[0].update.presence).toBe('articulado');
 
       expect(updates[1].toothNumber).toBe(12);
-      expect(updates[1].update.clinicalConditions).toEqual(['cariado', 'tartaro']);
+      expect(updates[1].update.clinicalConditions).toEqual(['cavitado', 'tartaro']);
       expect(updates[1].update.presence).toBe('articulado');
     });
 
@@ -259,14 +270,14 @@ describe('Inventário Odontológico — Regras de Negócio e Lógica', () => {
           toothNumberFdi: 12,
           quadrant: 1,
           presence: 'articulado',
-          clinicalConditions: ['cariado', 'tartaro'],
+          clinicalConditions: ['cavitado', 'tartaro'],
           condition: 'carie'
         }
       };
 
       const updates = calculateBatchClinicalToggle([11, 12], n => allTartaroMap[n], 'tartaro');
       expect(updates[0].update.clinicalConditions).toEqual(['higido']); // Ficou vazio, restaurou higido
-      expect(updates[1].update.clinicalConditions).toEqual(['cariado']); // Manteve cariado
+      expect(updates[1].update.clinicalConditions).toEqual(['cavitado']); // Manteve cavitado
     });
 
     it('redefine todos os dentes para higido quando cond é higido', () => {

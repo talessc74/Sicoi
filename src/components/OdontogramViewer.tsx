@@ -2,7 +2,11 @@ import React, { useState } from 'react';
 import {
   ToothRecord,
   ToothPresenceCondition,
-  ToothClinicalCondition
+  ToothClinicalCondition,
+  ToothConditionDetails,
+  ToothSurface,
+  RestorativeMaterialType,
+  ToothStainColor
 } from '../types/sgccco';
 import { Plus, X, Check, Info, CheckSquare, Layers } from 'lucide-react';
 
@@ -20,6 +24,7 @@ export interface ToothBatchUpdate {
     presence: ToothPresenceCondition;
     clinicalConditions: ToothClinicalCondition[];
     condition: ToothRecord['condition'];
+    conditionDetails?: ToothConditionDetails;
   };
   notes?: string;
 }
@@ -32,6 +37,7 @@ export interface OdontogramViewerProps {
       presence: ToothPresenceCondition;
       clinicalConditions: ToothClinicalCondition[];
       condition: ToothRecord['condition'];
+      conditionDetails?: ToothConditionDetails;
     },
     notes?: string
   ) => void;
@@ -42,6 +48,7 @@ export interface OdontogramViewerProps {
       presence: ToothPresenceCondition;
       clinicalConditions?: ToothClinicalCondition[];
       condition: ToothRecord['condition'];
+      conditionDetails?: ToothConditionDetails;
     },
     notes?: string
   ) => void;
@@ -97,7 +104,49 @@ export const PRESENCE_CONDITIONS_META: Record<
   }
 };
 
-// Metadados das 18 características clínicas do Estágio 2 (Múltipla escolha)
+// As 18 chaves canônicas de características clínicas do Estágio 2
+export const CLINICAL_CONDITIONS_KEYS: ToothClinicalCondition[] = [
+  'parcialmente_irrompido',
+  'nao_irrompido',
+  'higido',
+  'cavitado',
+  'mancha',
+  'resto_radicular',
+  'fratura',
+  'com_material_restaurador',
+  'com_material_protetico',
+  'implante',
+  'aparelho_ortodontico',
+  'tartaro',
+  'erosao',
+  'abrasao',
+  'abfracao',
+  'tratamento_endodontico',
+  'apinhamento',
+  'outro'
+];
+
+// Rótulos anatômicos de localização e especificações
+export const TOOTH_SURFACE_LABELS: Record<ToothSurface, string> = {
+  oclusal: 'Oclusal',
+  mesial: 'Mesial',
+  distal: 'Distal',
+  vestibular: 'Vestibular',
+  lingual: 'Lingual',
+  subgengival: 'Subgengival'
+};
+
+export const RESTORATIVE_MATERIAL_LABELS: Record<RestorativeMaterialType, string> = {
+  amalgama: 'Amálgama',
+  resina_composta: 'Resina composta'
+};
+
+export const TOOTH_STAIN_COLOR_LABELS: Record<ToothStainColor, string> = {
+  clara: 'Clara',
+  escura: 'Escura'
+};
+
+// Metadados das características clínicas do Estágio 2 (Múltipla escolha)
 export const CLINICAL_CONDITIONS_META: Record<
   ToothClinicalCondition,
   { label: string; abbr: string; category: 'irrupcao' | 'higido' | 'patologia' | 'intervencao' | 'alinhamento' | 'outro' }
@@ -105,21 +154,24 @@ export const CLINICAL_CONDITIONS_META: Record<
   parcialmente_irrompido: { label: 'Parcialmente irrompido', abbr: 'PIR', category: 'irrupcao' },
   nao_irrompido: { label: 'Não irrompido', abbr: 'NIR', category: 'irrupcao' },
   higido: { label: 'Hígido', abbr: 'HIG', category: 'higido' },
-  cariado: { label: 'Cariado', abbr: 'CAR', category: 'patologia' },
+  cavitado: { label: 'Cavitado', abbr: 'CAV', category: 'patologia' },
   mancha: { label: 'Mancha', abbr: 'MAN', category: 'patologia' },
   resto_radicular: { label: 'Resto radicular', abbr: 'RAD', category: 'patologia' },
   fratura: { label: 'Fratura', abbr: 'FRA', category: 'patologia' },
-  com_material_restaurador: { label: 'Com material restaurador', abbr: 'RES', category: 'intervencao' },
-  com_material_protetico: { label: 'Com material protético', abbr: 'PRO', category: 'intervencao' },
+  com_material_restaurador: { label: 'Material restaurador', abbr: 'RES', category: 'intervencao' },
+  com_material_protetico: { label: 'Material protético', abbr: 'PRO', category: 'intervencao' },
   implante: { label: 'Implante', abbr: 'IMP', category: 'intervencao' },
-  aparelho_ortodontico: { label: 'Aparelho ortodôntico/ortopédico', abbr: 'ORT', category: 'intervencao' },
+  aparelho_ortodontico: { label: 'Aparelho ortodôntico', abbr: 'ORT', category: 'intervencao' },
   tartaro: { label: 'Tártaro', abbr: 'TAR', category: 'patologia' },
   erosao: { label: 'Erosão', abbr: 'ERO', category: 'patologia' },
   abrasao: { label: 'Abrasão', abbr: 'ABR', category: 'patologia' },
   abfracao: { label: 'Abfração', abbr: 'ABF', category: 'patologia' },
-  giroversao: { label: 'Giroversão', abbr: 'GIR', category: 'alinhamento' },
+  tratamento_endodontico: { label: 'Tratamento endodôntico', abbr: 'ENDO', category: 'intervencao' },
   apinhamento: { label: 'Apinhamento', abbr: 'API', category: 'alinhamento' },
-  outro: { label: 'Outro', abbr: 'OUT', category: 'outro' }
+  outro: { label: 'Outro', abbr: 'OUT', category: 'outro' },
+  // Compatibilidade reversa com registros legados
+  cariado: { label: 'Cavitado', abbr: 'CAV', category: 'patologia' },
+  giroversao: { label: 'Tratamento endodôntico', abbr: 'ENDO', category: 'intervencao' }
 };
 
 // Deriva condição legada para manter 100% de compatibilidade reversa
@@ -129,8 +181,13 @@ export function deriveLegacyCondition(
 ): ToothRecord['condition'] {
   if (presence === 'ausente_ante_mortem') return 'ausente_ante_mortem';
   if (presence === 'ausente_post_mortem') return 'ausente_post_mortem';
-  if (clinicalConditions.includes('cariado')) return 'carie';
-  if (clinicalConditions.includes('com_material_restaurador') || clinicalConditions.includes('com_material_protetico') || clinicalConditions.includes('implante')) {
+  if (clinicalConditions.includes('cavitado') || clinicalConditions.includes('cariado')) return 'carie';
+  if (
+    clinicalConditions.includes('com_material_restaurador') ||
+    clinicalConditions.includes('com_material_protetico') ||
+    clinicalConditions.includes('implante') ||
+    clinicalConditions.includes('tratamento_endodontico')
+  ) {
     return 'restauracao';
   }
   if (clinicalConditions.includes('resto_radicular')) return 'raiz_residual';
@@ -145,12 +202,14 @@ export function deriveLegacyCondition(
 export function normalizeToothRecord(t: ToothRecord | undefined, toothNumber: number): {
   presence: ToothPresenceCondition;
   clinicalConditions: ToothClinicalCondition[];
+  conditionDetails?: ToothConditionDetails;
   notes: string;
 } {
   if (!t) {
     return {
       presence: 'articulado',
       clinicalConditions: ['higido'],
+      conditionDetails: undefined,
       notes: ''
     };
   }
@@ -167,7 +226,7 @@ export function normalizeToothRecord(t: ToothRecord | undefined, toothNumber: nu
     if (presence === 'ausente_ante_mortem' || presence === 'ausente_post_mortem') {
       clinicalConditions = [];
     } else if (t.condition === 'carie') {
-      clinicalConditions = ['cariado'];
+      clinicalConditions = ['cavitado'];
     } else if (t.condition === 'restauracao') {
       clinicalConditions = ['com_material_restaurador'];
     } else if (t.condition === 'desgaste_severo') {
@@ -181,9 +240,17 @@ export function normalizeToothRecord(t: ToothRecord | undefined, toothNumber: nu
     }
   }
 
+  // Mapeia termos legados para a nomenclatura atualizada
+  clinicalConditions = clinicalConditions.map(c => {
+    if (c === 'cariado') return 'cavitado';
+    if (c === 'giroversao') return 'tratamento_endodontico';
+    return c;
+  });
+
   return {
     presence,
     clinicalConditions,
+    conditionDetails: t.conditionDetails,
     notes: t.notes || ''
   };
 }
@@ -207,13 +274,15 @@ export function calculateBatchPresenceUpdate(
       updatedClinical = current.clinicalConditions.length > 0 ? current.clinicalConditions : ['higido'];
     }
 
+    const isAbsent = newPresence === 'ausente_ante_mortem' || newPresence === 'ausente_post_mortem';
     const legacyCondition = deriveLegacyCondition(newPresence, updatedClinical);
     return {
       toothNumber: num,
       update: {
         presence: newPresence,
         clinicalConditions: updatedClinical,
-        condition: legacyCondition
+        condition: legacyCondition,
+        conditionDetails: isAbsent ? undefined : current.conditionDetails
       },
       notes: notes !== undefined ? notes : current.notes
     };
@@ -264,7 +333,8 @@ export function calculateBatchClinicalToggle(
       update: {
         presence: updatedPresence,
         clinicalConditions: updatedClinical,
-        condition: legacyCondition
+        condition: legacyCondition,
+        conditionDetails: cond === 'higido' ? undefined : current.conditionDetails
       },
       notes: notes !== undefined ? notes : current.notes
     };
@@ -594,7 +664,8 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
           {
             presence: current.presence,
             clinicalConditions: current.clinicalConditions,
-            condition: legacyCondition
+            condition: legacyCondition,
+            conditionDetails: current.conditionDetails
           },
           toothNotes
         );
@@ -608,7 +679,8 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
           update: {
             presence: current.presence,
             clinicalConditions: current.clinicalConditions,
-            condition: legacyCondition
+            condition: legacyCondition,
+            conditionDetails: current.conditionDetails
           },
           notes: toothNotes
         };
@@ -619,6 +691,60 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
       } else if (onUpdateTooth) {
         updates.forEach(u => onUpdateTooth(u.toothNumber, u.update, u.notes));
       }
+    }
+  };
+
+  // Alterna sub-opções anatômicas e detalhamentos (múltipla escolha)
+  const handleToggleConditionDetail = <
+    C extends keyof ToothConditionDetails,
+    F extends keyof NonNullable<ToothConditionDetails[C]>
+  >(
+    condKey: C,
+    field: F,
+    value: any
+  ) => {
+    if (selectedToothNums.length === 0 || readOnly) return;
+
+    const allHave = selectedToothNums.every(num => {
+      const rec = normalizeToothRecord(getTooth(num), num);
+      const group = rec.conditionDetails?.[condKey] as any;
+      const arr = (group?.[field] as any[]) || [];
+      return arr.includes(value);
+    });
+
+    const updates: ToothBatchUpdate[] = selectedToothNums.map(num => {
+      const rec = normalizeToothRecord(getTooth(num), num);
+      const prevDetails: ToothConditionDetails = rec.conditionDetails ? { ...rec.conditionDetails } : {};
+      const prevCondGroup: any = prevDetails[condKey] ? { ...prevDetails[condKey] } : {};
+      const prevList: any[] = (prevCondGroup[field] as any[]) ? [...(prevCondGroup[field] as any[])] : [];
+
+      let nextList: any[];
+      if (allHave) {
+        nextList = prevList.filter(item => item !== value);
+      } else {
+        nextList = prevList.includes(value) ? prevList : [...prevList, value];
+      }
+
+      const nextCondGroup = { ...prevCondGroup, [field]: nextList };
+      const nextDetails: ToothConditionDetails = { ...prevDetails, [condKey]: nextCondGroup };
+
+      const legacyCondition = deriveLegacyCondition(rec.presence, rec.clinicalConditions);
+      return {
+        toothNumber: num,
+        update: {
+          presence: rec.presence,
+          clinicalConditions: rec.clinicalConditions,
+          condition: legacyCondition,
+          conditionDetails: nextDetails
+        },
+        notes: rec.notes
+      };
+    });
+
+    if (onBulkUpdateTeeth) {
+      onBulkUpdateTeeth(updates);
+    } else if (onUpdateTooth) {
+      updates.forEach(u => onUpdateTooth(u.toothNumber, u.update, u.notes));
     }
   };
 
@@ -657,7 +783,7 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
         if (norm.clinicalConditions[0] === 'higido') {
           buttonThemeClass = 'bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-200 dark:border-emerald-800';
           badgeColorClass = 'bg-emerald-200 text-emerald-900 dark:bg-emerald-900 dark:text-emerald-100';
-        } else if (['cariado', 'fratura', 'resto_radicular', 'mancha'].includes(norm.clinicalConditions[0])) {
+        } else if (['cavitado', 'cariado', 'fratura', 'resto_radicular', 'mancha'].includes(norm.clinicalConditions[0])) {
           buttonThemeClass = 'bg-rose-50 text-rose-800 border-rose-300 dark:bg-rose-950/60 dark:text-rose-200 dark:border-rose-800';
           badgeColorClass = 'bg-rose-200 text-rose-900 dark:bg-rose-900 dark:text-rose-100';
         } else {
@@ -753,6 +879,14 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
   const hasArticulatedInSelection = selectedRecords.some(
     r => r.norm.presence === 'articulado' || r.norm.presence === 'desarticulado'
   );
+  const hasCavitado = selectedRecords.some(r =>
+    r.norm.clinicalConditions.includes('cavitado') || r.norm.clinicalConditions.includes('cariado')
+  );
+  const hasMancha = selectedRecords.some(r => r.norm.clinicalConditions.includes('mancha'));
+  const hasMaterialRestaurador = selectedRecords.some(r =>
+    r.norm.clinicalConditions.includes('com_material_restaurador')
+  );
+  const hasTartaro = selectedRecords.some(r => r.norm.clinicalConditions.includes('tartaro'));
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 space-y-4">
@@ -1353,7 +1487,7 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
                   </div>
 
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-1.5">
-                    {(Object.keys(CLINICAL_CONDITIONS_META) as ToothClinicalCondition[]).map(cKey => {
+                    {CLINICAL_CONDITIONS_KEYS.map(cKey => {
                       const meta = CLINICAL_CONDITIONS_META[cKey];
                       const allHave = isMulti
                         ? selectedRecords.every(r => r.norm.clinicalConditions.includes(cKey))
@@ -1386,6 +1520,226 @@ export const OdontogramViewer: React.FC<OdontogramViewerProps> = ({
                       );
                     })}
                   </div>
+
+                  {/* Sub-opções Anatômicas e Especificações Clínicas (Cavitado, Mancha, Material Restaurador, Tártaro) */}
+                  {(hasCavitado || hasMancha || hasMaterialRestaurador || hasTartaro) && (
+                    <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold uppercase tracking-wider font-mono text-slate-800 dark:text-slate-200">
+                          Especificações Clínicas e Anatômicas
+                        </span>
+                        <span className="text-[11px] text-slate-500 font-sans">
+                          (Múltipla escolha permitida)
+                        </span>
+                      </div>
+
+                      {/* Cavitado */}
+                      {hasCavitado && (
+                        <div className="p-3 rounded-lg border border-rose-200 dark:border-rose-900/50 bg-rose-50/40 dark:bg-rose-950/20 space-y-2">
+                          <span className="text-xs font-semibold text-rose-900 dark:text-rose-200 flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-rose-500" />
+                            Cavitado — Localização:
+                          </span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {(['oclusal', 'mesial', 'distal', 'vestibular', 'lingual', 'subgengival'] as ToothSurface[]).map(face => {
+                              const allHave = isMulti
+                                ? selectedRecords.every(r => r.norm.conditionDetails?.cavitado?.localizacao?.includes(face))
+                                : (singleSelectedRecord?.conditionDetails?.cavitado?.localizacao?.includes(face) || false);
+                              const someHave = isMulti && !allHave && selectedRecords.some(r => r.norm.conditionDetails?.cavitado?.localizacao?.includes(face));
+                              return (
+                                <button
+                                  key={face}
+                                  type="button"
+                                  disabled={readOnly}
+                                  onClick={() => handleToggleConditionDetail('cavitado', 'localizacao', face)}
+                                  className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors touch-manipulation cursor-pointer ${
+                                    allHave
+                                      ? 'bg-rose-600 text-white border-rose-600 shadow-2xs font-semibold'
+                                      : someHave
+                                      ? 'bg-rose-100 dark:bg-rose-900/60 text-rose-900 dark:text-rose-100 border-rose-400 font-semibold'
+                                      : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100'
+                                  }`}
+                                >
+                                  {TOOTH_SURFACE_LABELS[face]}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Mancha */}
+                      {hasMancha && (
+                        <div className="p-3 rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50/40 dark:bg-amber-950/20 space-y-2.5">
+                          <span className="text-xs font-semibold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-amber-500" />
+                            Mancha — Cor e Localização:
+                          </span>
+                          <div className="space-y-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 min-w-[70px]">Cor:</span>
+                              <div className="flex flex-wrap gap-1.5">
+                                {(['clara', 'escura'] as ToothStainColor[]).map(cor => {
+                                  const allHave = isMulti
+                                    ? selectedRecords.every(r => r.norm.conditionDetails?.mancha?.cor?.includes(cor))
+                                    : (singleSelectedRecord?.conditionDetails?.mancha?.cor?.includes(cor) || false);
+                                  const someHave = isMulti && !allHave && selectedRecords.some(r => r.norm.conditionDetails?.mancha?.cor?.includes(cor));
+                                  return (
+                                    <button
+                                      key={cor}
+                                      type="button"
+                                      disabled={readOnly}
+                                      onClick={() => handleToggleConditionDetail('mancha', 'cor', cor)}
+                                      className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors touch-manipulation cursor-pointer ${
+                                        allHave
+                                          ? 'bg-amber-600 text-white border-amber-600 shadow-2xs font-semibold'
+                                          : someHave
+                                          ? 'bg-amber-100 dark:bg-amber-900/60 text-amber-900 dark:text-amber-100 border-amber-400 font-semibold'
+                                          : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100'
+                                      }`}
+                                    >
+                                      {TOOTH_STAIN_COLOR_LABELS[cor]}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 min-w-[70px]">Localização:</span>
+                              <div className="flex flex-wrap gap-1.5">
+                                {(['oclusal', 'mesial', 'distal', 'vestibular', 'lingual', 'subgengival'] as ToothSurface[]).map(face => {
+                                  const allHave = isMulti
+                                    ? selectedRecords.every(r => r.norm.conditionDetails?.mancha?.localizacao?.includes(face))
+                                    : (singleSelectedRecord?.conditionDetails?.mancha?.localizacao?.includes(face) || false);
+                                  const someHave = isMulti && !allHave && selectedRecords.some(r => r.norm.conditionDetails?.mancha?.localizacao?.includes(face));
+                                  return (
+                                    <button
+                                      key={face}
+                                      type="button"
+                                      disabled={readOnly}
+                                      onClick={() => handleToggleConditionDetail('mancha', 'localizacao', face)}
+                                      className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors touch-manipulation cursor-pointer ${
+                                        allHave
+                                          ? 'bg-amber-600 text-white border-amber-600 shadow-2xs font-semibold'
+                                          : someHave
+                                          ? 'bg-amber-100 dark:bg-amber-900/60 text-amber-900 dark:text-amber-100 border-amber-400 font-semibold'
+                                          : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100'
+                                      }`}
+                                    >
+                                      {TOOTH_SURFACE_LABELS[face]}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Material Restaurador */}
+                      {hasMaterialRestaurador && (
+                        <div className="p-3 rounded-lg border border-indigo-200 dark:border-indigo-900/50 bg-indigo-50/40 dark:bg-indigo-950/20 space-y-2.5">
+                          <span className="text-xs font-semibold text-indigo-900 dark:text-indigo-200 flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                            Material restaurador — Tipo e Localização:
+                          </span>
+                          <div className="space-y-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 min-w-[70px]">Tipo:</span>
+                              <div className="flex flex-wrap gap-1.5">
+                                {(['amalgama', 'resina_composta'] as RestorativeMaterialType[]).map(tipo => {
+                                  const allHave = isMulti
+                                    ? selectedRecords.every(r => r.norm.conditionDetails?.materialRestaurador?.tipoMaterial?.includes(tipo))
+                                    : (singleSelectedRecord?.conditionDetails?.materialRestaurador?.tipoMaterial?.includes(tipo) || false);
+                                  const someHave = isMulti && !allHave && selectedRecords.some(r => r.norm.conditionDetails?.materialRestaurador?.tipoMaterial?.includes(tipo));
+                                  return (
+                                    <button
+                                      key={tipo}
+                                      type="button"
+                                      disabled={readOnly}
+                                      onClick={() => handleToggleConditionDetail('materialRestaurador', 'tipoMaterial', tipo)}
+                                      className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors touch-manipulation cursor-pointer ${
+                                        allHave
+                                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs font-semibold'
+                                          : someHave
+                                          ? 'bg-indigo-100 dark:bg-indigo-900/60 text-indigo-900 dark:text-indigo-100 border-indigo-400 font-semibold'
+                                          : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100'
+                                      }`}
+                                    >
+                                      {RESTORATIVE_MATERIAL_LABELS[tipo]}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 min-w-[70px]">Localização:</span>
+                              <div className="flex flex-wrap gap-1.5">
+                                {(['oclusal', 'mesial', 'distal', 'vestibular', 'lingual'] as ('oclusal' | 'mesial' | 'distal' | 'vestibular' | 'lingual')[]).map(face => {
+                                  const allHave = isMulti
+                                    ? selectedRecords.every(r => r.norm.conditionDetails?.materialRestaurador?.localizacao?.includes(face))
+                                    : (singleSelectedRecord?.conditionDetails?.materialRestaurador?.localizacao?.includes(face) || false);
+                                  const someHave = isMulti && !allHave && selectedRecords.some(r => r.norm.conditionDetails?.materialRestaurador?.localizacao?.includes(face));
+                                  return (
+                                    <button
+                                      key={face}
+                                      type="button"
+                                      disabled={readOnly}
+                                      onClick={() => handleToggleConditionDetail('materialRestaurador', 'localizacao', face)}
+                                      className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors touch-manipulation cursor-pointer ${
+                                        allHave
+                                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs font-semibold'
+                                          : someHave
+                                          ? 'bg-indigo-100 dark:bg-indigo-900/60 text-indigo-900 dark:text-indigo-100 border-indigo-400 font-semibold'
+                                          : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100'
+                                      }`}
+                                    >
+                                      {TOOTH_SURFACE_LABELS[face]}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Tártaro */}
+                      {hasTartaro && (
+                        <div className="p-3 rounded-lg border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/40 dark:bg-emerald-950/20 space-y-2">
+                          <span className="text-xs font-semibold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                            Tártaro — Localização:
+                          </span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {(['oclusal', 'mesial', 'distal', 'vestibular', 'lingual', 'subgengival'] as ToothSurface[]).map(face => {
+                              const allHave = isMulti
+                                ? selectedRecords.every(r => r.norm.conditionDetails?.tartaro?.localizacao?.includes(face))
+                                : (singleSelectedRecord?.conditionDetails?.tartaro?.localizacao?.includes(face) || false);
+                              const someHave = isMulti && !allHave && selectedRecords.some(r => r.norm.conditionDetails?.tartaro?.localizacao?.includes(face));
+                              return (
+                                <button
+                                  key={face}
+                                  type="button"
+                                  disabled={readOnly}
+                                  onClick={() => handleToggleConditionDetail('tartaro', 'localizacao', face)}
+                                  className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors touch-manipulation cursor-pointer ${
+                                    allHave
+                                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs font-semibold'
+                                      : someHave
+                                      ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-900 dark:text-emerald-100 border-emerald-400 font-semibold'
+                                      : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100'
+                                  }`}
+                                >
+                                  {TOOTH_SURFACE_LABELS[face]}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 text-xs flex items-center gap-2">
