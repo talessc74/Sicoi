@@ -220,6 +220,9 @@ export function generatePhase0Csv(collections: OsteologicalCollection[]): string
  * Dispara o download de um arquivo no navegador do usuário.
  */
 export function downloadFile(content: string, filename: string, mimeType = 'text/csv;charset=utf-8;'): void {
+  if (typeof document === 'undefined') {
+    return;
+  }
   const blob = new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -233,14 +236,14 @@ export function downloadFile(content: string, filename: string, mimeType = 'text
 
 /**
  * Exporta o COI atual para CSV estruturado compatível com Excel.
- * Apenas usuários com papel de Curador (ou Administrador) têm autorização para exportar a lista da Fase 0.
+ * Apenas usuários com papel de Curador ou Técnico (ou Administrador) têm autorização para exportar a lista da Fase 0.
  */
 export function exportSingleCoiPhase0Csv(
   collection: OsteologicalCollection,
   currentUser?: Pick<UserProfile, 'role' | 'adminAccess'> | null
 ): void {
   if (currentUser && !canExportPhase0Data(currentUser)) {
-    throw new Error('Acesso negado: a exportação da lista da Fase 0 é restrita exclusivamente a usuários com papel de Curador.');
+    throw new Error('Acesso negado: a exportação da lista da Fase 0 é restrita a usuários com papel de Curador ou Técnico.');
   }
   const csvContent = generatePhase0Csv([collection]);
   const filename = `${collection.nic || 'COI'}-fase0-identificacao-${new Date().toISOString().slice(0, 10)}.csv`;
@@ -249,14 +252,14 @@ export function exportSingleCoiPhase0Csv(
 
 /**
  * Exporta múltiplos COIs (ou todo o acervo com Fase 0) para CSV consolidado compatível com Excel.
- * Apenas usuários com papel de Curador (ou Administrador) têm autorização para exportar a lista da Fase 0.
+ * Apenas usuários com papel de Curador ou Técnico (ou Administrador) têm autorização para exportar a lista da Fase 0.
  */
 export function exportAllCollectionsPhase0Csv(
   collections: OsteologicalCollection[],
   currentUser?: Pick<UserProfile, 'role' | 'adminAccess'> | null
 ): void {
   if (currentUser && !canExportPhase0Data(currentUser)) {
-    throw new Error('Acesso negado: a exportação da lista da Fase 0 é restrita exclusivamente a usuários com papel de Curador.');
+    throw new Error('Acesso negado: a exportação da lista da Fase 0 é restrita a usuários com papel de Curador ou Técnico.');
   }
   const csvContent = generatePhase0Csv(collections);
   const filename = `SIGCOI-acervo-fase0-consolidado-${new Date().toISOString().slice(0, 10)}.csv`;

@@ -110,7 +110,7 @@ export const Phase0Recebimento: React.FC<Phase0RecebimentoProps> = ({
   // podem preencher, mas só Técnico (ou Curador agindo como técnico) assina.
   const canAccess = canPerformRole(currentUser.role, 'tecnico');
   const canActAsTechnician = canSignAsTechnician(currentUser);
-  const isCuratorForExport = canExportPhase0Data(currentUser);
+  const canExportData = canExportPhase0Data(currentUser);
 
   const p0: Phase0Data = collection.phase0 ?? createEmptyPhase0Data();
 
@@ -377,9 +377,9 @@ export const Phase0Recebimento: React.FC<Phase0RecebimentoProps> = ({
           </button>
         </div>
 
-        {/* Exportação Estruturada para Excel / CSV (Restrita ao Curador) */}
+        {/* Exportação Estruturada para Excel / CSV (Restrita a Curador e Técnico) */}
         <div className="flex flex-wrap items-center gap-2">
-          {isCuratorForExport ? (
+          {canExportData ? (
             <>
               <button
                 type="button"
@@ -406,10 +406,10 @@ export const Phase0Recebimento: React.FC<Phase0RecebimentoProps> = ({
           ) : (
             <div
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-xs border border-slate-200 dark:border-slate-700 select-none"
-              title="A exportação da lista da Fase 0 é restrita a usuários com papel de Curador"
+              title="A exportação da lista da Fase 0 é restrita a usuários com papel de Curador ou Técnico"
             >
               <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              <span className="text-[11px] font-medium">Exportação de lista restrita ao Curador</span>
+              <span className="text-[11px] font-medium">Exportação restrita a Curador e Técnico</span>
             </div>
           )}
         </div>

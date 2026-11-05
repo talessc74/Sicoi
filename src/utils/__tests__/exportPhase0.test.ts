@@ -148,31 +148,47 @@ describe('Exportação Estruturada da Fase 0 (CSV / Excel)', () => {
     });
   });
 
-  describe('Permissão de Exportação da Fase 0 (Restrita ao Curador)', () => {
-    it('permite apenas Curador ou Administrador exportar a lista da Fase 0', () => {
+  describe('Permissão de Exportação da Fase 0 (Restrita a Curador e Técnico)', () => {
+    it('permite Curador, Técnico ou Administrador exportar a lista da Fase 0', () => {
       expect(canExportPhase0Data({ role: 'curador' } as UserProfile)).toBe(true);
+      expect(canExportPhase0Data({ role: 'tecnico' } as UserProfile)).toBe(true);
       expect(canExportPhase0Data({ role: 'administrador' } as UserProfile)).toBe(true);
-      expect(canExportPhase0Data({ role: 'tecnico', adminAccess: true } as UserProfile)).toBe(true);
+      expect(canExportPhase0Data({ role: 'pesquisador', adminAccess: true } as UserProfile)).toBe(true);
 
       // Bloqueados:
-      expect(canExportPhase0Data({ role: 'tecnico' } as UserProfile)).toBe(false);
       expect(canExportPhase0Data({ role: 'pesquisador' } as UserProfile)).toBe(false);
       expect(canExportPhase0Data({ role: 'estudante' } as UserProfile)).toBe(false);
       expect(canExportPhase0Data(null)).toBe(false);
       expect(canExportPhase0Data(undefined)).toBe(false);
     });
 
-    it('rejeita tentativa de exportação individual se o usuário não for Curador', () => {
-      const nonCurator = { role: 'tecnico', adminAccess: false } as UserProfile;
-      expect(() => exportSingleCoiPhase0Csv(mockCollection, nonCurator)).toThrowError(
-        /restrita exclusivamente a usuários com papel de Curador/i
+    it('permite tentativa de exportação individual se o usuário for Técnico ou Curador', () => {
+      const technician = { role: 'tecnico', adminAccess: false } as UserProfile;
+      expect(() => exportSingleCoiPhase0Csv(mockCollection, technician)).not.toThrow();
+
+      const curator = { role: 'curador', adminAccess: false } as UserProfile;
+      expect(() => exportSingleCoiPhase0Csv(mockCollection, curator)).not.toThrow();
+    });
+
+    it('rejeita tentativa de exportação individual se o usuário não for Curador nem Técnico', () => {
+      const unauthorized = { role: 'pesquisador', adminAccess: false } as UserProfile;
+      expect(() => exportSingleCoiPhase0Csv(mockCollection, unauthorized)).toThrowError(
+        /restrita a usuários com papel de Curador ou Técnico/i
       );
     });
 
-    it('rejeita tentativa de exportação consolidada se o usuário não for Curador', () => {
-      const nonCurator = { role: 'pesquisador', adminAccess: false } as UserProfile;
-      expect(() => exportAllCollectionsPhase0Csv([mockCollection], nonCurator)).toThrowError(
-        /restrita exclusivamente a usuários com papel de Curador/i
+    it('permite tentativa de exportação consolidada se o usuário for Técnico ou Curador', () => {
+      const technician = { role: 'tecnico', adminAccess: false } as UserProfile;
+      expect(() => exportAllCollectionsPhase0Csv([mockCollection], technician)).not.toThrow();
+
+      const curator = { role: 'curador', adminAccess: false } as UserProfile;
+      expect(() => exportAllCollectionsPhase0Csv([mockCollection], curator)).not.toThrow();
+    });
+
+    it('rejeita tentativa de exportação consolidada se o usuário não for Curador nem Técnico', () => {
+      const unauthorized = { role: 'estudante', adminAccess: false } as UserProfile;
+      expect(() => exportAllCollectionsPhase0Csv([mockCollection], unauthorized)).toThrowError(
+        /restrita a usuários com papel de Curador ou Técnico/i
       );
     });
   });
