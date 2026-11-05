@@ -870,6 +870,7 @@ export default function App() {
                 currentUser={currentUser}
                 onUpdateCollection={handleUpdateCollection}
                 laboratoryMode={laboratoryMode}
+                allCollections={collections}
               />
             )}
             {activePhase === 1 && (
