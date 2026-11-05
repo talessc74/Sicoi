@@ -1,4 +1,5 @@
-import { OsteologicalCollection, Phase0Data } from '../types/sgccco';
+import { OsteologicalCollection, Phase0Data, UserProfile } from '../types/sgccco';
+import { canExportPhase0Data } from './permissions';
 
 /**
  * Mapeamento e exportação dos dados da Fase 0 (Identificação e Declaração de Óbito)
@@ -232,8 +233,15 @@ export function downloadFile(content: string, filename: string, mimeType = 'text
 
 /**
  * Exporta o COI atual para CSV estruturado compatível com Excel.
+ * Apenas usuários com papel de Curador (ou Administrador) têm autorização para exportar a lista da Fase 0.
  */
-export function exportSingleCoiPhase0Csv(collection: OsteologicalCollection): void {
+export function exportSingleCoiPhase0Csv(
+  collection: OsteologicalCollection,
+  currentUser?: Pick<UserProfile, 'role' | 'adminAccess'> | null
+): void {
+  if (currentUser && !canExportPhase0Data(currentUser)) {
+    throw new Error('Acesso negado: a exportação da lista da Fase 0 é restrita exclusivamente a usuários com papel de Curador.');
+  }
   const csvContent = generatePhase0Csv([collection]);
   const filename = `${collection.nic || 'COI'}-fase0-identificacao-${new Date().toISOString().slice(0, 10)}.csv`;
   downloadFile(csvContent, filename);
@@ -241,8 +249,15 @@ export function exportSingleCoiPhase0Csv(collection: OsteologicalCollection): vo
 
 /**
  * Exporta múltiplos COIs (ou todo o acervo com Fase 0) para CSV consolidado compatível com Excel.
+ * Apenas usuários com papel de Curador (ou Administrador) têm autorização para exportar a lista da Fase 0.
  */
-export function exportAllCollectionsPhase0Csv(collections: OsteologicalCollection[]): void {
+export function exportAllCollectionsPhase0Csv(
+  collections: OsteologicalCollection[],
+  currentUser?: Pick<UserProfile, 'role' | 'adminAccess'> | null
+): void {
+  if (currentUser && !canExportPhase0Data(currentUser)) {
+    throw new Error('Acesso negado: a exportação da lista da Fase 0 é restrita exclusivamente a usuários com papel de Curador.');
+  }
   const csvContent = generatePhase0Csv(collections);
   const filename = `SIGCOI-acervo-fase0-consolidado-${new Date().toISOString().slice(0, 10)}.csv`;
   downloadFile(csvContent, filename);

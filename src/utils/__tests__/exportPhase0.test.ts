@@ -3,9 +3,12 @@ import {
   collectionToPhase0Row,
   escapeCsvCell,
   generatePhase0Csv,
-  PHASE0_CSV_HEADERS
+  PHASE0_CSV_HEADERS,
+  exportSingleCoiPhase0Csv,
+  exportAllCollectionsPhase0Csv
 } from '../exportPhase0';
-import { OsteologicalCollection } from '../../types/sgccco';
+import { canExportPhase0Data } from '../permissions';
+import { OsteologicalCollection, UserProfile } from '../../types/sgccco';
 
 describe('Exportação Estruturada da Fase 0 (CSV / Excel)', () => {
   const mockCollection: any = {
@@ -142,6 +145,35 @@ describe('Exportação Estruturada da Fase 0 (CSV / Excel)', () => {
       expect(lines.length).toBe(3); // 1 header + 2 data lines
       expect(lines[1]).toContain('COI-072');
       expect(lines[2]).toContain('COI-073');
+    });
+  });
+
+  describe('Permissão de Exportação da Fase 0 (Restrita ao Curador)', () => {
+    it('permite apenas Curador ou Administrador exportar a lista da Fase 0', () => {
+      expect(canExportPhase0Data({ role: 'curador' } as UserProfile)).toBe(true);
+      expect(canExportPhase0Data({ role: 'administrador' } as UserProfile)).toBe(true);
+      expect(canExportPhase0Data({ role: 'tecnico', adminAccess: true } as UserProfile)).toBe(true);
+
+      // Bloqueados:
+      expect(canExportPhase0Data({ role: 'tecnico' } as UserProfile)).toBe(false);
+      expect(canExportPhase0Data({ role: 'pesquisador' } as UserProfile)).toBe(false);
+      expect(canExportPhase0Data({ role: 'estudante' } as UserProfile)).toBe(false);
+      expect(canExportPhase0Data(null)).toBe(false);
+      expect(canExportPhase0Data(undefined)).toBe(false);
+    });
+
+    it('rejeita tentativa de exportação individual se o usuário não for Curador', () => {
+      const nonCurator = { role: 'tecnico', adminAccess: false } as UserProfile;
+      expect(() => exportSingleCoiPhase0Csv(mockCollection, nonCurator)).toThrowError(
+        /restrita exclusivamente a usuários com papel de Curador/i
+      );
+    });
+
+    it('rejeita tentativa de exportação consolidada se o usuário não for Curador', () => {
+      const nonCurator = { role: 'pesquisador', adminAccess: false } as UserProfile;
+      expect(() => exportAllCollectionsPhase0Csv([mockCollection], nonCurator)).toThrowError(
+        /restrita exclusivamente a usuários com papel de Curador/i
+      );
     });
   });
 });

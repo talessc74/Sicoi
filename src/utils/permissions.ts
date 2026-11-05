@@ -70,3 +70,10 @@ export const canCurate = (person: Pick<UserProfile, 'role' | 'curationAccess'>):
 // fica de fato sem acesso a ela.
 export const canExportScientificData = (person: Pick<UserProfile, 'role' | 'exportAccess'>): boolean =>
   person.exportAccess ?? (person.role === 'curador' || person.role === 'administrador' || person.role === 'pesquisador');
+
+// Exportar a lista/planilha estruturada de identificação da Fase 0 — restrito exclusivamente
+// a usuários com papel de Curador (ou Administrador). Técnicos, pesquisadores e estudantes
+// não têm permissão para exportar este conjunto de dados civis da Fase 0.
+export const canExportPhase0Data = (person: Pick<UserProfile, 'role' | 'adminAccess'> | null | undefined): boolean =>
+  Boolean(person && (person.role === 'curador' || hasAdminAccess(person)));
+
