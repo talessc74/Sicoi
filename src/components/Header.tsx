@@ -19,7 +19,8 @@ import {
   ChevronDown,
   ShieldCheck,
   LogOut,
-  KeyRound
+  KeyRound,
+  Sparkles
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -34,6 +35,8 @@ interface HeaderProps {
   onOpenGeminiChat?: () => void;
   collections?: OsteologicalCollection[];
   onSelectCoi?: (nic: string) => void;
+  isAiFabHidden?: boolean;
+  onRestoreAiFab?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -47,7 +50,9 @@ export const Header: React.FC<HeaderProps> = ({
   onQuickSearchDocument,
   onOpenGeminiChat,
   collections,
-  onSelectCoi
+  onSelectCoi,
+  isAiFabHidden,
+  onRestoreAiFab
 }) => {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
@@ -381,14 +386,27 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Botão Assistente IA (Gemini) */}
           {onOpenGeminiChat && (
-            <button
-              onClick={onOpenGeminiChat}
-              title="Abrir o Assistente IA (Gemini)"
-              className="flex items-center gap-1 sm:gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-sky-600 to-indigo-600 text-white hover:from-sky-500 hover:to-indigo-500 transition-all shadow-xs shadow-sky-500/20 whitespace-nowrap shrink-0"
-            >
-              <Activity className="w-3.5 h-3.5 shrink-0" />
-              <span className="whitespace-nowrap">Assistente IA</span>
-            </button>
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={onOpenGeminiChat}
+                title="Abrir o Assistente IA (Gemini)"
+                className="flex items-center gap-1 sm:gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-sky-600 to-indigo-600 text-white hover:from-sky-500 hover:to-indigo-500 transition-all shadow-xs shadow-sky-500/20 whitespace-nowrap shrink-0 cursor-pointer"
+              >
+                <Activity className="w-3.5 h-3.5 shrink-0" />
+                <span className="whitespace-nowrap">Assistente IA</span>
+              </button>
+              {isAiFabHidden && onRestoreAiFab && (
+                <button
+                  type="button"
+                  onClick={onRestoreAiFab}
+                  title="Restaurar o botão flutuante do Assistente IA na tela"
+                  className="p-1.5 rounded-lg text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 dark:hover:bg-sky-900 border border-sky-200 dark:border-sky-800 transition-all shadow-2xs cursor-pointer flex items-center gap-1"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span className="hidden 2xl:inline text-[11px] font-medium">Reativar flutuante</span>
+                </button>
+              )}
+            </div>
           )}
 
           {/* Modo Laboratório */}

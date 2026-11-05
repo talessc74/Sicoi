@@ -29,6 +29,8 @@ interface GeminiForensicChatModalProps {
   onClose: () => void;
   activeCollection?: OsteologicalCollection | null;
   currentUser: UserProfile;
+  isAiFabHidden?: boolean;
+  onRestoreAiFab?: () => void;
 }
 
 export const GeminiForensicChatModal: React.FC<GeminiForensicChatModalProps> = ({
@@ -36,6 +38,8 @@ export const GeminiForensicChatModal: React.FC<GeminiForensicChatModalProps> = (
   onClose,
   activeCollection,
   currentUser,
+  isAiFabHidden,
+  onRestoreAiFab
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     return [
@@ -249,6 +253,17 @@ export const GeminiForensicChatModal: React.FC<GeminiForensicChatModalProps> = (
           </div>
 
           <div className="flex items-center gap-2">
+            {isAiFabHidden && onRestoreAiFab && (
+              <button
+                type="button"
+                onClick={onRestoreAiFab}
+                title="Restaurar o botão flutuante do Assistente IA no canto da tela"
+                className="px-2.5 py-1.5 rounded-xl text-sky-600 dark:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-950/70 border border-sky-200 dark:border-sky-800 transition-colors text-xs flex items-center gap-1.5 cursor-pointer shadow-2xs"
+              >
+                <Bot className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline font-medium">Reativar flutuante</span>
+              </button>
+            )}
             <button
               onClick={handleClearHistory}
               title="Limpar histórico da conversa"

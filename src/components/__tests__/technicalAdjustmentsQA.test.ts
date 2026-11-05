@@ -672,6 +672,7 @@ describe('Suíte de QA — Validação das 12 Mudanças Solicitadas pelos Técni
   describe('Item 14: Quantitativos Dentários em Cabeça e Pescoço e Contagem Total', () => {
     it('armazena dentes articulados e desarticulados na seção Cabeça e Pescoço', () => {
       const cabecaData: OsteologicalSectionCabecaPescoco = {
+        ossos: {},
         dentesArticulados: 28,
         dentesDesarticulados: 4,
         cartilagensLaringe: ['tireoidea'],
@@ -684,6 +685,7 @@ describe('Suíte de QA — Validação das 12 Mudanças Solicitadas pelos Técni
 
     it('suporta contagem de 32+ (ex: 33) nas caixas numéricas de dentes', () => {
       const cabecaData: OsteologicalSectionCabecaPescoco = {
+        ossos: {},
         dentesArticulados: 33,
         dentesDesarticulados: 0
       };

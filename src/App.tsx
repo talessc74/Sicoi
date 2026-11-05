@@ -37,6 +37,7 @@ import { WarehouseRackMap } from './components/WarehouseRackMap';
 import { PublicQRInspectionModal } from './components/PublicQRInspectionModal';
 import { AuditTimelineView } from './components/AuditTimelineView';
 import { GeminiForensicChatModal } from './components/GeminiForensicChatModal';
+import { FloatingAiAssistantButton, FAB_HIDDEN_STORAGE_KEY } from './components/FloatingAiAssistantButton';
 import { NewCollectionModal } from './components/NewCollectionModal';
 import { ErrorNotice } from './components/ErrorNotice';
 import { CreditsView } from './components/CreditsView';
@@ -194,6 +195,27 @@ export default function App() {
   const [laboratoryMode, setLaboratoryMode] = useState<boolean>(false);
   const [isQrModalOpen, setIsQrModalOpen] = useState<boolean>(false);
   const [isGeminiChatOpen, setIsGeminiChatOpen] = useState<boolean>(false);
+  const [isAiFabHidden, setIsAiFabHidden] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(FAB_HIDDEN_STORAGE_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const handleHideAiFab = () => {
+    setIsAiFabHidden(true);
+    try {
+      localStorage.setItem(FAB_HIDDEN_STORAGE_KEY, 'true');
+    } catch {}
+  };
+
+  const handleRestoreAiFab = () => {
+    setIsAiFabHidden(false);
+    try {
+      localStorage.removeItem(FAB_HIDDEN_STORAGE_KEY);
+    } catch {}
+  };
   const [isLoadingCollections, setIsLoadingCollections] = useState<boolean>(true);
   const [syncError, setSyncError] = useState<AppError | null>(null);
   // Todo campo do formulário já salva sozinho a cada mudança (ver handleUpdateCollection) —
@@ -647,6 +669,8 @@ export default function App() {
         onToggleLaboratoryMode={() => setLaboratoryMode(!laboratoryMode)}
         onQuickSearchDocument={handleQuickSearchFromHeader}
         onOpenGeminiChat={() => setIsGeminiChatOpen(true)}
+        isAiFabHidden={isAiFabHidden}
+        onRestoreAiFab={handleRestoreAiFab}
         collections={collections}
         onSelectCoi={(nic) => {
           const col = collections.find(c => c.nic === nic);
@@ -974,20 +998,14 @@ export default function App() {
         />
       )}
 
-      {/* Botão Flutuante de Acesso Rápido ao Assistente IA (Gemini) */}
-      <button
-        onClick={() => setIsGeminiChatOpen(true)}
-        className="fixed bottom-6 right-6 z-40 px-4 py-3 rounded-2xl bg-gradient-to-tr from-sky-600 via-indigo-600 to-purple-600 text-white shadow-xl shadow-indigo-500/30 hover:scale-105 active:scale-95 transition-all flex items-center gap-2.5 font-semibold text-xs border border-white/20 group cursor-pointer"
-        title="Abrir Chat com o Assistente IA (Gemini) & Transcrição de Áudio"
-      >
-        <div className="relative flex h-3 w-3">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-300 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
-        </div>
-        <Bot className="w-4 h-4 text-sky-200" />
-        <span className="font-sans">Assistente IA</span>
-        <span className="hidden sm:inline text-[10px] font-mono px-1.5 py-0.5 bg-black/20 rounded-md">Gemini</span>
-      </button>
+      {/* Botão Flutuante Móvel & Customizável do Assistente IA (Gemini) */}
+      <FloatingAiAssistantButton
+        isOpen={isGeminiChatOpen}
+        onOpenChat={() => setIsGeminiChatOpen(true)}
+        isHidden={isAiFabHidden}
+        onHide={handleHideAiFab}
+        onRestore={handleRestoreAiFab}
+      />
 
       {showNewCollectionModal && (
         <NewCollectionModal
@@ -1003,6 +1021,8 @@ export default function App() {
         onClose={() => setIsGeminiChatOpen(false)}
         activeCollection={currentCollection}
         currentUser={currentUser}
+        isAiFabHidden={isAiFabHidden}
+        onRestoreAiFab={handleRestoreAiFab}
       />
 
       {/* Footer */}
@@ -1032,6 +1052,19 @@ export default function App() {
           </button>
           <span>·</span>
           <span>SHA-256 Ativo</span>
+          {isAiFabHidden && (
+            <>
+              <span>·</span>
+              <button
+                type="button"
+                onClick={handleRestoreAiFab}
+                className="text-sky-600 dark:text-sky-400 hover:underline cursor-pointer font-sans font-medium"
+                title="Reativar botão flutuante do Assistente IA"
+              >
+                Reativar Assistente IA Flutuante
+              </button>
+            </>
+          )}
         </div>
       </footer>
     </div>
