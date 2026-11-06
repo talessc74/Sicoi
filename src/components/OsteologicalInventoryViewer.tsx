@@ -1443,15 +1443,6 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                       </button>
                       <button
                         type="button"
-                        onClick={() => setSideFilter('esquerdo')}
-                        className={`px-2.5 py-0.5 rounded text-xs font-medium transition-all ${
-                          sideFilter === 'esquerdo' ? 'bg-sky-600 text-white font-bold shadow-xs' : 'text-slate-600 dark:text-slate-300'
-                        }`}
-                      >
-                        Lado Esquerdo
-                      </button>
-                      <button
-                        type="button"
                         onClick={() => setSideFilter('direito')}
                         className={`px-2.5 py-0.5 rounded text-xs font-medium transition-all ${
                           sideFilter === 'direito' ? 'bg-sky-600 text-white font-bold shadow-xs' : 'text-slate-600 dark:text-slate-300'
@@ -1459,61 +1450,19 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                       >
                         Lado Direito
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => setSideFilter('esquerdo')}
+                        className={`px-2.5 py-0.5 rounded text-xs font-medium transition-all ${
+                          sideFilter === 'esquerdo' ? 'bg-sky-600 text-white font-bold shadow-xs' : 'text-slate-600 dark:text-slate-300'
+                        }`}
+                      >
+                        Lado Esquerdo
+                      </button>
                     </div>
                   </div>
 
                   <div className={sideFilter === 'ambos' ? 'grid grid-cols-1 lg:grid-cols-2 gap-5 items-start' : 'space-y-4'}>
-                    {(sideFilter === 'ambos' || sideFilter === 'esquerdo') && (
-                      <div className="p-3.5 rounded-xl border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/20 dark:bg-indigo-950/20 space-y-3">
-                        <div className="flex items-center justify-between pb-2 border-b border-indigo-200/70 dark:border-indigo-900/50">
-                          <h6 className="font-bold text-xs uppercase font-mono tracking-wider text-indigo-950 dark:text-indigo-200">
-                            Costelas Esquerdas (C1 a C12)
-                          </h6>
-                          <div className="flex items-center gap-2">
-                            <span className="text-[11px] font-mono text-slate-500">
-                              {COSTELAS_ESQUERDAS.filter(b => sectionData.ossos[b]).length}/{COSTELAS_ESQUERDAS.length}
-                            </span>
-                            {!readOnly && (
-                              <div className="flex items-center gap-1">
-                                <span className="text-[10px] font-mono text-slate-400">Todos:</span>
-                                {(['P', 'F', 'I', 'A'] as const).map(code => (
-                                  <button
-                                    key={code}
-                                    type="button"
-                                    onClick={() => handleBulkMarkGeneric(sectionKey, COSTELAS_ESQUERDAS, code)}
-                                    className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border transition-colors ${
-                                      code === 'P'
-                                        ? 'border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300'
-                                        : code === 'F'
-                                          ? 'border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300'
-                                          : code === 'I'
-                                            ? 'border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-300'
-                                            : 'border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300'
-                                    } bg-white dark:bg-slate-900`}
-                                    title={`Marcar todas as Costelas Esquerdas como ${code}`}
-                                  >
-                                    {code}
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        <SimpleBoneRows
-                          bones={COSTELAS_ESQUERDAS}
-                          section={sectionData}
-                          readOnly={readOnly}
-                          expandedBones={expandedBonesBySection[sectionKey] || {}}
-                          onToggleExpand={bone => toggleExpandBoneGeneric(sectionKey, bone)}
-                          onSetPresence={(bone, code) => handleSetPresenceGeneric(sectionKey, bone, code)}
-                          onToggleAlteracao={(bone, tipo) => handleToggleAlteracaoGeneric(sectionKey, bone, tipo)}
-                          onAddAlteracaoItem={(bone, tipo) => handleAddAlteracaoItemGeneric(sectionKey, bone, tipo)}
-                          onRemoveAlteracaoItem={id => handleRemoveAlteracaoItemGeneric(sectionKey, id)}
-                          onUpdateAlteracaoItem={(id, obs) => handleUpdateAlteracaoItemGeneric(sectionKey, id, obs)}
-                        />
-                      </div>
-                    )}
-
                     {(sideFilter === 'ambos' || sideFilter === 'direito') && (
                       <div className="p-3.5 rounded-xl border border-sky-200 dark:border-sky-900/60 bg-sky-50/20 dark:bg-sky-950/20 space-y-3">
                         <div className="flex items-center justify-between pb-2 border-b border-sky-200/70 dark:border-sky-900/50">
@@ -1564,6 +1513,57 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                         />
                       </div>
                     )}
+
+                    {(sideFilter === 'ambos' || sideFilter === 'esquerdo') && (
+                      <div className="p-3.5 rounded-xl border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/20 dark:bg-indigo-950/20 space-y-3">
+                        <div className="flex items-center justify-between pb-2 border-b border-indigo-200/70 dark:border-indigo-900/50">
+                          <h6 className="font-bold text-xs uppercase font-mono tracking-wider text-indigo-950 dark:text-indigo-200">
+                            Costelas Esquerdas (C1 a C12)
+                          </h6>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] font-mono text-slate-500">
+                              {COSTELAS_ESQUERDAS.filter(b => sectionData.ossos[b]).length}/{COSTELAS_ESQUERDAS.length}
+                            </span>
+                            {!readOnly && (
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] font-mono text-slate-400">Todos:</span>
+                                {(['P', 'F', 'I', 'A'] as const).map(code => (
+                                  <button
+                                    key={code}
+                                    type="button"
+                                    onClick={() => handleBulkMarkGeneric(sectionKey, COSTELAS_ESQUERDAS, code)}
+                                    className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border transition-colors ${
+                                      code === 'P'
+                                        ? 'border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300'
+                                        : code === 'F'
+                                          ? 'border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300'
+                                          : code === 'I'
+                                            ? 'border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-300'
+                                            : 'border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300'
+                                    } bg-white dark:bg-slate-900`}
+                                    title={`Marcar todas as Costelas Esquerdas como ${code}`}
+                                  >
+                                    {code}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <SimpleBoneRows
+                          bones={COSTELAS_ESQUERDAS}
+                          section={sectionData}
+                          readOnly={readOnly}
+                          expandedBones={expandedBonesBySection[sectionKey] || {}}
+                          onToggleExpand={bone => toggleExpandBoneGeneric(sectionKey, bone)}
+                          onSetPresence={(bone, code) => handleSetPresenceGeneric(sectionKey, bone, code)}
+                          onToggleAlteracao={(bone, tipo) => handleToggleAlteracaoGeneric(sectionKey, bone, tipo)}
+                          onAddAlteracaoItem={(bone, tipo) => handleAddAlteracaoItemGeneric(sectionKey, bone, tipo)}
+                          onRemoveAlteracaoItem={id => handleRemoveAlteracaoItemGeneric(sectionKey, id)}
+                          onUpdateAlteracaoItem={(id, obs) => handleUpdateAlteracaoItemGeneric(sectionKey, id, obs)}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1596,22 +1596,6 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                 <div className="flex items-center justify-between gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80">
                   <button
                     type="button"
-                    onClick={() => setSideFilter('esquerdo')}
-                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 touch-manipulation ${
-                      sideFilter === 'esquerdo'
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400'
-                    }`}
-                  >
-                    <span className="w-2 h-2 rounded-full bg-indigo-400" />
-                    <span>Lado Esquerdo</span>
-                    <span className="text-[10px] font-mono opacity-80">
-                      ({esquerdoBones.filter(b => sectionData.ossos[b]).length}/{esquerdoBones.length})
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
                     onClick={() => setSideFilter('direito')}
                     className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 touch-manipulation ${
                       sideFilter === 'direito'
@@ -1623,6 +1607,22 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                     <span>Lado Direito</span>
                     <span className="text-[10px] font-mono opacity-80">
                       ({direitoBones.filter(b => sectionData.ossos[b]).length}/{direitoBones.length})
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSideFilter('esquerdo')}
+                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 touch-manipulation ${
+                      sideFilter === 'esquerdo'
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400'
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-indigo-400" />
+                    <span>Lado Esquerdo</span>
+                    <span className="text-[10px] font-mono opacity-80">
+                      ({esquerdoBones.filter(b => sectionData.ossos[b]).length}/{esquerdoBones.length})
                     </span>
                   </button>
 
@@ -1640,118 +1640,6 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                 </div>
 
                 <div className={sideFilter === 'ambos' ? 'grid grid-cols-1 lg:grid-cols-2 gap-5 items-start' : 'space-y-4'}>
-                {(sideFilter === 'ambos' || sideFilter === 'esquerdo') && (
-                  <div className="p-3.5 rounded-xl border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/20 dark:bg-indigo-950/20 space-y-3">
-                    <div className="flex items-center justify-between pb-2 border-b border-indigo-200/70 dark:border-indigo-900/50">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-indigo-600" />
-                        <h5 className="font-bold text-xs uppercase font-mono tracking-wider text-indigo-950 dark:text-indigo-200">
-                          Lado Esquerdo
-                        </h5>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[11px] font-mono text-slate-500">
-                          {esquerdoBones.filter(b => sectionData.ossos[b]).length}/{esquerdoBones.length}
-                        </span>
-                        {!readOnly && (
-                          <div className="flex items-center gap-1">
-                            <span className="text-[10px] font-mono text-slate-400">Todos:</span>
-                            {(['P', 'F', 'I', 'A'] as const).map(code => (
-                              <button
-                                key={code}
-                                type="button"
-                                onClick={() => handleBulkMarkGeneric(sectionKey, esquerdoBones, code)}
-                                className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border transition-colors ${
-                                  code === 'P'
-                                    ? 'border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300'
-                                    : code === 'F'
-                                      ? 'border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300'
-                                      : code === 'I'
-                                        ? 'border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-300'
-                                        : 'border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300'
-                                } bg-white dark:bg-slate-900`}
-                                title={`Marcar todos os ossos do Lado Esquerdo como ${code}`}
-                              >
-                                {code}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {(() => {
-                      const subgroups = getBilateralSubgroups(currentSectionId, 'esquerdo');
-                      if (subgroups.length === 0) {
-                        return (
-                          <SimpleBoneRows
-                            bones={esquerdoBones}
-                            section={sectionData}
-                            readOnly={readOnly}
-                            expandedBones={expandedBonesBySection[sectionKey] || {}}
-                            onToggleExpand={bone => toggleExpandBoneGeneric(sectionKey, bone)}
-                            onSetPresence={(bone, code) => handleSetPresenceGeneric(sectionKey, bone, code)}
-                            onToggleAlteracao={(bone, tipo) => handleToggleAlteracaoGeneric(sectionKey, bone, tipo)}
-                            onAddAlteracaoItem={(bone, tipo) => handleAddAlteracaoItemGeneric(sectionKey, bone, tipo)}
-                            onRemoveAlteracaoItem={id => handleRemoveAlteracaoItemGeneric(sectionKey, id)}
-                            onUpdateAlteracaoItem={(id, obs) => handleUpdateAlteracaoItemGeneric(sectionKey, id, obs)}
-                          />
-                        );
-                      }
-                      return (
-                        <div className="space-y-4">
-                          {subgroups.map(sg => {
-                            const sgAssignedCount = sg.bones.filter(b => sectionData.ossos[b]).length;
-                            return (
-                              <div key={sg.id} className="space-y-2 pt-2 first:pt-0">
-                                <div className="flex items-center justify-between pb-1.5 border-b border-indigo-200/60 dark:border-indigo-900/50">
-                                  <h6 className="font-bold text-xs uppercase font-mono tracking-wider text-indigo-950 dark:text-indigo-200 flex items-center gap-2">
-                                    <span className={`w-2 h-2 rounded-full ${sg.dotColor}`} />
-                                    {sg.label}
-                                  </h6>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-[11px] font-mono text-slate-500">
-                                      {sgAssignedCount}/{sg.bones.length}
-                                    </span>
-                                    {!readOnly && (
-                                      <div className="flex items-center gap-1">
-                                        {(['P', 'F', 'I', 'A'] as const).map(code => (
-                                          <button
-                                            key={code}
-                                            type="button"
-                                            onClick={() => handleBulkMarkGeneric(sectionKey, sg.bones, code)}
-                                            className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border transition-colors border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
-                                            title={`Marcar todos os ossos de ${sg.label} como ${code}`}
-                                          >
-                                            {code}
-                                          </button>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                                <SimpleBoneRows
-                                  bones={sg.bones}
-                                  formatBoneLabel={formatSubgroupBoneLabel}
-                                  section={sectionData}
-                                  readOnly={readOnly}
-                                  expandedBones={expandedBonesBySection[sectionKey] || {}}
-                                  onToggleExpand={bone => toggleExpandBoneGeneric(sectionKey, bone)}
-                                  onSetPresence={(bone, code) => handleSetPresenceGeneric(sectionKey, bone, code)}
-                                  onToggleAlteracao={(bone, tipo) => handleToggleAlteracaoGeneric(sectionKey, bone, tipo)}
-                                  onAddAlteracaoItem={(bone, tipo) => handleAddAlteracaoItemGeneric(sectionKey, bone, tipo)}
-                                  onRemoveAlteracaoItem={id => handleRemoveAlteracaoItemGeneric(sectionKey, id)}
-                                  onUpdateAlteracaoItem={(id, obs) => handleUpdateAlteracaoItemGeneric(sectionKey, id, obs)}
-                                />
-                              </div>
-                            );
-                          })}
-                        </div>
-                      );
-                    })()}
-                  </div>
-                )}
-
                 {(sideFilter === 'ambos' || sideFilter === 'direito') && (
                   <div className="p-3.5 rounded-xl border border-sky-200 dark:border-sky-900/60 bg-sky-50/20 dark:bg-sky-950/20 space-y-3">
                     <div className="flex items-center justify-between pb-2 border-b border-sky-200/70 dark:border-sky-900/50">
@@ -1818,6 +1706,118 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                               <div key={sg.id} className="space-y-2 pt-2 first:pt-0">
                                 <div className="flex items-center justify-between pb-1.5 border-b border-sky-200/60 dark:border-sky-900/50">
                                   <h6 className="font-bold text-xs uppercase font-mono tracking-wider text-sky-950 dark:text-sky-200 flex items-center gap-2">
+                                    <span className={`w-2 h-2 rounded-full ${sg.dotColor}`} />
+                                    {sg.label}
+                                  </h6>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[11px] font-mono text-slate-500">
+                                      {sgAssignedCount}/{sg.bones.length}
+                                    </span>
+                                    {!readOnly && (
+                                      <div className="flex items-center gap-1">
+                                        {(['P', 'F', 'I', 'A'] as const).map(code => (
+                                          <button
+                                            key={code}
+                                            type="button"
+                                            onClick={() => handleBulkMarkGeneric(sectionKey, sg.bones, code)}
+                                            className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border transition-colors border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                                            title={`Marcar todos os ossos de ${sg.label} como ${code}`}
+                                          >
+                                            {code}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                <SimpleBoneRows
+                                  bones={sg.bones}
+                                  formatBoneLabel={formatSubgroupBoneLabel}
+                                  section={sectionData}
+                                  readOnly={readOnly}
+                                  expandedBones={expandedBonesBySection[sectionKey] || {}}
+                                  onToggleExpand={bone => toggleExpandBoneGeneric(sectionKey, bone)}
+                                  onSetPresence={(bone, code) => handleSetPresenceGeneric(sectionKey, bone, code)}
+                                  onToggleAlteracao={(bone, tipo) => handleToggleAlteracaoGeneric(sectionKey, bone, tipo)}
+                                  onAddAlteracaoItem={(bone, tipo) => handleAddAlteracaoItemGeneric(sectionKey, bone, tipo)}
+                                  onRemoveAlteracaoItem={id => handleRemoveAlteracaoItemGeneric(sectionKey, id)}
+                                  onUpdateAlteracaoItem={(id, obs) => handleUpdateAlteracaoItemGeneric(sectionKey, id, obs)}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+
+                {(sideFilter === 'ambos' || sideFilter === 'esquerdo') && (
+                  <div className="p-3.5 rounded-xl border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/20 dark:bg-indigo-950/20 space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-indigo-200/70 dark:border-indigo-900/50">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-indigo-600" />
+                        <h5 className="font-bold text-xs uppercase font-mono tracking-wider text-indigo-950 dark:text-indigo-200">
+                          Lado Esquerdo
+                        </h5>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-mono text-slate-500">
+                          {esquerdoBones.filter(b => sectionData.ossos[b]).length}/{esquerdoBones.length}
+                        </span>
+                        {!readOnly && (
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] font-mono text-slate-400">Todos:</span>
+                            {(['P', 'F', 'I', 'A'] as const).map(code => (
+                              <button
+                                key={code}
+                                type="button"
+                                onClick={() => handleBulkMarkGeneric(sectionKey, esquerdoBones, code)}
+                                className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border transition-colors ${
+                                  code === 'P'
+                                    ? 'border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300'
+                                    : code === 'F'
+                                      ? 'border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300'
+                                      : code === 'I'
+                                        ? 'border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-300'
+                                        : 'border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300'
+                                } bg-white dark:bg-slate-900`}
+                                title={`Marcar todos os ossos do Lado Esquerdo como ${code}`}
+                              >
+                                {code}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {(() => {
+                      const subgroups = getBilateralSubgroups(currentSectionId, 'esquerdo');
+                      if (subgroups.length === 0) {
+                        return (
+                          <SimpleBoneRows
+                            bones={esquerdoBones}
+                            section={sectionData}
+                            readOnly={readOnly}
+                            expandedBones={expandedBonesBySection[sectionKey] || {}}
+                            onToggleExpand={bone => toggleExpandBoneGeneric(sectionKey, bone)}
+                            onSetPresence={(bone, code) => handleSetPresenceGeneric(sectionKey, bone, code)}
+                            onToggleAlteracao={(bone, tipo) => handleToggleAlteracaoGeneric(sectionKey, bone, tipo)}
+                            onAddAlteracaoItem={(bone, tipo) => handleAddAlteracaoItemGeneric(sectionKey, bone, tipo)}
+                            onRemoveAlteracaoItem={id => handleRemoveAlteracaoItemGeneric(sectionKey, id)}
+                            onUpdateAlteracaoItem={(id, obs) => handleUpdateAlteracaoItemGeneric(sectionKey, id, obs)}
+                          />
+                        );
+                      }
+                      return (
+                        <div className="space-y-4">
+                          {subgroups.map(sg => {
+                            const sgAssignedCount = sg.bones.filter(b => sectionData.ossos[b]).length;
+                            return (
+                              <div key={sg.id} className="space-y-2 pt-2 first:pt-0">
+                                <div className="flex items-center justify-between pb-1.5 border-b border-indigo-200/60 dark:border-indigo-900/50">
+                                  <h6 className="font-bold text-xs uppercase font-mono tracking-wider text-indigo-950 dark:text-indigo-200 flex items-center gap-2">
                                     <span className={`w-2 h-2 rounded-full ${sg.dotColor}`} />
                                     {sg.label}
                                   </h6>
@@ -1958,34 +1958,6 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
 
                   <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
                     <span className="block text-xs font-semibold text-slate-800 dark:text-slate-200 mb-2">
-                      Ossículos da audição esquerdos
-                    </span>
-                    <div className="space-y-1.5 text-xs">
-                      {[
-                        { id: 'martelo', label: 'Martelo' },
-                        { id: 'bigorna', label: 'Bigorna' },
-                        { id: 'estribo', label: 'Estribo' },
-                        { id: 'ausentes', label: 'Ausentes' }
-                      ].map(opt => {
-                        const checked = (cabecaExtra.ossiculosEsquerdos || []).includes(opt.id);
-                        return (
-                          <label key={opt.id} className="flex items-center gap-2 cursor-pointer text-slate-700 dark:text-slate-300">
-                            <input
-                              type="checkbox"
-                              disabled={readOnly}
-                              checked={checked}
-                              onChange={() => handleToggleOssiculo('esquerdos', opt.id)}
-                              className="rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                            />
-                            <span>{opt.label}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-                    <span className="block text-xs font-semibold text-slate-800 dark:text-slate-200 mb-2">
                       Ossículos da audição direitos
                     </span>
                     <div className="space-y-1.5 text-xs">
@@ -2003,6 +1975,34 @@ export const OsteologicalInventoryViewer: React.FC<OsteologicalInventoryViewerPr
                               disabled={readOnly}
                               checked={checked}
                               onChange={() => handleToggleOssiculo('direitos', opt.id)}
+                              className="rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                            />
+                            <span>{opt.label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                    <span className="block text-xs font-semibold text-slate-800 dark:text-slate-200 mb-2">
+                      Ossículos da audição esquerdos
+                    </span>
+                    <div className="space-y-1.5 text-xs">
+                      {[
+                        { id: 'martelo', label: 'Martelo' },
+                        { id: 'bigorna', label: 'Bigorna' },
+                        { id: 'estribo', label: 'Estribo' },
+                        { id: 'ausentes', label: 'Ausentes' }
+                      ].map(opt => {
+                        const checked = (cabecaExtra.ossiculosEsquerdos || []).includes(opt.id);
+                        return (
+                          <label key={opt.id} className="flex items-center gap-2 cursor-pointer text-slate-700 dark:text-slate-300">
+                            <input
+                              type="checkbox"
+                              disabled={readOnly}
+                              checked={checked}
+                              onChange={() => handleToggleOssiculo('esquerdos', opt.id)}
                               className="rounded border-slate-300 text-sky-600 focus:ring-sky-500"
                             />
                             <span>{opt.label}</span>

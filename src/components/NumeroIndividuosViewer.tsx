@@ -487,49 +487,8 @@ export const NumeroIndividuosViewer: React.FC<NumeroIndividuosViewerProps> = ({
                   </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
-                    {/* Controles de Entrada: E, D, P */}
+                    {/* Controles de Entrada: D, E, P */}
                     <div className="lg:col-span-6 grid grid-cols-3 gap-2">
-                      {/* Lado Esquerdo (E) */}
-                      <div className="bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800">
-                        <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                          Esquerdo (E)
-                        </label>
-                        <div className="flex items-center justify-between gap-1">
-                          <button
-                            disabled={readOnly || entry.ladoEsquerdo <= 0}
-                            onClick={() =>
-                              handleUpdateCounts(entry.id, 'ladoEsquerdo', entry.ladoEsquerdo - 1)
-                            }
-                            className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold hover:bg-slate-200 disabled:opacity-40"
-                          >
-                            -
-                          </button>
-                          <input
-                            type="number"
-                            min="0"
-                            disabled={readOnly}
-                            value={entry.ladoEsquerdo}
-                            onChange={e =>
-                              handleUpdateCounts(
-                                entry.id,
-                                'ladoEsquerdo',
-                                parseInt(e.target.value) || 0
-                              )
-                            }
-                            className="w-12 text-center font-mono font-bold text-sm text-slate-900 dark:text-white bg-transparent border-none focus:outline-hidden"
-                          />
-                          <button
-                            disabled={readOnly}
-                            onClick={() =>
-                              handleUpdateCounts(entry.id, 'ladoEsquerdo', entry.ladoEsquerdo + 1)
-                            }
-                            className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold hover:bg-slate-200 disabled:opacity-40"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-
                       {/* Lado Direito (D) */}
                       <div className="bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800">
                         <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
@@ -563,6 +522,47 @@ export const NumeroIndividuosViewer: React.FC<NumeroIndividuosViewerProps> = ({
                             disabled={readOnly}
                             onClick={() =>
                               handleUpdateCounts(entry.id, 'ladoDireito', entry.ladoDireito + 1)
+                            }
+                            className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold hover:bg-slate-200 disabled:opacity-40"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Lado Esquerdo (E) */}
+                      <div className="bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800">
+                        <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                          Esquerdo (E)
+                        </label>
+                        <div className="flex items-center justify-between gap-1">
+                          <button
+                            disabled={readOnly || entry.ladoEsquerdo <= 0}
+                            onClick={() =>
+                              handleUpdateCounts(entry.id, 'ladoEsquerdo', entry.ladoEsquerdo - 1)
+                            }
+                            className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold hover:bg-slate-200 disabled:opacity-40"
+                          >
+                            -
+                          </button>
+                          <input
+                            type="number"
+                            min="0"
+                            disabled={readOnly}
+                            value={entry.ladoEsquerdo}
+                            onChange={e =>
+                              handleUpdateCounts(
+                                entry.id,
+                                'ladoEsquerdo',
+                                parseInt(e.target.value) || 0
+                              )
+                            }
+                            className="w-12 text-center font-mono font-bold text-sm text-slate-900 dark:text-white bg-transparent border-none focus:outline-hidden"
+                          />
+                          <button
+                            disabled={readOnly}
+                            onClick={() =>
+                              handleUpdateCounts(entry.id, 'ladoEsquerdo', entry.ladoEsquerdo + 1)
                             }
                             className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold hover:bg-slate-200 disabled:opacity-40"
                           >

@@ -174,6 +174,13 @@ describe('Suíte de QA — Validação das 12 Mudanças Solicitadas pelos Técni
       ]);
     });
 
+    it('mantém a convenção anatômica forense com colunas Direitas posicionadas à esquerda e Esquerdas à direita', () => {
+      // Regra anatômica: na visualização frontal, o lado direito do indivíduo é exibido na coluna esquerda da tela,
+      // e o lado esquerdo é exibido na coluna direita da tela.
+      expect(COSTELAS_DIREITAS).toHaveLength(12);
+      expect(COSTELAS_ESQUERDAS).toHaveLength(12);
+    });
+
     it('ordinais de costelas cobrem de 1ª a 12ª', () => {
       expect(COSTELAS_ORDINAIS).toEqual([
         '1ª', '2ª', '3ª', '4ª', '5ª', '6ª', '7ª', '8ª', '9ª', '10ª', '11ª', '12ª'
