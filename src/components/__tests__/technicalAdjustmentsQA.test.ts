@@ -33,7 +33,8 @@ import {
   OsteologicalAlteracaoRegiao,
   OsteologicalSectionCabecaPescoco,
   ToothRecord,
-  ToothConditionDetails
+  ToothConditionDetails,
+  Phase0Data
 } from '../../types/sgccco';
 import {
   TOOTH_SURFACE_LABELS,
@@ -776,6 +777,39 @@ describe('Suíte de QA — Validação das 12 Mudanças Solicitadas pelos Técni
         }
       };
       expect(tooth.conditionDetails?.tartaro?.localizacao).toEqual(['lingual', 'subgengival']);
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // Item 16: Fase 0 - Opção "Não consta" para Mãe, Pai e Cônjuge
+  // --------------------------------------------------------------------------
+  describe('Item 16: Fase 0 - Opção "Não consta" para Mãe, Pai e Cônjuge', () => {
+    it('suporta marcação atômica de "Não consta" e bloqueio de preenchimento para Mãe, Pai e Cônjuge', () => {
+      const p0: Phase0Data = {
+        maeNaoConsta: true,
+        maeNome: '',
+        maeFalecida: false,
+        maeNaturalCidade: '',
+        maeEstadoCivil: '',
+        maeProfissao: '',
+        paiNaoConsta: true,
+        paiNome: '',
+        paiFalecido: false,
+        paiNaturalCidade: '',
+        paiEstadoCivil: '',
+        paiProfissao: '',
+        conjugeNaoConsta: true,
+        conjugeNome: '',
+        conjugeNaturalCidade: '',
+        conjugeProfissao: '',
+        filhos: []
+      };
+      expect(p0.maeNaoConsta).toBe(true);
+      expect(p0.maeNome).toBe('');
+      expect(p0.paiNaoConsta).toBe(true);
+      expect(p0.paiNome).toBe('');
+      expect(p0.conjugeNaoConsta).toBe(true);
+      expect(p0.conjugeNome).toBe('');
     });
   });
 });

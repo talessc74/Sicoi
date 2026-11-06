@@ -132,6 +132,78 @@ export const Phase0Recebimento: React.FC<Phase0RecebimentoProps> = ({
     }
   };
 
+  const handleToggleMaeNaoConsta = (naoConsta: boolean) => {
+    if (naoConsta) {
+      set({
+        maeNaoConsta: true,
+        maeNome: '',
+        maeFalecida: false,
+        maeNaturalUf: undefined,
+        maeNaturalCidade: '',
+        maeEstadoCivil: '',
+        maeProfissao: ''
+      });
+      setFromIA((prev) => {
+        const next = { ...prev };
+        delete next.maeNome;
+        delete next.maeNaturalUf;
+        delete next.maeNaturalCidade;
+        delete next.maeEstadoCivil;
+        delete next.maeProfissao;
+        return next;
+      });
+    } else {
+      set({ maeNaoConsta: false });
+    }
+  };
+
+  const handleTogglePaiNaoConsta = (naoConsta: boolean) => {
+    if (naoConsta) {
+      set({
+        paiNaoConsta: true,
+        paiNome: '',
+        paiFalecido: false,
+        paiNaturalUf: undefined,
+        paiNaturalCidade: '',
+        paiEstadoCivil: '',
+        paiProfissao: ''
+      });
+      setFromIA((prev) => {
+        const next = { ...prev };
+        delete next.paiNome;
+        delete next.paiNaturalUf;
+        delete next.paiNaturalCidade;
+        delete next.paiEstadoCivil;
+        delete next.paiProfissao;
+        return next;
+      });
+    } else {
+      set({ paiNaoConsta: false });
+    }
+  };
+
+  const handleToggleConjugeNaoConsta = (naoConsta: boolean) => {
+    if (naoConsta) {
+      set({
+        conjugeNaoConsta: true,
+        conjugeNome: '',
+        conjugeNaturalUf: undefined,
+        conjugeNaturalCidade: '',
+        conjugeProfissao: ''
+      });
+      setFromIA((prev) => {
+        const next = { ...prev };
+        delete next.conjugeNome;
+        delete next.conjugeNaturalUf;
+        delete next.conjugeNaturalCidade;
+        delete next.conjugeProfissao;
+        return next;
+      });
+    } else {
+      set({ conjugeNaoConsta: false });
+    }
+  };
+
   // Nascimento e data do óbito alimentam a idade calculada — qualquer edição
   // em um dos dois recalcula e grava a idade no mesmo patch (nunca duas
   // chamadas de set() em sequência, que perderiam a primeira por operarem
@@ -496,34 +568,58 @@ export const Phase0Recebimento: React.FC<Phase0RecebimentoProps> = ({
                       />
                     </div>
                     <div className="flex items-end gap-3 pb-2.5">
-                      <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
+                      <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 cursor-pointer select-none">
                         <input
                           type="checkbox"
                           disabled={disabled}
                           checked={Boolean(p0.maeNaoConsta)}
-                          onChange={(e) => {
-                            setField('maeNaoConsta', e.target.checked);
-                            if (e.target.checked) setField('maeNome', '');
-                          }}
+                          onChange={(e) => handleToggleMaeNaoConsta(e.target.checked)}
+                          className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-sky-600 focus:ring-sky-500 cursor-pointer disabled:cursor-not-allowed"
                         />
-                        Não consta
+                        <span className="font-medium">Não consta</span>
                       </label>
-                      <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
-                        <input type="checkbox" disabled={disabled} checked={Boolean(p0.maeFalecida)} onChange={(e) => setField('maeFalecida', e.target.checked)} />
-                        Falecida
+                      <label className={`flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 select-none ${p0.maeNaoConsta ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}>
+                        <input
+                          type="checkbox"
+                          disabled={disabled || Boolean(p0.maeNaoConsta)}
+                          checked={Boolean(p0.maeFalecida)}
+                          onChange={(e) => setField('maeFalecida', e.target.checked)}
+                          className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-sky-600 focus:ring-sky-500 cursor-pointer disabled:cursor-not-allowed"
+                        />
+                        <span>Falecida</span>
                       </label>
                     </div>
-                    <SelectInput label="Naturalidade da mãe — UF" disabled={disabled} suggested={fromIA.maeNaturalUf} options={UF_OPTIONS} value={p0.maeNaturalUf || ''} onChange={(v) => setField('maeNaturalUf', v as BrazilianUf)} />
+                    <SelectInput
+                      label="Naturalidade da mãe — UF"
+                      disabled={disabled || Boolean(p0.maeNaoConsta)}
+                      suggested={fromIA.maeNaturalUf}
+                      options={UF_OPTIONS}
+                      value={p0.maeNaoConsta ? '' : p0.maeNaturalUf || ''}
+                      onChange={(v) => setField('maeNaturalUf', v as BrazilianUf)}
+                    />
                     <SelectInput
                       label="Naturalidade da mãe — Cidade"
-                      disabled={disabled || !p0.maeNaturalUf}
+                      disabled={disabled || Boolean(p0.maeNaoConsta) || !p0.maeNaturalUf}
                       suggested={fromIA.maeNaturalCidade}
                       options={citiesForUf(p0.maeNaturalUf)}
-                      value={p0.maeNaturalCidade || ''}
+                      value={p0.maeNaoConsta ? '' : p0.maeNaturalCidade || ''}
                       onChange={(v) => setField('maeNaturalCidade', v)}
                     />
-                    <SelectInput label="Estado civil da mãe" disabled={disabled} suggested={fromIA.maeEstadoCivil} options={ESTADO_CIVIL_OPTIONS} value={p0.maeEstadoCivil || ''} onChange={(v) => setField('maeEstadoCivil', v)} />
-                    <TextInput label="Profissão da mãe" disabled={disabled} suggested={fromIA.maeProfissao} value={p0.maeProfissao || ''} onChange={(v) => setField('maeProfissao', v)} />
+                    <SelectInput
+                      label="Estado civil da mãe"
+                      disabled={disabled || Boolean(p0.maeNaoConsta)}
+                      suggested={fromIA.maeEstadoCivil}
+                      options={ESTADO_CIVIL_OPTIONS}
+                      value={p0.maeNaoConsta ? '' : p0.maeEstadoCivil || ''}
+                      onChange={(v) => setField('maeEstadoCivil', v)}
+                    />
+                    <TextInput
+                      label="Profissão da mãe"
+                      disabled={disabled || Boolean(p0.maeNaoConsta)}
+                      suggested={fromIA.maeProfissao}
+                      value={p0.maeNaoConsta ? '' : p0.maeProfissao || ''}
+                      onChange={(v) => setField('maeProfissao', v)}
+                    />
                   </div>
                 </div>
 
@@ -540,34 +636,58 @@ export const Phase0Recebimento: React.FC<Phase0RecebimentoProps> = ({
                       />
                     </div>
                     <div className="flex items-end gap-3 pb-2.5">
-                      <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
+                      <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 cursor-pointer select-none">
                         <input
                           type="checkbox"
                           disabled={disabled}
                           checked={Boolean(p0.paiNaoConsta)}
-                          onChange={(e) => {
-                            setField('paiNaoConsta', e.target.checked);
-                            if (e.target.checked) setField('paiNome', '');
-                          }}
+                          onChange={(e) => handleTogglePaiNaoConsta(e.target.checked)}
+                          className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-sky-600 focus:ring-sky-500 cursor-pointer disabled:cursor-not-allowed"
                         />
-                        Não consta
+                        <span className="font-medium">Não consta</span>
                       </label>
-                      <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
-                        <input type="checkbox" disabled={disabled} checked={Boolean(p0.paiFalecido)} onChange={(e) => setField('paiFalecido', e.target.checked)} />
-                        Falecido
+                      <label className={`flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 select-none ${p0.paiNaoConsta ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}>
+                        <input
+                          type="checkbox"
+                          disabled={disabled || Boolean(p0.paiNaoConsta)}
+                          checked={Boolean(p0.paiFalecido)}
+                          onChange={(e) => setField('paiFalecido', e.target.checked)}
+                          className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-sky-600 focus:ring-sky-500 cursor-pointer disabled:cursor-not-allowed"
+                        />
+                        <span>Falecido</span>
                       </label>
                     </div>
-                    <SelectInput label="Naturalidade do pai — UF" disabled={disabled} suggested={fromIA.paiNaturalUf} options={UF_OPTIONS} value={p0.paiNaturalUf || ''} onChange={(v) => setField('paiNaturalUf', v as BrazilianUf)} />
+                    <SelectInput
+                      label="Naturalidade do pai — UF"
+                      disabled={disabled || Boolean(p0.paiNaoConsta)}
+                      suggested={fromIA.paiNaturalUf}
+                      options={UF_OPTIONS}
+                      value={p0.paiNaoConsta ? '' : p0.paiNaturalUf || ''}
+                      onChange={(v) => setField('paiNaturalUf', v as BrazilianUf)}
+                    />
                     <SelectInput
                       label="Naturalidade do pai — Cidade"
-                      disabled={disabled || !p0.paiNaturalUf}
+                      disabled={disabled || Boolean(p0.paiNaoConsta) || !p0.paiNaturalUf}
                       suggested={fromIA.paiNaturalCidade}
                       options={citiesForUf(p0.paiNaturalUf)}
-                      value={p0.paiNaturalCidade || ''}
+                      value={p0.paiNaoConsta ? '' : p0.paiNaturalCidade || ''}
                       onChange={(v) => setField('paiNaturalCidade', v)}
                     />
-                    <SelectInput label="Estado civil do pai" disabled={disabled} suggested={fromIA.paiEstadoCivil} options={ESTADO_CIVIL_OPTIONS} value={p0.paiEstadoCivil || ''} onChange={(v) => setField('paiEstadoCivil', v)} />
-                    <TextInput label="Profissão do pai" disabled={disabled} suggested={fromIA.paiProfissao} value={p0.paiProfissao || ''} onChange={(v) => setField('paiProfissao', v)} />
+                    <SelectInput
+                      label="Estado civil do pai"
+                      disabled={disabled || Boolean(p0.paiNaoConsta)}
+                      suggested={fromIA.paiEstadoCivil}
+                      options={ESTADO_CIVIL_OPTIONS}
+                      value={p0.paiNaoConsta ? '' : p0.paiEstadoCivil || ''}
+                      onChange={(v) => setField('paiEstadoCivil', v)}
+                    />
+                    <TextInput
+                      label="Profissão do pai"
+                      disabled={disabled || Boolean(p0.paiNaoConsta)}
+                      suggested={fromIA.paiProfissao}
+                      value={p0.paiNaoConsta ? '' : p0.paiProfissao || ''}
+                      onChange={(v) => setField('paiProfissao', v)}
+                    />
                   </div>
                 </div>
               </div>
@@ -584,28 +704,41 @@ export const Phase0Recebimento: React.FC<Phase0RecebimentoProps> = ({
                     onChange={(v) => setField('conjugeNome', v)}
                   />
                 </div>
-                <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 self-end pb-2.5">
-                  <input
-                    type="checkbox"
-                    disabled={disabled}
-                    checked={Boolean(p0.conjugeNaoConsta)}
-                    onChange={(e) => {
-                      setField('conjugeNaoConsta', e.target.checked);
-                      if (e.target.checked) setField('conjugeNome', '');
-                    }}
-                  />
-                  Não consta
-                </label>
-                <SelectInput label="Naturalidade do cônjuge — UF" disabled={disabled} suggested={fromIA.conjugeNaturalUf} options={UF_OPTIONS} value={p0.conjugeNaturalUf || ''} onChange={(v) => setField('conjugeNaturalUf', v as BrazilianUf)} />
+                <div className="flex items-end pb-2.5">
+                  <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      disabled={disabled}
+                      checked={Boolean(p0.conjugeNaoConsta)}
+                      onChange={(e) => handleToggleConjugeNaoConsta(e.target.checked)}
+                      className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-sky-600 focus:ring-sky-500 cursor-pointer disabled:cursor-not-allowed"
+                    />
+                    <span className="font-medium">Não consta</span>
+                  </label>
+                </div>
+                <SelectInput
+                  label="Naturalidade do cônjuge — UF"
+                  disabled={disabled || Boolean(p0.conjugeNaoConsta)}
+                  suggested={fromIA.conjugeNaturalUf}
+                  options={UF_OPTIONS}
+                  value={p0.conjugeNaoConsta ? '' : p0.conjugeNaturalUf || ''}
+                  onChange={(v) => setField('conjugeNaturalUf', v as BrazilianUf)}
+                />
                 <SelectInput
                   label="Naturalidade do cônjuge — Cidade"
-                  disabled={disabled || !p0.conjugeNaturalUf}
+                  disabled={disabled || Boolean(p0.conjugeNaoConsta) || !p0.conjugeNaturalUf}
                   suggested={fromIA.conjugeNaturalCidade}
                   options={citiesForUf(p0.conjugeNaturalUf)}
-                  value={p0.conjugeNaturalCidade || ''}
+                  value={p0.conjugeNaoConsta ? '' : p0.conjugeNaturalCidade || ''}
                   onChange={(v) => setField('conjugeNaturalCidade', v)}
                 />
-                <TextInput label="Profissão do cônjuge" disabled={disabled} suggested={fromIA.conjugeProfissao} value={p0.conjugeProfissao || ''} onChange={(v) => setField('conjugeProfissao', v)} />
+                <TextInput
+                  label="Profissão do cônjuge"
+                  disabled={disabled || Boolean(p0.conjugeNaoConsta)}
+                  suggested={fromIA.conjugeProfissao}
+                  value={p0.conjugeNaoConsta ? '' : p0.conjugeProfissao || ''}
+                  onChange={(v) => setField('conjugeProfissao', v)}
+                />
               </div>
             </FormSection>
 
@@ -787,7 +920,7 @@ const TextInput: React.FC<{
       disabled={disabled}
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className={`w-full p-2.5 rounded-lg border text-xs bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white ${
+      className={`w-full p-2.5 rounded-lg border text-xs bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-100 dark:disabled:bg-slate-900/60 transition-opacity ${
         suggested ? 'border-dashed border-amber-400 dark:border-amber-600' : 'border-slate-300 dark:border-slate-700'
       }`}
     />
@@ -823,7 +956,7 @@ const TextArea: React.FC<{
       disabled={disabled}
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className={`w-full p-2.5 rounded-lg border text-xs bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white ${
+      className={`w-full p-2.5 rounded-lg border text-xs bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-100 dark:disabled:bg-slate-900/60 transition-opacity ${
         suggested ? 'border-dashed border-amber-400 dark:border-amber-600' : 'border-slate-300 dark:border-slate-700'
       }`}
     />
@@ -847,7 +980,7 @@ const SelectInput: React.FC<{
       disabled={disabled}
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className={`w-full p-2.5 rounded-lg border text-xs bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white ${
+      className={`w-full p-2.5 rounded-lg border text-xs bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-100 dark:disabled:bg-slate-900/60 transition-opacity ${
         suggested ? 'border-dashed border-amber-400 dark:border-amber-600' : 'border-slate-300 dark:border-slate-700'
       }`}
     >
