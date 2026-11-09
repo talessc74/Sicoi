@@ -62,13 +62,14 @@ export const Phase5Patologias: React.FC<Phase5PatologiasProps> = ({
   // (ver handleConfirmResearcherReview), nunca esta assinatura (correção: "o
   // técnico é obrigatório, o pesquisador pode ou não").
   const canSignPhysical = canSignAsTechnician(currentUser) && !collection.phase5.technicianPhysicalSign;
+  const canEditPathology = isCurator || canActAsTechnician || currentUser.role === 'administrador' || laboratoryMode;
 
   const pathologies = collection.phase5.pathologies || [];
   const exams = collection.phase5.complementaryExams || collection.phase5.exams || [];
-  const marking = collection.phase5.physicalBoneMarking || {
+  const marking = collection.phase4?.physicalBoneMarking || collection.phase5?.physicalBoneMarking || {
     techniqueUsed: 'Tinta nanquim impermeável sobre Paraloid B-72',
     completed: false,
-    elementsMarkedCount: 0
+    elementsMarkedCount: collection.phase4?.skeletalElements?.length || 0
   };
   const packaging = collection.phase5.finalPackagingInertMaterial || {
     materialUsed: 'Berços de Ethafoam e papel pH neutro',
@@ -245,13 +246,13 @@ export const Phase5Patologias: React.FC<Phase5PatologiasProps> = ({
           <div>
             <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-mono text-xs font-semibold uppercase">
               <Activity className="w-4 h-4" />
-              <span>Fase 5 · Alterações Ósseas, Exames Complementares & Marcação Física</span>
+              <span>Fase 5 · Alterações Ósseas & Exames Complementares</span>
             </div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-0.5">
               {collection.nic}
             </h2>
             <p className="text-xs text-slate-500 mt-1">
-              Registro das lesões ósseas, DICOM integrado, marcação em nanquim/Paraloid e checklist de liberação para o Galpão.
+              Registro das lesões ósseas, DICOM integrado, acondicionamento definitivo inerte e checklist de liberação para o Galpão.
             </p>
           </div>
 
@@ -277,7 +278,7 @@ export const Phase5Patologias: React.FC<Phase5PatologiasProps> = ({
             {isLocked ? (
               <div className="px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-900 flex items-center gap-2 text-xs font-mono text-emerald-700 dark:text-emerald-300 font-semibold">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>Fase 5 Assinada & Travada</span>
+                <span>Fase 5 Assinada (Edição Habilitada)</span>
               </div>
             ) : (
               <button
@@ -326,7 +327,7 @@ export const Phase5Patologias: React.FC<Phase5PatologiasProps> = ({
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
             }`}
           >
-            Marcação Física & Embalagem
+            Acondicionamento Definitivo & Embalagem
           </button>
           <button
             onClick={() => setActiveTab('checklist')}
@@ -361,7 +362,7 @@ export const Phase5Patologias: React.FC<Phase5PatologiasProps> = ({
                 Taxonomia controlada DITEC com suporte a registro não catalogado justificado.
               </p>
             </div>
-            {!isLocked && (
+            {canEditPathology && (
               <button
                 onClick={() => setShowAddPathologyModal(true)}
                 className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-medium text-xs flex items-center gap-1.5"
@@ -464,56 +465,15 @@ export const Phase5Patologias: React.FC<Phase5PatologiasProps> = ({
         </div>
       )}
 
-      {/* Aba 3: Marcação Física & Embalagem */}
+      {/* Aba 3: Acondicionamento Definitivo & Embalagem */}
       {activeTab === 'marcacao' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Marcação óssea permanente */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4 text-xs">
-            <div className="flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-800">
-              <Tag className="w-4 h-4 text-amber-500" />
-              <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                Marcação Óssea Física Permanente (§10)
-              </h3>
-            </div>
-            <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
-              O técnico deve registrar que cada osso recebeu a marcação com o número COI oficial utilizando técnica museológica padrão (tinta nanquim impermeável sobre base protetora de resina acrílica Paraloid B-72).
-            </p>
-
-            <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
-              <div className="flex justify-between font-mono">
-                <span className="text-slate-500">Técnica Recomendada:</span>
-                <span className="font-bold text-slate-900 dark:text-white">{marking.techniqueUsed}</span>
-              </div>
-              <div className="flex justify-between font-mono">
-                <span className="text-slate-500">Elementos Marcados:</span>
-                <span className="font-bold text-slate-900 dark:text-white">{marking.elementsMarkedCount} peças</span>
-              </div>
-              <div className="flex justify-between font-mono">
-                <span className="text-slate-500">Status da Marcação:</span>
-                <span className={`font-bold ${marking.completed ? 'text-emerald-600' : 'text-amber-600'}`}>
-                  {marking.completed ? 'CONCLUÍDA' : 'PENDENTE'}
-                </span>
-              </div>
-            </div>
-
-            {!isLocked && canActAsTechnician && (
-              <button
-                onClick={() => handleUpdateMarking('Tinta nanquim preta sobre camada protetora de Paraloid B-72 a 20%', !marking.completed)}
-                className={`w-full py-2.5 rounded-xl font-medium transition-colors ${
-                  marking.completed ? 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300' : 'bg-amber-600 text-white'
-                }`}
-              >
-                {marking.completed ? 'Desmarcar Conclusão' : 'Atestar Marcação Física Concluída'}
-              </button>
-            )}
-          </div>
-
           {/* Acondicionamento Definitivo com Material Inerte */}
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4 text-xs">
             <div className="flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-800">
               <Box className="w-4 h-4 text-sky-600" />
               <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                Acondicionamento Definitivo Inerte
+                Acondicionamento Definitivo Inerte (§10)
               </h3>
             </div>
             <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -531,12 +491,62 @@ export const Phase5Patologias: React.FC<Phase5PatologiasProps> = ({
               </div>
             </div>
 
-            {!isLocked && canActAsTechnician && (
+            {canActAsTechnician && (
               <button
                 onClick={() => handleUpdatePackaging('Berços de espuma de polietileno expandido (Ethafoam) e envelopes de papel alcalino neutro', true)}
                 className="w-full py-2.5 rounded-xl bg-sky-600 text-white font-medium hover:bg-sky-500 transition-colors"
               >
                 Atestar Embalagem Inerte Concluída
+              </button>
+            )}
+          </div>
+
+          {/* Referência da Marcação Física realizada na Fase 4 */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4 text-xs">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <Tag className="w-4 h-4 text-amber-500" />
+                <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                  Marcação Física Óssea (Fase 4)
+                </h3>
+              </div>
+              <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-semibold ${
+                marking.completed
+                  ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                  : 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
+              }`}>
+                {marking.completed ? 'CONCLUÍDA NA FASE 4' : 'PENDENTE NA FASE 4'}
+              </span>
+            </div>
+            <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+              A marcação física permanente dos ossos com nanquim e Paraloid B-72 agora é registrada e formalizada na <strong>Fase 4 (Montagem e Inventário)</strong>.
+            </p>
+
+            <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
+              <div className="flex justify-between font-mono">
+                <span className="text-slate-500">Técnica:</span>
+                <span className="font-bold text-slate-900 dark:text-white">{marking.techniqueUsed}</span>
+              </div>
+              <div className="flex justify-between font-mono">
+                <span className="text-slate-500">Peças Marcadas:</span>
+                <span className="font-bold text-slate-900 dark:text-white">{marking.elementsMarkedCount} peças</span>
+              </div>
+              {marking.completedBy && (
+                <div className="flex justify-between font-mono">
+                  <span className="text-slate-500">Atestado por:</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{marking.completedBy}</span>
+                </div>
+              )}
+            </div>
+
+            {canActAsTechnician && (
+              <button
+                onClick={() => handleUpdateMarking('Tinta nanquim preta sobre camada protetora de Paraloid B-72 a 20%', !marking.completed)}
+                className={`w-full py-2.5 rounded-xl font-medium transition-colors ${
+                  marking.completed ? 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300' : 'bg-amber-600 text-white'
+                }`}
+              >
+                {marking.completed ? 'Desmarcar Conclusão da Marcação' : 'Atestar Marcação Física Concluída'}
               </button>
             )}
           </div>
@@ -578,7 +588,7 @@ export const Phase5Patologias: React.FC<Phase5PatologiasProps> = ({
               return (
                 <div
                   key={item.key}
-                  onClick={() => !isLocked && handleToggleChecklist(item.key as any)}
+                  onClick={() => (canActAsTechnician || isCurator) && handleToggleChecklist(item.key as any)}
                   className={`p-3.5 rounded-xl border flex items-start justify-between gap-3 cursor-pointer transition-colors ${
                     checked
                       ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900'

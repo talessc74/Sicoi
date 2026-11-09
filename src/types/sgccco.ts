@@ -708,6 +708,14 @@ export interface Phase4Data {
     sha256Hash: string;
     resolution: string;
   };
+  // Marcação física permanente dos ossos (§10) — transferida para a Fase 4
+  physicalBoneMarking?: {
+    techniqueUsed: string;
+    completed: boolean;
+    completedBy?: string;
+    completedAt?: string;
+    elementsMarkedCount: number;
+  };
   // Confirmação do Técnico de que a Montagem está completa — precisa existir
   // junto com curatorInventorySign pra fase travar e avançar (mesmo padrão
   // de duas confirmações já usado em phase5.technicianPhysicalSign/

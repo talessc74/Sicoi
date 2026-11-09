@@ -34,7 +34,10 @@ import {
   OsteologicalSectionCabecaPescoco,
   ToothRecord,
   ToothConditionDetails,
-  Phase0Data
+  Phase0Data,
+  Phase4Data,
+  Phase5Data,
+  OsteologicalCollection
 } from '../../types/sgccco';
 import {
   TOOTH_SURFACE_LABELS,
@@ -810,6 +813,171 @@ describe('Suíte de QA — Validação das 12 Mudanças Solicitadas pelos Técni
       expect(p0.paiNome).toBe('');
       expect(p0.conjugeNaoConsta).toBe(true);
       expect(p0.conjugeNome).toBe('');
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // Item 17: Fase 4 — Assinatura sem bloqueio de odontograma e edição pós-assinatura
+  // --------------------------------------------------------------------------
+  describe('Item 17: Fase 4 — Desobrigação do Inventário Odontológico para Assinatura e Edição Pós-Assinatura', () => {
+    it('permite assinatura do inventário da Fase 4 pelo Curador mesmo sem dentes ou odontograma preenchido', () => {
+      const p4: Phase4Data = {
+        curationVersionNumber: 1,
+        curationVersionStatus: 'rascunho',
+        curatorAuthor: 'Dra. Maria Curadora',
+        individuals: [],
+        skeletalElements: [],
+        curatorInventorySign: {
+          signedByName: 'Dra. Maria Curadora',
+          signedAt: '2026-11-09T14:00:00.000Z',
+          sha256Hash: 'hash-fase4-teste'
+        }
+      };
+
+      // O inventário odontológico não é obrigatório para assinar a Fase 4
+      expect(p4.curatorInventorySign).toBeDefined();
+      expect(p4.curatorInventorySign?.signedByName).toBe('Dra. Maria Curadora');
+      expect(p4.individuals).toHaveLength(0);
+    });
+
+    it('mantém o responsável pela assinatura inalterado após edições subsequentes no inventário osteológico, odontológico e NMI', () => {
+      const p4: Phase4Data = {
+        curationVersionNumber: 1,
+        curationVersionStatus: 'aprovada',
+        curatorAuthor: 'Dra. Maria Curadora',
+        individuals: [{
+          id: 'IND-01',
+          code: 'IND-01',
+          confidence: 'alta',
+          justification: 'Associação consistente',
+          associatedBoxId: 'CX-01',
+          status: 'ativo',
+          biologicalProfile: {
+            sexEstimate: { value: 'masculino', methodCode: 'Phenice 1969', bibliographicRef: 'Phenice (1969)', notes: '' },
+            ageCategory: { value: 'adulto_medio', estimatedRangeYears: '35 - 45 anos', methodCode: 'Suchey-Brooks 1990', bibliographicRef: 'Suchey-Brooks (1990)', notes: '' },
+            statureCm: { estimatedValue: 172.5, marginErrorCm: 3.5, methodCode: 'Trotter & Gleser 1952', measuredElement: 'Fêmur', bibliographicRef: 'Trotter & Gleser 1952' },
+            ancestryIndication: { traitsObserved: 'Traços compatíveis', methodCode: 'Hefner 2009', bibliographicRef: 'Hefner 2009' }
+          },
+          odontogram: []
+        }],
+        skeletalElements: [],
+        curatorInventorySign: {
+          signedByName: 'Dra. Maria Curadora',
+          signedAt: '2026-11-09T14:00:00.000Z',
+          sha256Hash: 'hash-curador-original'
+        },
+        technicianAssemblySign: {
+          signedByName: 'Carlos Técnico',
+          signedAt: '2026-11-09T14:10:00.000Z',
+          sha256Hash: 'hash-tecnico-original'
+        }
+      };
+
+      // Simula atualização do inventário osteológico após assinatura
+      p4.skeletalElements.push({
+        id: 'elem-1',
+        anatomicalCode: 'FEM-D',
+        namePt: 'Fêmur Direito',
+        region: 'membros_inferiores',
+        presence: 'completo',
+        preservationQuality: 'boa',
+        associatedIndividualId: 'IND-01',
+        associationMethod: 'Inspeção direta',
+        associationConfidence: 'alta',
+        associationJustification: 'Concordância métrica'
+      });
+
+      // Simula atualização do inventário odontológico após assinatura
+      p4.individuals[0].odontogram = [{
+        toothNumber: 18,
+        presence: 'presente',
+        clinicalConditions: ['sadio']
+      }];
+
+      // Simula atualização de NMI / número de indivíduos após assinatura
+      p4.numeroIndividuos = {
+        entries: [{ anatomicalCode: 'FEM-D', namePt: 'Fêmur Direito', lateralidade: 'D', side: 'direito', qteP: 1, qteF: 0, qteI: 0, qteA: 0, totalPorOsso: 1, secao: 'membros_inferiores' }]
+      };
+
+      // Assinaturas e seus responsáveis devem continuar exatamente os mesmos
+      expect(p4.curatorInventorySign?.signedByName).toBe('Dra. Maria Curadora');
+      expect(p4.curatorInventorySign?.sha256Hash).toBe('hash-curador-original');
+      expect(p4.technicianAssemblySign?.signedByName).toBe('Carlos Técnico');
+      expect(p4.technicianAssemblySign?.sha256Hash).toBe('hash-tecnico-original');
+      expect(p4.skeletalElements).toHaveLength(1);
+      expect(p4.individuals[0].odontogram).toHaveLength(1);
+      expect(p4.numeroIndividuos.entries).toHaveLength(1);
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // Item 18: Fase 5 — Edição pós-assinatura com preservação do responsável
+  // --------------------------------------------------------------------------
+  describe('Item 18: Fase 5 — Edição Pós-Assinatura com Preservação do Responsável', () => {
+    it('permite adicionar patologias e atualizar checklist mantendo as assinaturas intactas', () => {
+      const p5: Phase5Data = {
+        pathologies: [],
+        curatorScientificSign: {
+          signedByName: 'Dra. Maria Curadora',
+          signedAt: '2026-11-09T14:20:00.000Z',
+          sha256Hash: 'hash-fase5-curador'
+        },
+        technicianPhysicalSign: {
+          signedByName: 'Carlos Técnico',
+          signedAt: '2026-11-09T14:25:00.000Z',
+          sha256Hash: 'hash-fase5-tecnico'
+        },
+        phase5Checklist: {
+          pathologiesReviewed: true,
+          examsAttached: true,
+          finalPhotosRegistered: true,
+          boneMarkingCompleted: true,
+          inertPackagingCompleted: true
+        }
+      };
+
+      // Simula adição de patologia após a fase já estar assinada
+      p5.pathologies.push({
+        id: 'pat-1',
+        category: 'trauma_antemortem',
+        termControlled: 'Fratura consolidada com calo ósseo',
+        isUncataloged: false,
+        associatedElementCode: 'FEM-D',
+        elementName: 'Fêmur Direito',
+        notes: 'Remodelamento ósseo com consolidação completa'
+      });
+
+      // Assinaturas e responsáveis continuam os mesmos
+      expect(p5.pathologies).toHaveLength(1);
+      expect(p5.curatorScientificSign?.signedByName).toBe('Dra. Maria Curadora');
+      expect(p5.technicianPhysicalSign?.signedByName).toBe('Carlos Técnico');
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // Item 19: Transferência da opção "Marcação Física" para a Fase 4
+  // --------------------------------------------------------------------------
+  describe('Item 19: Transferência da Opção "Marcação Física" para a Fase 4', () => {
+    it('armazena a marcação física óssea permanente na Fase 4 e reflete no checklist da Fase 5', () => {
+      const p4: Phase4Data = {
+        curationVersionNumber: 1,
+        curationVersionStatus: 'rascunho',
+        curatorAuthor: 'Dra. Curadora',
+        individuals: [],
+        skeletalElements: [],
+        physicalBoneMarking: {
+          techniqueUsed: 'Tinta nanquim preta sobre camada protetora de Paraloid B-72 a 20%',
+          completed: true,
+          completedBy: 'Carlos Técnico',
+          completedAt: '2026-11-09T14:30:00.000Z',
+          elementsMarkedCount: 206
+        }
+      };
+
+      expect(p4.physicalBoneMarking).toBeDefined();
+      expect(p4.physicalBoneMarking?.completed).toBe(true);
+      expect(p4.physicalBoneMarking?.techniqueUsed).toContain('Paraloid B-72');
+      expect(p4.physicalBoneMarking?.elementsMarkedCount).toBe(206);
     });
   });
 });

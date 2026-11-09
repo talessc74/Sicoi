@@ -42,7 +42,8 @@ import {
   Sparkles,
   HelpCircle,
   ExternalLink,
-  Plus
+  Plus,
+  Tag
 } from 'lucide-react';
 
 interface Phase4CuradoriaProps {
@@ -58,7 +59,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
   onUpdateCollection,
   laboratoryMode
 }) => {
-  const [activeTab, setActiveTab] = useState<'individuos' | 'inventario' | 'odontograma' | 'numero_individuos' | 'montagem'>('individuos');
+  const [activeTab, setActiveTab] = useState<'individuos' | 'inventario' | 'odontograma' | 'numero_individuos' | 'marcacao' | 'montagem'>('individuos');
   const [selectedIndividualId, setSelectedIndividualId] = useState<string>(
     collection.phase4?.individuals?.[0]?.id || ''
   );
@@ -172,13 +173,46 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
   // Auto-inicializa o IND-01 ao entrar no Inventário Odontológico caso a coleção
   // ainda não possua nenhum indivíduo cadastrado, eliminando tela em branco.
   React.useEffect(() => {
-    if (activeTab === 'odontograma' && individuals.length === 0 && !isLocked && canEdit) {
+    if (activeTab === 'odontograma' && individuals.length === 0 && canEdit) {
       handleAddIndividual();
     }
-  }, [activeTab, individuals.length, isLocked, canEdit]);
+  }, [activeTab, individuals.length, canEdit]);
 
   // Elementos do inventário
   const elements = collection.phase4?.skeletalElements || [];
+
+  // Marcação física permanente dos ossos (§10) — transferida para a Fase 4
+  const marking = collection.phase4?.physicalBoneMarking || collection.phase5?.physicalBoneMarking || {
+    techniqueUsed: 'Tinta nanquim impermeável sobre Paraloid B-72 a 20%',
+    completed: false,
+    elementsMarkedCount: elements.length
+  };
+
+  const handleUpdateMarking = (technique: string, completed: boolean) => {
+    const updated = { ...collection };
+    const markingData = {
+      techniqueUsed: technique,
+      completed,
+      completedBy: currentUser.name,
+      completedAt: new Date().toISOString(),
+      elementsMarkedCount: elements.length
+    };
+    if (!updated.phase4) updated.phase4 = { ...collection.phase4 } as any;
+    updated.phase4.physicalBoneMarking = markingData;
+    if (!updated.phase5) updated.phase5 = { ...collection.phase5 } as any;
+    updated.phase5.physicalBoneMarking = markingData;
+    if (!updated.phase5.phase5Checklist) {
+      updated.phase5.phase5Checklist = {
+        pathologiesReviewed: false,
+        examsAttached: false,
+        finalPhotosRegistered: false,
+        boneMarkingCompleted: false,
+        inertPackagingCompleted: false
+      };
+    }
+    updated.phase5.phase5Checklist.boneMarkingCompleted = completed;
+    onUpdateCollection(updated);
+  };
 
   const handleAddIndividual = () => {
     const code = `IND-0${individuals.length + 1}`;
@@ -548,7 +582,8 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
   const hasAssemblyPhotoOrJustification =
     Boolean(collection.phase4?.completeAssemblyPhotoApproved) || Boolean(collection.phase4?.assemblyPhotoJustification);
   const canSignAssembly = canSignAsTechnicianRole && hasAssemblyPhotoOrJustification && !collection.phase4?.technicianAssemblySign;
-  const canSignInventory = isCurator && individuals.length > 0 && !collection.phase4?.curatorInventorySign;
+  // O inventário odontológico não é obrigatório para assinar a Fase 4, e indivíduos podem ser atualizados a qualquer momento
+  const canSignInventory = isCurator && !collection.phase4?.curatorInventorySign;
 
   // Confirmação opcional do Pesquisador — nunca trava nem destrava nada, nunca
   // substitui a assinatura de Montagem do Técnico/Curador acima.
@@ -605,7 +640,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
             {isLocked ? (
               <div className="px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-900 flex items-center gap-2 text-xs font-mono text-emerald-700 dark:text-emerald-300 font-semibold">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>Fase 4 Duplamente Assinada & Travada</span>
+                <span>Fase 4 Assinada (Edição Habilitada)</span>
               </div>
             ) : (
               <button
@@ -615,7 +650,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
                 }}
                 disabled={!canSignAssembly && !canSignInventory}
                 className="px-4 py-2 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-semibold hover:opacity-95 disabled:opacity-40 transition-all flex items-center gap-2 shadow-xs"
-                title={!canSignAssembly && !canSignInventory ? 'Exige foto de montagem (ou confirmar que não há foto) para a Montagem (Técnico/Curador) ou ao menos 1 indivíduo para o Inventário (Curador) — a confirmação que falta pra você.' : ''}
+                title={!canSignAssembly && !canSignInventory ? 'Exige foto de montagem (ou confirmar que não há foto) para a Montagem (Técnico/Curador) ou assinatura do Inventário (Curador) — a confirmação que falta pra você.' : ''}
               >
                 <FileCheck className="w-4 h-4" />
                 <span>Assinar Fechamento da Fase 4</span>
@@ -667,6 +702,20 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
             Número de Indivíduos
           </button>
           <button
+            onClick={() => setActiveTab('marcacao')}
+            className={`px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5 ${
+              activeTab === 'marcacao'
+                ? 'bg-sky-600 text-white'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
+            }`}
+          >
+            <Tag className="w-3.5 h-3.5" />
+            <span>Marcação Física</span>
+            {marking.completed && (
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+            )}
+          </button>
+          <button
             onClick={() => setActiveTab('montagem')}
             className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
               activeTab === 'montagem'
@@ -689,7 +738,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
                 <h4 className="font-bold text-xs text-slate-900 dark:text-white uppercase font-mono">
                   Indivíduos (Hipóteses)
                 </h4>
-                {!isLocked && canEdit && (
+                {canEdit && (
                   <button
                     onClick={handleAddIndividual}
                     className="px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200"
@@ -730,7 +779,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
               )}
 
               {/* Botão de Fusão com Prévia de Impacto (§8) */}
-              {individuals.length > 1 && !isLocked && canEdit && (
+              {individuals.length > 1 && canEdit && (
                 <button
                   onClick={() => setShowMergeModal(true)}
                   className="w-full mt-3 p-2 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 text-[11px] flex items-center justify-center gap-1.5 transition-colors"
@@ -774,7 +823,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
                       Grau de Confiança Biológica:
                     </label>
                     <select
-                      disabled={isLocked || !canEdit}
+                      disabled={!canEdit}
                       value={currentInd.confidence}
                       onChange={(e) => {
                         const updated = { ...collection };
@@ -796,7 +845,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
                     </label>
                     <input
                       type="text"
-                      disabled={isLocked || !canEdit}
+                      disabled={!canEdit}
                       value={currentInd.justification}
                       onChange={(e) => {
                         const updated = { ...collection };
@@ -823,7 +872,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
                         <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 space-y-2">
                           <span className="font-bold text-slate-900 dark:text-white block">1. Sexo Estimado</span>
                           <select
-                            disabled={isLocked || !canEdit}
+                            disabled={!canEdit}
                             value={currentBio.sexEstimate.value}
                             onChange={(e) => {
                               const updated = { ...collection };
@@ -843,7 +892,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
                           <div className="text-[11px] space-y-1">
                             <label className="text-slate-500 font-mono">Método Padronizado:</label>
                             <select
-                              disabled={isLocked || !canEdit}
+                              disabled={!canEdit}
                               value={currentBio.sexEstimate.methodCode}
                               onChange={(e) => {
                                 const updated = { ...collection };
@@ -864,7 +913,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
                         <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 space-y-2">
                           <span className="font-bold text-slate-900 dark:text-white block">2. Faixa Etária Óssea</span>
                           <select
-                            disabled={isLocked || !canEdit}
+                            disabled={!canEdit}
                             value={currentBio.ageCategory.value}
                             onChange={(e) => {
                               const updated = { ...collection };
@@ -882,7 +931,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
 
                           <input
                             type="text"
-                            disabled={isLocked || !canEdit}
+                            disabled={!canEdit}
                             value={currentBio.ageCategory.estimatedRangeYears}
                             onChange={(e) => {
                               const updated = { ...collection };
@@ -902,7 +951,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
                             <input
                               type="number"
                               step="0.1"
-                              disabled={isLocked || !canEdit}
+                              disabled={!canEdit}
                               value={currentBio.statureCm.estimatedValue}
                               onChange={(e) => {
                                 const updated = { ...collection };
@@ -924,7 +973,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
                           <span className="font-bold text-slate-900 dark:text-white block">4. Traços Craniomórficos</span>
                           <textarea
                             rows={2}
-                            disabled={isLocked || !canEdit}
+                            disabled={!canEdit}
                             value={currentBio.ancestryIndication.traitsObserved}
                             onChange={(e) => {
                               const updated = { ...collection };
@@ -956,7 +1005,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
           <OsteologicalInventoryViewer
             inventory={collection.phase4.osteologicalInventory}
             onUpdateInventory={handleUpdateOsteologicalInventory}
-            readOnly={isLocked || !canEdit}
+            readOnly={!canEdit}
           />
         </div>
       )}
@@ -985,7 +1034,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
                 </button>
               ))}
             </div>
-            {!isLocked && canEdit && (
+            {canEdit && (
               <button
                 type="button"
                 onClick={handleAddIndividual}
@@ -1014,7 +1063,7 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
             onSetMistaActiveDeciduous={(list) => handlePatchIndividual({ mistaActiveDeciduous: list })}
             supernumeraryTeeth={activeInd.supernumeraryTeeth}
             onSetSupernumeraryTeeth={(list) => handlePatchIndividual({ supernumeraryTeeth: list })}
-            readOnly={isLocked || !canEdit}
+            readOnly={!canEdit}
           />
         </div>
       )}
@@ -1025,8 +1074,77 @@ export const Phase4Curadoria: React.FC<Phase4CuradoriaProps> = ({
           collection={collection}
           currentUser={currentUser}
           onUpdateCollection={onUpdateCollection}
-          readOnly={isLocked || !canEdit}
+          readOnly={!canEdit}
         />
+      )}
+
+      {/* Conteúdo da Aba: Marcação Física */}
+      {activeTab === 'marcacao' && (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs space-y-5 text-xs">
+          <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                <Tag className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                  Marcação Óssea Física Permanente (§10)
+                </h3>
+                <p className="text-slate-500 text-xs">
+                  Inscrição indelével do número COI oficial para garantia de custódia e rastreabilidade individual.
+                </p>
+              </div>
+            </div>
+            <span className={`px-2.5 py-1 rounded-full text-xs font-mono font-semibold ${
+              marking.completed
+                ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300'
+                : 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300'
+            }`}>
+              {marking.completed ? 'MARCAÇÃO CONCLUÍDA' : 'MARCAÇÃO PENDENTE'}
+            </span>
+          </div>
+
+          <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-xs">
+            O técnico deve registrar que cada osso relevante recebeu a marcação com o número COI oficial utilizando técnica museológica padrão (tinta nanquim impermeável sobre base protetora de resina acrílica Paraloid B-72 a 20%), garantindo reversibilidade química e perenidade mecânica.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-3.5 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1">
+              <span className="text-slate-500 text-[11px] block font-medium">Técnica Recomendada:</span>
+              <span className="font-bold text-slate-900 dark:text-white block font-mono text-xs">
+                {marking.techniqueUsed || 'Tinta nanquim impermeável sobre Paraloid B-72 a 20%'}
+              </span>
+            </div>
+            <div className="p-3.5 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1">
+              <span className="text-slate-500 text-[11px] block font-medium">Peças Registradas:</span>
+              <span className="font-bold text-slate-900 dark:text-white block font-mono text-xs">
+                {elements.length} elementos anatômicos
+              </span>
+            </div>
+            <div className="p-3.5 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1">
+              <span className="text-slate-500 text-[11px] block font-medium">Registro / Responsável:</span>
+              <span className="font-bold text-slate-900 dark:text-white block font-mono text-xs">
+                {marking.completedBy ? `${marking.completedBy} (${new Date(marking.completedAt || '').toLocaleDateString('pt-BR')})` : 'Pendente de atesto'}
+              </span>
+            </div>
+          </div>
+
+          {canAccessMontagem && (
+            <div className="pt-2">
+              <button
+                onClick={() => handleUpdateMarking('Tinta nanquim preta sobre camada protetora de Paraloid B-72 a 20%', !marking.completed)}
+                className={`w-full py-2.5 rounded-xl font-semibold transition-all shadow-xs flex items-center justify-center gap-2 ${
+                  marking.completed
+                    ? 'bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200'
+                    : 'bg-amber-600 hover:bg-amber-500 text-white'
+                }`}
+              >
+                <Tag className="w-4 h-4" />
+                <span>{marking.completed ? 'Desmarcar Conclusão da Marcação' : 'Atestar Marcação Física Concluída'}</span>
+              </button>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Conteúdo da Aba 4: Fotografia de Montagem Completa */}
