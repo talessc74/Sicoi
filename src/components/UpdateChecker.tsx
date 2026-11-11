@@ -19,7 +19,7 @@ export const UpdateChecker: React.FC = () => {
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
   const [showSyncGuide, setShowSyncGuide] = useState(false);
 
-  const CANONICAL_REPO = 'nicoledamascena-art/SIGCOI';
+  const CANONICAL_REPO = 'talessc74/Sicoi';
 
   const checkForUpdates = async () => {
     setChecking(true);

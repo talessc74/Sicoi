@@ -36,7 +36,7 @@ A deliberação convergiu unanimemente pela adoção do **Modelo C (Federação 
    - Valores padrão seguros preservam a identidade institucional de referência caso nenhuma variável seja definida.
 
 3. **Empacotamento de Deploy em 1-Clique e On-Premise**:
-   - **Nuvem em 1-Clique (`render.yaml`)**: Blueprint oficial do Render com link direto pré-configurado no `README.md` (`?repo=https://github.com/nicoledamascena-art/SIGCOI`). Ligação ao banco de dados PostgreSQL serverless via `DATABASE_URL` (Neon ou similar) e suporte a portas dinâmicas no `server.ts` (`process.env.PORT`).
+   - **Nuvem em 1-Clique (`render.yaml`)**: Blueprint oficial do Render com link direto pré-configurado no `README.md` apontando para o repositório comunitário de distribuição (`?repo=https://github.com/talessc74/Sicoi`). Ligação ao banco de dados PostgreSQL serverless via `DATABASE_URL` (Neon ou similar) e suporte a portas dinâmicas no `server.ts` (`process.env.PORT`).
    - **On-Premise / Local (`Dockerfile` e `docker-compose.yml`)**: Multi-stage build com Node 22 e PostgreSQL 16 pronto para rodar em computadores de laboratório sem internet ou redes acadêmicas internas via `docker compose up -d`.
 
 4. **Política de Citação Científica (*Citation Policy*)**:
@@ -45,7 +45,7 @@ A deliberação convergiu unanimemente pela adoção do **Modelo C (Federação 
      `DAMASCENA, Nicole Prata; CARVALHO, Tales Seixas de; BENTO, Maria Izabel Cardoso; MACHADO, Carlos Eduardo Palhares. SIGCOI: An Open-Source, Blockchain-Ready Management System for Human Osteological Collections and Forensic Bioanthropology. 2026.`
 
 5. **Notificador de Atualização da Federação (`UpdateChecker.tsx`)**:
-   - Embutido na aba de Configurações (`SettingsView.tsx`), consulta de forma assíncrona a API pública de releases do repositório canônico (`nicoledamascena-art/SIGCOI`).
+   - Embutido na aba de Configurações (`SettingsView.tsx`), consulta de forma assíncrona a API pública de releases do repositório canônico de distribuição (`talessc74/Sicoi`).
    - Informa o commit ativo e disponibiliza instruções passo a passo para sincronização de fork em 1 clique sem perda de dados no PostgreSQL.
 
 6. **Licenciamento GNU AGPLv3 (`LICENSE`)**:

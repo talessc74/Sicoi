@@ -1,6 +1,6 @@
 # SIGCOI — Sistema de Gestão da Coleção Osteológica Identificada
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/nicoledamascena-art/SIGCOI)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/talessc74/Sicoi)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 [![Status: Alfa](https://img.shields.io/badge/Status-Alfa-emerald.svg)](https://sgcccco-k50m.onrender.com)
 
@@ -24,7 +24,7 @@ O **SIGCOI** foi arquitetado sob o modelo de **Federação de Instâncias Autôn
 
 ### Opção A: Nuvem em 1-Clique (Render / Neon) — *Recomendado (5 Minutos)*
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/nicoledamascena-art/SIGCOI)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/talessc74/Sicoi)
 
 1. Clique no botão **Deploy to Render** acima.
 2. Conecte sua conta gratuita do Render.
@@ -40,7 +40,7 @@ Para laboratórios ou departamentos de TI que exigem execução em rede interna 
 
 ```bash
 # 1. Clone o repositório
-git clone https://github.com/nicoledamascena-art/SIGCOI.git && cd SIGCOI
+git clone https://github.com/talessc74/Sicoi.git && cd Sicoi
 
 # 2. Configure as variáveis da sua universidade
 cp .env.example .env
@@ -76,7 +76,7 @@ O uso do SIGCOI ou de dados gerados por sua metodologia em artigos científicos,
   author={Damascena, Nicole Prata and Carvalho, Tales Seixas de and Bento, Maria Izabel Cardoso and Machado, Carlos Eduardo Palhares},
   journal={Forensic Science International (Preprint/Em Avaliação)},
   year={2026},
-  url={https://github.com/nicoledamascena-art/SIGCOI}
+  url={https://github.com/talessc74/Sicoi}
 }
 ```
 

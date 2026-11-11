@@ -12,7 +12,7 @@ export const CitationModal: React.FC<CitationModalProps> = ({ isOpen, onClose })
 
   if (!isOpen) return null;
 
-  const abntText = `DAMASCENA, Nicole Prata; CARVALHO, Tales Seixas de; BENTO, Maria Izabel Cardoso; MACHADO, Carlos Eduardo Palhares. SIGCOI: An Open-Source, Blockchain-Ready Management System for Human Osteological Collections and Forensic Bioanthropology. Forensic Science International / Repositório Institucional, 2026. Disponível em: <https://github.com/nicoledamascena-art/SIGCOI>.`;
+  const abntText = `DAMASCENA, Nicole Prata; CARVALHO, Tales Seixas de; BENTO, Maria Izabel Cardoso; MACHADO, Carlos Eduardo Palhares. SIGCOI: An Open-Source, Blockchain-Ready Management System for Human Osteological Collections and Forensic Bioanthropology. Forensic Science International / Repositório Institucional, 2026. Disponível em: <https://github.com/talessc74/Sicoi>.`;
 
   const bibtexText = `@article{damascena2026sigcoi,
   title={SIGCOI: An Open-Source, Blockchain-Ready Management System for Human Osteological Collections and Forensic Bioanthropology},
@@ -20,7 +20,7 @@ export const CitationModal: React.FC<CitationModalProps> = ({ isOpen, onClose })
   journal={Forensic Science International (Preprint/Em Avaliação)},
   year={2026},
   institution={${INSTITUTION_CONFIG.institutionName}},
-  url={https://github.com/nicoledamascena-art/SIGCOI}
+  url={https://github.com/talessc74/Sicoi}
 }`;
 
   const copyToClipboard = (text: string, format: 'abnt' | 'bibtex') => {

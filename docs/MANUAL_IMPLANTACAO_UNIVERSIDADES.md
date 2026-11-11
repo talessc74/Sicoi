@@ -38,7 +38,7 @@ flowchart LR
 ### Passo 2: Disparar o Deploy Automático no Render
 1. Acesse o repositório público do SIGCOI e clique no botão:
    
-   [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/nicoledamascena-art/SIGCOI)
+   [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/talessc74/Sicoi)
 
 2. Faça login ou crie sua conta gratuita no [Render.com](https://render.com).
 3. O Render identificará o blueprint do SIGCOI (`render.yaml`).
@@ -89,8 +89,8 @@ Caso seu laboratório possua restrição de internet ou prefira rodar o sistema 
 ### Passo a passo:
 1. Clone o repositório ou baixe o arquivo zip:
    ```bash
-   git clone https://github.com/nicoledamascena-art/SIGCOI.git
-   cd SIGCOI
+   git clone https://github.com/talessc74/Sicoi.git
+   cd Sicoi
    ```
 2. Crie seu arquivo de configuração a partir do modelo:
    ```bash
@@ -120,7 +120,7 @@ Quando a equipe da Dra. Nicole publicar melhorias, novas técnicas de estimativa
 Todo trabalho científico, TCC, dissertação de mestrado ou tese de doutorado que utilize o acervo catalogado pelo SIGCOI deve conter a devida citação da metodologia:
 
 > **ABNT (NBR 6023)**:  
-> DAMASCENA, Nicole Prata; CARVALHO, Tales Seixas de; BENTO, Maria Izabel Cardoso; MACHADO, Carlos Eduardo Palhares. **SIGCOI: An Open-Source, Blockchain-Ready Management System for Human Osteological Collections and Forensic Bioanthropology**. Forensic Science International / Repositório Institucional, 2026. Disponível em: `<https://github.com/nicoledamascena-art/SIGCOI>`.
+> DAMASCENA, Nicole Prata; CARVALHO, Tales Seixas de; BENTO, Maria Izabel Cardoso; MACHADO, Carlos Eduardo Palhares. **SIGCOI: An Open-Source, Blockchain-Ready Management System for Human Osteological Collections and Forensic Bioanthropology**. Forensic Science International / Repositório Institucional, 2026. Disponível em: `<https://github.com/talessc74/Sicoi>`.
 
 O sistema também possui um botão **"Como Citar este Software"** no rodapé e na tela de exportação de dados para cópia imediata em BibTeX e ABNT.
 
@@ -128,6 +128,6 @@ O sistema também possui um botão **"Como Citar este Software"** no rodapé e n
 
 ## 8. Dúvidas e Suporte Acadêmico
 
-- **Repositório Oficial**: <https://github.com/nicoledamascena-art/SIGCOI>
+- **Repositório Oficial da Comunidade**: <https://github.com/talessc74/Sicoi>
 - **Coordenação do Projeto**: Dra. Nicole Prata Damascena (Perita Criminal Federal - INC/DITEC/PF)
 - **Engenharia e Arquitetura**: Tales Seixas de Carvalho

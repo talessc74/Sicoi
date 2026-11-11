@@ -129,8 +129,8 @@ The platform is currently being extended to partner universities in Brazil and i
 
 ## 7. Software Availability and License
 
-- **Source Code Repository:** <https://github.com/nicoledamascena-art/SIGCOI>
-- **Community Distribution:** <https://github.com/talessc74/Sicoi>
+- **Source Code Repository (Community Distribution):** <https://github.com/talessc74/Sicoi>
+- **Core Upstream Repository:** <https://github.com/nicoledamascena-art/SIGCOI>
 - **Programming Languages & Frameworks:** TypeScript, React 19, Vite, Express, PostgreSQL, Tailwind CSS.
 - **License:** GNU Affero General Public License v3.0 (AGPL-3.0).
 - **Cost:** Free of charge for academic, governmental, and non-commercial scientific research.
