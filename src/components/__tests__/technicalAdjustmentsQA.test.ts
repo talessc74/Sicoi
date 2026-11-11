@@ -879,24 +879,28 @@ describe('Suíte de QA — Validação das 12 Mudanças Solicitadas pelos Técni
         anatomicalCode: 'FEM-D',
         namePt: 'Fêmur Direito',
         region: 'membros_inferiores',
+        side: 'direito',
         presence: 'completo',
         preservationQuality: 'boa',
         associatedIndividualId: 'IND-01',
         associationMethod: 'Inspeção direta',
         associationConfidence: 'alta',
-        associationJustification: 'Concordância métrica'
+        associationJustification: 'Concordância métrica',
+        observations: ''
       });
 
       // Simula atualização do inventário odontológico após assinatura
       p4.individuals[0].odontogram = [{
-        toothNumber: 18,
-        presence: 'presente',
-        clinicalConditions: ['sadio']
+        toothNumberFdi: 18,
+        quadrant: 1,
+        presence: 'articulado',
+        clinicalConditions: ['higido'],
+        condition: 'higido'
       }];
 
       // Simula atualização de NMI / número de indivíduos após assinatura
       p4.numeroIndividuos = {
-        entries: [{ anatomicalCode: 'FEM-D', namePt: 'Fêmur Direito', lateralidade: 'D', side: 'direito', qteP: 1, qteF: 0, qteI: 0, qteA: 0, totalPorOsso: 1, secao: 'membros_inferiores' }]
+        entries: [{ id: 'quant-1', nomeOsso: 'Fêmur', ladoEsquerdo: 0, ladoDireito: 1, pareados: 0 }]
       };
 
       // Assinaturas e seus responsáveis devem continuar exatamente os mesmos
@@ -906,7 +910,7 @@ describe('Suíte de QA — Validação das 12 Mudanças Solicitadas pelos Técni
       expect(p4.technicianAssemblySign?.sha256Hash).toBe('hash-tecnico-original');
       expect(p4.skeletalElements).toHaveLength(1);
       expect(p4.individuals[0].odontogram).toHaveLength(1);
-      expect(p4.numeroIndividuos.entries).toHaveLength(1);
+      expect(p4.numeroIndividuos?.entries).toHaveLength(1);
     });
   });
 
@@ -978,6 +982,20 @@ describe('Suíte de QA — Validação das 12 Mudanças Solicitadas pelos Técni
       expect(p4.physicalBoneMarking?.completed).toBe(true);
       expect(p4.physicalBoneMarking?.techniqueUsed).toContain('Paraloid B-72');
       expect(p4.physicalBoneMarking?.elementsMarkedCount).toBe(206);
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // Item 20: Parametrização Multi-Institucional para Distribuição Universitária
+  // --------------------------------------------------------------------------
+  describe('Item 20: Parametrização Multi-Institucional para Distribuição Universitária', () => {
+    it('garante que a configuração institucional possui valores padrão seguros e válidos', async () => {
+      const { INSTITUTION_CONFIG } = await import('../../config/institutionConfig');
+      expect(INSTITUTION_CONFIG.systemName).toBe('SIGCOI');
+      expect(INSTITUTION_CONFIG.institutionAcronym).toBeDefined();
+      expect(INSTITUTION_CONFIG.institutionName).toBeDefined();
+      expect(INSTITUTION_CONFIG.collectionPrefix).toBe('COI');
+      expect(INSTITUTION_CONFIG.versionTag).toBeDefined();
     });
   });
 });

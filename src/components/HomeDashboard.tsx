@@ -3,6 +3,7 @@ import { OsteologicalCollection, UserProfile, PhaseNumber } from '../types/sgccc
 import { listCollectionPendencies, countPendencies } from '../utils/collectionPendencies';
 import { PendenciesModal } from './PendenciesModal';
 import { getRoleTheme } from '../utils/roleTheme';
+import { INSTITUTION_CONFIG } from '../config/institutionConfig';
 import {
   FolderOpen,
   Users,
@@ -95,11 +96,11 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         <div className="relative z-10 max-w-3xl space-y-2.5">
           <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-sky-500/20 text-sky-300 border border-sky-400/30 text-xs font-mono">
             <ShieldCheck className="w-3.5 h-3.5 text-sky-400" />
-            <span>INC/DITEC/PF · Coleção Osteológica Identificada (COI)</span>
+            <span>{INSTITUTION_CONFIG.institutionAcronym} · Coleção Osteológica Identificada ({INSTITUTION_CONFIG.collectionPrefix})</span>
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-white">
-            Sistema de Gestão da Coleção Osteológica Identificada (SIGCOI)
+            {INSTITUTION_CONFIG.subtitle} ({INSTITUTION_CONFIG.systemName})
           </h1>
 
           <p className="text-xs sm:text-sm text-slate-300 font-sans whitespace-nowrap overflow-x-auto flex items-center gap-1.5">

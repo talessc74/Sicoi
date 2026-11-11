@@ -47,3 +47,10 @@ services:
       # Administradores dos dados antigos tiverem ativado a própria conta.
       - key: ADMIN_BOOTSTRAP_SECRET
         sync: false
+      # Identidade Institucional Customizável para Universidades Parceiras (Opcional):
+      - key: VITE_INSTITUTION_NAME
+        sync: false
+      - key: VITE_INSTITUTION_ACRONYM
+        sync: false
+      - key: VITE_COLLECTION_PREFIX
+        sync: false

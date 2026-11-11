@@ -3,6 +3,7 @@ import { UserProfile, UserRole, OsteologicalCollection } from '../types/sgccco';
 import { useAppVersion } from '../hooks/useAppVersion';
 import { getRoleTheme } from '../utils/roleTheme';
 import { ChangePasswordModal } from './ChangePasswordModal';
+import { INSTITUTION_CONFIG } from '../config/institutionConfig';
 import {
   Home,
   BookOpen,
@@ -145,14 +146,14 @@ export const Header: React.FC<HeaderProps> = ({
             className="text-left flex items-center gap-2 group focus:outline-hidden shrink-0"
           >
             <span className="bg-slate-900 text-yellow-400 text-xs font-mono font-bold px-2 py-1 rounded shadow-xs ring-1 ring-yellow-400/40 group-hover:bg-slate-800 transition-colors shrink-0">
-              SIGCOI
+              {INSTITUTION_CONFIG.systemName}
             </span>
             <div className="hidden sm:block shrink-0">
               <span className="font-sans text-sm md:text-base font-bold text-slate-800 dark:text-slate-100 group-hover:text-sky-600 transition-colors whitespace-nowrap">
-                Coleções Osteológicas
+                {INSTITUTION_CONFIG.shortTitle}
               </span>
               <span className="text-[10px] text-slate-400 font-mono block -mt-0.5 whitespace-nowrap">
-                INC/DITEC/PF · ALFA
+                {INSTITUTION_CONFIG.institutionAcronym} · {INSTITUTION_CONFIG.versionTag}
               </span>
             </div>
           </button>
