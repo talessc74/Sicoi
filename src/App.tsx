@@ -41,6 +41,7 @@ import { FloatingAiAssistantButton, FAB_HIDDEN_STORAGE_KEY } from './components/
 import { NewCollectionModal } from './components/NewCollectionModal';
 import { ErrorNotice } from './components/ErrorNotice';
 import { CreditsView } from './components/CreditsView';
+import { CitationModal } from './components/CitationModal';
 import { toAppError, AppError } from './utils/errorMessages';
 import { INSTITUTION_CONFIG } from './config/institutionConfig';
 import { Plus, ShieldCheck, Bot, Sparkles, Loader2, CheckCircle2 } from 'lucide-react';
@@ -196,6 +197,7 @@ export default function App() {
   const [laboratoryMode, setLaboratoryMode] = useState<boolean>(false);
   const [isQrModalOpen, setIsQrModalOpen] = useState<boolean>(false);
   const [isGeminiChatOpen, setIsGeminiChatOpen] = useState<boolean>(false);
+  const [isCitationModalOpen, setIsCitationModalOpen] = useState<boolean>(false);
   const [isAiFabHidden, setIsAiFabHidden] = useState<boolean>(() => {
     try {
       return localStorage.getItem(FAB_HIDDEN_STORAGE_KEY) === 'true';
@@ -1053,6 +1055,13 @@ export default function App() {
             Créditos de design e desenvolvimento
           </button>
           <span>·</span>
+          <button
+            onClick={() => setIsCitationModalOpen(true)}
+            className="text-sky-600 dark:text-sky-400 hover:underline font-medium transition-colors"
+          >
+            Como Citar este Software
+          </button>
+          <span>·</span>
           <span>SHA-256 Ativo</span>
           {isAiFabHidden && (
             <>
@@ -1069,6 +1078,9 @@ export default function App() {
           )}
         </div>
       </footer>
+
+      {/* Modal de Política de Citação Acadêmica (§Pós-Doc Nicole Damascena) */}
+      <CitationModal isOpen={isCitationModalOpen} onClose={() => setIsCitationModalOpen(false)} />
     </div>
   );
 }

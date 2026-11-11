@@ -12,6 +12,7 @@ import { CollectionHistoryPanel } from './CollectionHistoryPanel';
 import { fetchCollectionHistory } from '../services/collectionsService';
 import { checkSignatureSnapshots } from '../utils/historyVerification';
 import { friendlyMessage } from '../utils/errorMessages';
+import { INSTITUTION_CONFIG } from '../config/institutionConfig';
 import {
   ShieldCheck,
   ShieldAlert,
@@ -370,7 +371,7 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
     <div className="hidden print:block text-black p-8 text-[11px] leading-relaxed">
       <div className="flex items-start justify-between border-b-2 border-black pb-3 mb-4">
         <div>
-          <div className="text-[10px] font-mono uppercase tracking-widest">INC/DITEC/PF · SIGCOI</div>
+          <div className="text-[10px] font-mono uppercase tracking-widest">{INSTITUTION_CONFIG.institutionAcronym} · {INSTITUTION_CONFIG.systemName}</div>
           <h1 className="text-lg font-bold mt-0.5">Laudo de Auditoria e Cadeia de Custódia</h1>
           <div className="font-mono text-sm mt-0.5">{currentCollection.nic}</div>
         </div>
@@ -485,7 +486,7 @@ export const AuditTimelineView: React.FC<AuditTimelineViewProps> = ({
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className="px-2.5 py-0.5 rounded text-[11px] font-mono font-bold uppercase tracking-wider bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                Diretriz INC/DITEC/PF · Rastreabilidade Irrestrita
+                Diretriz {INSTITUTION_CONFIG.institutionAcronym} · Rastreabilidade Irrestrita
               </span>
               <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-semibold font-mono">
                 <ShieldCheck className="w-3.5 h-3.5" />

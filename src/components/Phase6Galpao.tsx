@@ -8,6 +8,7 @@ import {
 import { calculateSha256, generateSignaturePayload } from '../services/auditService';
 import { getLatestPhaseSignature } from '../utils/signatures';
 import { PublicQRInspectionModal } from './PublicQRInspectionModal';
+import { INSTITUTION_CONFIG } from '../config/institutionConfig';
 import {
   Warehouse,
   Truck,
@@ -80,7 +81,7 @@ export const Phase6Galpao: React.FC<Phase6GalpaoProps> = ({
       id: `cst-transit-${Date.now()}`,
       timestamp,
       sourceLocation: 'Laboratório Central (Sala B-10)',
-      targetLocation: 'Galpão Definitivo INC/DITEC/PF (Em Trânsito)',
+      targetLocation: `Galpão Definitivo ${INSTITUTION_CONFIG.institutionAcronym} (Em Trânsito)`,
       carrierPerson: currentUser.name,
       receiverPerson: 'Aguardando Responsável do Galpão',
       carrierSignatureHash: hash,

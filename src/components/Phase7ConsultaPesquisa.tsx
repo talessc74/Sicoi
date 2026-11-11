@@ -10,6 +10,8 @@ import { canExportScientificData } from '../utils/permissions';
 import { useAppVersion } from '../hooks/useAppVersion';
 import { createAuthorizationApi, updateAuthorizationApi } from '../services/authorizationsService';
 import { ErrorNotice } from './ErrorNotice';
+import { CitationModal } from './CitationModal';
+import { INSTITUTION_CONFIG } from '../config/institutionConfig';
 import { toAppError, AppError } from '../utils/errorMessages';
 import {
   Search,
@@ -22,7 +24,8 @@ import {
   GitCompare,
   ArrowRightLeft,
   Plus,
-  Ban
+  Ban,
+  Quote
 } from 'lucide-react';
 
 interface Phase7ConsultaPesquisaProps {
@@ -60,6 +63,7 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
 
   // Export metadata modal state
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showCitationModal, setShowCitationModal] = useState(false);
   const [exportJsonPreview, setExportJsonPreview] = useState('');
 
   const isResearcher = currentUser.role === 'pesquisador';
@@ -230,7 +234,7 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
     const timestamp = new Date().toISOString();
     const exportDataset = {
       reproducibilityHeader: {
-        system: 'SIGCOI ALFA - INC/DITEC/PF',
+        system: `${INSTITUTION_CONFIG.systemName} ${INSTITUTION_CONFIG.versionTag} - ${INSTITUTION_CONFIG.institutionAcronym}`,
         databaseVersion: commitRef ? `ALFA-commit-${commitRef}` : 'ALFA',
         exportedAt: timestamp,
         exportedBy: currentUser.name,
@@ -276,7 +280,7 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
               <span>Fase 7 · Consulta Científica, ABAC & Empréstimos</span>
             </div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-0.5">
-              Acervo Osteológico INC/DITEC/PF
+              Acervo Osteológico {INSTITUTION_CONFIG.institutionAcronym}
             </h2>
             <p className="text-xs text-slate-500 mt-1">
               Filtro de escopo por ABAC, tradução de busca em linguagem natural, termos de empréstimo e exportação com hash de reprodutibilidade.
@@ -801,7 +805,16 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
               {exportJsonPreview}
             </pre>
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex flex-wrap justify-between items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowCitationModal(true)}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sky-600 dark:text-sky-400 font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center gap-1.5 text-xs"
+              >
+                <Quote className="w-3.5 h-3.5" />
+                <span>Como Citar estes Dados (ABNT / BibTeX)</span>
+              </button>
+
               <button
                 onClick={() => {
                   const blob = new Blob([exportJsonPreview], { type: 'application/json' });
@@ -812,7 +825,7 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
                   a.click();
                   URL.revokeObjectURL(url);
                 }}
-                className="px-4 py-2 rounded-xl bg-emerald-600 text-white font-medium hover:bg-emerald-500 transition-colors flex items-center gap-1.5"
+                className="px-4 py-2 rounded-xl bg-emerald-600 text-white font-medium hover:bg-emerald-500 transition-colors flex items-center gap-1.5 text-xs"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>Baixar Arquivo JSON Assinado</span>
@@ -821,6 +834,9 @@ export const Phase7ConsultaPesquisa: React.FC<Phase7ConsultaPesquisaProps> = ({
           </div>
         </div>
       )}
+
+      {/* Modal de Citação Acadêmica */}
+      <CitationModal isOpen={showCitationModal} onClose={() => setShowCitationModal(false)} />
     </div>
   );
 };

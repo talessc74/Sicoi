@@ -25,6 +25,10 @@ export interface InstitutionConfig {
   versionTag: string;
   /** URL opcional de logotipo customizado */
   logoUrl?: string;
+  /** E-mail institucional do Curador / Laboratório responsável */
+  curatorContactEmail?: string;
+  /** Idioma padrão da interface (pt-BR, en-US, es-ES) */
+  defaultLanguage: string;
 }
 
 export const INSTITUTION_CONFIG: InstitutionConfig = {
@@ -51,5 +55,11 @@ export const INSTITUTION_CONFIG: InstitutionConfig = {
     'ALFA',
   logoUrl:
     (import.meta.env.VITE_LOGO_URL as string | undefined)?.trim() ||
-    undefined
+    undefined,
+  curatorContactEmail:
+    (import.meta.env.VITE_CURATOR_CONTACT_EMAIL as string | undefined)?.trim() ||
+    undefined,
+  defaultLanguage:
+    (import.meta.env.VITE_DEFAULT_LANGUAGE as string | undefined)?.trim() ||
+    'pt-BR'
 };

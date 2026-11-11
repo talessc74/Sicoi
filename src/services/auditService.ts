@@ -42,6 +42,8 @@ export function generateSignaturePayload(data: {
   return `${prefix}|NIC:${data.nic}|PHASE:${data.phaseNumber}|BY:${data.signedBy}|ROLE:${data.role}|TIME:${data.timestamp}|SNAPSHOT:${data.dataSnapshotJson}`;
 }
 
+import { INSTITUTION_CONFIG } from '../config/institutionConfig';
+
 export function generateExportHeader(data: {
   nic: string;
   individualCode?: string;
@@ -54,7 +56,7 @@ export function generateExportHeader(data: {
 }): string {
   return `
 ================================================================================
-SIGCOI ALFA - INC/DITEC/PF - RELATÓRIO CIENTÍFICO COM TRILHA DE REPRODUTIBILIDADE
+${INSTITUTION_CONFIG.systemName} ${INSTITUTION_CONFIG.versionTag} - ${INSTITUTION_CONFIG.institutionAcronym} - RELATÓRIO CIENTÍFICO COM TRILHA DE REPRODUTIBILIDADE
 --------------------------------------------------------------------------------
 COI: ${data.nic}
 INDIVÍDUO: ${data.individualCode || 'CONJUNTO GERAL'}

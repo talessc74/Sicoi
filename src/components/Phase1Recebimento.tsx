@@ -31,6 +31,7 @@ import {
 } from '../data/phase1Options';
 import { phase1MissingFields } from '../utils/collectionPendencies';
 import { canSignAsTechnician, canViewLegalOrigin } from '../utils/permissions';
+import { INSTITUTION_CONFIG } from '../config/institutionConfig';
 import { Shield, Lock, FileText, Camera, CheckCircle2, AlertCircle, Sparkles, Printer, Bot, Save, HelpCircle, UserCheck } from 'lucide-react';
 
 // As duas fotos sempre esperadas do checklist (campos 5 e 8 do A.1) — a diferença
@@ -882,7 +883,7 @@ export const Phase1Recebimento: React.FC<Phase1RecebimentoProps> = ({
                   className="w-32 h-32"
                 />
               </div>
-              <div className="text-[10px] font-mono uppercase font-bold">SIGCOI · INC/DITEC/PF</div>
+              <div className="text-[10px] font-mono uppercase font-bold">{INSTITUTION_CONFIG.systemName} · {INSTITUTION_CONFIG.institutionAcronym}</div>
               <div className="text-[9px] font-mono text-slate-600">Entrada: {new Date(collection.createdAt).toLocaleDateString('pt-BR')}</div>
             </div>
             <p className="text-xs text-slate-500">Etiqueta autoadesiva para aplicação externa nas caixas de polipropileno corrugado.</p>

@@ -54,3 +54,9 @@ services:
         sync: false
       - key: VITE_COLLECTION_PREFIX
         sync: false
+      - key: VITE_CURATOR_CONTACT_EMAIL
+        sync: false
+      - key: VITE_DEFAULT_LANGUAGE
+        sync: false
+      - key: VITE_SYSTEM_NAME
+        sync: false

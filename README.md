@@ -1,27 +1,90 @@
 # SIGCOI — Sistema de Gestão da Coleção Osteológica Identificada
 
-**Status: Alfa.** Em desenvolvimento ativo — funcional de ponta a ponta (ver
-"Estado atual" abaixo), com login real (e-mail + senha) desde a Fase 3
-de `_local-adr-policy-202`, mas ainda sem certificação campo a campo contra
-os apêndices oficiais do POP-02. Não use "v3.2" ou
-qualquer numeração de versão solta por aí como referência: a única versão
-que importa é o hash do commit em execução, mostrado no topo de toda tela da
-aplicação (ver "Acessar agora" abaixo).
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
+[![Status: Alfa](https://img.shields.io/badge/Status-Alfa-emerald.svg)](https://sgcccco-k50m.onrender.com)
 
-Sistema de gestão e controle da Coleção Osteológica Identificada do Instituto
-Nacional de Criminalística (COI-INC/DITEC/PF) — biobanco e coleção de
-referência para pesquisa aplicada, capacitação e ensino em antropologia forense,
-instituída pela Portaria DITEC/PF nº 1415/2024. Não é um sistema de resolução
-de casos criminais: serve à gestão, ao controle e à rastreabilidade do acervo.
-Ele conduz o fluxo operacional real de recebimento, limpeza e curadoria de remanescentes ósseos — passo a passo, por voz ou por
-texto — a partir dos formulários oficiais em uso (Formulário A.1, Formulário
-A.2, POP-01), com cada assinatura de fase travada por hash criptográfico
-SHA-256 e uma trilha de auditoria completa e imutável de tudo o que foi
-feito, por quem e quando. Tudo é persistido em PostgreSQL, e o acervo pode
-ser explorado como um grafo de conhecimento conectando conjuntos, caixas,
-indivíduos, patologias, localização física, responsáveis e datas.
+**Projeto de Internacionalização, Padronização Osteológica e Biobancos Forenses**  
+*Pesquisa de Pós-Doutorado da Dra. Nicole Damascena (Perita Criminal Federal - INC/DITEC/PF)*
 
-## Acessar agora
+---
+
+## 🏛️ Distribuição Acadêmica para Universidades & Modelo de Federação ("REDCap Model")
+
+O **SIGCOI** foi arquitetado sob o modelo de **Federação de Instâncias Autônomas**, viabilizando que qualquer universidade, laboratório de bioantropologia ou museu de história natural implante e opere seu próprio biobanco osteológico com soberania absoluta.
+
+### Os 3 Princípios Invioláveis da Rede SIGCOI:
+1. **Soberania e Custódia Local das Universidades**: Cada instituição é ética e juridicamente responsável pela guarda de seu próprio acervo esquelético. Nenhum dado sensível de terceiros ou restos mortais transita por servidores externos.
+2. **Zero Ônus Operacional Central**: Cada laboratório opera sua própria infraestrutura em nuvem de baixo custo/gratuita ou servidor local, sem dependência de helpdesk contínuo.
+3. **Evolução Sincronizada e Contínua**: As instâncias parceiras recebem atualizações do núcleo canônico com 1 clique (*"Sync Fork"* no GitHub) mantendo 100% da integridade dos dados históricos no PostgreSQL.
+
+---
+
+## 🚀 Como Colocar o SIGCOI no Ar na sua Universidade
+
+### Opção A: Nuvem em 1-Clique (Render / Neon) — *Recomendado (5 Minutos)*
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
+
+1. Clique no botão **Deploy to Render** acima.
+2. Conecte sua conta gratuita do Render.
+3. Crie um banco PostgreSQL gratuito no [Neon](https://console.neon.tech) e cole a connection string na variável `DATABASE_URL`.
+4. Defina as variáveis institucionais da sua faculdade (veja [Parametrização Multi-Institucional](#-parametrização-multi-institucional) abaixo).
+5. O Render provisiona a aplicação e, ao abrir a URL, você cadastra o primeiro Administrador local.
+
+---
+
+### Opção B: On-Premise / Servidor Local (Docker Compose)
+
+Para laboratórios ou departamentos de TI que exigem execução em rede interna local:
+
+```bash
+# 1. Clone o repositório
+git clone https://github.com/nicoledamascena-art/SIGCOI.git && cd SIGCOI
+
+# 2. Configure as variáveis da sua universidade
+cp .env.example .env
+
+# 3. Suba o ecossistema completo (Node.js + PostgreSQL)
+docker compose up -d
+```
+Acesse `http://localhost:3000` na rede local do laboratório.
+
+---
+
+## ⚙️ Parametrização Multi-Institucional (.env)
+
+O SIGCOI desacopla todas as referências institucionais em variáveis de ambiente:
+
+| Variável | Exemplo | Descrição |
+| :--- | :--- | :--- |
+| `VITE_INSTITUTION_NAME` | `"Universidade de São Paulo - IB/USP"` | Nome por extenso da instituição gestora |
+| `VITE_INSTITUTION_ACRONYM` | `"LAF-USP"` | Sigla para crachás e relatórios |
+| `VITE_COLLECTION_PREFIX` | `"USP-OSTEO"` | Prefixo dos códigos de caixas e acervos |
+| `VITE_CURATOR_CONTACT_EMAIL` | `"curadoria@ib.usp.br"` | E-mail de suporte e comitê de ética |
+| `VITE_DEFAULT_LANGUAGE` | `"pt-BR"` | Idioma padrão da interface |
+
+---
+
+## 📜 Como Citar este Software (Citation Policy)
+
+O uso do SIGCOI ou de dados gerados por sua metodologia em artigos científicos, dissertações de mestrado, teses de doutorado e laudos periciais requer a citação da publicação fundacional:
+
+```bibtex
+@article{damascena2026sigcoi,
+  title={SIGCOI: An Open-Source, Blockchain-Ready Management System for Human Osteological Collections and Forensic Bioanthropology},
+  author={Damascena, Nicole Prata and Costa, Tales Seixas and Bento, Maria Izabel Cardoso and Machado, Carlos Eduardo Palhares},
+  journal={Forensic Science International (Preprint/Em Avaliação)},
+  year={2026},
+  url={https://github.com/nicoledamascena-art/SIGCOI}
+}
+```
+
+O próprio sistema oferece na tela de exportação de dados (Fase 7) e no rodapé um botão para cópia instantânea nos formatos **ABNT** e **BibTeX**.
+
+---
+
+## Acessar agora (Instância de Demonstração / Referência)
 
 **Aplicação em produção:** <https://sgcccco-k50m.onrender.com>
 

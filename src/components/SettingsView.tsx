@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { OsteologicalCollection, UserProfile, UserRole, PersonAccessOverrides } from '../types/sgccco';
 import { AdminDangerZone } from './AdminDangerZone';
+import { UpdateChecker } from './UpdateChecker';
 import { getRoleTheme } from '../utils/roleTheme';
 import { hasAdminAccess, canViewLegalOrigin, canCurate, canSignAsTechnician, canExportScientificData } from '../utils/permissions';
 import { generateSetupLinkApi, fetchPendingPasswordResetRequestsApi, PendingPasswordResetRequest } from '../services/authService';
@@ -830,6 +831,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </table>
         </div>
       </div>
+
+      {/* Sobre o Sistema & Notificador de Atualizações da Federação */}
+      <UpdateChecker />
 
       {/* Zona de Risco — só visível para quem está com o papel Administrador ativo.
           O servidor reconfere isto de novo a cada chamada (ver requireAdmin em

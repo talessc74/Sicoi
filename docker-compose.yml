@@ -1,0 +1,44 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sigcoi-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=postgresql://sigcoi_user:sigcoi_secure_pass@db:5432/sigcoi_db
+      - SESSION_SECRET=change_me_to_a_random_32_byte_hex_string_for_security
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - VITE_INSTITUTION_NAME=${VITE_INSTITUTION_NAME:-Universidade Parceira}
+      - VITE_INSTITUTION_ACRONYM=${VITE_INSTITUTION_ACRONYM:-LAB-OSTEO}
+      - VITE_COLLECTION_PREFIX=${VITE_COLLECTION_PREFIX:-COI}
+      - VITE_CURATOR_CONTACT_EMAIL=${VITE_CURATOR_CONTACT_EMAIL:-curadoria@universidade.edu.br}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    container_name: sigcoi-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=sigcoi_user
+      - POSTGRES_PASSWORD=sigcoi_secure_pass
+      - POSTGRES_DB=sigcoi_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - sigcoi_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sigcoi_user -d sigcoi_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  sigcoi_pgdata:
+    driver: local

@@ -22,6 +22,7 @@ import { searchSimilarBones, BoneSimilaritySearchResult } from '../services/gemi
 import { ErrorNotice } from './ErrorNotice';
 import { toAppError, AppError } from '../utils/errorMessages';
 import { computeGraphLayout, computeHopDistances, DEFAULT_RADIUS_MAP } from '../utils/graphLayout';
+import { INSTITUTION_CONFIG } from '../config/institutionConfig';
 
 interface KnowledgeGraphViewerProps {
   selectedNic?: string;
@@ -657,7 +658,7 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({ sele
         <div>
           <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Network className="w-5 h-5 text-sky-600 dark:text-sky-400" />
-            Grafo de Conhecimento Osteológico (INC/DITEC/PF)
+            Grafo de Conhecimento Osteológico ({INSTITUTION_CONFIG.institutionAcronym})
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             Interliga laudos, indivíduos, patologias e perfis biológicos. Arraste qualquer nó para reorganizar.

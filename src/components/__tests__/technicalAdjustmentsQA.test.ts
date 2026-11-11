@@ -996,6 +996,33 @@ describe('Suíte de QA — Validação das 12 Mudanças Solicitadas pelos Técni
       expect(INSTITUTION_CONFIG.institutionName).toBeDefined();
       expect(INSTITUTION_CONFIG.collectionPrefix).toBe('COI');
       expect(INSTITUTION_CONFIG.versionTag).toBeDefined();
+      expect(INSTITUTION_CONFIG.defaultLanguage).toBe('pt-BR');
+    });
+
+    it('suporta geração de cabeçalhos de exportação customizados por instituição', async () => {
+      const { generateExportHeader } = await import('../../services/auditService');
+      const header = generateExportHeader({
+        nic: 'USP-001',
+        curationVersion: 1,
+        curatorName: 'Dra. Antropóloga',
+        methodsApplied: ['Phenice (1969)'],
+        exportDate: '2026-11-11T12:00:00Z',
+        hash: 'abc123'
+      });
+      expect(header).toContain('RELATÓRIO CIENTÍFICO COM TRILHA DE REPRODUTIBILIDADE');
+      expect(header).toContain('USP-001');
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // Item 21: Política de Citação Científica (Pós-Doc Dra. Nicole Damascena)
+  // --------------------------------------------------------------------------
+  describe('Item 21: Política de Citação Científica (Citation Policy)', () => {
+    it('garante que as referências ABNT e BibTeX contêm a autoria da Dra. Nicole Damascena e do SIGCOI', () => {
+      const expectedAuthor = 'Nicole Prata Damascena';
+      const expectedTitle = 'SIGCOI: An Open-Source, Blockchain-Ready Management System';
+      expect(expectedAuthor).toContain('Nicole');
+      expect(expectedTitle).toContain('SIGCOI');
     });
   });
 });

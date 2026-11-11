@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>_local-adr-policy-101: Histórico protegido de conjuntos | SIGCOI XDRS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0a0d14;
+      --bg-secondary: #101522;
+      --bg-card: rgba(19, 26, 42, 0.75);
+      --border-color: rgba(66, 82, 110, 0.35);
+      --border-accent: rgba(99, 102, 241, 0.4);
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --accent: #6366f1;
+      --accent-glow: rgba(99, 102, 241, 0.2);
+      --emerald: #10b981;
+      --amber: #f59e0b;
+      --cyan: #06b6d4;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      background-image: 
+        radial-gradient(circle at 15% 10%, rgba(99, 102, 241, 0.12) 0%, transparent 40%),
+        radial-gradient(circle at 85% 80%, rgba(6, 182, 212, 0.08) 0%, transparent 40%);
+      color: var(--text-main);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      line-height: 1.65;
+      padding: 2.5rem 1rem;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 900px;
+    }
+
+    .header-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid var(--border-accent);
+      padding: 0.35rem 0.85rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #a5b4fc;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 1.25rem;
+    }
+
+    .header-badge .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--emerald);
+      box-shadow: 0 0 8px var(--emerald);
+    }
+
+    h1 {
+      font-size: 2.25rem;
+      font-weight: 700;
+      line-height: 1.25;
+      letter-spacing: -0.025em;
+      color: #ffffff;
+      margin-bottom: 1.5rem;
+    }
+
+    .meta-box {
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 2rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .meta-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .meta-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .meta-value {
+      font-size: 0.88rem;
+      color: var(--text-main);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .card {
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      transition: border-color 0.2s ease;
+    }
+
+    .card:hover {
+      border-color: rgba(99, 102, 241, 0.3);
+    }
+
+    h2 {
+      font-size: 1.35rem;
+      font-weight: 600;
+      color: #e2e8f0;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 0.6rem;
+    }
+
+    h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #cbd5e1;
+      margin: 1.5rem 0 0.75rem 0;
+    }
+
+    p {
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+      font-size: 0.96rem;
+    }
+
+    .highlight-banner {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(6, 182, 212, 0.1) 100%);
+      border-left: 4px solid var(--accent);
+      padding: 1.25rem 1.5rem;
+      border-radius: 0 12px 12px 0;
+      margin: 1.5rem 0;
+      font-weight: 500;
+      color: #ffffff;
+      font-size: 1.05rem;
+    }
+
+    ol {
+      list-style-type: none;
+      counter-reset: custom-counter;
+      display: flex;
+      flex-direction: column;
+      gap: 1.1rem;
+      margin: 1.25rem 0;
+    }
+
+    ol li {
+      counter-increment: custom-counter;
+      position: relative;
+      padding-left: 2.75rem;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    ol li::before {
+      content: counter(custom-counter);
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 2rem;
+      height: 2rem;
+      border-radius: 8px;
+      background: rgba(99, 102, 241, 0.2);
+      border: 1px solid var(--border-accent);
+      color: #a5b4fc;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    ol li strong {
+      color: #f8fafc;
+    }
+
+    ul {
+      list-style-type: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      margin: 1rem 0;
+    }
+
+    ul li {
+      position: relative;
+      padding-left: 1.5rem;
+      color: var(--text-muted);
+      font-size: 0.94rem;
+    }
+
+    ul li::before {
+      content: "▹";
+      position: absolute;
+      left: 0;
+      color: var(--cyan);
+      font-size: 1.1rem;
+      line-height: 1.4;
+    }
+
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 0.15rem 0.45rem;
+      border-radius: 6px;
+      font-size: 0.85em;
+      color: #38bdf8;
+    }
+
+    .footer {
+      text-align: center;
+      padding: 2rem 0;
+      color: var(--text-dim);
+      font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header-badge">
+      <span class="dot"></span>
+      <span>XDRS Architectural Decision Record &bull; Local Scope</span>
+    </div>
+
+    <h1>_local-adr-policy-101: Histórico protegido de conjuntos</h1>
+
+    <div class="meta-box">
+      <div class="meta-item">
+        <span class="meta-label">ID Canônico</span>
+        <span class="meta-value">_local-adr-policy-101</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Data de Vigência</span>
+        <span class="meta-value">2026-09-27</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Governança</span>
+        <span class="meta-value">ARGUS (30 Seeds)</span>
+      </div>
+      <div class="meta-item" style="grid-column: 1 / -1;">
+        <span class="meta-label">Arquivos Vinculados (apply-to)</span>
+        <span class="meta-value" style="font-size: 0.8rem; color: #cbd5e1;">db/historyGuard.ts, db/collectionsRepo.ts, src/services/auditService.ts, src/utils/historyDiff.ts, src/utils/historyVerification.ts</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Context and Problem Statement</h2>
+      <p>
+        O SIGCOI grava conjuntos osteológicos inteiros a cada mudança — o navegador envia o objeto completo, não um diff. Isso cria um risco estrutural: nada impede, por bug ou por adulteração deliberada, que uma requisição chegue com uma assinatura já gravada removida, alterada, ou com uma fase travada reescrita sem reabertura formal. Sem uma regra explícita no servidor, a integridade da cadeia de custódia dependeria apenas do cliente se comportar.
+      </p>
+      <p style="font-style: italic; color: #a5b4fc; margin-bottom: 0;">
+        <strong>Questão central:</strong> Quem é a fonte de verdade do histórico de um conjunto — o que o navegador manda, ou o que já está gravado?
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>Decision Outcome</h2>
+      
+      <div class="highlight-banner">
+        O servidor é sempre a fonte de verdade do histórico já gravado. O cliente propõe; o servidor decide o que persiste.
+      </div>
+
+      <p>A cada gravação (<code>db/historyGuard.ts</code>), o servidor aplica o seguinte protocolo de custódia:</p>
+
+      <ol>
+        <li>
+          <strong>Recusa remover ou alterar uma assinatura já gravada</strong> — comparando a lista recebida contra a lista armazenada por identidade (fase + data + hash). Se uma assinatura salva não aparece na lista recebida, ou aparece com outro signatário, a gravação inteira é rejeitada (<code>HistoryViolationError</code>).
+        </li>
+        <li>
+          <strong>Confere o hash de toda assinatura nova</strong> contra o conteúdo da fase exatamente como veio na requisição, e só então aceita — e guarda essa cópia exata (<code>dataSnapshotJson</code>) para conferência futura, mesmo que o formulário mude depois.
+        </li>
+        <li>
+          <strong>Nunca reconfere o hash de uma assinatura já gravada</strong> contra o estado atual do banco — apenas a compara por identidade contra o registro existente. Isso evita falsos positivos gerados pela reordenação de chaves JSON no Postgres.
+        </li>
+        <li>
+          <strong>Reabertura de fase travada exige justificativa técnica</strong> — sem isso, qualquer edição em campo de fase já assinada é sumariamente rejeitada.
+        </li>
+        <li>
+          <strong>Toda diferença de campo vira uma entrada no registro de alterações</strong> (<code>change_log</code>), calculada por <code>diffValues</code>/<code>canonicalJson</code> (<code>src/utils/historyDiff.ts</code>) comparando a versão anterior com a recebida — registrando quem mudou, quando, valor antes e depois.
+        </li>
+        <li>
+          <strong>O registro de alterações é encadeado por hash</strong> — cada entrada inclui o hash criptográfico da anterior, tornando qualquer adulteração retroativa detectável.
+        </li>
+        <li>
+          <strong>Dados restritos de procedência</strong>: o registro de alterações preserva a autoria e ocorrência da alteração, resguardando os valores protegidos.
+        </li>
+      </ol>
+
+      <h3>Detalhes de Implementação</h3>
+      <ul>
+        <li>Garantias também reforçadas por gatilhos no próprio PostgreSQL — a proteção transcende a camada de aplicação.</li>
+        <li><code>src/utils/historyVerification.ts</code> reconfere no navegador, a partir da cópia guardada, o lacre de cada assinatura — compartilhando a mesma lógica canônica de payload do servidor (<code>src/services/auditService.ts</code>).</li>
+        <li>Assinaturas emitidas antes desta decisão não possuem <code>dataSnapshotJson</code> e são classificadas como "sem cópia", mantendo a retrocompatibilidade sem falsos alarmes de invalidade.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>Referências e Rastreabilidade</h2>
+      <ul>
+        <li><strong>Arquivos do Core:</strong> <code>db/historyGuard.ts</code>, <code>db/collectionsRepo.ts</code>, <code>src/services/auditService.ts</code>, <code>src/utils/historyDiff.ts</code>, <code>src/utils/historyVerification.ts</code></li>
+        <li><strong>Suíte de Testes Automatizados:</strong> <code>db/__tests__/protectedHistory.test.ts</code></li>
+        <li><strong>Commits de Governança:</strong> <code>a64c0cc</code>, <code>271a9da</code>, <code>844ee7f</code> (SIGCOI)</li>
+      </ul>
+    </div>
+
+    <div class="footer">
+      SIGCOI &bull; Coleção Osteológica Identificada (COI-INC/DITEC/PF) &bull; Governança ARGUS XDRS
+    </div>
+  </div>
+</body>
+</html>
