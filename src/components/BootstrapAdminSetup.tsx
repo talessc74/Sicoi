@@ -3,6 +3,7 @@ import { UserProfile } from '../types/sgccco';
 import { bootstrapAdminApi } from '../services/authService';
 import { ErrorNotice } from './ErrorNotice';
 import { toAppError, AppError } from '../utils/errorMessages';
+import { INSTITUTION_CONFIG } from '../config/institutionConfig';
 import { ShieldCheck, Loader2 } from 'lucide-react';
 
 interface BootstrapAdminSetupProps {
@@ -18,7 +19,7 @@ interface BootstrapAdminSetupProps {
  */
 export const BootstrapAdminSetup: React.FC<BootstrapAdminSetupProps> = ({ onLoggedIn }) => {
   const [name, setName] = useState('');
-  const [institution, setInstitution] = useState('');
+  const [institution, setInstitution] = useState(INSTITUTION_CONFIG.institutionAcronym || '');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
@@ -89,7 +90,7 @@ export const BootstrapAdminSetup: React.FC<BootstrapAdminSetupProps> = ({ onLogg
               type="text"
               value={institution}
               onChange={(e) => setInstitution(e.target.value)}
-              placeholder="Ex.: INC/DITEC/PF"
+              placeholder={`Ex.: ${INSTITUTION_CONFIG.institutionAcronym}`}
               className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-hidden focus:ring-2 focus:ring-sky-500"
             />
           </div>

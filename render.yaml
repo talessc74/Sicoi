@@ -1,26 +1,14 @@
-# Blueprint do Render — cria o serviço web (Express + Vite build), um clicando em
-# "New +" > "Blueprint" e apontando pra este repositório. A URL pública nasce no
-# painel do Render, não depende desta sessão.
+# Blueprint do Render — cria o serviço web SIGCOI (Express + Vite build).
+# A URL pública nasce no painel do Render vinculada ao repositório comunitário.
 #
-# O banco de dados de produção NÃO é mais do Render: é um Postgres no Neon
-# (console.neon.tech), gerenciado fora deste blueprint. O Postgres gratuito do
-# Render expira e é apagado; o gratuito do Neon não tem prazo. A ligação entre os
-# dois é só a variável DATABASE_URL, colada à mão no painel do Render.
-#
-# O banco antigo do Render (sgcccco-db) continua declarado abaixo SÓ até a
-# migração terminar: tirá-lo do blueprint antes de os dados estarem copiados e
-# conferidos no Neon é arriscar perdê-los. Nada mais aponta para ele (a
-# DATABASE_URL deixou de usar fromDatabase). Remover este bloco depois que o
-# Neon estiver confirmado em produção.
-databases:
-  - name: sgcccco-db
-    databaseName: sgcccco
-    user: sgcccco_app
-    plan: free
+# O banco de dados PostgreSQL de produção é gerenciado no Neon (console.neon.tech)
+# ou no servidor da própria universidade. O Postgres gratuito do Neon não tem prazo
+# de expiração e inclui backups automáticos com point-in-time recovery.
+# A ligação é feita exclusivamente pela variável DATABASE_URL.
 
 services:
   - type: web
-    name: sgcccco
+    name: sigcoi
     runtime: node
     plan: free
     buildCommand: npm install --include=dev --legacy-peer-deps && npm run build
@@ -28,35 +16,27 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      # Connection string "pooled" do Neon (termina em ?sslmode=require...).
-      # sync: false é obrigatório: impede que uma sincronização futura do
-      # blueprint sobrescreva o valor colado à mão e volte para o banco antigo.
+      # Connection string "pooled" do PostgreSQL (Neon ou servidor da faculdade).
       - key: DATABASE_URL
         sync: false
-      # Definidos manualmente no painel do Render após o primeiro deploy
-      # (Environment > Add Environment Variable) — nunca ficam no código:
+      # Segredo para assinatura criptográfica de cookies de sessão httpOnly:
+      - key: SESSION_SECRET
+        generateValue: true
+      # Opcional — Gemini API Key para condução por voz e assistente IA:
       - key: GEMINI_API_KEY
         sync: false
       - key: APP_URL
         sync: false
-      - key: SESSION_SECRET
-        sync: false
-      # Opcional — só para migrar dados antigos (gente já cadastrada sem
-      # senha nenhuma) para o login real. Ver .env.example e o manual do
-      # Administrador. Remova esta variável depois que todos os
-      # Administradores dos dados antigos tiverem ativado a própria conta.
-      - key: ADMIN_BOOTSTRAP_SECRET
-        sync: false
-      # Identidade Institucional Customizável para Universidades Parceiras (Opcional):
+      # Identidade Institucional da Universidade Parceira:
       - key: VITE_INSTITUTION_NAME
         sync: false
       - key: VITE_INSTITUTION_ACRONYM
         sync: false
       - key: VITE_COLLECTION_PREFIX
-        sync: false
+        value: COI
       - key: VITE_CURATOR_CONTACT_EMAIL
         sync: false
       - key: VITE_DEFAULT_LANGUAGE
-        sync: false
+        value: pt-BR
       - key: VITE_SYSTEM_NAME
-        sync: false
+        value: SIGCOI
