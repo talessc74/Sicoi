@@ -73,7 +73,7 @@ O uso do SIGCOI ou de dados gerados por sua metodologia em artigos científicos,
 ```bibtex
 @article{damascena2026sigcoi,
   title={SIGCOI: An Open-Source, Blockchain-Ready Management System for Human Osteological Collections and Forensic Bioanthropology},
-  author={Damascena, Nicole Prata and Costa, Tales Seixas and Bento, Maria Izabel Cardoso and Machado, Carlos Eduardo Palhares},
+  author={Damascena, Nicole Prata and Carvalho, Tales Seixas de and Bento, Maria Izabel Cardoso and Machado, Carlos Eduardo Palhares},
   journal={Forensic Science International (Preprint/Em Avaliação)},
   year={2026},
   url={https://github.com/nicoledamascena-art/SIGCOI}
