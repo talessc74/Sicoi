@@ -21,7 +21,7 @@ genérico com ação em lote ou estado compartilhado entre abas exige
 teste dessas duas categorias — tsc --noEmit roda de novo após a última
 edição de teste, sempre, antes do merge.
 
-### ADRs — Architectural Decisions (30 documentos)
+### ADRs — Architectural Decisions (32 documentos)
 
 Histórico protegido de conjuntos: servidor como fonte de verdade,
 assinaturas travadas, registro de alterações encadeado por hash.
@@ -90,6 +90,8 @@ de rolagem nativa pra chegar a um nó fora da área visível. Zoom do Grafo:
 pinça do trackpad (wheel+ctrlKey, com preventDefault pra não aplicar zoom
 na página inteira) e botões +/−/100% equivalentes pra quem não usa gesto.
 Cálculo e quantificação forense do Número de Indivíduos (NMI, MMT, NMPI e IC 95%): caixas de métricas com função piso, gaveta retrátil inferior de ossos do inventário e isolamento rigoroso de contagens por elemento ósseo.
+Resiliência e tolerância a falhas na Fase 4 (Curadoria Forense): introdução do PhaseErrorBoundary, parser tolerante a identificadores NIC curtos (ex.: COI-004) e inicialização defensiva de perfis biológicos e odontogramas.
+Distribuição acadêmica do SIGCOI sob modelo de federação descentralizada ("REDCap Model") para o Pós-Doutorado da Dra. Nicole Damascena: soberania local das universidades (banco próprio, sem trânsito de restos mortais por servidores centrais), parametrização multi-institucional por variáveis de ambiente (.env), empacotamento em 1-clique (Render Blueprint e Docker Compose On-Premise), licenciamento de código aberto perpétuo GNU AGPLv3, notificador de atualizações sem quebra no painel de configurações e política de citação acadêmica obrigatória (ABNT/BibTeX) no rodapé e na exportação de dados científicos.
 
 ### BDRs — Business Decisions (1 documento)
 
