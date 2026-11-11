@@ -1,6 +1,6 @@
 # SIGCOI — Sistema de Gestão da Coleção Osteológica Identificada
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/nicoledamascena-art/SIGCOI)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 [![Status: Alfa](https://img.shields.io/badge/Status-Alfa-emerald.svg)](https://sgcccco-k50m.onrender.com)
 
@@ -24,7 +24,7 @@ O **SIGCOI** foi arquitetado sob o modelo de **Federação de Instâncias Autôn
 
 ### Opção A: Nuvem em 1-Clique (Render / Neon) — *Recomendado (5 Minutos)*
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/nicoledamascena-art/SIGCOI)
 
 1. Clique no botão **Deploy to Render** acima.
 2. Conecte sua conta gratuita do Render.
